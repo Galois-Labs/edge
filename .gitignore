@@ -1,0 +1,36 @@
+# Build artifacts
+bin/
+dist/
+build/
+*.egg-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Go
+galois-edge
+
+# Wrangler / Cloudflare local state
+.wrangler/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# PyInstaller
+*.spec.bak
+
+# Node (if any)
+node_modules/

@@ -1,0 +1,188 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: "1.26"
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build Go binaries (cross-compile from a single runner)
+  # ---------------------------------------------------------------------------
+  build-go:
+    name: Go (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          GIT_COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w \
+            -X github.com/galois-labs/edge/internal/cli.Version=${VERSION} \
+            -X github.com/galois-labs/edge/internal/cli.GitCommit=${GIT_COMMIT} \
+            -X github.com/galois-labs/edge/internal/cli.BuildDate=${BUILD_DATE}"
+          go build -ldflags "${LDFLAGS}" -o "galois-edge-${GOOS}-${GOARCH}" ./cmd/galois-edge
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: galois-edge-${{ matrix.goos }}-${{ matrix.goarch }}
+
+  # ---------------------------------------------------------------------------
+  # Build Python frozen binaries (must run natively per architecture)
+  # ---------------------------------------------------------------------------
+  build-python:
+    name: Python (${{ matrix.os_label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os_label: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            os_label: linux/arm64
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Freeze with PyInstaller
+        run: pyinstaller galois-edge-daemon.spec
+
+      - name: Rename artifact
+        run: mv dist/galois-edge-daemon "dist/galois-edge-daemon-linux-${{ matrix.arch }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-linux-${{ matrix.arch }}
+          path: dist/galois-edge-daemon-linux-${{ matrix.arch }}
+
+  # ---------------------------------------------------------------------------
+  # Run tests before releasing
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Go tests
+        run: go test -race ./...
+
+      - name: Python tests
+        run: |
+          pip install -r requirements.txt
+          pip install -e ".[dev]"
+          python -m pytest tests/ -x -v
+
+  # ---------------------------------------------------------------------------
+  # Publish GitHub Release with all artifacts
+  # ---------------------------------------------------------------------------
+  release:
+    name: Publish Release
+    needs: [build-go, build-python, test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect binaries and generate checksums
+        run: |
+          mkdir -p release
+          # Flatten all artifacts into release/
+          find artifacts -type f -name 'galois-edge*' -exec cp {} release/ \;
+          ls -la release/
+
+          # Generate per-platform checksum files
+          cd release
+          for arch in amd64 arm64; do
+            sha256sum galois-edge-linux-${arch} galois-edge-daemon-linux-${arch} \
+              > checksums-linux-${arch}.sha256
+          done
+
+          # Also generate a combined checksum file
+          sha256sum galois-edge-* > checksums.sha256
+          cat checksums.sha256
+
+      - name: Copy install script
+        run: cp install.sh release/install.sh
+
+      # GitHub Release (private, for internal reference / changelog)
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          gh release create "${VERSION}" \
+            --title "galois-edge ${VERSION}" \
+            --generate-notes \
+            release/*
+
+      # Upload to Cloudflare R2 (public downloads for install script)
+      # Requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY secrets.
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          pip install awscli
+
+          # Upload versioned artifacts
+          for f in release/galois-edge-* release/checksums-*; do
+            aws s3 cp "$f" "s3://galois-edge-releases/${VERSION}/$(basename $f)" \
+              --endpoint-url "${R2_ENDPOINT}"
+          done
+
+          # Update "latest" pointer
+          echo -n "${VERSION}" | aws s3 cp - "s3://galois-edge-releases/latest" \
+            --endpoint-url "${R2_ENDPOINT}" \
+            --content-type "text/plain"

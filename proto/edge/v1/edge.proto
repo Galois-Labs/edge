@@ -1,0 +1,425 @@
+syntax = "proto3";
+
+package galois.edge.v1;
+
+option go_package = "github.com/galois-labs/daemon/proto/gen/go/edge/v1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// EdgeDaemonService provides gRPC access to lab instruments connected to an
+// edge daemon. The cloud backend acts as a client; edge daemons act as servers.
+//
+// This is the single unified contract for all edge-to-cloud communication.
+service EdgeDaemonService {
+  // --- Core SCPI --------------------------------------------------------
+
+  // SendCommand sends a raw SCPI command string to an instrument.
+  rpc SendCommand(SendCommandRequest) returns (SendCommandResponse);
+
+  // StreamCommands enables bidirectional streaming of raw SCPI commands.
+  rpc StreamCommands(stream SendCommandRequest) returns (stream SendCommandResponse);
+
+  // --- Instrument discovery ---------------------------------------------
+
+  // ListInstruments returns all instruments currently known to the edge daemon.
+  rpc ListInstruments(ListInstrumentsRequest) returns (ListInstrumentsResponse);
+
+  // GetInstrument returns details for a single instrument by its identifier.
+  rpc GetInstrument(GetInstrumentRequest) returns (Instrument);
+
+  // ScanInstruments triggers a discovery scan and returns newly found instruments.
+  rpc ScanInstruments(ScanInstrumentsRequest) returns (ScanInstrumentsResponse);
+
+  // --- Profile-based commands -------------------------------------------
+
+  // GetCapabilities returns command capabilities for one or all instruments.
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+
+  // ExecuteCommand executes a named command from an instrument's profile.
+  rpc ExecuteCommand(ExecuteCommandRequest) returns (ExecuteCommandResponse);
+
+  // ExecuteSequence runs a multi-step measurement sequence on an instrument.
+  rpc ExecuteSequence(ExecuteSequenceRequest) returns (ExecuteSequenceResponse);
+
+  // --- Streaming --------------------------------------------------------
+
+  // StreamMeasurement starts periodic measurement polling and streams data points.
+  rpc StreamMeasurement(StreamMeasurementRequest) returns (stream MeasurementDataPoint);
+
+  // StopStream terminates an active measurement stream.
+  rpc StopStream(StopStreamRequest) returns (StopStreamResponse);
+
+  // --- Status & health --------------------------------------------------
+
+  // GetStatus returns the edge daemon's health and resource usage.
+  rpc GetStatus(GetStatusRequest) returns (EdgeStatus);
+
+  // Ping is a lightweight health-check RPC.
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  // --- Registration (used by Go supervisor, not by cloud backend) -------
+
+  // RegisterEdge performs edge self-registration with the cloud backend.
+  rpc RegisterEdge(RegisterEdgeRequest) returns (RegisterEdgeResponse);
+
+  // Heartbeat sends a keep-alive with current instrument count and status.
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // --- Utility ----------------------------------------------------------
+
+  // GetWebcamSnapshot fetches a JPEG frame from a LAN camera on the edge.
+  rpc GetWebcamSnapshot(GetWebcamSnapshotRequest) returns (GetWebcamSnapshotResponse);
+
+  // --- RPyC-style SDK relay (Path B: full SDK surface) ------------------
+
+  // ProxySDKCall forwards an arbitrary vendor SDK method call to the edge.
+  // Used by the backend to relay calls from pyvisa-galois when an instrument
+  // has no YAML profile or when the researcher needs the full SDK surface.
+  rpc ProxySDKCall(ProxySDKCallRequest) returns (ProxySDKCallResponse);
+}
+
+// ===========================================================================
+// Enums
+// ===========================================================================
+
+// ConnectionType identifies the physical transport to the instrument.
+enum ConnectionType {
+  CONNECTION_TYPE_UNSPECIFIED = 0;
+  CONNECTION_TYPE_GPIB = 1;
+  CONNECTION_TYPE_USB = 2;
+  CONNECTION_TYPE_LAN = 3;
+  CONNECTION_TYPE_SERIAL = 4;
+}
+
+// ParameterType classifies command parameters for UI/validation.
+enum ParameterType {
+  PARAMETER_TYPE_UNSPECIFIED = 0;
+  PARAMETER_TYPE_STRING = 1;
+  PARAMETER_TYPE_NUMBER = 2;
+  PARAMETER_TYPE_BOOLEAN = 3;
+  PARAMETER_TYPE_ENUM = 4;
+}
+
+// EdgeStatusCode indicates the high-level health of an edge daemon.
+enum EdgeStatusCode {
+  EDGE_STATUS_CODE_UNSPECIFIED = 0;
+  EDGE_STATUS_CODE_ONLINE = 1;
+  EDGE_STATUS_CODE_OFFLINE = 2;
+  EDGE_STATUS_CODE_DEGRADED = 3;
+}
+
+// ===========================================================================
+// Core messages
+// ===========================================================================
+
+// Instrument represents a single lab instrument visible to the edge daemon.
+message Instrument {
+  string id = 1;
+  string address = 2;                      // VISA resource string
+  ConnectionType connection_type = 3;
+  string idn_string = 4;                   // Raw *IDN? response
+  string manufacturer = 5;
+  string model = 6;
+  string serial_number = 7;
+  string firmware = 8;
+  string profile_name = 9;                 // Matched YAML profile key
+  string instrument_class = 10;            // e.g. "sourcemeter", "oscilloscope"
+  bool is_connected = 11;
+  repeated CommandCapability capabilities = 12;
+}
+
+// CommandCapability describes a single command an instrument supports.
+message CommandCapability {
+  string name = 1;
+  string description = 2;
+  string type = 3;                         // "query", "write", "property"
+  repeated CommandParameter parameters = 4;
+  bool returns_data = 5;
+  bool is_dangerous = 6;
+  string return_type = 7;                  // "float", "string", "int", etc.
+  string unit = 8;
+  bool is_streamable = 9;
+}
+
+// CommandParameter describes one parameter accepted by a command.
+message CommandParameter {
+  string name = 1;
+  string description = 2;
+  ParameterType type = 3;
+  bool required = 4;
+  string default_value = 5;
+  repeated string enum_values = 6;
+  string unit = 7;
+}
+
+// SequenceCapability describes a multi-step measurement sequence.
+message SequenceCapability {
+  string name = 1;
+  string description = 2;
+  repeated string params = 3;
+}
+
+// InstrumentCapabilities wraps all capabilities for a single instrument.
+message InstrumentCapabilities {
+  string instrument_id = 1;
+  bool has_profile = 2;
+  string profile_key = 3;
+  string manufacturer = 4;
+  string model = 5;
+  string instrument_class = 6;
+  repeated CommandCapability commands = 7;
+  repeated SequenceCapability sequences = 8;
+  map<string, string> settings = 9;
+}
+
+// ===========================================================================
+// SendCommand (raw SCPI)
+// ===========================================================================
+
+message SendCommandRequest {
+  string command_id = 1;                   // Unique identifier for tracking
+  string scpi_command = 2;                 // The SCPI command string
+  string instrument_id = 3;               // Target instrument identifier
+  int32 timeout_ms = 4;                   // Timeout in ms (0 = default)
+}
+
+message SendCommandResponse {
+  string command_id = 1;
+  string response = 2;                     // Instrument response data
+  string error = 3;                        // Error message (empty on success)
+  string status = 4;                       // "completed" or "error"
+  int64 execution_time_ms = 5;
+}
+
+// ===========================================================================
+// ListInstruments
+// ===========================================================================
+
+message ListInstrumentsRequest {
+  string filter = 1;                       // Optional filter by type or status
+}
+
+message ListInstrumentsResponse {
+  repeated Instrument instruments = 1;
+  string edge_id = 2;
+}
+
+// ===========================================================================
+// GetInstrument
+// ===========================================================================
+
+message GetInstrumentRequest {
+  string instrument_id = 1;
+}
+
+// ===========================================================================
+// ScanInstruments
+// ===========================================================================
+
+message ScanInstrumentsRequest {}
+
+message ScanInstrumentsResponse {
+  repeated Instrument instruments = 1;
+}
+
+// ===========================================================================
+// GetCapabilities
+// ===========================================================================
+
+message GetCapabilitiesRequest {
+  string instrument_id = 1;               // Optional: specific instrument
+  string instrument_class = 2;            // Optional: filter by class
+}
+
+message GetCapabilitiesResponse {
+  repeated InstrumentCapabilities capabilities = 1;
+  string edge_id = 2;
+}
+
+// ===========================================================================
+// ExecuteCommand (profile-based)
+// ===========================================================================
+
+message ExecuteCommandRequest {
+  string command_id = 1;
+  string instrument_id = 2;
+  string command_name = 3;                 // Command name from profile
+  map<string, string> parameters = 4;
+  bool is_query = 5;                       // For property commands: true=getter
+  int32 timeout_ms = 6;
+}
+
+message ExecuteCommandResponse {
+  string command_id = 1;
+  bool success = 2;
+  string data = 3;                         // Response data
+  string error_message = 4;
+  int64 execution_time_ms = 5;
+  string scpi_command = 6;                 // The actual SCPI command that was sent
+}
+
+// ===========================================================================
+// ExecuteSequence
+// ===========================================================================
+
+message ExecuteSequenceRequest {
+  string sequence_id = 1;
+  string instrument_id = 2;
+  string sequence_name = 3;
+  map<string, string> parameters = 4;
+  int32 timeout_ms = 5;
+}
+
+message ExecuteSequenceResponse {
+  string sequence_id = 1;
+  string result = 2;
+  string error = 3;
+  string status = 4;                       // "completed" or "error"
+  int64 execution_time_ms = 5;
+  repeated string steps_executed = 6;      // List of SCPI commands executed
+}
+
+// ===========================================================================
+// StreamMeasurement
+// ===========================================================================
+
+message StreamMeasurementRequest {
+  string stream_id = 1;                    // Unique stream identifier
+  string instrument_id = 2;
+  string command_name = 3;                 // Profile command name (must be streamable)
+  int32 interval_ms = 4;                   // Polling interval in ms (min 100)
+  int32 timeout_ms = 5;                    // Overall stream timeout (0 = indefinite)
+  map<string, string> parameters = 6;      // Optional command parameters
+}
+
+message MeasurementDataPoint {
+  string stream_id = 1;
+  double value = 2;                        // Primary measured value
+  int64 timestamp_ms = 3;                  // Unix timestamp in milliseconds
+  string unit = 4;                         // Unit of measurement (V, A, Ohm, W)
+  string error = 5;                        // Error message if reading failed
+  string status = 6;                       // "ok", "error", "stopped"
+  map<string, double> values = 7;          // Named fields for multi-value measurements
+}
+
+// ===========================================================================
+// StopStream
+// ===========================================================================
+
+message StopStreamRequest {
+  string stream_id = 1;
+}
+
+message StopStreamResponse {
+  bool success = 1;
+}
+
+// ===========================================================================
+// GetStatus
+// ===========================================================================
+
+message GetStatusRequest {}
+
+message EdgeStatus {
+  string edge_id = 1;
+  string hostname = 2;
+  EdgeStatusCode status = 3;
+  int32 instrument_count = 4;
+  int64 uptime_seconds = 5;
+  string version = 6;
+  string os_info = 7;
+  double cpu_usage = 8;
+  double memory_usage = 9;
+}
+
+// ===========================================================================
+// Ping
+// ===========================================================================
+
+message PingRequest {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message PingResponse {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+// ===========================================================================
+// RegisterEdge
+// ===========================================================================
+
+message RegisterEdgeRequest {
+  string edge_id = 1;                      // Edge-chosen identifier
+  string hostname = 2;
+  repeated Instrument instruments = 3;     // Currently connected instruments
+  string tailscale_ip = 4;
+  int32 grpc_port = 5;
+  int32 ws_port = 6;                       // WebSocket data streaming port
+  map<string, string> metadata = 7;
+}
+
+message RegisterEdgeResponse {
+  bool success = 1;
+  string message = 2;
+  string assigned_edge_id = 3;             // Server-assigned ID if applicable
+}
+
+// ===========================================================================
+// Heartbeat
+// ===========================================================================
+
+message HeartbeatRequest {
+  string edge_id = 1;
+  int32 instrument_count = 2;
+  double cpu_usage = 3;
+  double memory_usage = 4;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  int64 server_timestamp_ms = 2;           // For time synchronization
+  map<string, string> config_updates = 3;  // Pending config changes from server
+}
+
+// ===========================================================================
+// GetWebcamSnapshot
+// ===========================================================================
+
+message GetWebcamSnapshotRequest {
+  string camera_url = 1;                   // e.g. "http://192.168.1.100/snapshot.cgi"
+}
+
+message GetWebcamSnapshotResponse {
+  bytes image_data = 1;                    // JPEG bytes
+  int64 timestamp_ms = 2;
+  string content_type = 3;                 // "image/jpeg"
+  string error = 4;
+}
+
+// ===========================================================================
+// ProxySDKCall (RPyC-style relay for full vendor SDK access)
+// ===========================================================================
+
+// ProxySDKCallRequest forwards an arbitrary vendor SDK method call to the edge.
+// The edge daemon imports the specified module, locates the target object, and
+// invokes the method with the provided arguments. This enables the "Path B"
+// workflow where researchers need full SDK surfaces for instruments that lack
+// YAML profiles (e.g., Quantum Design PPMS, Zurich Instruments MFLI).
+message ProxySDKCallRequest {
+  string call_id = 1;                      // Unique identifier for tracking
+  string instrument_id = 2;               // Target instrument on the edge
+  string module = 3;                       // Python module name (e.g. "MultiPyVu")
+  string method = 4;                       // Method name (e.g. "set_temperature")
+  repeated google.protobuf.Value args = 5; // Positional arguments (JSON-typed)
+  map<string, google.protobuf.Value> kwargs = 6; // Keyword arguments (JSON-typed)
+  int32 timeout_ms = 7;                   // Execution timeout (0 = default)
+}
+
+message ProxySDKCallResponse {
+  string call_id = 1;
+  bool success = 2;
+  google.protobuf.Value result = 3;        // Return value (JSON-typed)
+  string error_message = 4;
+  int64 execution_time_ms = 5;
+}
