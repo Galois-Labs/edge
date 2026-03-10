@@ -1,0 +1,1312 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "X-Series"
+  class: spectrum_analyzer
+  description: "X-Series Signal Analyzers (PXA N9030A, MXA N9020A, EXA N9010A, CXA N9000A, MXE N9038A)"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight Technologies.*,(PXA|MXA|EXA|CXA|MXE|N90[0-3][0-8]A)"
+
+interfaces:
+  - type: gpib
+    default_address: 18
+  - type: ethernet
+    port: 5025
+  - type: usb
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in standard event register when all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass, 1 = fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save current setup to memory location (0-4)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location (0-4)"
+
+  # ============================================================================
+  # Frequency Commands
+  # ============================================================================
+  frequency_start:
+    getter: ":SENSe:FREQuency:STARt?"
+    setter: ":SENSe:FREQuency:STARt {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Start frequency for sweep"
+
+  frequency_stop:
+    getter: ":SENSe:FREQuency:STOP?"
+    setter: ":SENSe:FREQuency:STOP {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Stop frequency for sweep"
+
+  frequency_center:
+    getter: ":SENSe:FREQuency:CENTer?"
+    setter: ":SENSe:FREQuency:CENTer {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency"
+
+  frequency_span:
+    getter: ":SENSe:FREQuency:SPAN?"
+    setter: ":SENSe:FREQuency:SPAN {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency span"
+
+  # ============================================================================
+  # Bandwidth Commands
+  # ============================================================================
+  resolution_bandwidth:
+    getter: ":SENSe:BANDwidth[:RESolution]?"
+    setter: ":SENSe:BANDwidth[:RESolution] {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Resolution bandwidth"
+
+  resolution_bandwidth_auto:
+    getter: ":SENSe:BANDwidth:RESolution:AUTO?"
+    setter: ":SENSe:BANDwidth:RESolution:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic resolution bandwidth"
+
+  video_bandwidth:
+    getter: ":SENSe:BANDwidth:VIDeo?"
+    setter: ":SENSe:BANDwidth:VIDeo {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Video bandwidth"
+
+  video_bandwidth_auto:
+    getter: ":SENSe:BANDwidth:VIDeo:AUTO?"
+    setter: ":SENSe:BANDwidth:VIDeo:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic video bandwidth"
+
+  bandwidth_offset:
+    getter: ":SENSe:BANDwidth:OFFSet?"
+    setter: ":SENSe:BANDwidth:OFFSet {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Bandwidth offset frequency"
+
+  # ============================================================================
+  # Amplitude/Power Commands
+  # ============================================================================
+  reference_level:
+    getter: ":DISPlay:WINDow:TRACe:Y:SCALe:RLEVel?"
+    setter: ":DISPlay:WINDow:TRACe:Y:SCALe:RLEVel {ampl}"
+    type: property
+    params:
+      ampl:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Reference level"
+
+  attenuation:
+    getter: ":SENSe:POWer[:RF]:ATTenuation?"
+    setter: ":SENSe:POWer[:RF]:ATTenuation {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: 0
+        max: 70
+    returns:
+      type: float
+      unit: dB
+    description: "Input attenuation"
+
+  attenuation_auto:
+    getter: ":SENSe:POWer[:RF]:ATTenuation:AUTO?"
+    setter: ":SENSe:POWer[:RF]:ATTenuation:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic attenuation"
+
+  preamp_state:
+    getter: ":SENSe:POWer[:RF]:GAIN:STATe?"
+    setter: ":SENSe:POWer[:RF]:GAIN:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable preamplifier"
+
+  scale_per_division:
+    getter: ":DISPlay:WINDow:TRACe:Y:SCALe:PDIVision?"
+    setter: ":DISPlay:WINDow:TRACe:Y:SCALe:PDIVision {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: "Scale per division"
+
+  # ============================================================================
+  # Detector Commands
+  # ============================================================================
+  detector_function:
+    getter: ":SENSe:DETector[:FUNCtion]?"
+    setter: ":SENSe:DETector[:FUNCtion] {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["NEGative", "POSitive", "SAMPle", "NORMal", "AVERage", "QPEak", "EAVerage"]
+    returns:
+      type: string
+    description: "Detector function type"
+
+  detector_auto:
+    getter: ":SENSe:DETector:AUTO?"
+    setter: ":SENSe:DETector:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic detector selection"
+
+  # ============================================================================
+  # Sweep Commands
+  # ============================================================================
+  sweep_time:
+    getter: ":SENSe:SWEep:TIME?"
+    setter: ":SENSe:SWEep:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sweep time"
+
+  sweep_time_auto:
+    getter: ":SENSe:SWEep:TIME:AUTO?"
+    setter: ":SENSe:SWEep:TIME:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic sweep time"
+
+  sweep_points:
+    getter: ":SENSe:SWEep:POINts?"
+    setter: ":SENSe:SWEep:POINts {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 100001
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_type:
+    getter: ":SENSe:SWEep:TYPE?"
+    setter: ":SENSe:SWEep:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["SWEep", "FFT"]
+    returns:
+      type: string
+    description: "Sweep type (swept or FFT)"
+
+  # ============================================================================
+  # Trigger Commands
+  # ============================================================================
+  trigger_source:
+    getter: ":TRIGger[:SEQuence]:SOURce?"
+    setter: ":TRIGger[:SEQuence]:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["EXTernal", "INTernal", "LINE", "VIDeo", "IMMediate", "RFBurst"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_external_slope:
+    getter: ":TRIGger[:SEQuence]:EXTernal:SLOPe?"
+    setter: ":TRIGger[:SEQuence]:EXTernal:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "External trigger slope"
+
+  trigger_video_level:
+    getter: ":TRIGger[:SEQuence]:VIDeo:LEVel?"
+    setter: ":TRIGger[:SEQuence]:VIDeo:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Video trigger level"
+
+  trigger_video_slope:
+    getter: ":TRIGger[:SEQuence]:VIDeo:SLOPe?"
+    setter: ":TRIGger[:SEQuence]:VIDeo:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Video trigger slope"
+
+  trigger_delay:
+    getter: ":TRIGger[:SEQuence]:DELay?"
+    setter: ":TRIGger[:SEQuence]:DELay {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay time"
+
+  # ============================================================================
+  # Measurement Initiation Commands
+  # ============================================================================
+  initiate:
+    scpi: ":INITiate:IMMediate"
+    type: write
+    description: "Initiate a measurement sweep"
+
+  initiate_continuous:
+    getter: ":INITiate:CONTinuous?"
+    setter: ":INITiate:CONTinuous {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable continuous sweep"
+
+  abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Abort current measurement"
+
+  # ============================================================================
+  # Arm Commands
+  # ============================================================================
+  arm_count:
+    getter: ":ARM:COUNt?"
+    setter: ":ARM:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 32767
+    returns:
+      type: int
+    description: "Arm count"
+
+  arm_source:
+    getter: ":ARM:SOURce?"
+    setter: ":ARM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "EXTernal", "MANual", "BUS"]
+    returns:
+      type: string
+    description: "Arm source"
+
+  # ============================================================================
+  # Trace Commands
+  # ============================================================================
+  trace_type:
+    getter: ":TRACe{n}:TYPE?"
+    setter: ":TRACe{n}:TYPE {type}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+      type:
+        type: enum
+        options: ["WRITe", "AVERage", "MAXHold", "MINHold"]
+    returns:
+      type: string
+    description: "Trace type (write, average, max hold, min hold)"
+
+  trace_data:
+    scpi: ":TRACe:DATA? TRACE{n}"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read trace data"
+    streamable: true
+
+  trace_clear:
+    scpi: ":TRACe:CLEar TRACE{n}"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+    description: "Clear specified trace"
+
+  trace_points:
+    getter: ":TRACe:POINts?"
+    setter: ":TRACe:POINts {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 100001
+    returns:
+      type: int
+    description: "Number of trace points"
+
+  trace_average_count:
+    getter: ":TRACe{n}:AVERage:COUNt?"
+    setter: ":TRACe{n}:AVERage:COUNt {count}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+      count:
+        type: int
+        min: 1
+        max: 10000
+    returns:
+      type: int
+    description: "Trace average count"
+
+  trace_average_type:
+    getter: ":TRACe{n}:AVERage:TYPE?"
+    setter: ":TRACe{n}:AVERage:TYPE {type}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+      type:
+        type: enum
+        options: ["LOGarithmic", "RMS", "SCALar"]
+    returns:
+      type: string
+    description: "Trace average type"
+
+  # ============================================================================
+  # Data Retrieval Commands
+  # ============================================================================
+  fetch:
+    scpi: ":FETCh:SPECtrum{n}?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch measurement data without initiating new measurement"
+    streamable: true
+
+  read:
+    scpi: ":READ:SPECtrum{n}?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate measurement and fetch data"
+    streamable: true
+
+  measure_spectrum:
+    scpi: ":MEASure:SPECtrum{n}?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Configure measurement to defaults, initiate, and fetch data"
+
+  # ============================================================================
+  # Calculate/Data Processing Commands
+  # ============================================================================
+  calculate_data_compress:
+    scpi: ":CALCulate:DATA:COMPress? {function},{start},{width},{offset},{count}"
+    type: query
+    params:
+      function:
+        type: enum
+        options: ["MEAN", "MIN", "MAX", "RMS"]
+      start:
+        type: float
+        unit: s
+      width:
+        type: float
+        unit: s
+      offset:
+        type: float
+        unit: s
+      count:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Compress and process trace data"
+
+  calculate_data2_compress:
+    scpi: ":CALCulate:DATA2:COMPress? {function},{start},{width},{offset},{count}"
+    type: query
+    params:
+      function:
+        type: enum
+        options: ["MEAN", "MIN", "MAX", "RMS"]
+      start:
+        type: float
+        unit: s
+      width:
+        type: float
+        unit: s
+      offset:
+        type: float
+        unit: s
+      count:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Compress and process trace 2 data"
+
+  # ============================================================================
+  # Marker Commands
+  # ============================================================================
+  marker_state:
+    getter: ":CALCulate:MARKer{n}?"
+    setter: ":CALCulate:MARKer{n} {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker"
+
+  marker_x:
+    getter: ":CALCulate:MARKer{n}:X?"
+    setter: ":CALCulate:MARKer{n}:X {freq}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Marker X position (frequency)"
+
+  marker_y:
+    scpi: ":CALCulate:MARKer{n}:Y?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    returns:
+      type: float
+      unit: dBm
+    description: "Query marker Y value (amplitude)"
+
+  marker_peak:
+    scpi: ":CALCulate:MARKer{n}:MAXimum"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Move marker to peak"
+
+  marker_minimum:
+    scpi: ":CALCulate:MARKer{n}:MINimum"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Move marker to minimum"
+
+  marker_peak_next:
+    scpi: ":CALCulate:MARKer{n}:MAXimum:NEXT"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Move marker to next peak"
+
+  marker_peak_left:
+    scpi: ":CALCulate:MARKer{n}:MAXimum:LEFT"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Move marker to peak left of current position"
+
+  marker_peak_right:
+    scpi: ":CALCulate:MARKer{n}:MAXimum:RIGHt"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Move marker to peak right of current position"
+
+  marker_center:
+    scpi: ":CALCulate:MARKer{n}:CENTer"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+    description: "Set center frequency to marker frequency"
+
+  marker_reference:
+    scpi: ":CALCulate:MARKer{n}:REFerence {ampl}"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      ampl:
+        type: float
+        unit: dBm
+    description: "Set reference level to marker amplitude"
+
+  marker_couple:
+    getter: ":CALCulate:MARKer:COUPle?"
+    setter: ":CALCulate:MARKer:COUPle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker coupling"
+
+  marker_band_power:
+    getter: ":CALCulate:MARKer{n}:FUNCtion?"
+    setter: ":CALCulate:MARKer{n}:FUNCtion {function}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      function:
+        type: enum
+        options: ["OFF", "BPOWer", "NOISe", "BDENsity"]
+    returns:
+      type: string
+    description: "Marker function (band power, noise, band density)"
+
+  marker_band_span:
+    getter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:SPAN?"
+    setter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:SPAN {freq}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Band power marker span"
+
+  marker_band_left:
+    getter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:LEFT?"
+    setter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:LEFT {freq}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Band power marker left frequency"
+
+  marker_band_right:
+    getter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:RIGHt?"
+    setter: ":CALCulate:MARKer{n}:FUNCtion:BPOWer:RIGHt {freq}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 12
+        default: 1
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Band power marker right frequency"
+
+  # ============================================================================
+  # Format Commands
+  # ============================================================================
+  format_data:
+    getter: ":FORMat:DATA?"
+    setter: ":FORMat:DATA {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "REAL,32", "REAL,64", "INTeger,32"]
+    returns:
+      type: string
+    description: "Data format for trace transfer"
+
+  format_border:
+    getter: ":FORMat:BORDer?"
+    setter: ":FORMat:BORDer {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORMal", "SWAPped"]
+    returns:
+      type: string
+    description: "Binary data byte order (normal = big-endian, swapped = little-endian)"
+
+  # ============================================================================
+  # Display Commands
+  # ============================================================================
+  display_enable:
+    getter: ":DISPlay:ENABle?"
+    setter: ":DISPlay:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display updates"
+
+  display_annotation:
+    getter: ":DISPlay:ANNotation?"
+    setter: ":DISPlay:ANNotation {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display annotations"
+
+  display_window:
+    getter: ":DISPlay:WINDow:TRACe:STATe?"
+    setter: ":DISPlay:WINDow:TRACe:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable trace display"
+
+  # ============================================================================
+  # Mode Selection Commands
+  # ============================================================================
+  instrument_mode:
+    getter: ":INSTrument:SELect?"
+    setter: ":INSTrument:SELect {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SA", "BASIC", "PNOISE", "ADEMOD", "WCDMA", "EDGEGSM", "WIMAX", "LTE", "VSA"]
+    returns:
+      type: string
+    description: "Select instrument measurement mode"
+
+  # ============================================================================
+  # System Commands
+  # ============================================================================
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read one error from error queue"
+
+  system_error_all:
+    scpi: ":SYSTem:ERRor:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Read all errors from error queue"
+
+  system_error_count:
+    scpi: ":SYSTem:ERRor:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Preset system to factory defaults"
+
+  system_help_headers:
+    scpi: ":SYSTem:HELP:HEADers?"
+    type: query
+    returns:
+      type: string
+    description: "Query all supported SCPI commands in current mode"
+
+  # ============================================================================
+  # Status Commands
+  # ============================================================================
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  status_operation_condition:
+    scpi: ":STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation condition register"
+
+  status_operation_enable:
+    getter: ":STATus:OPERation:ENABle?"
+    setter: ":STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation status enable register"
+
+  status_operation_event:
+    scpi: ":STATus:OPERation:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear operation event register"
+
+  status_questionable_condition:
+    scpi: ":STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable condition register"
+
+  status_questionable_enable:
+    getter: ":STATus:QUEStionable:ENABle?"
+    setter: ":STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_questionable_event:
+    scpi: ":STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear questionable event register"
+
+  status_preset:
+    scpi: ":STATus:PRESet"
+    type: write
+    description: "Preset status registers to default states"
+
+  # ============================================================================
+  # Memory/File Commands
+  # ============================================================================
+  memory_store_screen:
+    scpi: ":MMEMory:STORe:SCReen \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Store screen image to file"
+
+  memory_store_trace:
+    scpi: ":MMEMory:STORe:TRACe TRACE{n},\"{filename}\""
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+      filename:
+        type: string
+    description: "Store trace data to file"
+
+  memory_load_trace:
+    scpi: ":MMEMory:LOAD:TRACe TRACE{n},\"{filename}\""
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 6
+      filename:
+        type: string
+    description: "Load trace data from file"
+
+  memory_store_state:
+    scpi: ":MMEMory:STORe:STATe {location},\"{filename}\""
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 100
+      filename:
+        type: string
+    description: "Store instrument state to file"
+
+  memory_load_state:
+    scpi: ":MMEMory:LOAD:STATe {location},\"{filename}\""
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 100
+      filename:
+        type: string
+    description: "Load instrument state from file"
+
+  memory_delete:
+    scpi: ":MMEMory:DELete \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete file"
+
+  memory_catalog:
+    scpi: ":MMEMory:CATalog? \"{directory}\""
+    type: query
+    params:
+      directory:
+        type: string
+    returns:
+      type: string
+    description: "List files in directory"
+
+  # ============================================================================
+  # Input/Output Configuration
+  # ============================================================================
+  input_impedance:
+    getter: ":INPut:IMPedance?"
+    setter: ":INPut:IMPedance {impedance}"
+    type: property
+    params:
+      impedance:
+        type: enum
+        options: ["50", "75"]
+    returns:
+      type: int
+    description: "Input impedance (50 or 75 ohms)"
+
+  input_coupling:
+    getter: ":INPut:COUPling?"
+    setter: ":INPut:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Input coupling (AC or DC)"
+
+sequences:
+  single_sweep_measurement:
+    description: "Perform single sweep measurement and retrieve data"
+    steps:
+      - command: initiate_continuous
+        args:
+          state: "OFF"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+  continuous_sweep:
+    description: "Enable continuous sweep mode"
+    steps:
+      - command: initiate_continuous
+        args:
+          state: "ON"
+
+  marker_to_peak_and_center:
+    description: "Move marker to peak and set center frequency to marker"
+    params:
+      marker:
+        type: int
+        default: 1
+    steps:
+      - command: marker_peak
+        args:
+          n: "{marker}"
+      - command: marker_center
+        args:
+          n: "{marker}"
+
+  quick_spectrum_capture:
+    description: "Capture spectrum with specified parameters"
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+      span:
+        type: float
+        unit: Hz
+      rbw:
+        type: float
+        unit: Hz
+        default: 0
+    steps:
+      - command: frequency_center
+        args:
+          freq: "{center_freq}"
+      - command: frequency_span
+        args:
+          freq: "{span}"
+      - command: resolution_bandwidth
+        args:
+          freq: "{rbw}"
+      - command: initiate_continuous
+        args:
+          state: "OFF"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+  save_screen_image:
+    description: "Save screen image to file and retrieve to PC"
+    params:
+      filename:
+        type: string
+        default: "screen.png"
+    steps:
+      - command: memory_store_screen
+        args:
+          filename: "D:\\{filename}"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

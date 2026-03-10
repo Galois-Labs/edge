@@ -1,0 +1,374 @@
+# Keysight S-Series Oscilloscope Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_S-Series_Oscilloscope
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Keysight"
+  model: "S-Series Oscilloscope"
+  class: oscilloscope
+  description: "Keysight S-Series Oscilloscope"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight.*KEYSIGHT\ TECHNOLOGIES,DSOS"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 10000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  time_range:
+    getter: ":TIM:RANG?"
+    setter: ":TIM:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 5e-11
+        max: 200.0
+    returns:
+      type: float
+      unit: s
+    description: "Time range"
+  sample_points:
+    getter: ":ACQ:POIN:ANAL?"
+    setter: ":ACQ:POIN:ANAL {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sample points"
+  sample_rate:
+    getter: ":ACQ:SRAT:ANAL?"
+    setter: ":ACQ:SRAT:ANAL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        max: 20000000000.0
+    returns:
+      type: float
+    description: "Sample rate"
+  time_position:
+    getter: ":TIM:POS?"
+    setter: ":TIM:POS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Time position"
+  10_mhz_reference_clock:
+    getter: ":TIM:REFC?"
+    setter: ":TIM:REFC {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: string
+    description: "10 MHz reference clock"
+  location_of_zero:
+    getter: ":TIM:REF?"
+    setter: ":TIM:REF {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["LEFT", "CENT", "RIGH"]
+    returns:
+      type: string
+    description: "Location of zero"
+  trigger_source:
+    getter: ":TRIG:EDGE:SOUR?"
+    setter: ":TRIG:EDGE:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["CHAN1", "CHAN2", "CHAN3", "CHAN4", "AUX", "LINE"]
+    returns:
+      type: string
+    description: "Trigger source"
+  trigger_coupling:
+    getter: ":TRIG:EDGE:COUP?"
+    setter: ":TRIG:EDGE:COUP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DC", "AC"]
+    returns:
+      type: string
+    description: "Trigger coupling"
+  trigger_slope:
+    getter: ":TRIG:EDGE:SLOP?"
+    setter: ":TRIG:EDGE:SLOP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["POS", "NEG", "EITH"]
+    returns:
+      type: string
+    description: "Trigger slope"
+  averaging:
+    getter: ":ACQ:AVER?"
+    setter: ":ACQ:AVER {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Averaging"
+  number_of_averages:
+    getter: ":ACQ:AVER:COUN?"
+    setter: ":ACQ:AVER:COUN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 2.0
+        max: 65534.0
+    returns:
+      type: float
+    description: "Number of averages"
+  bandwidth:
+    getter: "ACQ:BAND?"
+    setter: "ACQ:BAND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 500000000.0
+        max: 8000000000.0
+    returns:
+      type: float
+    description: "Bandwidth"
+  interpolate_sin_x_x:
+    getter: "ACQ:INT?"
+    setter: "ACQ:INT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0"]
+    returns:
+      type: string
+    description: "Interpolate sin(x)/x"
+  ch1_enabled:
+    getter: ":CHAN1:DISP?"
+    setter: ":CHAN1:DISP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch1 - Enabled"
+  ch1_range:
+    getter: ":CHAN1:RANG?"
+    setter: ":CHAN1:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch1 - Range"
+  ch1_offset:
+    getter: ":CHAN1:OFFS?"
+    setter: ":CHAN1:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch1 - Offset"
+  ch1_coupling:
+    getter: ":CHAN1:INP?"
+    setter: ":CHAN1:INP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DC50", "DC", "AC"]
+    returns:
+      type: string
+    description: "Ch1 - Coupling"
+  ch2_enabled:
+    getter: ":CHAN2:DISP?"
+    setter: ":CHAN2:DISP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch2 - Enabled"
+  ch2_range:
+    getter: ":CHAN2:RANG?"
+    setter: ":CHAN2:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch2 - Range"
+  ch2_offset:
+    getter: ":CHAN2:OFFS?"
+    setter: ":CHAN2:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch2 - Offset"
+  ch2_coupling:
+    getter: ":CHAN2:INP?"
+    setter: ":CHAN2:INP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DC50", "DC", "AC"]
+    returns:
+      type: string
+    description: "Ch2 - Coupling"
+  ch3_enabled:
+    getter: ":CHAN3:DISP?"
+    setter: ":CHAN3:DISP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch3 - Enabled"
+  ch3_range:
+    getter: ":CHAN3:RANG?"
+    setter: ":CHAN3:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch3 - Range"
+  ch3_offset:
+    getter: ":CHAN3:OFFS?"
+    setter: ":CHAN3:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch3 - Offset"
+  ch3_coupling:
+    getter: ":CHAN3:INP?"
+    setter: ":CHAN3:INP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DC50", "DC", "AC"]
+    returns:
+      type: string
+    description: "Ch3 - Coupling"
+  ch4_enabled:
+    getter: ":CHAN4:DISP?"
+    setter: ":CHAN4:DISP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch4 - Enabled"
+  ch4_range:
+    getter: ":CHAN4:RANG?"
+    setter: ":CHAN4:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch4 - Range"
+  ch4_offset:
+    getter: ":CHAN4:OFFS?"
+    setter: ":CHAN4:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch4 - Offset"
+  ch4_coupling:
+    getter: ":CHAN4:INP?"
+    setter: ":CHAN4:INP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DC50", "DC", "AC"]
+    returns:
+      type: string
+    description: "Ch4 - Coupling"
+

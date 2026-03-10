@@ -1,0 +1,982 @@
+instrument:
+  manufacturer: "Rohde & Schwarz"
+  model: "ZNB"
+  class: vna
+  description: "Vector Network Analyzer - Models ZNB4 (9 kHz to 4.5 GHz), ZNB8 (9 kHz to 8.5 GHz), ZNB40 (10 MHz to 40 GHz)"
+
+identity:
+  query: "*IDN?"
+  pattern: "Rohde.*Schwarz.*ZNB"
+
+interfaces:
+  - type: gpib
+    default_address: 20
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register when all operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  # ============================================================================
+  # Frequency Commands
+  # ============================================================================
+  frequency_center:
+    getter: ":SENSe{channel}:FREQuency:CENTer?"
+    setter: ":SENSe{channel}:FREQuency:CENTer {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 9000
+        max: 40000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency for frequency sweep"
+
+  frequency_span:
+    getter: ":SENSe{channel}:FREQuency:SPAN?"
+    setter: ":SENSe{channel}:FREQuency:SPAN {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 1
+        max: 40000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency span for sweep"
+
+  frequency_start:
+    getter: ":SENSe{channel}:FREQuency:STARt?"
+    setter: ":SENSe{channel}:FREQuency:STARt {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Start frequency for sweep"
+
+  frequency_stop:
+    getter: ":SENSe{channel}:FREQuency:STOP?"
+    setter: ":SENSe{channel}:FREQuency:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Stop frequency for sweep"
+
+  frequency_cw:
+    getter: ":SENSe{channel}:FREQuency:CW?"
+    setter: ":SENSe{channel}:FREQuency:CW {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "CW (fixed) frequency for power and time sweeps"
+
+  # ============================================================================
+  # Sweep Commands
+  # ============================================================================
+  sweep_type:
+    getter: ":SENSe{channel}:SWEep:TYPE?"
+    setter: ":SENSe{channel}:SWEep:TYPE {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      type:
+        type: enum
+        options: ["LINear", "LOGarithmic", "POWer", "CW", "POINt", "SEGMent"]
+    returns:
+      type: string
+    description: "Sweep type selection"
+
+  sweep_points:
+    getter: ":SENSe{channel}:SWEep:POINts?"
+    setter: ":SENSe{channel}:SWEep:POINts {points}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      points:
+        type: int
+        min: 1
+        max: 100001
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_time:
+    getter: ":SENSe{channel}:SWEep:TIME?"
+    setter: ":SENSe{channel}:SWEep:TIME {time}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+    returns:
+      type: float
+      unit: s
+    description: "Sweep time duration"
+
+  sweep_time_auto:
+    getter: ":SENSe{channel}:SWEep:TIME:AUTO?"
+    setter: ":SENSe{channel}:SWEep:TIME:AUTO {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable automatic sweep time calculation"
+
+  sweep_dwell:
+    getter: ":SENSe{channel}:SWEep:DWELl?"
+    setter: ":SENSe{channel}:SWEep:DWELl {delay}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 13680
+    returns:
+      type: float
+      unit: s
+    description: "Measurement delay before each partial measurement"
+
+  sweep_count:
+    getter: ":SENSe{channel}:SWEep:COUNt?"
+    setter: ":SENSe{channel}:SWEep:COUNt {count}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      count:
+        type: int
+        min: 1
+        max: 100000
+    returns:
+      type: int
+    description: "Number of sweeps in single sweep mode"
+
+  # ============================================================================
+  # Bandwidth Commands
+  # ============================================================================
+  bandwidth_resolution:
+    getter: ":SENSe{channel}:BWIDth:RESolution?"
+    setter: ":SENSe{channel}:BWIDth:RESolution {bandwidth}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      bandwidth:
+        type: float
+        unit: Hz
+        min: 1
+        max: 10000000
+    returns:
+      type: float
+      unit: Hz
+    description: "IF resolution bandwidth"
+
+  bandwidth_selectivity:
+    getter: ":SENSe{channel}:BWIDth:RESolution:SELect?"
+    setter: ":SENSe{channel}:BWIDth:RESolution:SELect {selectivity}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      selectivity:
+        type: enum
+        options: ["NORMal", "MEDium", "HIGH"]
+    returns:
+      type: string
+    description: "IF filter selectivity"
+
+  # ============================================================================
+  # Power Commands
+  # ============================================================================
+  power_level:
+    getter: ":SOURce{channel}:POWer{port}:LEVel:IMMediate:AMPLitude?"
+    setter: ":SOURce{channel}:POWer{port}:LEVel:IMMediate:AMPLitude {power}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      power:
+        type: float
+        unit: dBm
+        min: -300
+        max: 200
+    returns:
+      type: float
+      unit: dBm
+    description: "Source power level"
+
+  power_start:
+    getter: ":SOURce{channel}:POWer{port}:STARt?"
+    setter: ":SOURce{channel}:POWer{port}:STARt {power}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      power:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Start power for power sweep"
+
+  power_stop:
+    getter: ":SOURce{channel}:POWer{port}:STOP?"
+    setter: ":SOURce{channel}:POWer{port}:STOP {power}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      power:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Stop power for power sweep"
+
+  output_state:
+    getter: ":OUTPut{port}:STATe?"
+    setter: ":OUTPut{port}:STATe {state}"
+    type: property
+    params:
+      port:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "RF output on/off state"
+
+  # ============================================================================
+  # Averaging Commands
+  # ============================================================================
+  average_state:
+    getter: ":SENSe{channel}:AVERage:STATe?"
+    setter: ":SENSe{channel}:AVERage:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable trace averaging"
+
+  average_count:
+    getter: ":SENSe{channel}:AVERage:COUNt?"
+    setter: ":SENSe{channel}:AVERage:COUNt {count}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      count:
+        type: int
+        min: 1
+        max: 10000
+    returns:
+      type: int
+    description: "Number of averages"
+
+  average_clear:
+    scpi: ":SENSe{channel}:AVERage:CLEar"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+    description: "Clear averaging history and restart"
+
+  # ============================================================================
+  # Trigger Commands
+  # ============================================================================
+  trigger_source:
+    getter: ":TRIGger{channel}:SOURce?"
+    setter: ":TRIGger{channel}:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      source:
+        type: enum
+        options: ["IMMediate", "EXTernal", "MANual", "BUS"]
+    returns:
+      type: string
+    description: "Trigger source selection"
+
+  initiate_continuous:
+    getter: ":INITiate{channel}:CONTinuous?"
+    setter: ":INITiate{channel}:CONTinuous {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous sweep mode"
+
+  initiate_immediate:
+    scpi: ":INITiate{channel}:IMMediate"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+    description: "Start single sweep or sweep sequence"
+
+  # ============================================================================
+  # Calibration Commands
+  # ============================================================================
+  calibration_auto:
+    scpi: ":SENSe{channel}:CORRection:COLLect:AUTO {characterization}, {port1}, {port2}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      characterization:
+        type: string
+      port1:
+        type: int
+      port2:
+        type: int
+    description: "Perform automatic calibration using calibration unit"
+
+  calibration_method_define:
+    scpi: ":SENSe{channel}:CORRection:COLLect:METHod:DEFine {name}, {type}, {port1}, {port2}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      name:
+        type: string
+      type:
+        type: enum
+        options: ["REFL", "RSHort", "FOPort", "FTRans", "RTRans", "FRTRans", "OPTPort", "TOSM", "UOSM", "TRL", "TOM", "TSM", "TRM", "TNA"]
+      port1:
+        type: int
+      port2:
+        type: int
+    description: "Define calibration type and ports"
+
+  calibration_collect_selected:
+    scpi: ":SENSe{channel}:CORRection:COLLect:SELected {standard}, {port}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      standard:
+        type: enum
+        options: ["THRough", "OPEN", "SHORt", "MATCh"]
+      port:
+        type: int
+    description: "Acquire calibration measurement for specified standard"
+
+  calibration_save:
+    scpi: ":SENSe{channel}:CORRection:COLLect:SAVE:SELected"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+    description: "Calculate and apply calibration data"
+
+  calibration_state:
+    getter: ":SENSe{channel}:CORRection:STATe?"
+    setter: ":SENSe{channel}:CORRection:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable system error correction"
+
+  # ============================================================================
+  # Parameter/Trace Commands
+  # ============================================================================
+  parameter_select:
+    scpi: ":CALCulate{channel}:PARameter:SELect {trace_name}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      trace_name:
+        type: string
+    description: "Select trace as active trace"
+
+  parameter_define:
+    scpi: ":CALCulate{channel}:PARameter:SDEFine {trace_name}, {parameter}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      trace_name:
+        type: string
+      parameter:
+        type: string
+    description: "Create trace and assign S-parameter or measurement"
+
+  parameter_measure:
+    getter: ":CALCulate{channel}:PARameter:MEASure? {trace_name}"
+    setter: ":CALCulate{channel}:PARameter:MEASure {trace_name}, {parameter}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      trace_name:
+        type: string
+      parameter:
+        type: string
+    returns:
+      type: string
+    description: "Change measurement parameter of existing trace"
+
+  parameter_catalog:
+    scpi: ":CALCulate{channel}:PARameter:CATalog?"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: string
+    description: "List all traces in channel"
+
+  parameter_delete:
+    scpi: ":CALCulate{channel}:PARameter:DELete {trace_name}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      trace_name:
+        type: string
+    description: "Delete specified trace"
+
+  # ============================================================================
+  # Data Retrieval Commands
+  # ============================================================================
+  data_fdata:
+    scpi: ":CALCulate{channel}:DATA? FDAT"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Retrieve formatted trace data"
+    streamable: true
+
+  data_sdata:
+    scpi: ":CALCulate{channel}:DATA? SDAT"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Retrieve unformatted trace data (real and imaginary)"
+    streamable: true
+
+  data_stimulus:
+    scpi: ":CALCulate{channel}:DATA:STIMulus?"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Retrieve stimulus values"
+
+  data_trace:
+    scpi: ":CALCulate:DATA:TRACe? {trace_name}, {format}"
+    type: query
+    params:
+      trace_name:
+        type: string
+      format:
+        type: enum
+        options: ["FDATa", "SDATa", "MDATa"]
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query data of specific trace by name"
+
+  # ============================================================================
+  # Format Commands
+  # ============================================================================
+  format:
+    getter: ":CALCulate{channel}:FORMat?"
+    setter: ":CALCulate{channel}:FORMat {format}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      format:
+        type: enum
+        options: ["MLINear", "MLOGarithmic", "PHASe", "UPHase", "POLar", "SMITh", "ISMith", "GDELay", "REAL", "IMAGinary", "SWR"]
+    returns:
+      type: string
+    description: "Trace display format"
+
+  # ============================================================================
+  # Marker Commands
+  # ============================================================================
+  marker_on:
+    getter: ":CALCulate{channel}:MARKer{marker}:STATe?"
+    setter: ":CALCulate{channel}:MARKer{marker}:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+        min: 1
+        max: 10
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker"
+
+  marker_x:
+    getter: ":CALCulate{channel}:MARKer{marker}:X?"
+    setter: ":CALCulate{channel}:MARKer{marker}:X {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+        min: 1
+        max: 10
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Marker stimulus position"
+
+  marker_y:
+    scpi: ":CALCulate{channel}:MARKer{marker}:Y?"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+        min: 1
+        max: 10
+    returns:
+      type: float
+    description: "Marker response value"
+
+  marker_search_max:
+    scpi: ":CALCulate{channel}:MARKer{marker}:FUNCtion:EXECute MAXimum"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    description: "Move marker to maximum"
+
+  marker_search_min:
+    scpi: ":CALCulate{channel}:MARKer{marker}:FUNCtion:EXECute MINimum"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    description: "Move marker to minimum"
+
+  # ============================================================================
+  # Limit Line Commands
+  # ============================================================================
+  limit_state:
+    getter: ":CALCulate{channel}:LIMit:STATe?"
+    setter: ":CALCulate{channel}:LIMit:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit check"
+
+  limit_fail:
+    scpi: ":CALCulate{channel}:LIMit:FAIL?"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: bool
+    description: "Query limit check result"
+
+  limit_display:
+    getter: ":CALCulate{channel}:LIMit:DISPlay:STATe?"
+    setter: ":CALCulate{channel}:LIMit:DISPlay:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Show/hide limit lines"
+
+  # ============================================================================
+  # Display Commands
+  # ============================================================================
+  display_update:
+    getter: ":SYSTem:DISPlay:UPDate?"
+    setter: ":SYSTem:DISPlay:UPDate {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display updates"
+
+  # ============================================================================
+  # System Commands
+  # ============================================================================
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  beeper:
+    scpi: ":SYSTem:BEEPer"
+    type: write
+    description: "Issue single beep"
+
+  beeper_state:
+    getter: ":SYSTem:BEEPer:STATe?"
+    setter: ":SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable beeper"
+
+  # ============================================================================
+  # Status Commands
+  # ============================================================================
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+sequences:
+  s_parameter_sweep:
+    description: "Perform S-parameter measurement sweep"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 201
+      s_parameter:
+        type: string
+        default: "S21"
+    steps:
+      - command: reset
+      - command: frequency_start
+        args:
+          channel: "1"
+          value: "{start_freq}"
+      - command: frequency_stop
+        args:
+          channel: "1"
+          value: "{stop_freq}"
+      - command: sweep_points
+        args:
+          channel: "1"
+          points: "{points}"
+      - command: parameter_define
+        args:
+          channel: "1"
+          trace_name: "Trc1"
+          parameter: "{s_parameter}"
+      - command: initiate_continuous
+        args:
+          channel: "1"
+          state: "OFF"
+      - command: initiate_immediate
+        args:
+          channel: "1"
+      - scpi: "*WAI"
+      - command: data_fdata
+        args:
+          channel: "1"
+        capture: result
+    returns: result
+
+  autoscale_trace:
+    description: "Autoscale active trace"
+    steps:
+      - scpi: ":DISPlay:WINDow1:TRACe1:Y:AUTO ONCE"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

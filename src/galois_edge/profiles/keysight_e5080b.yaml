@@ -1,0 +1,1230 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "PNA Series Vector Network Analyzer"
+  class: vna
+  description: "Keysight PNA Series Vector Network Analyzer with advanced measurement capabilities including mixer/converter, balanced, uncertainty, and pulsed RF measurements"
+
+identity:
+  query: "*IDN?"
+  pattern: "(?:Agilent|Keysight).*E5080"
+
+interfaces:
+  - type: gpib
+    default_address: 16
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 30000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in Standard Event Status Register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send trigger signal"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to specified location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from specified location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event Status Enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Event Status Register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service Request Enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Status Byte register"
+
+  # System Commands
+  preset:
+    scpi: "SYST:PRES"
+    type: write
+    description: "Preset the instrument to known state"
+
+  factory_preset:
+    scpi: "SYST:FPReset"
+    type: write
+    description: "Factory preset including window deletion"
+
+  system_error:
+    scpi: "SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read one error from error queue"
+
+  system_error_all:
+    scpi: "SYST:ERR:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Read all errors from error queue"
+
+  system_error_count:
+    scpi: "SYST:ERR:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  system_version:
+    scpi: "SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  beeper_enable:
+    getter: "SYST:BEEP:STAT?"
+    setter: "SYST:BEEP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable beeper"
+
+  beeper:
+    scpi: "SYST:BEEP"
+    type: write
+    description: "Issue single beep"
+
+  # Calibration Commands
+  calibration_all_reset:
+    scpi: "SYST:CAL:ALL:RES"
+    type: write
+    description: "Reset Cal All configuration"
+
+  calibration_all_select:
+    scpi: "SYST:CAL:ALL:SEL {channels}"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Select channels for Cal All"
+
+  calibration_all_ifbw:
+    getter: "SYST:CAL:ALL:IFBW?"
+    setter: "SYST:CAL:ALL:IFBW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set IF bandwidth for Cal All"
+
+  calibration_all_port_power:
+    getter: "SYST:CAL:ALL:PORT{port}:SOUR:POW?"
+    setter: "SYST:CAL:ALL:PORT{port}:SOUR:POW {value}"
+    type: property
+    params:
+      port:
+        type: int
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Set source power for specified port"
+
+  calibration_all_calset_prefix:
+    getter: "SYST:CAL:ALL:CSET:PREF?"
+    setter: "SYST:CAL:ALL:CSET:PREF '{prefix}'"
+    type: property
+    params:
+      prefix:
+        type: string
+    returns:
+      type: string
+    description: "Set CalSet prefix for Cal All"
+
+  calibration_all_guided_channel:
+    scpi: "SYST:CAL:ALL:GUID:CHAN?"
+    type: query
+    returns:
+      type: int
+    description: "Query primary calibration channel number"
+
+  guided_cal_connector:
+    getter: "SENS:CORR:COLL:GUID:CONN:PORT{port}?"
+    setter: "SENS:CORR:COLL:GUID:CONN:PORT{port} '{connector}'"
+    type: property
+    params:
+      port:
+        type: int
+      connector:
+        type: string
+    returns:
+      type: string
+    description: "Set connector type for guided calibration"
+
+  guided_cal_calkit:
+    getter: "SENS:CORR:COLL:GUID:CKIT:PORT{port}?"
+    setter: "SENS:CORR:COLL:GUID:CKIT:PORT{port} '{calkit}'"
+    type: property
+    params:
+      port:
+        type: int
+      calkit:
+        type: string
+    returns:
+      type: string
+    description: "Set calibration kit for guided calibration"
+
+  guided_cal_init:
+    scpi: "SENS:CORR:COLL:GUID:INIT"
+    type: write
+    description: "Initialize guided calibration"
+
+  guided_cal_steps:
+    scpi: "SENS:CORR:COLL:GUID:STEP?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of calibration steps"
+
+  guided_cal_description:
+    scpi: "SENS:CORR:COLL:GUID:DESC? {step}"
+    type: query
+    params:
+      step:
+        type: int
+    returns:
+      type: string
+    description: "Query description for calibration step"
+
+  guided_cal_acquire:
+    scpi: "SENS:CORR:COLL:GUID:ACQ STAN{step}"
+    type: write
+    params:
+      step:
+        type: int
+    description: "Acquire calibration standard measurement"
+
+  guided_cal_save:
+    scpi: "SENS:CORR:COLL:GUID:SAVE"
+    type: write
+    description: "Save and apply calibration"
+
+  # Channel and Measurement Commands
+  active_channel:
+    scpi: "SYST:ACT:CHAN?"
+    type: query
+    returns:
+      type: int
+    description: "Query active channel number"
+
+  active_measurement:
+    scpi: "SYST:ACT:MEAS?"
+    type: query
+    returns:
+      type: string
+    description: "Query active measurement name"
+
+  parameter_select:
+    scpi: "CALC{channel}:PAR:SEL '{name}'"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      name:
+        type: string
+    description: "Select measurement by name"
+
+  parameter_define:
+    scpi: "CALC{channel}:PAR:DEF:EXT '{name}',{param}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      name:
+        type: string
+      param:
+        type: string
+    description: "Define new measurement parameter"
+
+  parameter_delete:
+    scpi: "CALC{channel}:PAR:DEL '{name}'"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      name:
+        type: string
+    description: "Delete measurement"
+
+  parameter_delete_all:
+    scpi: "CALC{channel}:PAR:DEL:ALL"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+    description: "Delete all measurements on channel"
+
+  measurement_data:
+    scpi: "CALC{channel}:DATA? FDATA"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query formatted measurement data"
+
+  measurement_data_sdata:
+    scpi: "CALC{channel}:DATA? SDATA"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query S-parameter data (real/imaginary pairs)"
+
+  # Frequency Commands
+  frequency_start:
+    getter: "SENS{channel}:FREQ:STAR?"
+    setter: "SENS{channel}:FREQ:STAR {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Start frequency"
+
+  frequency_stop:
+    getter: "SENS{channel}:FREQ:STOP?"
+    setter: "SENS{channel}:FREQ:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Stop frequency"
+
+  frequency_center:
+    getter: "SENS{channel}:FREQ:CENT?"
+    setter: "SENS{channel}:FREQ:CENT {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency"
+
+  frequency_span:
+    getter: "SENS{channel}:FREQ:SPAN?"
+    setter: "SENS{channel}:FREQ:SPAN {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency span"
+
+  frequency_cw:
+    getter: "SENS{channel}:FREQ:CW?"
+    setter: "SENS{channel}:FREQ:CW {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "CW frequency"
+
+  # Sweep Commands
+  sweep_points:
+    getter: "SENS{channel}:SWE:POIN?"
+    setter: "SENS{channel}:SWE:POIN {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_type:
+    getter: "SENS{channel}:SWE:TYPE?"
+    setter: "SENS{channel}:SWE:TYPE {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      type:
+        type: enum
+        options: ["LIN", "LOG", "SEGM", "POW"]
+    returns:
+      type: string
+    description: "Sweep type"
+
+  sweep_mode:
+    getter: "SENS{channel}:SWE:MODE?"
+    setter: "SENS{channel}:SWE:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["HOLD", "CONT", "GRO", "SING"]
+    returns:
+      type: string
+    description: "Sweep mode"
+
+  bandwidth:
+    getter: "SENS{channel}:BAND?"
+    setter: "SENS{channel}:BAND {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "IF bandwidth"
+
+  # Power Commands
+  source_power:
+    getter: "SOUR{channel}:POW{port}?"
+    setter: "SOUR{channel}:POW{port} {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Source power level"
+
+  power_mode:
+    getter: "SOUR{channel}:POW:MODE?"
+    setter: "SOUR{channel}:POW:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Power mode for all channels"
+
+  # Mixer Commands
+  mixer_input_frequency_mode:
+    getter: "SENS{channel}:MIX:INP:FREQ:MODE?"
+    setter: "SENS{channel}:MIX:INP:FREQ:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["FIX", "SWE"]
+    returns:
+      type: string
+    description: "Mixer input frequency mode"
+
+  mixer_input_frequency_start:
+    getter: "SENS{channel}:MIX:INP:FREQ:STAR?"
+    setter: "SENS{channel}:MIX:INP:FREQ:STAR {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Mixer input start frequency"
+
+  mixer_input_frequency_stop:
+    getter: "SENS{channel}:MIX:INP:FREQ:STOP?"
+    setter: "SENS{channel}:MIX:INP:FREQ:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Mixer input stop frequency"
+
+  mixer_lo_frequency_mode:
+    getter: "SENS{channel}:MIX:LO:FREQ:MODE?"
+    setter: "SENS{channel}:MIX:LO:FREQ:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["FIX", "SWE"]
+    returns:
+      type: string
+    description: "Mixer LO frequency mode"
+
+  mixer_lo_frequency_fixed:
+    getter: "SENS{channel}:MIX:LO:FREQ:FIX?"
+    setter: "SENS{channel}:MIX:LO:FREQ:FIX {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Mixer LO fixed frequency"
+
+  mixer_lo_power:
+    getter: "SENS{channel}:MIX:LO:POW?"
+    setter: "SENS{channel}:MIX:LO:POW {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Mixer LO power"
+
+  mixer_output_frequency_sideband:
+    getter: "SENS{channel}:MIX:OUTP:FREQ:SID?"
+    setter: "SENS{channel}:MIX:OUTP:FREQ:SID {sideband}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      sideband:
+        type: enum
+        options: ["LOW", "HIGH"]
+    returns:
+      type: string
+    description: "Mixer output frequency sideband"
+
+  mixer_calculate:
+    scpi: "SENS{channel}:MIX:CALC {port}"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: enum
+        options: ["INP", "OUTP", "LO_1", "LO_2", "BOTH"]
+    description: "Calculate mixer parameters"
+
+  mixer_apply:
+    scpi: "SENS{channel}:MIX:APPL"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+    description: "Apply mixer settings"
+
+  mixer_lo_name:
+    getter: "SENS{channel}:MIX:LO:NAME?"
+    setter: "SENS{channel}:MIX:LO:NAME '{name}'"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Mixer LO source name"
+
+  # Balanced Measurement Commands
+  balanced_device_type:
+    getter: "CALC{channel}:FSIM:BAL:DEV?"
+    setter: "CALC{channel}:FSIM:BAL:DEV {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      type:
+        type: enum
+        options: ["BAL", "BBAL", "BALS", "SBAL", "SSB", "CUST"]
+    returns:
+      type: string
+    description: "Balanced device topology"
+
+  balanced_parameter_state:
+    getter: "CALC{channel}:FSIM:BAL:PAR:STAT?"
+    setter: "CALC{channel}:FSIM:BAL:PAR:STAT {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Balanced transform on/off"
+
+  balanced_topology_bbal:
+    getter: "CALC{channel}:FSIM:BAL:TOP:BBAL?"
+    setter: "CALC{channel}:FSIM:BAL:TOP:BBAL {p1pos},{p1neg},{p2pos},{p2neg}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      p1pos:
+        type: int
+      p1neg:
+        type: int
+      p2pos:
+        type: int
+      p2neg:
+        type: int
+    returns:
+      type: string
+    description: "Map VNA ports to balanced-balanced DUT"
+
+  # Marker Commands
+  marker_activate:
+    scpi: "CALC{channel}:MARK{marker} ON"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    description: "Activate marker"
+
+  marker_x:
+    getter: "CALC{channel}:MARK{marker}:X?"
+    setter: "CALC{channel}:MARK{marker}:X {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Marker X position"
+
+  marker_y:
+    scpi: "CALC{channel}:MARK{marker}:Y?"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Marker Y value"
+
+  marker_search_max:
+    scpi: "CALC{channel}:MARK{marker}:MAX"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    description: "Search for maximum"
+
+  marker_search_min:
+    scpi: "CALC{channel}:MARK{marker}:MIN"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 1
+      marker:
+        type: int
+        default: 1
+    description: "Search for minimum"
+
+  # Phase Control Commands
+  phase_control_mode:
+    getter: "SOUR{channel}:PHAS{port}:PAR:MODE?"
+    setter: "SOUR{channel}:PHAS{port}:PAR:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["OFF", "OPEN", "PAR", "REF"]
+    returns:
+      type: string
+    description: "Phase control mode"
+
+  phase_fixed:
+    getter: "SOUR{channel}:PHAS{port}?"
+    setter: "SOUR{channel}:PHAS{port} {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Fixed phase value"
+
+  phase_start:
+    getter: "SOUR{channel}:PHAS{port}:STAR?"
+    setter: "SOUR{channel}:PHAS{port}:STAR {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Phase sweep start value"
+
+  phase_stop:
+    getter: "SOUR{channel}:PHAS{port}:STOP?"
+    setter: "SOUR{channel}:PHAS{port}:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Phase sweep stop value"
+
+  # Receiver Leveling Commands
+  receiver_leveling_enable:
+    getter: "SOUR{channel}:POW{port}:ALC:REC?"
+    setter: "SOUR{channel}:POW{port}:ALC:REC {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Receiver leveling enable"
+
+  receiver_leveling_offset:
+    getter: "SOUR{channel}:POW{port}:ALC:REC:OFFS?"
+    setter: "SOUR{channel}:POW{port}:ALC:REC:OFFS {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: dB
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: dB
+    description: "Receiver leveling power offset"
+
+  receiver_leveling_tolerance:
+    getter: "SOUR{channel}:POW{port}:ALC:REC:TOL?"
+    setter: "SOUR{channel}:POW{port}:ALC:REC:TOL {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      port:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: "Receiver leveling tolerance"
+
+  # Display Commands
+  display_window_state:
+    getter: "DISP:WIND{window}:STAT?"
+    setter: "DISP:WIND{window}:STAT {state}"
+    type: property
+    params:
+      window:
+        type: int
+        default: 1
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Window display state"
+
+  display_trace_feed:
+    scpi: "DISP:WIND{window}:TRAC{trace}:FEED '{measurement}'"
+    type: write
+    params:
+      window:
+        type: int
+        default: 1
+      trace:
+        type: int
+        default: 1
+      measurement:
+        type: string
+    description: "Feed measurement to trace"
+
+  display_update:
+    getter: "DISP:UPD?"
+    setter: "DISP:UPD {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Display update enable"
+
+  # Spectrum Analyzer Commands
+  sa_bandwidth_resolution:
+    getter: "SENS{channel}:SA:BAND?"
+    setter: "SENS{channel}:SA:BAND {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "SA resolution bandwidth"
+
+  sa_bandwidth_video:
+    getter: "SENS{channel}:SA:BAND:VID?"
+    setter: "SENS{channel}:SA:BAND:VID {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "SA video bandwidth"
+
+  sa_detector_function:
+    getter: "SENS{channel}:SA:DET:FUNC?"
+    setter: "SENS{channel}:SA:DET:FUNC {function}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      function:
+        type: enum
+        options: ["AVER", "NORM", "PEAK", "SAMP"]
+    returns:
+      type: string
+    description: "SA detector function"
+
+  # Pulse Commands
+  pulse_mode:
+    getter: "SENS{channel}:SWE:PULS:MODE?"
+    setter: "SENS{channel}:SWE:PULS:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      mode:
+        type: enum
+        options: ["OFF", "STD", "PROFILE"]
+    returns:
+      type: string
+    description: "Pulse measurement mode"
+
+  pulse_master_frequency:
+    getter: "SENS{channel}:SWE:PULS:MAST:FREQ?"
+    setter: "SENS{channel}:SWE:PULS:MAST:FREQ {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Pulse master frequency"
+
+  pulse_master_width:
+    getter: "SENS{channel}:SWE:PULS:MAST:WIDT?"
+    setter: "SENS{channel}:SWE:PULS:MAST:WIDT {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Pulse master width"
+
+  # File Operations
+  file_save_state:
+    scpi: "MMEM:STOR:STAT '{filename}'"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save state file"
+
+  file_load_state:
+    scpi: "MMEM:LOAD:STAT '{filename}'"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load state file"
+
+  file_catalog:
+    scpi: "MMEM:CAT? '{directory}'"
+    type: query
+    params:
+      directory:
+        type: string
+        default: "D:\\"
+    returns:
+      type: string
+    description: "List files in directory"
+
+sequences:
+  basic_s_parameter_measurement:
+    description: "Setup basic S-parameter measurement"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 201
+      power:
+        type: float
+        unit: dBm
+        default: -10
+    steps:
+      - command: preset
+      - command: frequency_start
+        args:
+          value: "{start_freq}"
+      - command: frequency_stop
+        args:
+          value: "{stop_freq}"
+      - command: sweep_points
+        args:
+          value: "{points}"
+      - command: source_power
+        args:
+          value: "{power}"
+
+  mixer_measurement:
+    description: "Setup basic mixer measurement"
+    params:
+      input_start:
+        type: float
+        unit: Hz
+      input_stop:
+        type: float
+        unit: Hz
+      lo_frequency:
+        type: float
+        unit: Hz
+      lo_power:
+        type: float
+        unit: dBm
+        default: 10
+      sideband:
+        type: string
+        default: "LOW"
+    steps:
+      - command: preset
+      - command: parameter_delete_all
+      - scpi: "CALC:CUST:DEF 'MyMixer','Scalar Mixer/Converter','SC21'"
+      - scpi: "DISP:WIND:TRAC:FEED 'MyMixer'"
+      - command: mixer_input_frequency_start
+        args:
+          value: "{input_start}"
+      - command: mixer_input_frequency_stop
+        args:
+          value: "{input_stop}"
+      - command: mixer_lo_frequency_mode
+        args:
+          mode: "FIX"
+      - command: mixer_lo_frequency_fixed
+        args:
+          value: "{lo_frequency}"
+      - command: mixer_lo_power
+        args:
+          value: "{lo_power}"
+      - command: mixer_output_frequency_sideband
+        args:
+          sideband: "{sideband}"
+      - command: mixer_calculate
+        args:
+          port: "OUTP"
+      - command: mixer_apply
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

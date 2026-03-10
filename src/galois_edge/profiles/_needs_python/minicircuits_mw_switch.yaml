@@ -1,0 +1,24 @@
+# MiniCircuits Switch Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: MiniCircuits_MW_Switch
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "MiniCircuits"
+  model: "Switch"
+  class: switch
+  description: "MiniCircuits Switch"
+
+identity:
+  query: "*IDN?"
+  pattern: "MiniCircuits.*(RC\-1SP4T\-A18|RC\-2SP4T\-A18|RC\-4SPDT\-A18|RC\-1SP6T\-A12|RC\-2SP6T\-A12)"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+

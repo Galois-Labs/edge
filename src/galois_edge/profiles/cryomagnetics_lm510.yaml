@@ -1,0 +1,77 @@
+# Cryomagnetics LM510 Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Cryomagnetics LM510
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Cryomagnetics"
+  model: "LM510"
+  class: temperature_controller
+  description: "Cryomagnetics LM510"
+
+identity:
+  query: "*IDN?"
+  pattern: "Cryomagnetics.*(LM\-510|Cryomagnetics\ LM510)"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 2000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  lhe_level:
+    scpi: "MEAS?"
+    type: query
+    returns:
+      type: float
+      unit: cm
+    description: "LHe Level"
+  interval:
+    getter: "INTVL?"
+    setter: "INTVL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Interval"
+

@@ -1,0 +1,1410 @@
+instrument:
+  manufacturer: "Hewlett-Packard"
+  model: "4284A"
+  class: lcr_meter
+  description: "Precision LCR Meter - 20 Hz to 1 MHz, 8 ranges (1Ω to 100kΩ)"
+
+identity:
+  query: "*IDN?"
+  pattern: "(HEWLETT-PACKARD|HP|KEYSIGHT|AGILENT).*4284A"
+
+interfaces:
+  - type: gpib
+    default_address: 17
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 19
+    description: "Save setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 19
+    description: "Recall setup from memory location"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  learn_string:
+    scpi: "*LRN?"
+    type: query
+    returns:
+      type: string
+    description: "Query current instrument settings"
+
+  options_installed:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  # Display Commands
+  display_page:
+    getter: "DISPlay:PAGE?"
+    setter: "DISPlay:PAGE {page}"
+    type: property
+    params:
+      page:
+        type: enum
+        options: ["MEASurement", "BNUMber", "BCOunt", "LIST", "MSETup", "CSETup", "LTABle", "LSETup", "CATalog", "SYSTem", "SELF"]
+    returns:
+      type: string
+    description: "Set or query display page"
+
+  display_line:
+    getter: "DISPlay:LINE?"
+    setter: "DISPlay:LINE \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Comment line text (up to 30 characters)"
+
+  # Frequency Commands
+  frequency:
+    getter: "FREQuency?"
+    setter: "FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 20
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Measurement frequency"
+
+  # Voltage Level Commands
+  voltage_level:
+    getter: "VOLTage?"
+    setter: "VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.005
+        max: 20
+    returns:
+      type: float
+      unit: V
+    description: "Oscillator voltage level"
+
+  # Current Level Commands
+  current_level:
+    getter: "CURRent?"
+    setter: "CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.00005
+        max: 0.2
+    returns:
+      type: float
+      unit: A
+    description: "Oscillator current level"
+
+  # Amplitude Control
+  alc_enable:
+    getter: "AMPLitude:ALC?"
+    setter: "AMPLitude:ALC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic level control ON/OFF"
+
+  # Output Commands
+  high_power_mode:
+    getter: "OUTPut:HPOWer?"
+    setter: "OUTPut:HPOWer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "High power mode (Option 001)"
+
+  dc_isolation:
+    getter: "OUTPut:DC:ISOLation?"
+    setter: "OUTPut:DC:ISOLation {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "DC bias current isolation"
+
+  # Bias Commands
+  bias_state:
+    getter: "BIAS:STATe?"
+    setter: "BIAS:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "DC bias output ON/OFF"
+
+  bias_voltage:
+    getter: "BIAS:VOLTage?"
+    setter: "BIAS:VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 40
+    returns:
+      type: float
+      unit: V
+    description: "DC bias voltage level"
+
+  bias_current:
+    getter: "BIAS:CURRent?"
+    setter: "BIAS:CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 0.1
+    returns:
+      type: float
+      unit: A
+    description: "DC bias current level"
+
+  # Measurement Function
+  measurement_function:
+    getter: "FUNCtion:IMPedance?"
+    setter: "FUNCtion:IMPedance {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["CPD", "CPQ", "CPG", "CPRP", "CSD", "CSQ", "CSRS", "LPQ", "LPD", "LPG", "LPRP", "LSD", "LSQ", "LSRS", "RX", "ZTD", "ZTR", "GB", "YTD", "YTR"]
+    returns:
+      type: string
+    description: "Measurement function (e.g., CPD=Cp-D, LSRS=Ls-Rs)"
+
+  # Measurement Range
+  measurement_range:
+    getter: "FUNCtion:IMPedance:RANGe?"
+    setter: "FUNCtion:IMPedance:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 100000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measurement range"
+
+  range_auto:
+    getter: "FUNCtion:IMPedance:RANGe:AUTO?"
+    setter: "FUNCtion:IMPedance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto range ON/OFF"
+
+  # Monitor Functions
+  voltage_monitor_enable:
+    getter: "FUNCtion:SMONitor:VAC?"
+    setter: "FUNCtion:SMONitor:VAC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Voltage level monitor ON/OFF"
+
+  current_monitor_enable:
+    getter: "FUNCtion:SMONitor:IAC?"
+    setter: "FUNCtion:SMONitor:IAC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Current level monitor ON/OFF"
+
+  # Deviation Measurement
+  deviation_mode_a:
+    getter: "FUNCtion:DEV1:MODE?"
+    setter: "FUNCtion:DEV1:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ABSolute", "PERCent", "OFF"]
+    returns:
+      type: string
+    description: "Deviation mode for primary parameter"
+
+  deviation_mode_b:
+    getter: "FUNCtion:DEV2:MODE?"
+    setter: "FUNCtion:DEV2:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ABSolute", "PERCent", "OFF"]
+    returns:
+      type: string
+    description: "Deviation mode for secondary parameter"
+
+  deviation_reference_a:
+    getter: "FUNCtion:DEV1:REFerence?"
+    setter: "FUNCtion:DEV1:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Reference value for primary parameter deviation"
+
+  deviation_reference_b:
+    getter: "FUNCtion:DEV2:REFerence?"
+    setter: "FUNCtion:DEV2:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Reference value for secondary parameter deviation"
+
+  deviation_reference_fill_a:
+    scpi: "FUNCtion:DEV1:REFerence:FILL"
+    type: write
+    description: "Measure and store reference values"
+
+  deviation_reference_fill_b:
+    scpi: "FUNCtion:DEV2:REFerence:FILL"
+    type: write
+    description: "Measure and store reference values"
+
+  # Aperture (Integration Time)
+  aperture:
+    getter: "APERture?"
+    setter: "APERture {time},{average}"
+    type: property
+    params:
+      time:
+        type: enum
+        options: ["SHORt", "MEDium", "LONG"]
+      average:
+        type: int
+        min: 1
+        max: 256
+        default: 1
+    returns:
+      type: string
+    description: "Integration time and averaging rate"
+
+  # Trigger Commands
+  trigger_immediate:
+    scpi: "TRIGger"
+    type: write
+    description: "Send immediate trigger"
+
+  trigger_source:
+    getter: "TRIGger:SOURce?"
+    setter: "TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal", "BUS", "HOLD"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_delay:
+    getter: "TRIGger:DELay?"
+    setter: "TRIGger:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 60
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay time"
+
+  # Initiate Commands
+  initiate:
+    scpi: "INITiate"
+    type: write
+    description: "Initiate measurement"
+
+  initiate_continuous:
+    getter: "INITiate:CONTinuous?"
+    setter: "INITiate:CONTinuous {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous initiation ON/OFF"
+
+  # Fetch Commands
+  fetch:
+    scpi: "FETCh?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: primary_value
+          type: float
+        - name: secondary_value
+          type: float
+        - name: status
+          type: int
+    description: "Fetch measurement data"
+    streamable: true
+
+  fetch_voltage_monitor:
+    scpi: "FETCh:SMONitor:VAC?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Fetch voltage monitor value"
+
+  fetch_current_monitor:
+    scpi: "FETCh:SMONitor:IAC?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Fetch current monitor value"
+
+  # Abort
+  abort:
+    scpi: "ABORt"
+    type: write
+    description: "Abort measurement and return to idle"
+
+  # Data Format
+  data_format:
+    getter: "FORMat?"
+    setter: "FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "REAL", "REAL,64"]
+    returns:
+      type: string
+    description: "Data format for measurements"
+
+  # Memory Commands
+  memory_dimension:
+    scpi: "MEMory:DIM DBUF,{size}"
+    type: write
+    params:
+      size:
+        type: int
+        min: 1
+        max: 128
+    description: "Set data buffer size"
+
+  memory_fill:
+    scpi: "MEMory:FILL DBUF"
+    type: write
+    description: "Enable data buffer"
+
+  memory_clear:
+    scpi: "MEMory:CLEar DBUF"
+    type: write
+    description: "Clear data buffer"
+
+  memory_read:
+    scpi: "MEMory:READ? DBUF"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read data buffer contents"
+
+  # Correction Commands
+  correction_cable_length:
+    getter: "CORRection:LENGth?"
+    setter: "CORRection:LENGth {length}"
+    type: property
+    params:
+      length:
+        type: enum
+        options: ["0", "1", "2", "4"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "4": 4
+    returns:
+      type: int
+    description: "Cable length correction (0m, 1m, 2m, or 4m)"
+
+  correction_method:
+    getter: "CORRection:METHod?"
+    setter: "CORRection:METHod {method}"
+    type: property
+    params:
+      method:
+        type: enum
+        options: ["SINGle", "MULTi"]
+    returns:
+      type: string
+    description: "Single or multi-channel correction"
+
+  correction_open_execute:
+    scpi: "CORRection:OPEN"
+    type: write
+    description: "Execute OPEN correction measurement at 48 preset frequencies"
+
+  correction_open_state:
+    getter: "CORRection:OPEN:STATe?"
+    setter: "CORRection:OPEN:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "OPEN correction ON/OFF"
+
+  correction_short_execute:
+    scpi: "CORRection:SHORt"
+    type: write
+    description: "Execute SHORT correction measurement at 48 preset frequencies"
+
+  correction_short_state:
+    getter: "CORRection:SHORt:STATe?"
+    setter: "CORRection:SHORt:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "SHORT correction ON/OFF"
+
+  correction_load_state:
+    getter: "CORRection:LOAD:STATe?"
+    setter: "CORRection:LOAD:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LOAD correction ON/OFF"
+
+  correction_load_type:
+    getter: "CORRection:LOAD:TYPE?"
+    setter: "CORRection:LOAD:TYPE {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["CPD", "CPQ", "CPG", "CPRP", "CSD", "CSQ", "CSRS", "LPQ", "LPD", "LPG", "LPRP", "LSD", "LSQ", "LSRS", "RX", "ZTD", "ZTR", "GB", "YTD", "YTR"]
+    returns:
+      type: string
+    description: "Measurement function for LOAD correction standard"
+
+  correction_spot1_state:
+    getter: "CORRection:SPOT1:STATe?"
+    setter: "CORRection:SPOT1:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Spot frequency 1 correction ON/OFF"
+
+  correction_spot1_frequency:
+    getter: "CORRection:SPOT1:FREQuency?"
+    setter: "CORRection:SPOT1:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 20
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spot frequency 1 value"
+
+  correction_spot1_open:
+    scpi: "CORRection:SPOT1:OPEN"
+    type: write
+    description: "Execute OPEN correction at spot frequency 1"
+
+  correction_spot1_short:
+    scpi: "CORRection:SPOT1:SHORt"
+    type: write
+    description: "Execute SHORT correction at spot frequency 1"
+
+  correction_spot1_load:
+    scpi: "CORRection:SPOT1:LOAD"
+    type: write
+    description: "Execute LOAD correction at spot frequency 1"
+
+  correction_spot1_load_standard:
+    getter: "CORRection:SPOT1:LOAD:STANdard?"
+    setter: "CORRection:SPOT1:LOAD:STANdard {ref_a},{ref_b}"
+    type: property
+    params:
+      ref_a:
+        type: float
+      ref_b:
+        type: float
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "LOAD standard reference values at spot frequency 1"
+
+  correction_spot2_state:
+    getter: "CORRection:SPOT2:STATe?"
+    setter: "CORRection:SPOT2:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Spot frequency 2 correction ON/OFF"
+
+  correction_spot2_frequency:
+    getter: "CORRection:SPOT2:FREQuency?"
+    setter: "CORRection:SPOT2:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 20
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spot frequency 2 value"
+
+  correction_spot2_open:
+    scpi: "CORRection:SPOT2:OPEN"
+    type: write
+    description: "Execute OPEN correction at spot frequency 2"
+
+  correction_spot2_short:
+    scpi: "CORRection:SPOT2:SHORt"
+    type: write
+    description: "Execute SHORT correction at spot frequency 2"
+
+  correction_spot2_load:
+    scpi: "CORRection:SPOT2:LOAD"
+    type: write
+    description: "Execute LOAD correction at spot frequency 2"
+
+  correction_spot2_load_standard:
+    getter: "CORRection:SPOT2:LOAD:STANdard?"
+    setter: "CORRection:SPOT2:LOAD:STANdard {ref_a},{ref_b}"
+    type: property
+    params:
+      ref_a:
+        type: float
+      ref_b:
+        type: float
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "LOAD standard reference values at spot frequency 2"
+
+  correction_spot3_state:
+    getter: "CORRection:SPOT3:STATe?"
+    setter: "CORRection:SPOT3:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Spot frequency 3 correction ON/OFF"
+
+  correction_spot3_frequency:
+    getter: "CORRection:SPOT3:FREQuency?"
+    setter: "CORRection:SPOT3:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 20
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spot frequency 3 value"
+
+  correction_spot3_open:
+    scpi: "CORRection:SPOT3:OPEN"
+    type: write
+    description: "Execute OPEN correction at spot frequency 3"
+
+  correction_spot3_short:
+    scpi: "CORRection:SPOT3:SHORt"
+    type: write
+    description: "Execute SHORT correction at spot frequency 3"
+
+  correction_spot3_load:
+    scpi: "CORRection:SPOT3:LOAD"
+    type: write
+    description: "Execute LOAD correction at spot frequency 3"
+
+  correction_spot3_load_standard:
+    getter: "CORRection:SPOT3:LOAD:STANdard?"
+    setter: "CORRection:SPOT3:LOAD:STANdard {ref_a},{ref_b}"
+    type: property
+    params:
+      ref_a:
+        type: float
+      ref_b:
+        type: float
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "LOAD standard reference values at spot frequency 3"
+
+  correction_use_channel:
+    getter: "CORRection:USE?"
+    setter: "CORRection:USE {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 127
+    returns:
+      type: int
+    description: "Select channel for multi-channel correction"
+
+  correction_use_data:
+    scpi: "CORRection:USE:DATA? {channel}"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 127
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query correction data for specified channel"
+
+  # List Sweep Commands
+  list_frequency:
+    getter: "LIST:FREQuency?"
+    setter: "LIST:FREQuency {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List sweep frequency points (up to 10)"
+
+  list_voltage:
+    getter: "LIST:VOLTage?"
+    setter: "LIST:VOLTage {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List sweep voltage points (up to 10)"
+
+  list_current:
+    getter: "LIST:CURRent?"
+    setter: "LIST:CURRent {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List sweep current points (up to 10)"
+
+  list_bias_voltage:
+    getter: "LIST:BIAS:VOLTage?"
+    setter: "LIST:BIAS:VOLTage {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List sweep bias voltage points (up to 10)"
+
+  list_bias_current:
+    getter: "LIST:BIAS:CURRent?"
+    setter: "LIST:BIAS:CURRent {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List sweep bias current points (up to 10)"
+
+  list_mode:
+    getter: "LIST:MODE?"
+    setter: "LIST:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SEQuence", "STEPped"]
+    returns:
+      type: string
+    description: "List sweep mode (sequential or stepped)"
+
+  list_band1:
+    getter: "LIST:BAND1?"
+    setter: "LIST:BAND1 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 1 limit values"
+
+  list_band2:
+    getter: "LIST:BAND2?"
+    setter: "LIST:BAND2 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 2 limit values"
+
+  list_band3:
+    getter: "LIST:BAND3?"
+    setter: "LIST:BAND3 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 3 limit values"
+
+  list_band4:
+    getter: "LIST:BAND4?"
+    setter: "LIST:BAND4 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 4 limit values"
+
+  list_band5:
+    getter: "LIST:BAND5?"
+    setter: "LIST:BAND5 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 5 limit values"
+
+  list_band6:
+    getter: "LIST:BAND6?"
+    setter: "LIST:BAND6 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 6 limit values"
+
+  list_band7:
+    getter: "LIST:BAND7?"
+    setter: "LIST:BAND7 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 7 limit values"
+
+  list_band8:
+    getter: "LIST:BAND8?"
+    setter: "LIST:BAND8 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 8 limit values"
+
+  list_band9:
+    getter: "LIST:BAND9?"
+    setter: "LIST:BAND9 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 9 limit values"
+
+  list_band10:
+    getter: "LIST:BAND10?"
+    setter: "LIST:BAND10 {param},{low},{high}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["A", "B", "OFF"]
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "List sweep point 10 limit values"
+
+  # Comparator Commands
+  comparator_enable:
+    getter: "COMParator?"
+    setter: "COMParator {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Comparator function ON/OFF"
+
+  comparator_mode:
+    getter: "COMParator:MODE?"
+    setter: "COMParator:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["PTOL", "ATOL", "SEQ"]
+    returns:
+      type: string
+    description: "Comparator limit mode (percent tolerance, absolute tolerance, sequential)"
+
+  comparator_nominal:
+    getter: "COMParator:TOL:NOM?"
+    setter: "COMParator:TOL:NOM {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Nominal value for tolerance mode"
+
+  comparator_bin1:
+    getter: "COMParator:TOL:BIN1?"
+    setter: "COMParator:TOL:BIN1 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 1 limit values"
+
+  comparator_bin2:
+    getter: "COMParator:TOL:BIN2?"
+    setter: "COMParator:TOL:BIN2 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 2 limit values"
+
+  comparator_bin3:
+    getter: "COMParator:TOL:BIN3?"
+    setter: "COMParator:TOL:BIN3 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 3 limit values"
+
+  comparator_bin4:
+    getter: "COMParator:TOL:BIN4?"
+    setter: "COMParator:TOL:BIN4 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 4 limit values"
+
+  comparator_bin5:
+    getter: "COMParator:TOL:BIN5?"
+    setter: "COMParator:TOL:BIN5 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 5 limit values"
+
+  comparator_bin6:
+    getter: "COMParator:TOL:BIN6?"
+    setter: "COMParator:TOL:BIN6 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 6 limit values"
+
+  comparator_bin7:
+    getter: "COMParator:TOL:BIN7?"
+    setter: "COMParator:TOL:BIN7 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 7 limit values"
+
+  comparator_bin8:
+    getter: "COMParator:TOL:BIN8?"
+    setter: "COMParator:TOL:BIN8 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 8 limit values"
+
+  comparator_bin9:
+    getter: "COMParator:TOL:BIN9?"
+    setter: "COMParator:TOL:BIN9 {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "BIN 9 limit values"
+
+  comparator_secondary_limit:
+    getter: "COMParator:SLIM?"
+    setter: "COMParator:SLIM {low},{high}"
+    type: property
+    params:
+      low:
+        type: float
+      high:
+        type: float
+    returns:
+      type: string
+    description: "Secondary parameter limit values"
+
+  comparator_aux_bin:
+    getter: "COMParator:ABIN?"
+    setter: "COMParator:ABIN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auxiliary bin ON/OFF"
+
+  # Status Commands
+  status_operation_condition:
+    scpi: "STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation status condition register"
+
+  status_operation_event:
+    scpi: "STATus:OPERation:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear operation status event register"
+
+  status_operation_enable:
+    getter: "STATus:OPERation:ENABle?"
+    setter: "STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Operation status event enable register"
+
+sequences:
+  lcr_measurement:
+    description: "Configure and perform a basic LCR measurement"
+    params:
+      function:
+        type: enum
+        options: ["CPD", "LSRS", "RX"]
+        default: "CPD"
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      voltage:
+        type: float
+        unit: V
+        default: 1.0
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "{function}"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: voltage_level
+        args:
+          value: "{voltage}"
+      - command: range_auto
+        args:
+          state: "ON"
+      - command: trigger_source
+        args:
+          source: "INTernal"
+      - command: initiate_continuous
+        args:
+          state: "ON"
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+  corrected_measurement:
+    description: "Perform LCR measurement with OPEN/SHORT correction"
+    params:
+      function:
+        type: enum
+        options: ["CPD", "LSRS"]
+        default: "CPD"
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "{function}"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: correction_open_state
+        args:
+          state: "ON"
+      - command: correction_short_state
+        args:
+          state: "ON"
+      - command: trigger_source
+        args:
+          source: "BUS"
+      - command: initiate
+      - command: trigger_immediate
+      - command: fetch
+        capture: result
+    returns: result
+
+  frequency_sweep:
+    description: "List sweep measurement across multiple frequencies"
+    params:
+      frequencies:
+        type: string
+        default: "100,1000,10000,100000,1000000"
+      function:
+        type: enum
+        options: ["CPD", "LSRS"]
+        default: "CPD"
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "{function}"
+      - command: list_frequency
+        args:
+          values: "{frequencies}"
+      - command: list_mode
+        args:
+          mode: "SEQuence"
+      - command: display_page
+        args:
+          page: "LIST"
+      - command: trigger_source
+        args:
+          source: "BUS"
+      - command: initiate
+      - command: trigger_immediate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit7: OSB
+    bit5: ESB
+    bit4: MAV
+  esr:
+    bit7: PON
+    bit5: CME
+    bit4: EXE
+    bit3: DDE
+    bit2: QYE
+    bit0: OPC

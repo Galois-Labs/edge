@@ -1,0 +1,204 @@
+# Keysight PXI LO Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_PXI_LO
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Keysight"
+  model: "PXI LO"
+  class: instrument
+  description: "Keysight PXI LO"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight.*M9347A"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 2000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  clock_source:
+    getter: ":CLK:SOUR?"
+    setter: ":CLK:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["CLKIN", "CLKIN4800MHZ", "REFIN100MHZ"]
+    returns:
+      type: string
+    description: "Clock source"
+  reference_out_1:
+    getter: ":CLK:OUT?"
+    setter: ":CLK:OUT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["REFOUT19200MHZ", "OFF"]
+    returns:
+      type: string
+    description: "Reference out 1"
+  reference_out_2:
+    getter: ":CLK:OUT?"
+    setter: ":CLK:OUT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["REFOUT19200MHZ", "REFOUT4800MHZ", "OFF"]
+    returns:
+      type: string
+    description: "Reference out 2"
+  reference_out_3:
+    getter: ":CLK:OUT?"
+    setter: ":CLK:OUT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["REFOUT19200MHZ", "REFOUT4800MHZ", "REFOUT100MHZ", "OFF"]
+    returns:
+      type: string
+    description: "Reference out 3"
+  output_1:
+    getter: ":DDS1:OUTP?"
+    setter: ":DDS1:OUTP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Output 1"
+  frequency_1:
+    getter: ":DDS1:FREQ?"
+    setter: ":DDS1:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000000.0
+        max: 20000000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency 1"
+  power_1:
+    getter: ":DDS1:POW?"
+    setter: ":DDS1:POW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -10.0
+        max: 0.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Power 1"
+  phase_1:
+    getter: ":DDS1:PHAS?"
+    setter: ":DDS1:PHAS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Phase 1"
+  output_2:
+    getter: ":DDS2:OUTP?"
+    setter: ":DDS2:OUTP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Output 2"
+  frequency_2:
+    getter: ":DDS2:FREQ?"
+    setter: ":DDS2:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000000.0
+        max: 20000000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency 2"
+  power_2:
+    getter: ":DDS2:POW?"
+    setter: ":DDS2:POW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -10.0
+        max: 0.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Power 2"
+  phase_2:
+    getter: ":DDS2:PHAS?"
+    setter: ":DDS2:PHAS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Phase 2"
+

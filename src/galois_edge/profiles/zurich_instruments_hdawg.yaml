@@ -1,0 +1,1430 @@
+# Zurich Instruments HDAWG Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Zurich_Instruments_HDAWG
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Zurich"
+  model: "Instruments HDAWG"
+  class: signal_generator
+  description: "Zurich Instruments HDAWG"
+
+identity:
+  query: "*IDN?"
+  pattern: "Zurich.*HDAWG"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  channel_grouping:
+    scpi: "/system/awg/channelgrouping"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["-1", "0", "1", "2"]
+    returns:
+      type: string
+    description: "Channel grouping"
+  sampling_rate_group_1:
+    scpi: "/awgs/0/time"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["2.4 GHz", "1.2 GHz", "600 MHz", "300 MHz", "150 MHz", "75 MHz", "37.5 MHz", "18.75 MHz", "9.37 MHz", "4.68 MHz", "2.34 MHz", "1.17 MHz", "585.93 kHz", "292.96 kHz"]
+    returns:
+      type: string
+    description: "Sampling rate, group 1"
+  sampling_rate_group_2:
+    scpi: "/awgs/1/time"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["2.4 GHz", "1.2 GHz", "600 MHz", "300 MHz", "150 MHz", "75 MHz", "37.5 MHz", "18.75 MHz", "9.37 MHz", "4.68 MHz", "2.34 MHz", "1.17 MHz", "585.93 kHz", "292.96 kHz"]
+    returns:
+      type: string
+    description: "Sampling rate, group 2"
+  sampling_rate_group_3:
+    scpi: "/awgs/2/time"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["2.4 GHz", "1.2 GHz", "600 MHz", "300 MHz", "150 MHz", "75 MHz", "37.5 MHz", "18.75 MHz", "9.37 MHz", "4.68 MHz", "2.34 MHz", "1.17 MHz", "585.93 kHz", "292.96 kHz"]
+    returns:
+      type: string
+    description: "Sampling rate, group 3"
+  sampling_rate_group_4:
+    scpi: "/awgs/3/time"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["2.4 GHz", "1.2 GHz", "600 MHz", "300 MHz", "150 MHz", "75 MHz", "37.5 MHz", "18.75 MHz", "9.37 MHz", "4.68 MHz", "2.34 MHz", "1.17 MHz", "585.93 kHz", "292.96 kHz"]
+    returns:
+      type: string
+    description: "Sampling rate, group 4"
+  reference_clock:
+    scpi: "/system/clocks/referenceclock/source"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Internal", "External"]
+    returns:
+      type: string
+    description: "Reference clock"
+  group_1_trigger_1:
+    scpi: "/awgs/0/auxtriggers/0/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 1 - Trigger 1"
+  group_1_slope_trigger_1:
+    scpi: "/awgs/0/auxtriggers/0/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Level", "Rise", "Fall", "Both"]
+    returns:
+      type: string
+    description: "Group 1 - Slope trigger 1"
+  group_1_trigger_2:
+    scpi: "/awgs/0/auxtriggers/1/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 1 - Trigger 2"
+  group_1_slope_trigger_2:
+    scpi: "/awgs/0/auxtriggers/1/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Level", "Rise", "Fall", "Both"]
+    returns:
+      type: string
+    description: "Group 1 - Slope trigger 2"
+  group_2_trigger_1:
+    scpi: "/awgs/1/auxtriggers/0/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 2 - Trigger 1"
+  group_2_slope_trigger_1:
+    scpi: "/awgs/1/auxtriggers/0/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 2 - Slope trigger 1"
+  group_2_trigger_2:
+    scpi: "/awgs/1/auxtriggers/1/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 2 - Trigger 2"
+  group_2_slope_trigger_2:
+    scpi: "/awgs/1/auxtriggers/1/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 2 - Slope trigger 2"
+  group_3_trigger_1:
+    scpi: "/awgs/2/auxtriggers/0/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 3 - Trigger 1"
+  group_3_slope_trigger_1:
+    scpi: "/awgs/2/auxtriggers/0/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 3 - Slope trigger 1"
+  group_3_trigger_2:
+    scpi: "/awgs/2/auxtriggers/1/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 3 - Trigger 2"
+  group_3_slope_trigger_2:
+    scpi: "/awgs/2/auxtriggers/1/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 3 - Slope trigger 2"
+  group_4_trigger_1:
+    scpi: "/awgs/3/auxtriggers/0/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 4 - Trigger 1"
+  group_4_slope_trigger_1:
+    scpi: "/awgs/3/auxtriggers/0/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 4 - Slope trigger 1"
+  group_4_trigger_2:
+    scpi: "/awgs/3/auxtriggers/1/channel"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Trigger in 1", "Trigger in 2", "Trigger in 3", "Trigger in 4", "Trigger in 5", "Trigger in 6", "Trigger in 7", "Trigger in 8"]
+    returns:
+      type: string
+    description: "Group 4 - Trigger 2"
+  group_4_slope_trigger_2:
+    scpi: "/awgs/3/auxtriggers/1/slope"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["Rise", "Fall", "Both", "Level"]
+    returns:
+      type: string
+    description: "Group 4 - Slope trigger 2"
+  trigger_1_input_level:
+    scpi: "/triggers/in/0/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 1 - Input level"
+  trigger_1_impedence:
+    scpi: "/triggers/in/0/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 1 - Impedence"
+  trigger_2_input_level:
+    scpi: "/triggers/in/1/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 2 - Input level"
+  trigger_2_impedence:
+    scpi: "/triggers/in/1/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 2 - Impedence"
+  trigger_3_input_level:
+    scpi: "/triggers/in/2/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 3 - Input level"
+  trigger_3_impedence:
+    scpi: "/triggers/in/2/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 3 - Impedence"
+  trigger_4_input_level:
+    scpi: "/triggers/in/3/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 4 - Input level"
+  trigger_4_impedence:
+    scpi: "/triggers/in/3/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 4 - Impedence"
+  trigger_5_input_level:
+    scpi: "/triggers/in/4/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 5 - Input level"
+  trigger_5_impedence:
+    scpi: "/triggers/in/4/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 5 - Impedence"
+  trigger_6_input_level:
+    scpi: "/triggers/in/5/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 6 - Input level"
+  trigger_6_impedence:
+    scpi: "/triggers/in/5/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 6 - Impedence"
+  trigger_7_input_level:
+    scpi: "/triggers/in/6/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 7 - Input level"
+  trigger_7_impedence:
+    scpi: "/triggers/in/6/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 7 - Impedence"
+  trigger_8_input_level:
+    scpi: "/triggers/in/7/level"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Trigger 8 - Input level"
+  trigger_8_impedence:
+    scpi: "/triggers/in/7/imp50"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1 kOhm", "50 Ohm"]
+    returns:
+      type: string
+    description: "Trigger 8 - Impedence"
+  oscillator_frequency_1:
+    scpi: "/oscs/0/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 1"
+  oscillator_frequency_2:
+    scpi: "/oscs/1/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 2"
+  oscillator_frequency_3:
+    scpi: "/oscs/2/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 3"
+  oscillator_frequency_4:
+    scpi: "/oscs/3/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 4"
+  oscillator_frequency_5:
+    scpi: "/oscs/4/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 5"
+  oscillator_frequency_6:
+    scpi: "/oscs/5/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 6"
+  oscillator_frequency_7:
+    scpi: "/oscs/6/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 7"
+  oscillator_frequency_8:
+    scpi: "/oscs/7/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 8"
+  oscillator_frequency_9:
+    scpi: "/oscs/8/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 9"
+  oscillator_frequency_10:
+    scpi: "/oscs/9/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 10"
+  oscillator_frequency_11:
+    scpi: "/oscs/10/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 11"
+  oscillator_frequency_12:
+    scpi: "/oscs/11/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 12"
+  oscillator_frequency_13:
+    scpi: "/oscs/12/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 13"
+  oscillator_frequency_14:
+    scpi: "/oscs/13/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 14"
+  oscillator_frequency_15:
+    scpi: "/oscs/14/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 15"
+  oscillator_frequency_16:
+    scpi: "/oscs/15/freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency 16"
+  sine_1_oscillator:
+    scpi: "/sines/0/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 1 - Oscillator"
+  sine_1_harmonic:
+    scpi: "/sines/0/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 1 - Harmonic"
+  sine_1_phase:
+    scpi: "/sines/0/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 1 - Phase"
+  sine_2_oscillator:
+    scpi: "/sines/1/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 2 - Oscillator"
+  sine_2_harmonic:
+    scpi: "/sines/1/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 2 - Harmonic"
+  sine_2_phase:
+    scpi: "/sines/1/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 2 - Phase"
+  sine_3_oscillator:
+    scpi: "/sines/2/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 3 - Oscillator"
+  sine_3_harmonic:
+    scpi: "/sines/2/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 3 - Harmonic"
+  sine_3_phase:
+    scpi: "/sines/2/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 3 - Phase"
+  sine_4_oscillator:
+    scpi: "/sines/3/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 4 - Oscillator"
+  sine_4_harmonic:
+    scpi: "/sines/3/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 4 - Harmonic"
+  sine_4_phase:
+    scpi: "/sines/3/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 4 - Phase"
+  sine_5_oscillator:
+    scpi: "/sines/4/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 5 - Oscillator"
+  sine_5_harmonic:
+    scpi: "/sines/4/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 5 - Harmonic"
+  sine_5_phase:
+    scpi: "/sines/4/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 5 - Phase"
+  sine_6_oscillator:
+    scpi: "/sines/5/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 6 - Oscillator"
+  sine_6_harmonic:
+    scpi: "/sines/5/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 6 - Harmonic"
+  sine_6_phase:
+    scpi: "/sines/5/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 6 - Phase"
+  sine_7_oscillator:
+    scpi: "/sines/6/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 7 - Oscillator"
+  sine_7_harmonic:
+    scpi: "/sines/6/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 7 - Harmonic"
+  sine_7_phase:
+    scpi: "/sines/6/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 7 - Phase"
+  sine_8_oscillator:
+    scpi: "/sines/7/oscselect"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"]
+    returns:
+      type: string
+    description: "Sine 8 - Oscillator"
+  sine_8_harmonic:
+    scpi: "/sines/7/harmonic"
+    type: query
+    returns:
+      type: float
+    description: "Sine 8 - Harmonic"
+  sine_8_phase:
+    scpi: "/sines/7/phaseshift"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Sine 8 - Phase"
+  awg_1_amplitude_scaling:
+    scpi: "/awgs/0/outputs/0/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 1 - Amplitude scaling"
+  awg_1_hold_last_value:
+    scpi: "/awgs/0/outputs/0/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 1 - Hold last value"
+  awg_1_modulation:
+    scpi: "/awgs/0/outputs/0/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 1 - Modulation"
+  awg_2_amplitude_scaling:
+    scpi: "/awgs/0/outputs/1/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 2 - Amplitude scaling"
+  awg_2_hold_last_value:
+    scpi: "/awgs/0/outputs/1/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 2 - Hold last value"
+  awg_2_modulation:
+    scpi: "/awgs/0/outputs/1/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 2 - Modulation"
+  awg_3_amplitude_scaling:
+    scpi: "/awgs/1/outputs/0/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 3 - Amplitude scaling"
+  awg_3_hold_last_value:
+    scpi: "/awgs/1/outputs/0/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 3 - Hold last value"
+  awg_3_modulation:
+    scpi: "/awgs/1/outputs/0/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 3 - Modulation"
+  awg_4_amplitude_scaling:
+    scpi: "/awgs/1/outputs/1/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 4 - Amplitude scaling"
+  awg_4_hold_last_value:
+    scpi: "/awgs/1/outputs/1/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 4 - Hold last value"
+  awg_4_modulation:
+    scpi: "/awgs/1/outputs/1/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 4 - Modulation"
+  awg_5_amplitude_scaling:
+    scpi: "/awgs/2/outputs/0/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 5 - Amplitude scaling"
+  awg_5_hold_last_value:
+    scpi: "/awgs/2/outputs/0/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 5 - Hold last value"
+  awg_5_modulation:
+    scpi: "/awgs/2/outputs/0/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 5 - Modulation"
+  awg_6_amplitude_scaling:
+    scpi: "/awgs/2/outputs/1/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 6 - Amplitude scaling"
+  awg_6_hold_last_value:
+    scpi: "/awgs/2/outputs/1/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 6 - Hold last value"
+  awg_6_modulation:
+    scpi: "/awgs/2/outputs/1/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 6 - Modulation"
+  awg_7_amplitude_scaling:
+    scpi: "/awgs/3/outputs/0/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 7 - Amplitude scaling"
+  awg_7_hold_last_value:
+    scpi: "/awgs/3/outputs/0/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 7 - Hold last value"
+  awg_7_modulation:
+    scpi: "/awgs/3/outputs/0/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 7 - Modulation"
+  awg_8_amplitude_scaling:
+    scpi: "/awgs/3/outputs/1/amplitude"
+    type: query
+    returns:
+      type: float
+    description: "AWG 8 - Amplitude scaling"
+  awg_8_hold_last_value:
+    scpi: "/awgs/3/outputs/1/hold"
+    type: query
+    returns:
+      type: bool
+    description: "AWG 8 - Hold last value"
+  awg_8_modulation:
+    scpi: "/awgs/3/outputs/1/modulation/mode"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "5"]
+    returns:
+      type: string
+    description: "AWG 8 - Modulation"
+  ch1_enable_sine_1:
+    scpi: "/sines/0/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch1 - Enable Sine 1"
+  ch1_amplitude_sine_1:
+    scpi: "/sines/0/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Amplitude Sine 1"
+  ch1_enable_sine_2:
+    scpi: "/sines/1/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch1 - Enable Sine 2"
+  ch1_amplitude_sine_2:
+    scpi: "/sines/1/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Amplitude Sine 2"
+  ch1_direct_output:
+    scpi: "/sigouts/0/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch1 - Direct output"
+  ch1_range:
+    scpi: "/sigouts/0/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch1 - Range"
+  ch1_filter:
+    scpi: "/sigouts/0/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch1 - Filter"
+  ch1_offset:
+    scpi: "/sigouts/0/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Offset"
+  ch1_delay:
+    scpi: "/sigouts/0/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch1 - Delay"
+  ch1_output:
+    scpi: "/sigouts/0/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch1 - Output"
+  ch2_enable_sine_1:
+    scpi: "/sines/0/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch2 - Enable Sine 1"
+  ch2_amplitude_sine_1:
+    scpi: "/sines/0/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Amplitude Sine 1"
+  ch2_enable_sine_2:
+    scpi: "/sines/1/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch2 - Enable Sine 2"
+  ch2_amplitude_sine_2:
+    scpi: "/sines/1/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Amplitude Sine 2"
+  ch2_direct_output:
+    scpi: "/sigouts/1/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch2 - Direct output"
+  ch2_range:
+    scpi: "/sigouts/1/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch2 - Range"
+  ch2_filter:
+    scpi: "/sigouts/1/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch2 - Filter"
+  ch2_offset:
+    scpi: "/sigouts/1/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Offset"
+  ch2_delay:
+    scpi: "/sigouts/1/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch2 - Delay"
+  ch2_output:
+    scpi: "/sigouts/1/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch2 - Output"
+  ch3_enable_sine_3:
+    scpi: "/sines/2/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch3 - Enable Sine 3"
+  ch3_amplitude_sine_3:
+    scpi: "/sines/2/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch3 - Amplitude Sine 3"
+  ch3_enable_sine_4:
+    scpi: "/sines/3/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch3 - Enable Sine 4"
+  ch3_amplitude_sine_4:
+    scpi: "/sines/3/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch3 - Amplitude Sine 4"
+  ch3_direct_output:
+    scpi: "/sigouts/2/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch3 - Direct output"
+  ch3_range:
+    scpi: "/sigouts/2/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch3 - Range"
+  ch3_filter:
+    scpi: "/sigouts/2/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch3 - Filter"
+  ch3_offset:
+    scpi: "/sigouts/2/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch3 - Offset"
+  ch3_delay:
+    scpi: "/sigouts/2/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch3 - Delay"
+  ch3_output:
+    scpi: "/sigouts/2/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch3 - Output"
+  ch4_enable_sine_3:
+    scpi: "/sines/2/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch4 - Enable Sine 3"
+  ch4_amplitude_sine_3:
+    scpi: "/sines/2/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch4 - Amplitude Sine 3"
+  ch4_enable_sine_4:
+    scpi: "/sines/3/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch4 - Enable Sine 4"
+  ch4_amplitude_sine_4:
+    scpi: "/sines/3/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch4 - Amplitude Sine 4"
+  ch4_direct_output:
+    scpi: "/sigouts/3/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch4 - Direct output"
+  ch4_range:
+    scpi: "/sigouts/3/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch4 - Range"
+  ch4_filter:
+    scpi: "/sigouts/3/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch4 - Filter"
+  ch4_offset:
+    scpi: "/sigouts/3/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch4 - Offset"
+  ch4_delay:
+    scpi: "/sigouts/3/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch4 - Delay"
+  ch4_output:
+    scpi: "/sigouts/3/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch4 - Output"
+  ch5_enable_sine_5:
+    scpi: "/sines/4/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch5 - Enable Sine 5"
+  ch5_amplitude_sine_5:
+    scpi: "/sines/4/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch5 - Amplitude Sine 5"
+  ch5_enable_sine_6:
+    scpi: "/sines/5/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch5 - Enable Sine 6"
+  ch5_amplitude_sine_6:
+    scpi: "/sines/5/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch5 - Amplitude Sine 6"
+  ch5_direct_output:
+    scpi: "/sigouts/4/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch5 - Direct output"
+  ch5_range:
+    scpi: "/sigouts/4/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch5 - Range"
+  ch5_filter:
+    scpi: "/sigouts/4/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch5 - Filter"
+  ch5_offset:
+    scpi: "/sigouts/4/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch5 - Offset"
+  ch5_delay:
+    scpi: "/sigouts/4/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch5 - Delay"
+  ch5_output:
+    scpi: "/sigouts/4/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch5 - Output"
+  ch6_enable_sine_5:
+    scpi: "/sines/4/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch6 - Enable Sine 5"
+  ch6_amplitude_sine_5:
+    scpi: "/sines/4/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch6 - Amplitude Sine 5"
+  ch6_enable_sine_6:
+    scpi: "/sines/5/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch6 - Enable Sine 6"
+  ch6_amplitude_sine_6:
+    scpi: "/sines/5/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch6 - Amplitude Sine 6"
+  ch6_direct_output:
+    scpi: "/sigouts/5/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch6 - Direct output"
+  ch6_range:
+    scpi: "/sigouts/5/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch6 - Range"
+  ch6_filter:
+    scpi: "/sigouts/5/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch6 - Filter"
+  ch6_offset:
+    scpi: "/sigouts/5/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch6 - Offset"
+  ch6_delay:
+    scpi: "/sigouts/5/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch6 - Delay"
+  ch6_output:
+    scpi: "/sigouts/5/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch6 - Output"
+  ch7_enable_sine_7:
+    scpi: "/sines/6/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch7 - Enable Sine 7"
+  ch7_amplitude_sine_7:
+    scpi: "/sines/6/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch7 - Amplitude Sine 7"
+  ch7_enable_sine_8:
+    scpi: "/sines/7/enables/0"
+    type: query
+    returns:
+      type: bool
+    description: "Ch7 - Enable Sine 8"
+  ch7_amplitude_sine_8:
+    scpi: "/sines/7/amplitudes/0"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch7 - Amplitude Sine 8"
+  ch7_direct_output:
+    scpi: "/sigouts/6/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch7 - Direct output"
+  ch7_range:
+    scpi: "/sigouts/6/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch7 - Range"
+  ch7_filter:
+    scpi: "/sigouts/6/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch7 - Filter"
+  ch7_offset:
+    scpi: "/sigouts/6/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch7 - Offset"
+  ch7_delay:
+    scpi: "/sigouts/6/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch7 - Delay"
+  ch7_output:
+    scpi: "/sigouts/6/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch7 - Output"
+  ch8_enable_sine_7:
+    scpi: "/sines/6/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch8 - Enable Sine 7"
+  ch8_amplitude_sine_7:
+    scpi: "/sines/6/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch8 - Amplitude Sine 7"
+  ch8_enable_sine_8:
+    scpi: "/sines/7/enables/1"
+    type: query
+    returns:
+      type: bool
+    description: "Ch8 - Enable Sine 8"
+  ch8_amplitude_sine_8:
+    scpi: "/sines/7/amplitudes/1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch8 - Amplitude Sine 8"
+  ch8_direct_output:
+    scpi: "/sigouts/7/direct"
+    type: query
+    returns:
+      type: bool
+    description: "Ch8 - Direct output"
+  ch8_range:
+    scpi: "/sigouts/7/range"
+    type: query
+    params:
+      value:
+        type: enum
+        options: ["5.0", "4.0", "3.0", "2.0", "1.0", "0.8", "0.6", "0.4", "0.2"]
+    returns:
+      type: string
+    description: "Ch8 - Range"
+  ch8_filter:
+    scpi: "/sigouts/7/filter"
+    type: query
+    returns:
+      type: bool
+    description: "Ch8 - Filter"
+  ch8_offset:
+    scpi: "/sigouts/7/offset"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Ch8 - Offset"
+  ch8_delay:
+    scpi: "/sigouts/7/delay"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Ch8 - Delay"
+  ch8_output:
+    scpi: "/sigouts/7/on"
+    type: query
+    returns:
+      type: bool
+    description: "Ch8 - Output"
+

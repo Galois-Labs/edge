@@ -1,0 +1,1641 @@
+instrument:
+  manufacturer: "Rigol"
+  model: "DSA800"
+  class: spectrum_analyzer
+  description: "DSA800 Series Spectrum Analyzer (DSA815/DSA832/DSA875) - 9 kHz to 7.5 GHz"
+
+identity:
+  query: "*IDN?"
+  pattern: "RIGOL Technologies,DSA8[0-9]{2}"
+
+interfaces:
+  - type: gpib
+    default_address: 18
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in standard event register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  # Abort
+  abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Abort current operation and restart sweep"
+
+  # Calculate Subsystem - Bandwidth
+  bandwidth_ndb:
+    getter: ":CALCulate:BANDwidth:NDB?"
+    setter: ":CALCulate:BANDwidth:NDB {rel_ampl}"
+    type: property
+    params:
+      rel_ampl:
+        type: float
+        unit: dB
+        min: -100
+        max: 100
+        default: -3
+    returns:
+      type: float
+      unit: dB
+    description: "N dB bandwidth measurement value"
+
+  bandwidth_result:
+    scpi: ":CALCulate:BANDwidth:RESult?"
+    type: query
+    returns:
+      type: int
+      unit: Hz
+    description: "Query N dB bandwidth measurement result"
+
+  # Calculate Subsystem - Limit Lines
+  limit_line_delete_all:
+    scpi: ":CALCulate:LLINe:ALL:DELete"
+    type: write
+    description: "Delete all limit lines"
+
+  limit_line_domain:
+    getter: ":CALCulate:LLINe:CONTrol:DOMain?"
+    setter: ":CALCulate:LLINe:CONTrol:DOMain {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FREQuency", "TIME"]
+        default: "FREQuency"
+    returns:
+      type: string
+    description: "X axis type for Pass/Fail test"
+
+  limit_line_fail:
+    scpi: ":CALCulate:LLINe:FAIL?"
+    type: query
+    returns:
+      type: string
+    description: "Query Pass/Fail test result"
+
+  limit_line_fail_ratio:
+    scpi: ":CALCulate:LLINe:FAIL:RATIo?"
+    type: query
+    returns:
+      type: float
+    description: "Query fail ratio of Pass/Fail test"
+
+  limit_line_fail_stop_state:
+    getter: ":CALCulate:LLINe:FAIL:STOP:STATe?"
+    setter: ":CALCulate:LLINe:FAIL:STOP:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Stop test if test fails"
+
+  # Calculate Subsystem - Markers
+  marker_all_off:
+    scpi: ":CALCulate:MARKer:AOFF"
+    type: write
+    description: "Disable all markers and marker functions"
+
+  marker_freq_counter_resolution:
+    getter: ":CALCulate:MARKer:FCOunt:RESolution?"
+    setter: ":CALCulate:MARKer:FCOunt:RESolution {freq}"
+    type: property
+    params:
+      freq:
+        type: enum
+        options: ["1", "10", "100", "1000", "10000", "100000"]
+        unit: Hz
+        default: "1000"
+    returns:
+      type: int
+      unit: Hz
+    description: "Frequency counter resolution"
+
+  marker_freq_counter_resolution_auto:
+    getter: ":CALCulate:MARKer:FCOunt:RESolution:AUTO?"
+    setter: ":CALCulate:MARKer:FCOunt:RESolution:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto frequency counter resolution"
+
+  marker_freq_counter_value:
+    scpi: ":CALCulate:MARKer:FCOunt:X?"
+    type: query
+    returns:
+      type: int
+      unit: Hz
+    description: "Query frequency counter reading"
+
+  marker_freq_counter_state:
+    getter: ":CALCulate:MARKer:FCOunt[:STATe]?"
+    setter: ":CALCulate:MARKer:FCOunt[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable frequency counter"
+
+  marker_continuous_peak:
+    getter: ":CALCulate:MARKer1:CPEak[:STATe]?"
+    setter: ":CALCulate:MARKer1:CPEak[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable continuous peak search for marker 1"
+
+  marker_delta_set_center:
+    scpi: ":CALCulate:MARKer1:DELTa[:SET]:CENTer"
+    type: write
+    description: "Set center frequency to marker delta frequency"
+
+  marker_delta_set_span:
+    scpi: ":CALCulate:MARKer1:DELTa[:SET]:SPAN"
+    type: write
+    description: "Set span to marker delta frequency"
+
+  marker_function:
+    getter: ":CALCulate:MARKer1:FUNCtion?"
+    setter: ":CALCulate:MARKer1:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["NDB", "NOISe", "OFF"]
+        default: "OFF"
+    returns:
+      type: string
+    description: "Marker special measurement type"
+
+  marker_peak_left:
+    scpi: ":CALCulate:MARKer1:MAXimum:LEFT"
+    type: write
+    description: "Search peak to left of current marker"
+
+  marker_peak_maximum:
+    scpi: ":CALCulate:MARKer1:MAXimum:MAX"
+    type: write
+    description: "Execute peak search and mark with marker"
+
+  marker_peak_next:
+    scpi: ":CALCulate:MARKer1:MAXimum:NEXT"
+    type: write
+    description: "Search next peak"
+
+  marker_peak_right:
+    scpi: ":CALCulate:MARKer1:MAXimum:RIGHt"
+    type: write
+    description: "Search peak to right of current marker"
+
+  marker_minimum:
+    scpi: ":CALCulate:MARKer1:MINimum"
+    type: write
+    description: "Search minimum on trace"
+
+  marker_mode:
+    getter: ":CALCulate:MARKer1:MODE?"
+    setter: ":CALCulate:MARKer1:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["POSition", "DELTa", "BAND", "SPAN"]
+        default: "POSition"
+    returns:
+      type: string
+    description: "Marker type (Normal/Delta/Delta Pair/Span Pair)"
+
+  marker_peak_excursion:
+    getter: ":CALCulate:MARKer1:PEAK:EXCursion?"
+    setter: ":CALCulate:MARKer1:PEAK:EXCursion {rel_ampl}"
+    type: property
+    params:
+      rel_ampl:
+        type: float
+        unit: dB
+        min: 0
+        max: 200
+        default: 10
+    returns:
+      type: float
+      unit: dB
+    description: "Peak excursion for peak search"
+
+  marker_peak_search_mode:
+    getter: ":CALCulate:MARKer1:PEAK:SEARch:MODE?"
+    setter: ":CALCulate:MARKer1:PEAK:SEARch:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["PARameter", "MAXimum"]
+        default: "MAXimum"
+    returns:
+      type: string
+    description: "Peak search mode"
+
+  marker_peak_set_cf:
+    scpi: ":CALCulate:MARKer1:PEAK[:SET]:CF"
+    type: write
+    description: "Peak search and set CF to peak frequency"
+
+  marker_peak_threshold:
+    getter: ":CALCulate:MARKer1:PEAK:THReshold?"
+    setter: ":CALCulate:MARKer1:PEAK:THReshold {ampl}"
+    type: property
+    params:
+      ampl:
+        type: float
+        unit: dBm
+        min: -200
+        max: 0
+        default: -90
+    returns:
+      type: float
+      unit: dBm
+    description: "Peak threshold"
+
+  marker_peak_to_peak:
+    scpi: ":CALCulate:MARKer1:PTPeak"
+    type: write
+    description: "Execute peak-to-peak search"
+
+  marker_set_center:
+    scpi: ":CALCulate:MARKer1[:SET]:CENTer"
+    type: write
+    description: "Set center frequency to marker frequency"
+
+  marker_set_ref_level:
+    scpi: ":CALCulate:MARKer1[:SET]:RLEVel"
+    type: write
+    description: "Set reference level to marker amplitude"
+
+  marker_set_start:
+    scpi: ":CALCulate:MARKer1[:SET]:STARt"
+    type: write
+    description: "Set start frequency to marker frequency"
+
+  marker_set_step:
+    scpi: ":CALCulate:MARKer1[:SET]:STEP"
+    type: write
+    description: "Set center frequency step to marker frequency"
+
+  marker_set_stop:
+    scpi: ":CALCulate:MARKer1[:SET]:STOP"
+    type: write
+    description: "Set stop frequency to marker frequency"
+
+  marker_state:
+    getter: ":CALCulate:MARKer1:STATe?"
+    setter: ":CALCulate:MARKer1:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable marker"
+
+  marker_trace:
+    getter: ":CALCulate:MARKer1:TRACe?"
+    setter: ":CALCulate:MARKer1:TRACe {trace}"
+    type: property
+    params:
+      trace:
+        type: enum
+        options: ["1", "2", "3", "4"]
+        default: "1"
+    returns:
+      type: int
+    description: "Marker trace selection"
+
+  marker_trace_auto:
+    getter: ":CALCulate:MARKer1:TRACe:AUTO?"
+    setter: ":CALCulate:MARKer1:TRACe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto marker trace selection"
+
+  marker_x:
+    getter: ":CALCulate:MARKer1:X?"
+    setter: ":CALCulate:MARKer1:X {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Marker X-axis value"
+
+  marker_x_center:
+    getter: ":CALCulate:MARKer1:X:CENTer?"
+    setter: ":CALCulate:MARKer1:X:CENTer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Span Pair marker X-axis center value"
+
+  marker_x_position:
+    getter: ":CALCulate:MARKer1:X:POSition?"
+    setter: ":CALCulate:MARKer1:X:POSition {position}"
+    type: property
+    params:
+      position:
+        type: int
+        min: 0
+        max: 600
+        default: 300
+    returns:
+      type: int
+    description: "Normal marker position"
+
+  marker_x_readout:
+    getter: ":CALCulate:MARKer1:X:READout?"
+    setter: ":CALCulate:MARKer1:X:READout {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FREQuency", "TIME", "ITIMe", "PERiod"]
+    returns:
+      type: string
+    description: "Marker X-axis readout mode"
+
+  marker_y:
+    scpi: ":CALCulate:MARKer1:Y?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query marker Y-axis value"
+
+  marker_table_state:
+    getter: ":CALCulate:MARKer:TABLe:STATe?"
+    setter: ":CALCulate:MARKer:TABLe:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable marker table"
+
+  marker_tracking_state:
+    getter: ":CALCulate:MARKer:TRACking:STATe?"
+    setter: ":CALCulate:MARKer:TRACking:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable signal track"
+
+  normalization_state:
+    getter: ":CALCulate:NTData[:STATe]?"
+    setter: ":CALCulate:NTData[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable normalization (tracking generator)"
+    enabled: false
+
+  # Calibration Subsystem
+  calibration_all:
+    scpi: ":CALibration:[ALL]"
+    type: write
+    description: "Execute self-calibration immediately"
+
+  calibration_auto:
+    getter: ":CALibration:AUTO?"
+    setter: ":CALibration:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Enable/disable auto calibration"
+
+  # Configure Subsystem
+  configure_query:
+    scpi: ":CONFigure?"
+    type: query
+    returns:
+      type: string
+    description: "Query current measurement function"
+
+  configure_spectrum_analyzer:
+    scpi: ":CONFigure:SANalyzer"
+    type: write
+    description: "Set to sweep mode"
+
+  configure_pass_fail:
+    scpi: ":CONFigure:PF"
+    type: write
+    description: "Enable Pass/Fail test"
+
+  # Couple Subsystem
+  couple:
+    getter: ":COUPle?"
+    setter: ":COUPle {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ALL", "NONE"]
+        default: "ALL"
+    returns:
+      type: string
+    description: "Coupling linked setting"
+
+  # Display Subsystem
+  display_active_function_position:
+    getter: ":DISPlay:AFUnction:POSition?"
+    setter: ":DISPlay:AFUnction:POSition {position}"
+    type: property
+    params:
+      position:
+        type: enum
+        options: ["BOTTom", "CENTer", "TOP"]
+        default: "TOP"
+    returns:
+      type: string
+    description: "Active function area position"
+
+  display_clock_state:
+    getter: ":DISPlay:ANNotation:CLOCk[:STATe]?"
+    setter: ":DISPlay:ANNotation:CLOCk[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Display time and date"
+
+  display_brightness:
+    getter: ":DISPlay:BRIGhtness?"
+    setter: ":DISPlay:BRIGhtness {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: 1
+        max: 10
+        default: 2
+    returns:
+      type: int
+    description: "Screen brightness"
+
+  display_enable:
+    getter: ":DISPlay:ENABle?"
+    setter: ":DISPlay:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Screen on/off state"
+
+  display_message_switch:
+    getter: ":DISPlay:MSGswitch:STATe?"
+    setter: ":DISPlay:MSGswitch:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Enable/disable message display"
+
+  display_grid_brightness:
+    getter: ":DISPlay:WINdow:TRACe:GRATicule:GRID?"
+    setter: ":DISPlay:WINdow:TRACe:GRATicule:GRID {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: 0
+        max: 10
+        default: 3
+    returns:
+      type: int
+    description: "Screen grid brightness"
+
+  display_x_scale_spacing:
+    getter: ":DISPlay:WINdow:TRACe:X[:SCALe]:SPACing?"
+    setter: ":DISPlay:WINdow:TRACe:X[:SCALe]:SPACing {spacing}"
+    type: property
+    params:
+      spacing:
+        type: enum
+        options: ["LINear", "LOGarithmic"]
+        default: "LINear"
+    returns:
+      type: string
+    description: "X-axis scale type"
+
+  display_line:
+    getter: ":DISPlay:WINdow:TRACe:Y:DLINe?"
+    setter: ":DISPlay:WINdow:TRACe:Y:DLINe {ampl}"
+    type: property
+    params:
+      ampl:
+        type: float
+        unit: dBm
+        default: 0
+    returns:
+      type: float
+      unit: dBm
+    description: "Display line position"
+
+  display_line_state:
+    getter: ":DISPlay:WINdow:TRACe:Y:DLINe:STATe?"
+    setter: ":DISPlay:WINdow:TRACe:Y:DLINe:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable display line"
+
+  display_y_scale_per_division:
+    getter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:PDIVision?"
+    setter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:PDIVision {rel_ampl}"
+    type: property
+    params:
+      rel_ampl:
+        type: float
+        unit: dB
+        min: 0.1
+        max: 20
+        default: 10
+    returns:
+      type: float
+      unit: dB
+    description: "Y-axis scale per division"
+
+  reference_level:
+    getter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:RLEVel?"
+    setter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:RLEVel {ampl}"
+    type: property
+    params:
+      ampl:
+        type: float
+        unit: dBm
+        min: -100
+        max: 20
+        default: 0
+    returns:
+      type: float
+      unit: dBm
+    description: "Reference level"
+
+  reference_level_offset:
+    getter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:RLEVel:OFFSet?"
+    setter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:RLEVel:OFFSet {rel_ampl}"
+    type: property
+    params:
+      rel_ampl:
+        type: float
+        unit: dB
+        min: -300
+        max: 300
+        default: 0
+    returns:
+      type: float
+      unit: dB
+    description: "Reference level offset"
+
+  display_y_scale_spacing:
+    getter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:SPACing?"
+    setter: ":DISPlay:WINdow:TRACe:Y[:SCALe]:SPACing {spacing}"
+    type: property
+    params:
+      spacing:
+        type: enum
+        options: ["LINear", "LOGarithmic"]
+        default: "LOGarithmic"
+    returns:
+      type: string
+    description: "Y-axis scale type"
+
+  # Format Subsystem
+  format_border:
+    getter: ":FORMat:BORDer?"
+    setter: ":FORMat:BORDer {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORMal", "SWAPped"]
+        default: "NORMal"
+    returns:
+      type: string
+    description: "Binary data byte order"
+
+  format_trace_data:
+    getter: ":FORMat[:TRACe][:DATA]?"
+    setter: ":FORMat[:TRACe][:DATA] {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "REAL", "REAL,32"]
+        default: "ASCii"
+    returns:
+      type: string
+    description: "Trace data format"
+
+  # Initiate Subsystem
+  initiate_continuous:
+    getter: ":INITiate:CONTinuous?"
+    setter: ":INITiate:CONTinuous {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Continuous or single sweep/measurement"
+
+  initiate_immediate:
+    scpi: ":INITiate[:IMMediate]"
+    type: write
+    description: "Initialize sweep or trigger measurement"
+
+  # Input Subsystem
+  input_impedance:
+    getter: ":INPut:IMPedance?"
+    setter: ":INPut:IMPedance {impedance}"
+    type: property
+    params:
+      impedance:
+        type: enum
+        options: ["50", "75"]
+        default: "50"
+    returns:
+      type: int
+      unit: Ohm
+    description: "Input impedance for voltage-to-power conversion"
+
+  # Memory Subsystem
+  memory_delete:
+    scpi: ":MMEMory:DELete {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Delete file"
+
+  memory_disk_info:
+    scpi: ":MMEMory:DISK:INFormation?"
+    type: query
+    returns:
+      type: string
+    description: "Query disk information"
+
+  memory_load_correction:
+    scpi: ":MMEMory:LOAD:CORRection {type},{file_name}"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["ANTenna", "CABLe", "OTHer", "USER"]
+      file_name:
+        type: string
+    description: "Load amplitude correction file"
+
+  memory_load_limit:
+    scpi: ":MMEMory:LOAD:LIMit {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Load limit line file"
+
+  memory_load_setup:
+    scpi: ":MMEMory:LOAD:SETUp {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Load setup file"
+
+  memory_load_state:
+    scpi: ":MMEMory:LOAD:STATe 1,{file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Load state file"
+
+  memory_load_trace:
+    scpi: ":MMEMory:LOAD:TRACe {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Load trace file"
+
+  memory_store_correction:
+    scpi: ":MMEMory:STORe:CORRection {type},{file_name}"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["ANTenna", "CABLe", "OTHer", "USER"]
+      file_name:
+        type: string
+    description: "Save amplitude correction file"
+
+  memory_store_limit:
+    scpi: ":MMEMory:STORe:LIMit {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save limit line file"
+
+  memory_store_screen:
+    scpi: ":MMEMory:STORe:SCReen {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save screen image"
+
+  memory_store_setup:
+    scpi: ":MMEMory:STORe:SETUp {file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save setup file"
+
+  memory_store_state:
+    scpi: ":MMEMory:STORe:STATe 1,{file_name}"
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save state file"
+
+  memory_store_trace:
+    scpi: ":MMEMory:STORe:TRACe {label},{file_name}"
+    type: write
+    params:
+      label:
+        type: enum
+        options: ["TRACE1", "TRACE2", "TRACE3", "MATH", "ALL"]
+      file_name:
+        type: string
+    description: "Save trace file"
+
+  # Sense Subsystem - Bandwidth
+  resolution_bandwidth:
+    getter: "[:SENSe]:BANDwidth[:RESolution]?"
+    setter: "[:SENSe]:BANDwidth[:RESolution] {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 10
+        max: 1000000
+        default: 1000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Resolution bandwidth (RBW)"
+
+  resolution_bandwidth_auto:
+    getter: "[:SENSe]:BANDwidth[:RESolution]:AUTO?"
+    setter: "[:SENSe]:BANDwidth[:RESolution]:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto RBW"
+
+  video_bandwidth:
+    getter: "[:SENSe]:BANDwidth:VIDeo?"
+    setter: "[:SENSe]:BANDwidth:VIDeo {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 1
+        max: 3000000
+        default: 1000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Video bandwidth (VBW)"
+
+  video_bandwidth_auto:
+    getter: "[:SENSe]:BANDwidth:VIDeo:AUTO?"
+    setter: "[:SENSe]:BANDwidth:VIDeo:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto VBW"
+
+  vbw_rbw_ratio:
+    getter: "[:SENSe]:BANDwidth:VIDeo:RATio?"
+    setter: "[:SENSe]:BANDwidth:VIDeo:RATio {ratio}"
+    type: property
+    params:
+      ratio:
+        type: float
+        min: 0.000001
+        max: 30000
+        default: 1
+    returns:
+      type: float
+    description: "VBW/RBW ratio"
+
+  # Sense Subsystem - Detector
+  detector_function:
+    getter: "[:SENSe]:DETector[:FUNCtion]?"
+    setter: "[:SENSe]:DETector[:FUNCtion] {detector}"
+    type: property
+    params:
+      detector:
+        type: enum
+        options: ["NEGative", "NORMal", "POSitive", "RMS", "SAMPle", "VAVerage", "QPEak"]
+        default: "POSitive"
+    returns:
+      type: string
+    description: "Detector type"
+
+  # Sense Subsystem - Frequency
+  center_frequency:
+    getter: "[:SENSe]:FREQuency:CENTer?"
+    setter: "[:SENSe]:FREQuency:CENTer {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0
+        max: 7500000000
+        default: 3750000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Center frequency"
+
+  center_frequency_down:
+    scpi: "[:SENSe]:FREQuency:CENTer:DOWN"
+    type: write
+    description: "Decrease center frequency by step"
+
+  center_frequency_up:
+    scpi: "[:SENSe]:FREQuency:CENTer:UP"
+    type: write
+    description: "Increase center frequency by step"
+
+  center_frequency_step:
+    getter: "[:SENSe]:FREQuency:CENTer:STEP[:INCRement]?"
+    setter: "[:SENSe]:FREQuency:CENTer:STEP[:INCRement] {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 1
+        max: 7500000000
+        default: 750000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Center frequency step"
+
+  center_frequency_step_auto:
+    getter: "[:SENSe]:FREQuency:CENTer:STEP:AUTO?"
+    setter: "[:SENSe]:FREQuency:CENTer:STEP:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto CF step"
+
+  frequency_offset:
+    getter: "[:SENSe]:FREQuency:OFFSet?"
+    setter: "[:SENSe]:FREQuency:OFFSet {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: -100000000000
+        max: 100000000000
+        default: 0
+    returns:
+      type: int
+      unit: Hz
+    description: "Frequency offset"
+
+  span:
+    getter: "[:SENSe]:FREQuency:SPAN?"
+    setter: "[:SENSe]:FREQuency:SPAN {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0
+        max: 7500000000
+        default: 7500000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Frequency span"
+
+  span_full:
+    scpi: "[:SENSe]:FREQuency:SPAN:FULL"
+    type: write
+    description: "Set span to full span"
+
+  span_previous:
+    scpi: "[:SENSe]:FREQuency:SPAN:PREVious"
+    type: write
+    description: "Set span to previous value"
+
+  span_zoom_in:
+    scpi: "[:SENSe]:FREQuency:SPAN:ZIN"
+    type: write
+    description: "Set span to half"
+
+  span_zoom_out:
+    scpi: "[:SENSe]:FREQuency:SPAN:ZOUT"
+    type: write
+    description: "Set span to double"
+
+  start_frequency:
+    getter: "[:SENSe]:FREQuency:STARt?"
+    setter: "[:SENSe]:FREQuency:STARt {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0
+        max: 7500000000
+        default: 0
+    returns:
+      type: int
+      unit: Hz
+    description: "Start frequency"
+
+  stop_frequency:
+    getter: "[:SENSe]:FREQuency:STOP?"
+    setter: "[:SENSe]:FREQuency:STOP {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0
+        max: 7500000000
+        default: 7500000000
+    returns:
+      type: int
+      unit: Hz
+    description: "Stop frequency"
+
+  # Sense Subsystem - Power
+  auto_range:
+    scpi: "[:SENSe]:POWer:ARANge"
+    type: write
+    description: "Execute auto range"
+
+  auto_scale:
+    scpi: "[:SENSe]:POWer:ASCale"
+    type: write
+    description: "Execute auto scale"
+
+  auto_tune:
+    scpi: "[:SENSe]:POWer:ATUNe"
+    type: write
+    description: "Execute auto tune"
+
+  rf_attenuation:
+    getter: "[:SENSe]:POWer[:RF]:ATTenuation?"
+    setter: "[:SENSe]:POWer[:RF]:ATTenuation {rel_ampl}"
+    type: property
+    params:
+      rel_ampl:
+        type: int
+        unit: dB
+        min: 0
+        max: 30
+        default: 10
+    returns:
+      type: int
+      unit: dB
+    description: "RF attenuator setting"
+
+  rf_attenuation_auto:
+    getter: "[:SENSe]:POWer[:RF]:ATTenuation:AUTO?"
+    setter: "[:SENSe]:POWer[:RF]:ATTenuation:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto RF attenuation"
+
+  preamplifier_state:
+    getter: "[:SENSe]:POWer[:RF]:GAIN[:STATe]?"
+    setter: "[:SENSe]:POWer[:RF]:GAIN[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable preamplifier"
+
+  mixer_level:
+    getter: "[:SENSe]:POWer[:RF]:MIXer:RANGe[:UPPer]?"
+    setter: "[:SENSe]:POWer[:RF]:MIXer:RANGe[:UPPer] {ampl}"
+    type: property
+    params:
+      ampl:
+        type: int
+        unit: dBm
+        min: -30
+        max: 0
+        default: -10
+    returns:
+      type: float
+      unit: dBm
+    description: "Maximum power of input mixer"
+
+  # Sense Subsystem - Sweep
+  sweep_count:
+    getter: "[:SENSe]:SWEep:COUNt?"
+    setter: "[:SENSe]:SWEep:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 9999
+        default: 1
+    returns:
+      type: int
+    description: "Number of sweeps for single sweep"
+
+  sweep_count_current:
+    scpi: "[:SENSe]:SWEep:COUNt:CURRent?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of sweeps completed"
+
+  sweep_points:
+    getter: "[:SENSe]:SWEep:POINts?"
+    setter: "[:SENSe]:SWEep:POINts {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 101
+        max: 3001
+        default: 601
+    returns:
+      type: int
+    description: "Sweep points"
+
+  sweep_time:
+    getter: "[:SENSe]:SWEep:TIME?"
+    setter: "[:SENSe]:SWEep:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.00002
+        max: 7500
+        default: 0.0375
+    returns:
+      type: float
+      unit: s
+    description: "Sweep time"
+
+  sweep_time_auto:
+    getter: "[:SENSe]:SWEep:TIME:AUTO?"
+    setter: "[:SENSe]:SWEep:TIME:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Auto sweep time"
+
+  sweep_time_auto_rules:
+    getter: "[:SENSe]:SWEep:TIME:AUTO:RULes?"
+    setter: "[:SENSe]:SWEep:TIME:AUTO:RULes {rule}"
+    type: property
+    params:
+      rule:
+        type: enum
+        options: ["NORMal", "ACCuracy"]
+        default: "NORMal"
+    returns:
+      type: string
+    description: "Auto sweep time setting method"
+
+  # System Subsystem
+  system_beeper_state:
+    getter: ":SYSTem:BEEPer:STATe?"
+    setter: ":SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable beeper in Pass/Fail test"
+
+  system_clear:
+    scpi: ":SYSTem:CLEar"
+    type: write
+    description: "Clear all user settings"
+
+  system_date:
+    getter: ":SYSTem:DATE?"
+    setter: ":SYSTem:DATE {year},{month},{day}"
+    type: property
+    params:
+      year:
+        type: string
+      month:
+        type: string
+      day:
+        type: string
+    returns:
+      type: string
+    description: "System date"
+
+  system_time:
+    getter: ":SYSTem:TIME?"
+    setter: ":SYSTem:TIME {hour},{minute},{second}"
+    type: property
+    params:
+      hour:
+        type: string
+      minute:
+        type: string
+      second:
+        type: string
+    returns:
+      type: string
+    description: "System time"
+
+  system_error:
+    scpi: ":SYSTem:ERRor[:NEXT]?"
+    type: query
+    returns:
+      type: string
+    description: "Query and delete last error"
+
+  system_language:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["ENGLish", "CHINese", "JAPan", "PORTugese", "GERMan", "POLish", "KORea", "TCHinese"]
+        default: "ENGLish"
+    returns:
+      type: string
+    description: "System language"
+
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Recall preset setting"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  # Trace Subsystem
+  trace_average_clear:
+    scpi: ":TRACe:AVERage:CLEar"
+    type: write
+    description: "Clear trace average count"
+
+  trace_average_count:
+    getter: ":TRACe:AVERage:COUNt?"
+    setter: ":TRACe:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1000
+        default: 100
+    returns:
+      type: int
+    description: "Trace average count"
+
+  trace_average_count_current:
+    scpi: ":TRACe:AVERage:COUNt:CURRent?"
+    type: query
+    returns:
+      type: int
+    description: "Query current average count"
+
+  trace_average_reset:
+    scpi: ":TRACe:AVERage:RESet"
+    type: write
+    description: "Reset trace average"
+
+  trace_clear_all:
+    scpi: ":TRACe:CLEar:ALL"
+    type: write
+    description: "Clear all traces"
+
+  trace_data:
+    getter: ":TRACe[:DATA]? TRACE1"
+    setter: ":TRACe[:DATA] TRACE1,{data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Trace 1 data"
+
+  trace_mode:
+    getter: ":TRACe1:MODE?"
+    setter: ":TRACe1:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["WRITe", "MAXHold", "MINHold", "VIEW", "BLANk", "VIDeoavg", "POWeravg"]
+        default: "WRITe"
+    returns:
+      type: string
+    description: "Trace 1 mode"
+
+  trace_average_type:
+    getter: ":TRACe1:AVERage:TYPE?"
+    setter: ":TRACe1:AVERage:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["VIDeo", "RMS"]
+        default: "VIDeo"
+    returns:
+      type: string
+    description: "Trace 1 average type"
+
+  # Trigger Subsystem
+  trigger_source:
+    getter: ":TRIGger:SEQuence:SOURce?"
+    setter: ":TRIGger:SEQuence:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "VIDeo", "EXTernal"]
+        default: "IMMediate"
+    returns:
+      type: string
+    description: "Trigger type"
+
+  trigger_external_slope:
+    getter: ":TRIGger:SEQuence:EXTernal:SLOPe?"
+    setter: ":TRIGger:SEQuence:EXTernal:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+        default: "POSitive"
+    returns:
+      type: string
+    description: "External trigger edge"
+
+  trigger_video_level:
+    getter: ":TRIGger:SEQuence:VIDeo:LEVel?"
+    setter: ":TRIGger:SEQuence:VIDeo:LEVel {ampl}"
+    type: property
+    params:
+      ampl:
+        type: float
+        unit: dBm
+        min: -300
+        max: 50
+        default: 0
+    returns:
+      type: float
+      unit: dBm
+    description: "Video trigger level"
+
+  # Unit Subsystem
+  amplitude_unit:
+    getter: ":UNIT:POWer?"
+    setter: ":UNIT:POWer {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["DBM", "DBMV", "DBUV", "V", "W"]
+    returns:
+      type: string
+    description: "Y-axis amplitude unit"
+
+sequences:
+  quick_measurement:
+    description: "Quick spectrum measurement at center frequency"
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+      span:
+        type: float
+        unit: Hz
+      rbw:
+        type: float
+        unit: Hz
+        default: 1000000
+    steps:
+      - command: reset
+      - command: center_frequency
+        args:
+          freq: "{center_freq}"
+      - command: span
+        args:
+          freq: "{span}"
+      - command: resolution_bandwidth
+        args:
+          freq: "{rbw}"
+      - command: initiate_immediate
+      - command: wait
+      - command: trace_data
+        capture: result
+    returns: result
+
+  marker_peak_search:
+    description: "Perform peak search with marker"
+    steps:
+      - command: marker_state
+        args:
+          state: "ON"
+      - command: marker_peak_maximum
+      - command: marker_x
+        capture: frequency
+      - command: marker_y
+        capture: amplitude
+    returns: frequency
+
+  frequency_sweep:
+    description: "Sweep between start and stop frequencies"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 601
+    steps:
+      - command: reset
+      - command: start_frequency
+        args:
+          freq: "{start_freq}"
+      - command: stop_frequency
+        args:
+          freq: "{stop_freq}"
+      - command: sweep_points
+        args:
+          points: "{points}"
+      - command: initiate_immediate
+      - command: wait
+      - command: trace_data
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

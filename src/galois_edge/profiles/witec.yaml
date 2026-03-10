@@ -1,0 +1,270 @@
+# WITec Control Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: WITec
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "WITec"
+  model: "Control"
+  class: instrument
+  description: "WITec Control"
+
+identity:
+  query: "*IDN?"
+  pattern: "WITec.*WITec\ Control"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  scantableposx:
+    scpi: "UserParameters|ScanTable|PositionX"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ScanTablePosX"
+  scantableposy:
+    scpi: "UserParameters|ScanTable|PositionY"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ScanTablePosY"
+  scantableposz:
+    scpi: "UserParameters|ScanTable|PositionZ"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ScanTablePosZ"
+  spectrographcenterwavelength:
+    scpi: "UserParameters|Spectrograph1|CenterWavelength"
+    type: query
+    returns:
+      type: float
+      unit: nm
+    description: "SpectrographCenterWavelength"
+  spectrographlaserwavelength:
+    scpi: "UserParameters|Spectrograph1|LaserWavelength"
+    type: query
+    returns:
+      type: float
+      unit: nm
+    description: "SpectrographLaserWavelength"
+  imagenameindex:
+    scpi: "UserParameters|SequencerScanImage|Naming|DataNumber"
+    type: query
+    returns:
+      type: float
+    description: "ImageNameIndex"
+  imagepointsperline:
+    scpi: "UserParameters|SequencerScanImage|PointsPerLine"
+    type: query
+    returns:
+      type: float
+    description: "ImagePointsPerLine"
+  imagelinesperimage:
+    scpi: "UserParameters|SequencerScanImage|LinesPerImage"
+    type: query
+    returns:
+      type: float
+    description: "ImageLinesPerImage"
+  imagelayersperscan:
+    scpi: "UserParameters|SequencerScanImage|LayersPerScan"
+    type: query
+    returns:
+      type: float
+    description: "ImageLayersPerScan"
+  imageintegrationtime:
+    scpi: "UserParameters|SequencerScanImage|TraceIntegrationTime"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "ImageIntegrationTime"
+  imagetimeperline:
+    scpi: "UserParameters|SequencerScanImage|TraceTimePerLine"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "ImageTimePerLine"
+  imagegeometrywidth:
+    scpi: "UserParameters|SequencerScanImage|Geometry|Width"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryWidth"
+  imagegeometryheight:
+    scpi: "UserParameters|SequencerScanImage|Geometry|Height"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryHeight"
+  imagegeometrydepth:
+    scpi: "UserParameters|SequencerScanImage|Geometry|Depth"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryDepth"
+  imagegeometrycenterx:
+    scpi: "UserParameters|SequencerScanImage|Geometry|CenterX"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryCenterX"
+  imagegeometrycentery:
+    scpi: "UserParameters|SequencerScanImage|Geometry|CenterY"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryCenterY"
+  imagegeometrycenterz:
+    scpi: "UserParameters|SequencerScanImage|Geometry|CenterZ"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "ImageGeometryCenterZ"
+  triggerimagescan:
+    scpi: "UserParameters|SequencerScanImage|Start"
+    type: query
+    returns:
+      type: float
+    description: "TriggerImageScan"
+  linenameindex:
+    scpi: "UserParameters|SequencerScanLine|Naming|DataNumber"
+    type: query
+    returns:
+      type: float
+    description: "LineNameIndex"
+  linenrofpoints:
+    scpi: "UserParameters|SequencerScanLine|SamplePoints"
+    type: query
+    returns:
+      type: float
+    description: "LineNrOfPoints"
+  linestartx:
+    scpi: "UserParameters|SequencerScanLine|StartPoint|X"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineStartX"
+  linestarty:
+    scpi: "UserParameters|SequencerScanLine|StartPoint|Y"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineStartY"
+  linestartz:
+    scpi: "UserParameters|SequencerScanLine|StartPoint|Z"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineStartZ"
+  lineendx:
+    scpi: "UserParameters|SequencerScanLine|EndPoint|X"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineEndX"
+  lineendy:
+    scpi: "UserParameters|SequencerScanLine|EndPoint|Y"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineEndY"
+  lineendz:
+    scpi: "UserParameters|SequencerScanLine|EndPoint|Z"
+    type: query
+    returns:
+      type: float
+      unit: um
+    description: "LineEndZ"
+  triggerlinescan:
+    scpi: "UserParameters|SequencerScanLine|Start"
+    type: query
+    returns:
+      type: float
+    description: "TriggerLineScan"
+  spectrumnameindex:
+    scpi: "UserParameters|SequencerSingleSpectrum|Naming|DataNumber"
+    type: query
+    returns:
+      type: float
+    description: "SpectrumNameIndex"
+  spectrumintegrationtime:
+    scpi: "UserParameters|SequencerSingleSpectrum|IntegrationTime"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "SpectrumIntegrationTime"
+  spectrumaccumulations:
+    scpi: "UserParameters|SequencerSingleSpectrum|NrOfAccumulations"
+    type: query
+    returns:
+      type: float
+    description: "SpectrumAccumulations"
+  triggersinglespectrum:
+    scpi: "UserParameters|SequencerSingleSpectrum|Start"
+    type: query
+    returns:
+      type: float
+    description: "TriggerSingleSpectrum"
+  triggerandreadsinglespectrum:
+    scpi: "UserParameters|SequencerSingleSpectrum|Start"
+    type: query
+    returns:
+      type: string
+    description: "TriggerAndReadSingleSpectrum"
+

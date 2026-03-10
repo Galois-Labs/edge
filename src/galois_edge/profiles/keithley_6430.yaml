@@ -1,0 +1,2025 @@
+instrument:
+  manufacturer: "Keithley"
+  model: "6430"
+  class: smu
+  description: "Sub-Femtoamp Remote SourceMeter - 200V, 105mA, 2.2W with Remote PreAmp"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY.*6430"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to GPIB default conditions"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass, non-zero = fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  source_function:
+    getter: ":SOUR:FUNC:MODE?"
+    setter: ":SOUR:FUNC:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLT", "CURR", "MEM"]
+    returns:
+      type: string
+    description: "Select source function (voltage, current, or memory)"
+
+  source_voltage:
+    getter: ":SOUR:VOLT:LEV:IMM:AMPL?"
+    setter: ":SOUR:VOLT:LEV:IMM:AMPL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -210
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage level (immediate)"
+
+  source_voltage_triggered:
+    getter: ":SOUR:VOLT:LEV:TRIG:AMPL?"
+    setter: ":SOUR:VOLT:LEV:TRIG:AMPL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -210
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage level (triggered)"
+
+  source_voltage_range:
+    getter: ":SOUR:VOLT:RANG?"
+    setter: ":SOUR:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.2
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage range"
+
+  source_voltage_range_auto:
+    getter: ":SOUR:VOLT:RANG:AUTO?"
+    setter: ":SOUR:VOLT:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable source voltage auto-ranging"
+
+  source_voltage_mode:
+    getter: ":SOUR:VOLT:MODE?"
+    setter: ":SOUR:VOLT:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIX", "SWE", "LIST"]
+    returns:
+      type: string
+    description: "Source voltage mode (fixed, sweep, or list)"
+
+  source_voltage_protection:
+    getter: ":SOUR:VOLT:PROT?"
+    setter: ":SOUR:VOLT:PROT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 20
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "V-Source output protection limit"
+
+  voltage_protection_tripped:
+    scpi: ":SOUR:VOLT:PROT:TRIP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if voltage protection tripped"
+
+  source_current:
+    getter: ":SOUR:CURR:LEV:IMM:AMPL?"
+    setter: ":SOUR:CURR:LEV:IMM:AMPL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Source current level (immediate)"
+
+  source_current_triggered:
+    getter: ":SOUR:CURR:LEV:TRIG:AMPL?"
+    setter: ":SOUR:CURR:LEV:TRIG:AMPL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Source current level (triggered)"
+
+  source_current_range:
+    getter: ":SOUR:CURR:RANG?"
+    setter: ":SOUR:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 1e-12
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Source current range"
+
+  source_current_range_auto:
+    getter: ":SOUR:CURR:RANG:AUTO?"
+    setter: ":SOUR:CURR:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable source current auto-ranging"
+
+  source_current_mode:
+    getter: ":SOUR:CURR:MODE?"
+    setter: ":SOUR:CURR:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIX", "SWE", "LIST"]
+    returns:
+      type: string
+    description: "Source current mode (fixed, sweep, or list)"
+
+  source_delay:
+    getter: ":SOUR:DEL?"
+    setter: ":SOUR:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 999.9999
+    returns:
+      type: float
+      unit: s
+    description: "Source settling delay time"
+
+  source_delay_auto:
+    getter: ":SOUR:DEL:AUTO?"
+    setter: ":SOUR:DEL:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic source delay"
+
+  output_state:
+    getter: ":OUTP?"
+    setter: ":OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Turn output on or off"
+
+  output_off_mode:
+    getter: ":OUTP:SMOD?"
+    setter: ":OUTP:SMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORM", "ZERO", "GUAR"]
+    returns:
+      type: string
+    description: "Output off mode (normal, zero, or guard)"
+
+  auto_output_off:
+    getter: ":SOUR:CLE:AUTO?"
+    setter: ":SOUR:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto output-off"
+
+  auto_output_off_mode:
+    getter: ":SOUR:CLE:AUTO:MODE?"
+    setter: ":SOUR:CLE:AUTO:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ALW", "TCO"]
+    returns:
+      type: string
+    description: "Auto output-off mode (always or trigger count)"
+
+  output_interlock_state:
+    getter: ":OUTP:INT:STAT?"
+    setter: ":OUTP:INT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable interlock"
+
+  output_interlock_tripped:
+    scpi: ":OUTP:INT:TRIP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if interlock is tripped"
+
+  sense_function:
+    getter: ":SENS:FUNC?"
+    setter: ":SENS:FUNC \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLT:DC", "CURR:DC", "RES"]
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  sense_function_concurrent:
+    getter: ":SENS:FUNC:CONC?"
+    setter: ":SENS:FUNC:CONC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable concurrent measurements"
+
+  sense_function_on:
+    scpi: ":SENS:FUNC:ON \"{functions}\""
+    type: write
+    params:
+      functions:
+        type: string
+    description: "Enable specified measurement functions"
+
+  sense_function_off:
+    scpi: ":SENS:FUNC:OFF \"{functions}\""
+    type: write
+    params:
+      functions:
+        type: string
+    description: "Disable specified measurement functions"
+
+  sense_function_on_all:
+    scpi: ":SENS:FUNC:ON:ALL"
+    type: write
+    description: "Enable all measurement functions"
+
+  sense_function_off_all:
+    scpi: ":SENS:FUNC:OFF:ALL"
+    type: write
+    description: "Disable all measurement functions"
+
+  sense_function_state:
+    scpi: ":SENS:FUNC:STAT? \"{name}\""
+    type: query
+    params:
+      name:
+        type: enum
+        options: ["VOLT:DC", "CURR:DC", "RES"]
+    returns:
+      type: bool
+    description: "Query state of specified function"
+
+  measure_voltage:
+    scpi: ":MEAS:VOLT?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Perform one-shot voltage measurement"
+    streamable: true
+
+  voltage_compliance:
+    getter: ":SENS:VOLT:PROT?"
+    setter: ":SENS:VOLT:PROT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.2
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Voltage compliance limit for current source"
+
+  voltage_compliance_tripped:
+    scpi: ":SENS:VOLT:PROT:TRIP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if in voltage compliance"
+
+  sense_voltage_range:
+    getter: ":SENS:VOLT:RANG?"
+    setter: ":SENS:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.2
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Voltage measurement range"
+
+  sense_voltage_range_auto:
+    getter: ":SENS:VOLT:RANG:AUTO?"
+    setter: ":SENS:VOLT:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable voltage measurement auto-ranging"
+
+  sense_voltage_range_ulimit:
+    scpi: ":SENS:VOLT:RANG:AUTO:ULIM?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Query voltage auto-range upper limit"
+
+  sense_voltage_range_llimit:
+    getter: ":SENS:VOLT:RANG:AUTO:LLIM?"
+    setter: ":SENS:VOLT:RANG:AUTO:LLIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -21
+        max: 21
+    returns:
+      type: float
+      unit: V
+    description: "Voltage auto-range lower limit"
+
+  sense_voltage_nplc:
+    getter: ":SENS:VOLT:NPLC?"
+    setter: ":SENS:VOLT:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 10
+        default: 10.0
+    returns:
+      type: float
+    description: "Voltage measurement integration time in power line cycles"
+
+  measure_current:
+    scpi: ":MEAS:CURR?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Perform one-shot current measurement"
+    streamable: true
+
+  current_compliance:
+    getter: ":SENS:CURR:PROT?"
+    setter: ":SENS:CURR:PROT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 1e-12
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Current compliance limit for voltage source"
+
+  current_compliance_tripped:
+    scpi: ":SENS:CURR:PROT:TRIP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if in current compliance"
+
+  sense_current_range:
+    getter: ":SENS:CURR:RANG?"
+    setter: ":SENS:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 1e-12
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Current measurement range"
+
+  sense_current_range_auto:
+    getter: ":SENS:CURR:RANG:AUTO?"
+    setter: ":SENS:CURR:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable current measurement auto-ranging"
+
+  sense_current_range_ulimit:
+    scpi: ":SENS:CURR:RANG:AUTO:ULIM?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Query current auto-range upper limit"
+
+  sense_current_range_llimit:
+    getter: ":SENS:CURR:RANG:AUTO:LLIM?"
+    setter: ":SENS:CURR:RANG:AUTO:LLIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Current auto-range lower limit"
+
+  sense_current_nplc:
+    getter: ":SENS:CURR:NPLC?"
+    setter: ":SENS:CURR:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 10
+        default: 10.0
+    returns:
+      type: float
+    description: "Current measurement integration time in power line cycles"
+
+  measure_resistance:
+    scpi: ":MEAS:RES?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Perform one-shot resistance measurement"
+    streamable: true
+
+  resistance_mode:
+    getter: ":SENS:RES:MODE?"
+    setter: ":SENS:RES:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MAN"]
+    returns:
+      type: string
+    description: "Resistance measurement mode (auto or manual)"
+
+  resistance_range:
+    getter: ":SENS:RES:RANG?"
+    setter: ":SENS:RES:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 2
+        max: 2.1e13
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance measurement range"
+
+  resistance_range_auto:
+    getter: ":SENS:RES:RANG:AUTO?"
+    setter: ":SENS:RES:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable resistance measurement auto-ranging"
+
+  resistance_range_ulimit:
+    getter: ":SENS:RES:RANG:AUTO:ULIM?"
+    setter: ":SENS:RES:RANG:AUTO:ULIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 2.1e13
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance auto-range upper limit"
+
+  resistance_range_llimit:
+    getter: ":SENS:RES:RANG:AUTO:LLIM?"
+    setter: ":SENS:RES:RANG:AUTO:LLIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 2.1e13
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance auto-range lower limit"
+
+  resistance_nplc:
+    getter: ":SENS:RES:NPLC?"
+    setter: ":SENS:RES:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 10
+        default: 10.0
+    returns:
+      type: float
+    description: "Resistance measurement integration time in power line cycles"
+
+  resistance_offset_compensated:
+    getter: ":SENS:RES:OCOM?"
+    setter: ":SENS:RES:OCOM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable offset-compensated ohms measurement"
+
+  remote_sense:
+    getter: ":SYST:RSEN?"
+    setter: ":SYST:RSEN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire remote sensing"
+
+  guard_mode:
+    getter: ":SYST:GUAR?"
+    setter: ":SYST:GUAR {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OHMS", "CABL"]
+    returns:
+      type: string
+    description: "Select guard mode (ohms guard or cable guard)"
+
+  filter_state:
+    getter: ":SENS:AVER?"
+    setter: ":SENS:AVER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable moving filter"
+
+  filter_type:
+    getter: ":SENS:AVER:TCON?"
+    setter: ":SENS:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: "Filter type (moving average or repeat)"
+
+  filter_count:
+    getter: ":SENS:AVER:COUN?"
+    setter: ":SENS:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Filter count (number of readings to average)"
+
+  filter_auto:
+    getter: ":SENS:AVER:AUTO?"
+    setter: ":SENS:AVER:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto filter"
+
+  filter_advanced_state:
+    getter: ":SENS:AVER:ADV:STAT?"
+    setter: ":SENS:AVER:ADV:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable advanced filter"
+
+  filter_advanced_ntolerance:
+    getter: ":SENS:AVER:ADV:NTOL?"
+    setter: ":SENS:AVER:ADV:NTOL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 105
+    returns:
+      type: float
+      unit: "%"
+    description: "Advanced filter noise tolerance"
+
+  filter_repeat_state:
+    getter: ":SENS:AVER:REP:STAT?"
+    setter: ":SENS:AVER:REP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable repeat filter"
+
+  filter_repeat_count:
+    getter: ":SENS:AVER:REP:COUN?"
+    setter: ":SENS:AVER:REP:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Repeat filter count"
+
+  filter_median_state:
+    getter: ":SENS:MED:STAT?"
+    setter: ":SENS:MED:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable median filter"
+
+  filter_median_rank:
+    getter: ":SENS:MED:RANK?"
+    setter: ":SENS:MED:RANK {rank}"
+    type: property
+    params:
+      rank:
+        type: int
+        min: 0
+        max: 5
+    returns:
+      type: int
+    description: "Median filter rank"
+
+  auto_zero:
+    getter: ":SYST:AZER?"
+    setter: ":SYST:AZER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Auto zero control"
+
+  auto_zero_caching_state:
+    getter: ":SYST:AZER:CACH:STAT?"
+    setter: ":SYST:AZER:CACH:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable NPLC caching"
+
+  auto_zero_caching_refresh:
+    scpi: ":SYST:AZER:CACH:REFR"
+    type: write
+    description: "Refresh NPLC cache values"
+
+  auto_zero_caching_reset:
+    scpi: ":SYST:AZER:CACH:RES"
+    type: write
+    description: "Reset NPLC cache"
+
+  auto_zero_caching_nplcycles:
+    scpi: ":SYST:AZER:CACH:NPLC?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of cached NPLC values"
+
+  initiate:
+    scpi: ":INIT"
+    type: write
+    description: "Initiate source-measure cycle(s)"
+
+  abort:
+    scpi: ":ABOR"
+    type: write
+    description: "Abort and return to idle state"
+
+  arm_count:
+    getter: ":ARM:COUN?"
+    setter: ":ARM:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2500
+    returns:
+      type: int
+    description: "Arm layer count"
+
+  arm_count_infinite:
+    scpi: ":ARM:COUN INF"
+    type: write
+    description: "Set arm count to infinite"
+
+  arm_source:
+    getter: ":ARM:SOUR?"
+    setter: ":ARM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "TIM", "MAN", "BUS", "TLIN", "NST", "PST", "BST"]
+    returns:
+      type: string
+    description: "Arm layer event source"
+
+  arm_timer:
+    getter: ":ARM:TIM?"
+    setter: ":ARM:TIM {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0.001
+        max: 99999.99
+    returns:
+      type: float
+      unit: s
+    description: "Arm layer timer interval"
+
+  arm_direction:
+    getter: ":ARM:DIR?"
+    setter: ":ARM:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["SOUR", "ACC"]
+    returns:
+      type: string
+    description: "Arm layer bypass direction"
+
+  arm_input_line:
+    getter: ":ARM:ILIN?"
+    setter: ":ARM:ILIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Arm layer input trigger line"
+
+  arm_output_line:
+    getter: ":ARM:OLIN?"
+    setter: ":ARM:OLIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Arm layer output trigger line"
+
+  arm_output:
+    getter: ":ARM:OUTP?"
+    setter: ":ARM:OUTP {event}"
+    type: property
+    params:
+      event:
+        type: enum
+        options: ["NONE", "TENT", "TEX"]
+    returns:
+      type: string
+    description: "Arm layer output trigger event"
+
+  trigger_count:
+    getter: ":TRIG:COUN?"
+    setter: ":TRIG:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2500
+        default: 1
+    returns:
+      type: int
+    description: "Trigger layer count"
+
+  trigger_delay:
+    getter: ":TRIG:DEL?"
+    setter: ":TRIG:DEL {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 999.9999
+    returns:
+      type: float
+      unit: s
+    description: "Trigger layer delay"
+
+  trigger_source:
+    getter: ":TRIG:SOUR?"
+    setter: ":TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "TLIN"]
+    returns:
+      type: string
+    description: "Trigger layer event source"
+
+  trigger_clear:
+    scpi: ":TRIG:CLE"
+    type: write
+    description: "Clear any pending input triggers"
+
+  trigger_direction:
+    getter: ":TRIG:DIR?"
+    setter: ":TRIG:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["SOUR", "ACC"]
+    returns:
+      type: string
+    description: "Trigger layer bypass direction"
+
+  trigger_input_line:
+    getter: ":TRIG:ILIN?"
+    setter: ":TRIG:ILIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Trigger layer input line"
+
+  trigger_output_line:
+    getter: ":TRIG:OLIN?"
+    setter: ":TRIG:OLIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Trigger layer output line"
+
+  trigger_input_events:
+    getter: ":TRIG:INP?"
+    setter: ":TRIG:INP {events}"
+    type: property
+    params:
+      events:
+        type: string
+    returns:
+      type: string
+    description: "Trigger input events (SOUR, DEL, SENS, NONE)"
+
+  trigger_output_events:
+    getter: ":TRIG:OUTP?"
+    setter: ":TRIG:OUTP {events}"
+    type: property
+    params:
+      events:
+        type: string
+    returns:
+      type: string
+    description: "Trigger output events (SOUR, DEL, SENS, NONE)"
+
+  fetch:
+    scpi: ":FETC?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch post-processed readings from sample buffer"
+
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate and fetch readings"
+
+  data_latest:
+    scpi: ":SENS:DATA:LAT?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Return only the most recent reading"
+    streamable: true
+
+  format_elements:
+    getter: ":FORM:ELEM?"
+    setter: ":FORM:ELEM {elements}"
+    type: property
+    params:
+      elements:
+        type: string
+    returns:
+      type: string
+    description: "Specify data elements (VOLT, CURR, RES, TIME, STAT)"
+
+  format_data:
+    getter: ":FORM:DATA?"
+    setter: ":FORM:DATA {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL", "SREAL"]
+    returns:
+      type: string
+    description: "Data format (ASCII, Real 32-bit, or single-precision Real)"
+
+  format_border:
+    getter: ":FORM:BORD?"
+    setter: ":FORM:BORD {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORM", "SWAP"]
+    returns:
+      type: string
+    description: "Binary data byte order"
+
+  format_sregister:
+    getter: ":FORM:SREG?"
+    setter: ":FORM:SREG {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "HEX", "OCT", "BIN"]
+    returns:
+      type: string
+    description: "Status register data format"
+
+  format_source2:
+    getter: ":FORM:SOUR2?"
+    setter: ":FORM:SOUR2 {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "HEX", "OCT", "BIN"]
+    returns:
+      type: string
+    description: "Digital I/O data format"
+
+  sweep_points:
+    getter: ":SOUR:SWE:POIN?"
+    setter: ":SOUR:SWE:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 2500
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_spacing:
+    getter: ":SOUR:SWE:SPAC?"
+    setter: ":SOUR:SWE:SPAC {spacing}"
+    type: property
+    params:
+      spacing:
+        type: enum
+        options: ["LIN", "LOG"]
+    returns:
+      type: string
+    description: "Sweep spacing (linear or logarithmic)"
+
+  sweep_direction:
+    getter: ":SOUR:SWE:DIR?"
+    setter: ":SOUR:SWE:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["UP", "DOWN"]
+    returns:
+      type: string
+    description: "Sweep direction"
+
+  sweep_ranging:
+    getter: ":SOUR:SWE:RANG?"
+    setter: ":SOUR:SWE:RANG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["BEST", "AUTO", "FIX"]
+    returns:
+      type: string
+    description: "Sweep source ranging mode"
+
+  voltage_sweep_start:
+    getter: ":SOUR:VOLT:STAR?"
+    setter: ":SOUR:VOLT:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -210
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Voltage sweep start level"
+
+  voltage_sweep_stop:
+    getter: ":SOUR:VOLT:STOP?"
+    setter: ":SOUR:VOLT:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -210
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Voltage sweep stop level"
+
+  voltage_sweep_step:
+    getter: ":SOUR:VOLT:STEP?"
+    setter: ":SOUR:VOLT:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage sweep step size"
+
+  voltage_sweep_center:
+    getter: ":SOUR:VOLT:CENT?"
+    setter: ":SOUR:VOLT:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -420
+        max: 420
+    returns:
+      type: float
+      unit: V
+    description: "Voltage sweep center point"
+
+  voltage_sweep_span:
+    getter: ":SOUR:VOLT:SPAN?"
+    setter: ":SOUR:VOLT:SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -420
+        max: 420
+    returns:
+      type: float
+      unit: V
+    description: "Voltage sweep span"
+
+  current_sweep_start:
+    getter: ":SOUR:CURR:STAR?"
+    setter: ":SOUR:CURR:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Current sweep start level"
+
+  current_sweep_stop:
+    getter: ":SOUR:CURR:STOP?"
+    setter: ":SOUR:CURR:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Current sweep stop level"
+
+  current_sweep_step:
+    getter: ":SOUR:CURR:STEP?"
+    setter: ":SOUR:CURR:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current sweep step size"
+
+  current_sweep_center:
+    getter: ":SOUR:CURR:CENT?"
+    setter: ":SOUR:CURR:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.21
+        max: 0.21
+    returns:
+      type: float
+      unit: A
+    description: "Current sweep center point"
+
+  current_sweep_span:
+    getter: ":SOUR:CURR:SPAN?"
+    setter: ":SOUR:CURR:SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.21
+        max: 0.21
+    returns:
+      type: float
+      unit: A
+    description: "Current sweep span"
+
+  list_voltage:
+    getter: ":SOUR:LIST:VOLT?"
+    setter: ":SOUR:LIST:VOLT {list}"
+    type: property
+    params:
+      list:
+        type: string
+    returns:
+      type: string
+    description: "Define voltage source list"
+
+  list_voltage_append:
+    scpi: ":SOUR:LIST:VOLT:APP {list}"
+    type: write
+    params:
+      list:
+        type: string
+    description: "Append values to voltage source list"
+
+  list_voltage_points:
+    scpi: ":SOUR:LIST:VOLT:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in voltage list"
+
+  list_current:
+    getter: ":SOUR:LIST:CURR?"
+    setter: ":SOUR:LIST:CURR {list}"
+    type: property
+    params:
+      list:
+        type: string
+    returns:
+      type: string
+    description: "Define current source list"
+
+  list_current_append:
+    scpi: ":SOUR:LIST:CURR:APP {list}"
+    type: write
+    params:
+      list:
+        type: string
+    description: "Append values to current source list"
+
+  list_current_points:
+    scpi: ":SOUR:LIST:CURR:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in current list"
+
+  source_memory_save:
+    scpi: ":SOUR:MEM:SAVE {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 100
+    description: "Save settings at memory location"
+
+  source_memory_recall:
+    scpi: ":SOUR:MEM:REC {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 100
+    description: "Recall settings from memory"
+
+  source_memory_points:
+    getter: ":SOUR:MEM:POIN?"
+    setter: ":SOUR:MEM:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Specify number of sweep points for memory sweep"
+
+  source_memory_start:
+    getter: ":SOUR:MEM:STAR?"
+    setter: ":SOUR:MEM:STAR {location}"
+    type: property
+    params:
+      location:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Specify start location for source memory sweep"
+
+  source_soak:
+    getter: ":SOUR:SOAK?"
+    setter: ":SOUR:SOAK {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 9999.999
+    returns:
+      type: float
+      unit: s
+    description: "Set multiple mode soak time"
+
+  source_voltage_sfactor:
+    getter: ":SOUR:VOLT:LEV:TRIG:SFAC?"
+    setter: ":SOUR:VOLT:LEV:TRIG:SFAC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -999.9999e18
+        max: 999.9999e18
+    returns:
+      type: float
+    description: "Set voltage scaling factor"
+
+  source_voltage_sfactor_state:
+    getter: ":SOUR:VOLT:LEV:TRIG:SFAC:STAT?"
+    setter: ":SOUR:VOLT:LEV:TRIG:SFAC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable voltage scaling factor"
+
+  source_current_sfactor:
+    getter: ":SOUR:CURR:LEV:TRIG:SFAC?"
+    setter: ":SOUR:CURR:LEV:TRIG:SFAC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -999.9999e18
+        max: 999.9999e18
+    returns:
+      type: float
+    description: "Set current scaling factor"
+
+  source_current_sfactor_state:
+    getter: ":SOUR:CURR:LEV:TRIG:SFAC:STAT?"
+    setter: ":SOUR:CURR:LEV:TRIG:SFAC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable current scaling factor"
+
+  trace_clear:
+    scpi: ":TRAC:CLE"
+    type: write
+    description: "Clear trace buffer"
+
+  trace_points:
+    getter: ":TRAC:POIN?"
+    setter: ":TRAC:POIN {size}"
+    type: property
+    params:
+      size:
+        type: int
+        min: 1
+        max: 2500
+    returns:
+      type: int
+    description: "Trace buffer size"
+
+  trace_points_actual:
+    scpi: ":TRAC:POIN:ACT?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of readings stored in buffer"
+
+  trace_feed:
+    getter: ":TRAC:FEED?"
+    setter: ":TRAC:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["SENS", "CALC1", "CALC2"]
+    returns:
+      type: string
+    description: "Select source of readings for trace buffer"
+
+  trace_control:
+    getter: ":TRAC:FEED:CONT?"
+    setter: ":TRAC:FEED:CONT {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NEV", "NEXT"]
+    returns:
+      type: string
+    description: "Trace buffer control mode"
+
+  trace_data:
+    scpi: ":TRAC:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read trace buffer contents"
+
+  trace_free:
+    scpi: ":TRAC:FREE?"
+    type: query
+    returns:
+      type: string
+    description: "Query bytes available and bytes in use"
+
+  trace_timestamp_format:
+    getter: ":TRAC:TST:FORM?"
+    setter: ":TRAC:TST:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ABS", "DELT"]
+    returns:
+      type: string
+    description: "Timestamp format (absolute or delta)"
+
+  calculate_math_name:
+    getter: ":CALC:MATH:NAME?"
+    setter: ":CALC:MATH:NAME {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select or create math expression name"
+
+  calculate_math_catalog:
+    scpi: ":CALC:MATH:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of math expression names"
+
+  calculate_math_expression:
+    getter: ":CALC:MATH:EXPR?"
+    setter: ":CALC:MATH:EXPR {expression}"
+    type: property
+    params:
+      expression:
+        type: string
+    returns:
+      type: string
+    description: "Define math expression"
+
+  calculate_math_define:
+    scpi: ":CALC:MATH:DEF {expression}"
+    type: write
+    params:
+      expression:
+        type: string
+    description: "Define math expression (alternative syntax)"
+
+  calculate_math_delete:
+    scpi: ":CALC:MATH:DEL {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Delete user-defined math expression"
+
+  calculate_math_delete_all:
+    scpi: ":CALC:MATH:DEL:ALL"
+    type: write
+    description: "Delete all user-defined math expressions"
+
+  calculate_math_units:
+    getter: ":CALC:MATH:UNIT?"
+    setter: ":CALC:MATH:UNIT {units}"
+    type: property
+    params:
+      units:
+        type: string
+    returns:
+      type: string
+    description: "Define units for math expression (3 ASCII characters)"
+
+  calculate_math_state:
+    getter: ":CALC:STAT?"
+    setter: ":CALC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable math expression"
+
+  calculate_math_data:
+    scpi: ":CALC:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read result of math expression"
+
+  calculate_math_data_latest:
+    scpi: ":CALC:DATA:LAT?"
+    type: query
+    returns:
+      type: float
+    description: "Read latest math expression result"
+
+  calculate2_feed:
+    getter: ":CALC2:FEED?"
+    setter: ":CALC2:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CALC", "VOLT", "CURR", "RES"]
+    returns:
+      type: string
+    description: "Select input path for Calculate2"
+
+  calculate2_null_offset:
+    getter: ":CALC2:NULL:OFFS?"
+    setter: ":CALC2:NULL:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e20
+        max: 9.999999e20
+    returns:
+      type: float
+    description: "Specify REL value"
+
+  calculate2_null_state:
+    getter: ":CALC2:NULL:STAT?"
+    setter: ":CALC2:NULL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable REL"
+
+  calculate2_null_acquire:
+    scpi: ":CALC2:NULL:ACQ"
+    type: write
+    description: "Automatically acquire REL value"
+
+  calculate2_data:
+    scpi: ":CALC2:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read Calculate2 data"
+
+  calculate2_data_latest:
+    scpi: ":CALC2:DATA:LAT?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest Calculate2 result"
+
+  calculate2_limit1_compliance_fail:
+    getter: ":CALC2:LIM:COMP:FAIL?"
+    setter: ":CALC2:LIM:COMP:FAIL {condition}"
+    type: property
+    params:
+      condition:
+        type: enum
+        options: ["IN", "OUT"]
+    returns:
+      type: string
+    description: "Specify Limit 1 fail condition (in/out of compliance)"
+
+  calculate2_limit1_compliance_source2:
+    getter: ":CALC2:LIM:COMP:SOUR2?"
+    setter: ":CALC2:LIM:COMP:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 1 fail bit pattern"
+
+  calculate2_limit1_state:
+    getter: ":CALC2:LIM:STAT?"
+    setter: ":CALC2:LIM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable Limit 1 test"
+
+  calculate2_limit1_fail:
+    scpi: ":CALC2:LIM:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query Limit 1 test result"
+
+  calculate2_limit2_upper:
+    getter: ":CALC2:LIM2:UPP?"
+    setter: ":CALC2:LIM2:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e20
+        max: 9.999999e20
+    returns:
+      type: float
+    description: "Specify Limit 2 upper limit"
+
+  calculate2_limit2_lower:
+    getter: ":CALC2:LIM2:LOW?"
+    setter: ":CALC2:LIM2:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e20
+        max: 9.999999e20
+    returns:
+      type: float
+    description: "Specify Limit 2 lower limit"
+
+  calculate2_limit2_upper_source2:
+    getter: ":CALC2:LIM2:UPP:SOUR2?"
+    setter: ":CALC2:LIM2:UPP:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 2 upper fail bit pattern"
+
+  calculate2_limit2_lower_source2:
+    getter: ":CALC2:LIM2:LOW:SOUR2?"
+    setter: ":CALC2:LIM2:LOW:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 2 lower fail bit pattern"
+
+  calculate2_limit2_pass_source2:
+    getter: ":CALC2:LIM2:PASS:SOUR2?"
+    setter: ":CALC2:LIM2:PASS:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 2 pass bit pattern (sorting mode)"
+
+  calculate2_limit2_state:
+    getter: ":CALC2:LIM2:STAT?"
+    setter: ":CALC2:LIM2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable Limit 2 test"
+
+  calculate2_limit2_fail:
+    scpi: ":CALC2:LIM2:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query Limit 2 test result"
+
+  calculate2_limit3_upper:
+    getter: ":CALC2:LIM3:UPP?"
+    setter: ":CALC2:LIM3:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e20
+        max: 9.999999e20
+    returns:
+      type: float
+    description: "Specify Limit 3 upper limit"
+
+  calculate2_limit3_lower:
+    getter: ":CALC2:LIM3:LOW?"
+    setter: ":CALC2:LIM3:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e20
+        max: 9.999999e20
+    returns:
+      type: float
+    description: "Specify Limit 3 lower limit"
+
+  calculate2_limit3_upper_source2:
+    getter: ":CALC2:LIM3:UPP:SOUR2?"
+    setter: ":CALC2:LIM3:UPP:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 3 upper fail bit pattern"
+
+  calculate2_limit3_lower_source2:
+    getter: ":CALC2:LIM3:LOW:SOUR2?"
+    setter: ":CALC2:LIM3:LOW:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 3 lower fail bit pattern"
+
+  calculate2_limit3_pass_source2:
+    getter: ":CALC2:LIM3:PASS:SOUR2?"
+    setter: ":CALC2:LIM3:PASS:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Specify Limit 3 pass bit pattern (sorting mode)"
+
+  calculate2_limit3_state:
+    getter: ":CALC2:LIM3:STAT?"
+    setter: ":CALC2:LIM3:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable Limit 3 test"
+
+  calculate2_limit3_fail:
+    scpi: ":CALC2:LIM3:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query Limit 3 test result"
+
+  calculate2_composite_limits_bcontrol:
+    getter: ":CALC2:CLIM:BCON?"
+    setter: ":CALC2:CLIM:BCON {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["IMM", "END"]
+    returns:
+      type: string
+    description: "Specify when to send binning info to handler"
+
+  calculate2_composite_limits_mode:
+    getter: ":CALC2:CLIM:MODE?"
+    setter: ":CALC2:CLIM:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["GRAD", "SORT"]
+    returns:
+      type: string
+    description: "Set how limit results control Digital I/O lines"
+
+  calculate2_composite_limits_clear:
+    scpi: ":CALC2:CLIM:CLE:IMM"
+    type: write
+    description: "Clear latest limit test result and reset Digital I/O port"

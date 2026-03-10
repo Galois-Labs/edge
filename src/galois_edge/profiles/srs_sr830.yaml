@@ -1,0 +1,876 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "SR830"
+  class: lockin
+  description: "DSP Lock-In Amplifier - Dual Phase, 1 mHz to 102 kHz"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford.?Research.?Systems,SR830"
+
+interfaces:
+  - type: gpib
+    default_address: 8
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to GPIB default conditions"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 9
+    description: "Save present setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 9
+    description: "Recall setup from memory location"
+
+  phase:
+    getter: "PHAS?"
+    setter: "PHAS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -360.0
+        max: 729.99
+    returns:
+      type: float
+      unit: deg
+    description: "Reference phase shift (-360 to 729.99 degrees, wraps at ±180°)"
+
+  reference_source:
+    getter: "FMOD?"
+    setter: "FMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "External"
+          "1": "Internal"
+    returns:
+      type: int
+    description: "Reference source (0=External, 1=Internal)"
+
+  frequency:
+    getter: "FREQ?"
+    setter: "FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 102000
+    returns:
+      type: float
+      unit: Hz
+    description: "Reference frequency (set only in internal mode)"
+
+  reference_slope:
+    getter: "RSLP?"
+    setter: "RSLP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "Sine"
+          "1": "TTL Rising"
+          "2": "TTL Falling"
+    returns:
+      type: int
+    description: "External reference trigger mode"
+
+  harmonic:
+    getter: "HARM?"
+    setter: "HARM {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 19999
+    returns:
+      type: int
+    description: "Detection harmonic (1-19999, harmonic×freq ≤ 102 kHz)"
+
+  sine_amplitude:
+    getter: "SLVL?"
+    setter: "SLVL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Vrms
+        min: 0.004
+        max: 5.0
+    returns:
+      type: float
+      unit: Vrms
+    description: "Sine output amplitude"
+
+  input_config:
+    getter: "ISRC?"
+    setter: "ISRC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "A"
+          "1": "A-B"
+          "2": "I (1 MΩ)"
+          "3": "I (100 MΩ)"
+    returns:
+      type: int
+    description: "Input configuration"
+
+  input_grounding:
+    getter: "IGND?"
+    setter: "IGND {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Float"
+          "1": "Ground"
+    returns:
+      type: int
+    description: "Input shield grounding"
+
+  input_coupling:
+    getter: "ICPL?"
+    setter: "ICPL {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "AC"
+          "1": "DC"
+    returns:
+      type: int
+    description: "Input coupling"
+
+  line_filter:
+    getter: "ILIN?"
+    setter: "ILIN {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "Out"
+          "1": "Line"
+          "2": "2×Line"
+          "3": "Both"
+    returns:
+      type: int
+    description: "Line notch filter status"
+
+  sensitivity:
+    getter: "SENS?"
+    setter: "SENS {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 26
+    returns:
+      type: int
+    description: "Sensitivity (0=2nV to 26=1V full scale)"
+
+  reserve_mode:
+    getter: "RMOD?"
+    setter: "RMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "High Reserve"
+          "1": "Normal"
+          "2": "Low Noise"
+    returns:
+      type: int
+    description: "Dynamic reserve mode"
+
+  time_constant:
+    getter: "OFLT?"
+    setter: "OFLT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 19
+    returns:
+      type: int
+    description: "Time constant (0=10µs to 19=30ks)"
+
+  filter_slope:
+    getter: "OFSL?"
+    setter: "OFSL {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "6 dB/oct"
+          "1": "12 dB/oct"
+          "2": "18 dB/oct"
+          "3": "24 dB/oct"
+    returns:
+      type: int
+    description: "Low pass filter slope"
+
+  sync_filter:
+    getter: "SYNC?"
+    setter: "SYNC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On below 200 Hz"
+    returns:
+      type: int
+    description: "Synchronous filter status"
+
+  display_config:
+    getter: "DDEF? {channel}"
+    setter: "DDEF {channel},{display},{ratio}"
+    type: property
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+      display:
+        type: int
+        min: 0
+        max: 4
+      ratio:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: string
+    description: "Set display configuration (CH1 or CH2)"
+
+  output_source:
+    getter: "FPOP? {channel}"
+    setter: "FPOP {channel},{source}"
+    type: property
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+      source:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Front panel output source (0=Display, 1=X or Y)"
+
+  output_expand:
+    getter: "OEXP? {param}"
+    setter: "OEXP {param},{offset},{expand}"
+    type: property
+    params:
+      param:
+        type: int
+        options: ["1", "2", "3"]
+      offset:
+        type: float
+        unit: "%"
+        min: -105.0
+        max: 105.0
+      expand:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: string
+    description: "Set offset and expand for X(1), Y(2), or R(3)"
+
+  auto_offset:
+    scpi: "AOFF {param}"
+    type: write
+    params:
+      param:
+        type: int
+        options: ["1", "2", "3"]
+    description: "Auto offset X(1), Y(2), or R(3)"
+
+  query_aux_input:
+    scpi: "OAUX? {input}"
+    type: query
+    params:
+      input:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Query Aux Input voltage (1-4)"
+
+  aux_output:
+    getter: "AUXV? {output}"
+    setter: "AUXV {output},{voltage}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      voltage:
+        type: float
+        unit: V
+        min: -10.5
+        max: 10.5
+    returns:
+      type: float
+      unit: V
+    description: "Aux Output voltage (1-4)"
+
+  output_interface:
+    getter: "OUTX?"
+    setter: "OUTX {interface}"
+    type: property
+    params:
+      interface:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "RS232"
+          "1": "GPIB"
+    returns:
+      type: int
+    description: "Output interface selection"
+
+  override_remote:
+    getter: "OVRM?"
+    setter: "OVRM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Override remote (disable front panel lockout)"
+
+  key_click:
+    getter: "KCLK?"
+    setter: "KCLK {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Key click on/off"
+
+  alarm:
+    getter: "ALRM?"
+    setter: "ALRM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Alarm on/off"
+
+  save_settings:
+    scpi: "SSET {buffer}"
+    type: write
+    params:
+      buffer:
+        type: int
+        min: 1
+        max: 9
+    description: "Save current setup to buffer (1-9)"
+
+  recall_settings:
+    scpi: "RSET {buffer}"
+    type: write
+    params:
+      buffer:
+        type: int
+        min: 1
+        max: 9
+    description: "Recall setup from buffer (1-9)"
+
+  auto_gain:
+    scpi: "AGAN"
+    type: write
+    description: "Perform auto gain function"
+
+  auto_reserve:
+    scpi: "ARSV"
+    type: write
+    description: "Perform auto reserve function"
+
+  auto_phase:
+    scpi: "APHS"
+    type: write
+    description: "Perform auto phase function"
+
+  sample_rate:
+    getter: "SRAT?"
+    setter: "SRAT {rate}"
+    type: property
+    params:
+      rate:
+        type: int
+        min: 0
+        max: 14
+    returns:
+      type: int
+    description: "Data sample rate (0=62.5mHz to 13=512Hz, 14=Trigger)"
+
+  scan_mode:
+    getter: "SEND?"
+    setter: "SEND {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "1 Shot"
+          "1": "Loop"
+    returns:
+      type: int
+    description: "End of buffer mode"
+
+  trigger:
+    scpi: "TRIG"
+    type: write
+    description: "Software trigger"
+
+  trigger_start:
+    getter: "TSTR?"
+    setter: "TSTR {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Trigger starts scan"
+
+  start_scan:
+    scpi: "STRT"
+    type: write
+    description: "Start or resume data storage"
+
+  pause_scan:
+    scpi: "PAUS"
+    type: write
+    description: "Pause data storage"
+
+  reset_scan:
+    scpi: "REST"
+    type: write
+    description: "Reset data buffers"
+
+  query_output:
+    scpi: "OUTP? {param}"
+    type: query
+    params:
+      param:
+        type: int
+        options: ["1", "2", "3", "4"]
+    returns:
+      type: float
+    description: "Query X(1), Y(2), R(3), or θ(4)"
+
+  query_display:
+    scpi: "OUTR? {channel}"
+    type: query
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: float
+    description: "Query CH1(1) or CH2(2) display value"
+
+  snap:
+    scpi: "SNAP? {p1},{p2}"
+    type: query
+    params:
+      p1:
+        type: int
+        min: 1
+        max: 11
+      p2:
+        type: int
+        min: 1
+        max: 11
+    returns:
+      type: string
+    description: "Snapshot 2-6 parameters simultaneously"
+
+  query_points:
+    scpi: "SPTS?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of data points stored"
+
+  read_trace_ascii:
+    scpi: "TRCA? {channel},{start},{count}"
+    type: query
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+      start:
+        type: int
+        min: 0
+      count:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: "Read trace data in ASCII format"
+
+  read_trace_binary:
+    scpi: "TRCB? {channel},{start},{count}"
+    type: query
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+      start:
+        type: int
+        min: 0
+      count:
+        type: int
+        min: 1
+    returns:
+      type: binary
+      format: "IEEE"
+    description: "Read trace data in IEEE binary format"
+
+  read_trace_lia:
+    scpi: "TRCL? {channel},{start},{count}"
+    type: query
+    params:
+      channel:
+        type: int
+        options: ["1", "2"]
+      start:
+        type: int
+        min: 0
+      count:
+        type: int
+        min: 1
+    returns:
+      type: binary
+      format: "LIA"
+    description: "Read trace data in LIA binary format"
+
+  fast_mode:
+    getter: "FAST?"
+    setter: "FAST {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "Off"
+          "1": "On (DOS)"
+          "2": "On (Windows)"
+    returns:
+      type: int
+    description: "Fast data transfer mode"
+
+  start_scan_delayed:
+    scpi: "STRD"
+    type: write
+    description: "Start scan after 0.5 second delay (for FAST mode)"
+
+  system_reset:
+    scpi: "ERST"
+    type: write
+    description: "Reset to default configurations"
+
+  device_identify:
+    scpi: "EIDN?"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification string"
+
+  local_remote:
+    getter: "LOCL?"
+    setter: "LOCL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "Local"
+          "1": "Remote"
+          "2": "Local Lockout"
+    returns:
+      type: int
+    description: "Local/remote state"
+
+  clear_all_status:
+    scpi: "ECLS"
+    type: write
+    description: "Clear all status registers"
+
+  standard_event_enable:
+    getter: "EESE?"
+    setter: "EESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Standard event status enable register"
+
+  standard_event_status:
+    scpi: "EESR?"
+    type: query
+    returns:
+      type: int
+    description: "Query standard event status register"
+
+  serial_poll_enable:
+    getter: "ESRE?"
+    setter: "ESRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Serial poll enable register"
+
+  serial_poll_status:
+    scpi: "ESTB?"
+    type: query
+    returns:
+      type: int
+    description: "Query serial poll status byte"
+
+  power_on_clear:
+    getter: "EPSC?"
+    setter: "EPSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Power-on status clear bit"
+
+  error_enable:
+    getter: "ERRE?"
+    setter: "ERRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Error status enable register"
+
+  error_status:
+    scpi: "ERRS?"
+    type: query
+    returns:
+      type: int
+    description: "Query error status byte"
+
+  lia_enable:
+    getter: "LIAE?"
+    setter: "LIAE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "LIA status enable register"
+
+  lia_status:
+    scpi: "LIAS?"
+    type: query
+    returns:
+      type: int
+    description: "Query LIA status byte"
+
+sequences:
+  measure_x_y:
+    description: "Measure X and Y simultaneously"
+    steps:
+      - command: snap
+        args:
+          p1: "1"
+          p2: "2"
+        capture: result
+    returns: result
+
+  measure_r_theta:
+    description: "Measure R and θ simultaneously"
+    steps:
+      - command: snap
+        args:
+          p1: "3"
+          p2: "4"
+        capture: result
+    returns: result
+
+  quick_setup:
+    description: "Quick setup for basic measurements"
+    params:
+      ref_freq:
+        type: float
+        unit: Hz
+        default: 1000
+      sens_index:
+        type: int
+        default: 19
+      tc_index:
+        type: int
+        default: 9
+    steps:
+      - command: system_reset
+      - command: reference_source
+        args:
+          mode: "1"
+      - command: frequency
+        args:
+          value: "{ref_freq}"
+      - command: sensitivity
+        args:
+          value: "{sens_index}"
+      - command: time_constant
+        args:
+          value: "{tc_index}"
+      - command: filter_slope
+        args:
+          slope: "3"
+
+status:
+  stb:
+    bit0: SCN
+    bit1: IFC
+    bit2: ERR
+    bit3: LIA
+    bit4: MAV
+    bit5: ESB
+    bit6: SRQ
+  esr:
+    bit0: INP
+    bit2: QRY
+    bit4: EXE
+    bit5: CMD
+    bit6: URQ
+    bit7: PON

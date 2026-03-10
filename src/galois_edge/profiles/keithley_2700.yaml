@@ -1,0 +1,2031 @@
+instrument:
+  manufacturer: Keithley
+  model: "2700"
+  class: daq
+  description: Multimeter/Data Acquisition System with 2-slot switching capability
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY.*2700"
+
+interfaces:
+  - type: gpib
+    default_address: 16
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: Reset instrument to *RST default conditions
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: Clear all event registers and error queue
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: Query instrument identification
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: Set OPC bit in Standard Event Register after all pending operations complete
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: Return 1 to output queue when all pending operations complete
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: Perform self-test and return result (0 = pass, 1 = fail)
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: Wait until all previous commands are executed
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: Send bus trigger to instrument
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 3
+    description: Save present setup to memory location (0-3)
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 3
+    description: Recall setup from memory location (0-3)
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Event status enable register
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: Read and clear event status register
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Service request enable register
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: Read status byte register
+
+  option_query:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: Returns model numbers of installed switching modules
+
+  # SENSe - Measurement Configuration
+  sense_function:
+    getter: ":SENS:FUNC?"
+    setter: ":SENS:FUNC \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLT:DC", "VOLT:AC", "CURR:DC", "CURR:AC", "RES", "FRES", "TEMP", "FREQ", "PER", "CONT"]
+    returns:
+      type: string
+    description: Select measurement function
+
+  data_latest:
+    scpi: ":SENS:DATA:LAT?"
+    type: query
+    returns:
+      type: float
+    description: Return the last reading
+    streamable: true
+
+  data_fresh:
+    scpi: ":SENS:DATA:FRES?"
+    type: query
+    returns:
+      type: float
+    description: Return the last fresh reading
+    streamable: true
+
+  # Voltage DC Configuration
+  voltage_dc_range:
+    getter: ":SENS:VOLT:DC:RANG?"
+    setter: ":SENS:VOLT:DC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 1010
+    returns:
+      type: float
+      unit: V
+    description: DC voltage measurement range
+
+  voltage_dc_range_auto:
+    getter: ":SENS:VOLT:DC:RANG:AUTO?"
+    setter: ":SENS:VOLT:DC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC voltage auto-ranging
+
+  voltage_dc_nplc:
+    getter: ":SENS:VOLT:DC:NPLC?"
+    setter: ":SENS:VOLT:DC:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: DC voltage integration rate in power line cycles
+
+  voltage_dc_aperture:
+    getter: ":SENS:VOLT:DC:APER?"
+    setter: ":SENS:VOLT:DC:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: DC voltage integration rate in seconds
+
+  voltage_dc_digits:
+    getter: ":SENS:VOLT:DC:DIG?"
+    setter: ":SENS:VOLT:DC:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: DC voltage measurement resolution in digits
+
+  voltage_dc_reference:
+    getter: ":SENS:VOLT:DC:REF?"
+    setter: ":SENS:VOLT:DC:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1010
+        max: 1010
+    returns:
+      type: float
+      unit: V
+    description: DC voltage relative reference value
+
+  voltage_dc_reference_state:
+    getter: ":SENS:VOLT:DC:REF:STAT?"
+    setter: ":SENS:VOLT:DC:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC voltage relative
+
+  voltage_dc_reference_acquire:
+    scpi: ":SENS:VOLT:DC:REF:ACQ"
+    type: write
+    description: Use input signal as DC voltage relative reference
+
+  voltage_dc_filter_state:
+    getter: ":SENS:VOLT:DC:AVER:STAT?"
+    setter: ":SENS:VOLT:DC:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC voltage filter
+
+  voltage_dc_filter_type:
+    getter: ":SENS:VOLT:DC:AVER:TCON?"
+    setter: ":SENS:VOLT:DC:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: DC voltage filter type (moving or repeat)
+
+  voltage_dc_filter_count:
+    getter: ":SENS:VOLT:DC:AVER:COUN?"
+    setter: ":SENS:VOLT:DC:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: DC voltage filter count
+
+  voltage_dc_filter_window:
+    getter: ":SENS:VOLT:DC:AVER:WIND?"
+    setter: ":SENS:VOLT:DC:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: DC voltage filter window in percent of range
+
+  voltage_dc_input_divider:
+    getter: ":SENS:VOLT:DC:IDIV?"
+    setter: ":SENS:VOLT:DC:IDIV {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 10MΩ input divider for DCV
+
+  # Voltage AC Configuration
+  voltage_ac_range:
+    getter: ":SENS:VOLT:AC:RANG?"
+    setter: ":SENS:VOLT:AC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 757.5
+    returns:
+      type: float
+      unit: V
+    description: AC voltage measurement range
+
+  voltage_ac_range_auto:
+    getter: ":SENS:VOLT:AC:RANG:AUTO?"
+    setter: ":SENS:VOLT:AC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC voltage auto-ranging
+
+  voltage_ac_nplc:
+    getter: ":SENS:VOLT:AC:NPLC?"
+    setter: ":SENS:VOLT:AC:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: AC voltage integration rate in power line cycles
+
+  voltage_ac_aperture:
+    getter: ":SENS:VOLT:AC:APER?"
+    setter: ":SENS:VOLT:AC:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: AC voltage integration rate in seconds
+
+  voltage_ac_digits:
+    getter: ":SENS:VOLT:AC:DIG?"
+    setter: ":SENS:VOLT:AC:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 6
+    returns:
+      type: int
+    description: AC voltage measurement resolution in digits
+
+  voltage_ac_reference:
+    getter: ":SENS:VOLT:AC:REF?"
+    setter: ":SENS:VOLT:AC:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -757.5
+        max: 757.5
+    returns:
+      type: float
+      unit: V
+    description: AC voltage relative reference value
+
+  voltage_ac_reference_state:
+    getter: ":SENS:VOLT:AC:REF:STAT?"
+    setter: ":SENS:VOLT:AC:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC voltage relative
+
+  voltage_ac_reference_acquire:
+    scpi: ":SENS:VOLT:AC:REF:ACQ"
+    type: write
+    description: Use input signal as AC voltage relative reference
+
+  voltage_ac_filter_state:
+    getter: ":SENS:VOLT:AC:AVER:STAT?"
+    setter: ":SENS:VOLT:AC:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC voltage filter
+
+  voltage_ac_filter_type:
+    getter: ":SENS:VOLT:AC:AVER:TCON?"
+    setter: ":SENS:VOLT:AC:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: AC voltage filter type
+
+  voltage_ac_filter_count:
+    getter: ":SENS:VOLT:AC:AVER:COUN?"
+    setter: ":SENS:VOLT:AC:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: AC voltage filter count
+
+  voltage_ac_filter_window:
+    getter: ":SENS:VOLT:AC:AVER:WIND?"
+    setter: ":SENS:VOLT:AC:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: AC voltage filter window
+
+  voltage_ac_bandwidth:
+    getter: ":SENS:VOLT:AC:DET:BAND?"
+    setter: ":SENS:VOLT:AC:DET:BAND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+        default: 30
+    returns:
+      type: float
+      unit: Hz
+    description: AC voltage detector bandwidth
+
+  # Current DC Configuration
+  current_dc_range:
+    getter: ":SENS:CURR:DC:RANG?"
+    setter: ":SENS:CURR:DC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 3.1
+    returns:
+      type: float
+      unit: A
+    description: DC current measurement range
+
+  current_dc_range_auto:
+    getter: ":SENS:CURR:DC:RANG:AUTO?"
+    setter: ":SENS:CURR:DC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC current auto-ranging
+
+  current_dc_nplc:
+    getter: ":SENS:CURR:DC:NPLC?"
+    setter: ":SENS:CURR:DC:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: DC current integration rate in power line cycles
+
+  current_dc_aperture:
+    getter: ":SENS:CURR:DC:APER?"
+    setter: ":SENS:CURR:DC:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: DC current integration rate in seconds
+
+  current_dc_digits:
+    getter: ":SENS:CURR:DC:DIG?"
+    setter: ":SENS:CURR:DC:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: DC current measurement resolution in digits
+
+  current_dc_reference:
+    getter: ":SENS:CURR:DC:REF?"
+    setter: ":SENS:CURR:DC:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -3.1
+        max: 3.1
+    returns:
+      type: float
+      unit: A
+    description: DC current relative reference value
+
+  current_dc_reference_state:
+    getter: ":SENS:CURR:DC:REF:STAT?"
+    setter: ":SENS:CURR:DC:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC current relative
+
+  current_dc_reference_acquire:
+    scpi: ":SENS:CURR:DC:REF:ACQ"
+    type: write
+    description: Use input signal as DC current relative reference
+
+  current_dc_filter_state:
+    getter: ":SENS:CURR:DC:AVER:STAT?"
+    setter: ":SENS:CURR:DC:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable DC current filter
+
+  current_dc_filter_type:
+    getter: ":SENS:CURR:DC:AVER:TCON?"
+    setter: ":SENS:CURR:DC:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: DC current filter type
+
+  current_dc_filter_count:
+    getter: ":SENS:CURR:DC:AVER:COUN?"
+    setter: ":SENS:CURR:DC:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: DC current filter count
+
+  current_dc_filter_window:
+    getter: ":SENS:CURR:DC:AVER:WIND?"
+    setter: ":SENS:CURR:DC:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: DC current filter window
+
+  # Current AC Configuration
+  current_ac_range:
+    getter: ":SENS:CURR:AC:RANG?"
+    setter: ":SENS:CURR:AC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 3.1
+    returns:
+      type: float
+      unit: A
+    description: AC current measurement range
+
+  current_ac_range_auto:
+    getter: ":SENS:CURR:AC:RANG:AUTO?"
+    setter: ":SENS:CURR:AC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC current auto-ranging
+
+  current_ac_nplc:
+    getter: ":SENS:CURR:AC:NPLC?"
+    setter: ":SENS:CURR:AC:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: AC current integration rate in power line cycles
+
+  current_ac_aperture:
+    getter: ":SENS:CURR:AC:APER?"
+    setter: ":SENS:CURR:AC:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: AC current integration rate in seconds
+
+  current_ac_digits:
+    getter: ":SENS:CURR:AC:DIG?"
+    setter: ":SENS:CURR:AC:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 6
+    returns:
+      type: int
+    description: AC current measurement resolution in digits
+
+  current_ac_reference:
+    getter: ":SENS:CURR:AC:REF?"
+    setter: ":SENS:CURR:AC:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -3.1
+        max: 3.1
+    returns:
+      type: float
+      unit: A
+    description: AC current relative reference value
+
+  current_ac_reference_state:
+    getter: ":SENS:CURR:AC:REF:STAT?"
+    setter: ":SENS:CURR:AC:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC current relative
+
+  current_ac_reference_acquire:
+    scpi: ":SENS:CURR:AC:REF:ACQ"
+    type: write
+    description: Use input signal as AC current relative reference
+
+  current_ac_filter_state:
+    getter: ":SENS:CURR:AC:AVER:STAT?"
+    setter: ":SENS:CURR:AC:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable AC current filter
+
+  current_ac_filter_type:
+    getter: ":SENS:CURR:AC:AVER:TCON?"
+    setter: ":SENS:CURR:AC:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: AC current filter type
+
+  current_ac_filter_count:
+    getter: ":SENS:CURR:AC:AVER:COUN?"
+    setter: ":SENS:CURR:AC:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: AC current filter count
+
+  current_ac_filter_window:
+    getter: ":SENS:CURR:AC:AVER:WIND?"
+    setter: ":SENS:CURR:AC:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: AC current filter window
+
+  current_ac_bandwidth:
+    getter: ":SENS:CURR:AC:DET:BAND?"
+    setter: ":SENS:CURR:AC:DET:BAND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+        default: 30
+    returns:
+      type: float
+      unit: Hz
+    description: AC current detector bandwidth
+
+  # Resistance 2-Wire Configuration
+  resistance_range:
+    getter: ":SENS:RES:RANG?"
+    setter: ":SENS:RES:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 120000000
+    returns:
+      type: float
+      unit: Ohm
+    description: 2-wire resistance measurement range
+
+  resistance_range_auto:
+    getter: ":SENS:RES:RANG:AUTO?"
+    setter: ":SENS:RES:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 2-wire resistance auto-ranging
+
+  resistance_nplc:
+    getter: ":SENS:RES:NPLC?"
+    setter: ":SENS:RES:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: 2-wire resistance integration rate in power line cycles
+
+  resistance_aperture:
+    getter: ":SENS:RES:APER?"
+    setter: ":SENS:RES:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: 2-wire resistance integration rate in seconds
+
+  resistance_digits:
+    getter: ":SENS:RES:DIG?"
+    setter: ":SENS:RES:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: 2-wire resistance measurement resolution in digits
+
+  resistance_reference:
+    getter: ":SENS:RES:REF?"
+    setter: ":SENS:RES:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 120000000
+    returns:
+      type: float
+      unit: Ohm
+    description: 2-wire resistance relative reference value
+
+  resistance_reference_state:
+    getter: ":SENS:RES:REF:STAT?"
+    setter: ":SENS:RES:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 2-wire resistance relative
+
+  resistance_reference_acquire:
+    scpi: ":SENS:RES:REF:ACQ"
+    type: write
+    description: Use input signal as 2-wire resistance relative reference
+
+  resistance_filter_state:
+    getter: ":SENS:RES:AVER:STAT?"
+    setter: ":SENS:RES:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 2-wire resistance filter
+
+  resistance_filter_type:
+    getter: ":SENS:RES:AVER:TCON?"
+    setter: ":SENS:RES:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: 2-wire resistance filter type
+
+  resistance_filter_count:
+    getter: ":SENS:RES:AVER:COUN?"
+    setter: ":SENS:RES:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: 2-wire resistance filter count
+
+  resistance_filter_window:
+    getter: ":SENS:RES:AVER:WIND?"
+    setter: ":SENS:RES:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: 2-wire resistance filter window
+
+  # Resistance 4-Wire Configuration
+  fresistance_range:
+    getter: ":SENS:FRES:RANG?"
+    setter: ":SENS:FRES:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 120000000
+    returns:
+      type: float
+      unit: Ohm
+    description: 4-wire resistance measurement range
+
+  fresistance_range_auto:
+    getter: ":SENS:FRES:RANG:AUTO?"
+    setter: ":SENS:FRES:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 4-wire resistance auto-ranging
+
+  fresistance_nplc:
+    getter: ":SENS:FRES:NPLC?"
+    setter: ":SENS:FRES:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: 4-wire resistance integration rate in power line cycles
+
+  fresistance_aperture:
+    getter: ":SENS:FRES:APER?"
+    setter: ":SENS:FRES:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: 4-wire resistance integration rate in seconds
+
+  fresistance_digits:
+    getter: ":SENS:FRES:DIG?"
+    setter: ":SENS:FRES:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: 4-wire resistance measurement resolution in digits
+
+  fresistance_reference:
+    getter: ":SENS:FRES:REF?"
+    setter: ":SENS:FRES:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0
+        max: 120000000
+    returns:
+      type: float
+      unit: Ohm
+    description: 4-wire resistance relative reference value
+
+  fresistance_reference_state:
+    getter: ":SENS:FRES:REF:STAT?"
+    setter: ":SENS:FRES:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 4-wire resistance relative
+
+  fresistance_reference_acquire:
+    scpi: ":SENS:FRES:REF:ACQ"
+    type: write
+    description: Use input signal as 4-wire resistance relative reference
+
+  fresistance_filter_state:
+    getter: ":SENS:FRES:AVER:STAT?"
+    setter: ":SENS:FRES:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable 4-wire resistance filter
+
+  fresistance_filter_type:
+    getter: ":SENS:FRES:AVER:TCON?"
+    setter: ":SENS:FRES:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: 4-wire resistance filter type
+
+  fresistance_filter_count:
+    getter: ":SENS:FRES:AVER:COUN?"
+    setter: ":SENS:FRES:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: 4-wire resistance filter count
+
+  fresistance_filter_window:
+    getter: ":SENS:FRES:AVER:WIND?"
+    setter: ":SENS:FRES:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: 4-wire resistance filter window
+
+  fresistance_offset_compensated:
+    getter: ":SENS:FRES:OCOM?"
+    setter: ":SENS:FRES:OCOM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable offset-compensated ohms
+
+  # Temperature Configuration
+  temperature_transducer:
+    getter: ":SENS:TEMP:TRAN?"
+    setter: ":SENS:TEMP:TRAN {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["TC", "FRTD", "THER"]
+    returns:
+      type: string
+    description: Select temperature transducer type
+
+  temperature_nplc:
+    getter: ":SENS:TEMP:NPLC?"
+    setter: ":SENS:TEMP:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: Temperature integration rate in power line cycles
+
+  temperature_aperture:
+    getter: ":SENS:TEMP:APER?"
+    setter: ":SENS:TEMP:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000167
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: Temperature integration rate in seconds
+
+  temperature_digits:
+    getter: ":SENS:TEMP:DIG?"
+    setter: ":SENS:TEMP:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 6
+    returns:
+      type: int
+    description: Temperature measurement resolution in digits
+
+  temperature_reference:
+    getter: ":SENS:TEMP:REF?"
+    setter: ":SENS:TEMP:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: C
+        min: -328
+        max: 3310
+    returns:
+      type: float
+      unit: C
+    description: Temperature relative reference value
+
+  temperature_reference_state:
+    getter: ":SENS:TEMP:REF:STAT?"
+    setter: ":SENS:TEMP:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable temperature relative
+
+  temperature_reference_acquire:
+    scpi: ":SENS:TEMP:REF:ACQ"
+    type: write
+    description: Use input signal as temperature relative reference
+
+  temperature_filter_state:
+    getter: ":SENS:TEMP:AVER:STAT?"
+    setter: ":SENS:TEMP:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable temperature filter
+
+  temperature_filter_type:
+    getter: ":SENS:TEMP:AVER:TCON?"
+    setter: ":SENS:TEMP:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: Temperature filter type
+
+  temperature_filter_count:
+    getter: ":SENS:TEMP:AVER:COUN?"
+    setter: ":SENS:TEMP:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: Temperature filter count
+
+  temperature_filter_window:
+    getter: ":SENS:TEMP:AVER:WIND?"
+    setter: ":SENS:TEMP:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.1
+    returns:
+      type: float
+      unit: "%"
+    description: Temperature filter window
+
+  temperature_tcouple_type:
+    getter: ":SENS:TEMP:TC:TYPE?"
+    setter: ":SENS:TEMP:TC:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["J", "K", "T", "E", "R", "S", "B", "N"]
+    returns:
+      type: string
+    description: Thermocouple type
+
+  temperature_tcouple_open_detect:
+    getter: ":SENS:TEMP:TC:ODET?"
+    setter: ":SENS:TEMP:TC:ODET {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable thermocouple open detector
+
+  temperature_tcouple_rjunction_select:
+    getter: ":SENS:TEMP:TC:RJUN:RSEL?"
+    setter: ":SENS:TEMP:TC:RJUN:RSEL {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["SIM", "INT", "EXT"]
+    returns:
+      type: string
+    description: Select thermocouple reference junction type
+
+  temperature_tcouple_rjunction_simulated:
+    getter: ":SENS:TEMP:TC:RJUN:SIM?"
+    setter: ":SENS:TEMP:TC:RJUN:SIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: C
+        min: 0
+        max: 65
+        default: 23
+    returns:
+      type: float
+      unit: C
+    description: Simulated reference junction temperature
+
+  temperature_thermistor_type:
+    getter: ":SENS:TEMP:THER?"
+    setter: ":SENS:TEMP:THER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 1950
+        max: 10050
+        default: 5000
+    returns:
+      type: float
+      unit: Ohm
+    description: Thermistor type in ohms
+
+  temperature_frtd_type:
+    getter: ":SENS:TEMP:FRTD:TYPE?"
+    setter: ":SENS:TEMP:FRTD:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["PT100", "D100", "F100", "PT3916", "PT385", "USER"]
+    returns:
+      type: string
+    description: 4-wire RTD type
+
+  temperature_frtd_rzero:
+    getter: ":SENS:TEMP:FRTD:RZER?"
+    setter: ":SENS:TEMP:FRTD:RZER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 10000
+        default: 100
+    returns:
+      type: float
+    description: RTD R0 parameter for USER type
+
+  temperature_frtd_alpha:
+    getter: ":SENS:TEMP:FRTD:ALPH?"
+    setter: ":SENS:TEMP:FRTD:ALPH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 0.01
+        default: 0.00385
+    returns:
+      type: float
+    description: RTD alpha parameter for USER type
+
+  temperature_frtd_beta:
+    getter: ":SENS:TEMP:FRTD:BETA?"
+    setter: ":SENS:TEMP:FRTD:BETA {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 1.0
+        default: 0.111
+    returns:
+      type: float
+    description: RTD beta parameter for USER type
+
+  temperature_frtd_delta:
+    getter: ":SENS:TEMP:FRTD:DELT?"
+    setter: ":SENS:TEMP:FRTD:DELT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 5.0
+        default: 1.507
+    returns:
+      type: float
+    description: RTD delta parameter for USER type
+
+  # Frequency Configuration
+  frequency_aperture:
+    getter: ":SENS:FREQ:APER?"
+    setter: ":SENS:FREQ:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.01
+        max: 1.0
+        default: 1.0
+    returns:
+      type: float
+      unit: s
+    description: Frequency measurement gate time
+
+  frequency_digits:
+    getter: ":SENS:FREQ:DIG?"
+    setter: ":SENS:FREQ:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: Frequency measurement resolution in digits
+
+  frequency_reference:
+    getter: ":SENS:FREQ:REF?"
+    setter: ":SENS:FREQ:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0
+        max: 15000000
+    returns:
+      type: float
+      unit: Hz
+    description: Frequency relative reference value
+
+  frequency_reference_state:
+    getter: ":SENS:FREQ:REF:STAT?"
+    setter: ":SENS:FREQ:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable frequency relative
+
+  frequency_reference_acquire:
+    scpi: ":SENS:FREQ:REF:ACQ"
+    type: write
+    description: Use input signal as frequency relative reference
+
+  frequency_threshold_range:
+    getter: ":SENS:FREQ:THR:VOLT:RANG?"
+    setter: ":SENS:FREQ:THR:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 1010
+        default: 10
+    returns:
+      type: float
+      unit: V
+    description: Frequency threshold voltage range
+
+  # Period Configuration
+  period_aperture:
+    getter: ":SENS:PER:APER?"
+    setter: ":SENS:PER:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.01
+        max: 1.0
+        default: 1.0
+    returns:
+      type: float
+      unit: s
+    description: Period measurement gate time
+
+  period_digits:
+    getter: ":SENS:PER:DIG?"
+    setter: ":SENS:PER:DIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4
+        max: 7
+        default: 7
+    returns:
+      type: int
+    description: Period measurement resolution in digits
+
+  period_reference:
+    getter: ":SENS:PER:REF?"
+    setter: ":SENS:PER:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: Period relative reference value
+
+  period_reference_state:
+    getter: ":SENS:PER:REF:STAT?"
+    setter: ":SENS:PER:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable period relative
+
+  period_reference_acquire:
+    scpi: ":SENS:PER:REF:ACQ"
+    type: write
+    description: Use input signal as period relative reference
+
+  period_threshold_range:
+    getter: ":SENS:PER:THR:VOLT:RANG?"
+    setter: ":SENS:PER:THR:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 1010
+        default: 10
+    returns:
+      type: float
+      unit: V
+    description: Period threshold voltage range
+
+  # Continuity Configuration
+  continuity_threshold:
+    getter: ":SENS:CONT:THR?"
+    setter: ":SENS:CONT:THR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 1000
+        default: 10
+    returns:
+      type: float
+      unit: Ohm
+    description: Continuity threshold resistance
+
+  # Hold Configuration
+  hold_state:
+    getter: ":SENS:HOLD:STAT?"
+    setter: ":SENS:HOLD:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable reading hold
+
+  hold_window:
+    getter: ":SENS:HOLD:WIND?"
+    setter: ":SENS:HOLD:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0.01
+        max: 20
+        default: 1
+    returns:
+      type: float
+      unit: "%"
+    description: Hold window in percent
+
+  hold_count:
+    getter: ":SENS:HOLD:COUN?"
+    setter: ":SENS:HOLD:COUN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 2
+        max: 100
+        default: 5
+    returns:
+      type: int
+    description: Hold count
+
+  # Channel Average and Ratio
+  channel_average_state:
+    getter: ":SENS:CAV:STAT?"
+    setter: ":SENS:CAV:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable channel average
+
+  channel_average_delay:
+    getter: ":SENS:CAV:DEL?"
+    setter: ":SENS:CAV:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 99999.999
+        default: 0.5
+    returns:
+      type: float
+      unit: s
+    description: Delay between two measurements for channel average
+
+  ratio_state:
+    getter: ":SENS:RAT:STAT?"
+    setter: ":SENS:RAT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable channel ratio
+
+  ratio_delay:
+    getter: ":SENS:RAT:DEL?"
+    setter: ":SENS:RAT:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 99999.999
+        default: 0.5
+    returns:
+      type: float
+      unit: s
+    description: Delay between two measurements for channel ratio
+
+  # CALCulate Math Functions
+  calculate_format:
+    getter: ":CALC:FORM?"
+    setter: ":CALC:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["NONE", "MXB", "PERC", "REC"]
+    returns:
+      type: string
+    description: Select math format (mX+b, percent, reciprocal, or none)
+
+  calculate_state:
+    getter: ":CALC:STAT?"
+    setter: ":CALC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable math calculation
+
+  calculate_kmath_mmfactor:
+    getter: ":CALC:KMAT:MMF?"
+    setter: ":CALC:KMAT:MMF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: 1
+    returns:
+      type: float
+    description: Set m factor for mX+b calculation
+
+  calculate_kmath_mbfactor:
+    getter: ":CALC:KMAT:MBF?"
+    setter: ":CALC:KMAT:MBF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: 0
+    returns:
+      type: float
+    description: Set b factor for mX+b calculation
+
+  calculate_kmath_munits:
+    getter: ":CALC:KMAT:MUN?"
+    setter: ":CALC:KMAT:MUN '{units}'"
+    type: property
+    params:
+      units:
+        type: string
+    returns:
+      type: string
+    description: Set units for mX+b calculation
+
+  calculate_kmath_percent:
+    getter: ":CALC:KMAT:PERC?"
+    setter: ":CALC:KMAT:PERC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: 1
+    returns:
+      type: float
+    description: Set target value for percent calculation
+
+  calculate_kmath_percent_acquire:
+    scpi: ":CALC:KMAT:PERC:ACQ"
+    type: write
+    description: Use input signal as percent calculation reference
+
+  calculate_data:
+    scpi: ":CALC:DATA?"
+    type: query
+    returns:
+      type: float
+    description: Read result of math calculation
+    streamable: true
+
+  # CALCulate2 Buffer Statistics
+  calculate2_format:
+    getter: ":CALC2:FORM?"
+    setter: ":CALC2:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["NONE", "MEAN", "SDEV", "MIN", "MAX", "PKPK"]
+    returns:
+      type: string
+    description: Select buffer statistic
+
+  calculate2_state:
+    getter: ":CALC2:STAT?"
+    setter: ":CALC2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable buffer statistic calculation
+
+  calculate2_immediate:
+    scpi: ":CALC2:IMM"
+    type: write
+    description: Recalculate raw input data in buffer
+
+  calculate2_immediate_query:
+    scpi: ":CALC2:IMM?"
+    type: query
+    returns:
+      type: float
+    description: Perform calculation and read result
+
+  calculate2_data:
+    scpi: ":CALC2:DATA?"
+    type: query
+    returns:
+      type: float
+    description: Read math result of buffer statistic
+
+  # CALCulate3 Limit Tests
+  limit1_upper:
+    getter: ":CALC3:LIM1:UPP?"
+    setter: ":CALC3:LIM1:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: 1
+    returns:
+      type: float
+    description: Set upper limit 1
+
+  limit1_lower:
+    getter: ":CALC3:LIM1:LOW?"
+    setter: ":CALC3:LIM1:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: -1
+    returns:
+      type: float
+    description: Set lower limit 1
+
+  limit1_state:
+    getter: ":CALC3:LIM1:STAT?"
+    setter: ":CALC3:LIM1:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable limit 1 test
+
+  limit1_fail:
+    scpi: ":CALC3:LIM1:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: Query limit 1 test result (1 = failing)
+
+  limit1_clear:
+    scpi: ":CALC3:LIM1:CLE"
+    type: write
+    description: Clear limit 1 fail indication
+
+  limit1_clear_auto:
+    getter: ":CALC3:LIM1:CLE:AUTO?"
+    setter: ":CALC3:LIM1:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable auto-clear for limit 1
+
+  limit2_upper:
+    getter: ":CALC3:LIM2:UPP?"
+    setter: ":CALC3:LIM2:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: 2
+    returns:
+      type: float
+    description: Set upper limit 2
+
+  limit2_lower:
+    getter: ":CALC3:LIM2:LOW?"
+    setter: ":CALC3:LIM2:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -4294967295
+        max: 4294967295
+        default: -2
+    returns:
+      type: float
+    description: Set lower limit 2
+
+  limit2_state:
+    getter: ":CALC3:LIM2:STAT?"
+    setter: ":CALC3:LIM2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable limit 2 test
+
+  limit2_fail:
+    scpi: ":CALC3:LIM2:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: Query limit 2 test result (1 = failing)
+
+  limit2_clear:
+    scpi: ":CALC3:LIM2:CLE"
+    type: write
+    description: Clear limit 2 fail indication
+
+  limit2_clear_auto:
+    getter: ":CALC3:LIM2:CLE:AUTO?"
+    setter: ":CALC3:LIM2:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable auto-clear for limit 2
+
+  limit_output_state:
+    getter: ":CALC3:OUTP:STAT?"
+    setter: ":CALC3:OUTP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable digital limit outputs
+
+  limit_output_lsense:
+    getter: ":CALC3:OUTP:LSEN?"
+    setter: ":CALC3:OUTP:LSEN {sense}"
+    type: property
+    params:
+      sense:
+        type: enum
+        options: ["AHIG", "ALOW"]
+    returns:
+      type: string
+    description: Set logic sense for limit outputs
+
+  limit_output_pulse_state:
+    getter: ":CALC3:OUTP:PULS:STAT?"
+    setter: ":CALC3:OUTP:PULS:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: Enable/disable limit output pulsing
+
+  limit_output_pulse_time:
+    getter: ":CALC3:OUTP:PULS:TIME?"
+    setter: ":CALC3:OUTP:PULS:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.001
+        max: 99999.999
+        default: 0.002
+    returns:
+      type: float
+      unit: s
+    description: Set limit output pulse time in seconds

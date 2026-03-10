@@ -1,0 +1,24 @@
+# NI USB 6218 Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: NI_USB_6218
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "NI"
+  model: "USB 6218"
+  class: instrument
+  description: "NI USB 6218"
+
+identity:
+  query: "*IDN?"
+  pattern: "NI.*USB\ 6218"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+

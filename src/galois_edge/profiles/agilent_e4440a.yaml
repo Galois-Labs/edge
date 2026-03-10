@@ -1,0 +1,476 @@
+instrument:
+  manufacturer: "Agilent"
+  model: "PSA/ESA Series"
+  class: spectrum_analyzer
+  description: "Spectrum Analyzer with One-Button Power Measurements"
+
+identity:
+  query: "*IDN?"
+  pattern: "Agilent Technologies,(PSA|ESA|E44[0-9]{2}[A-Z]?|E740[0-9][A-Z]?)"
+
+interfaces:
+  - type: gpib
+    default_address: 18
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 10000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory preset"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  configure_spectrum_analyzer:
+    scpi: ":CONFigure:SANalyzer"
+    type: write
+    description: "Configure for spectrum analyzer mode"
+
+  configure_channel_power:
+    scpi: ":CONFigure:CHPower"
+    type: write
+    description: "Configure for channel power measurement"
+
+  configure_occupied_bandwidth:
+    scpi: ":CONFigure:OBW"
+    type: write
+    description: "Configure for occupied bandwidth measurement"
+
+  configure_acp:
+    scpi: ":CONFigure:ACP"
+    type: write
+    description: "Configure for adjacent channel power measurement"
+
+  configure_multi_carrier_power:
+    scpi: ":CONFigure:MCP"
+    type: write
+    description: "Configure for multi-carrier power measurement"
+
+  configure_ccdf:
+    scpi: ":CONFigure:PSTatistic"
+    type: write
+    description: "Configure for CCDF measurement"
+
+  configure_harmonics:
+    scpi: ":CONFigure:HARMonics"
+    type: write
+    description: "Configure for harmonic distortion measurement"
+
+  configure_burst_power:
+    scpi: ":CONFigure:BPOWer"
+    type: write
+    description: "Configure for burst power measurement"
+
+  configure_toi:
+    scpi: ":CONFigure:TOI"
+    type: write
+    description: "Configure for third-order intermod measurement"
+
+  configure_sem:
+    scpi: ":CONFigure:SEMask"
+    type: write
+    description: "Configure for spectrum emission mask measurement"
+
+  configure_spurious:
+    scpi: ":CONFigure:SPURious"
+    type: write
+    description: "Configure for spurious emissions measurement"
+
+  current_measurement:
+    scpi: ":CONFigure?"
+    type: query
+    returns:
+      type: string
+    description: "Query current measurement configuration"
+
+  initiate_channel_power:
+    scpi: ":INITiate:CHPower"
+    type: write
+    description: "Initiate channel power measurement"
+
+  initiate_occupied_bandwidth:
+    scpi: ":INITiate:OBW"
+    type: write
+    description: "Initiate occupied bandwidth measurement"
+
+  initiate_acp:
+    scpi: ":INITiate:ACP"
+    type: write
+    description: "Initiate ACP measurement"
+
+  initiate_ccdf:
+    scpi: ":INITiate:PSTatistic"
+    type: write
+    description: "Initiate CCDF measurement"
+
+  initiate_harmonics:
+    scpi: ":INITiate:HARMonics"
+    type: write
+    description: "Initiate harmonic distortion measurement"
+
+  initiate_burst_power:
+    scpi: ":INITiate:BPOWer"
+    type: write
+    description: "Initiate burst power measurement"
+
+  initiate_toi:
+    scpi: ":INITiate:TOI"
+    type: write
+    description: "Initiate TOI measurement"
+
+  initiate_sem:
+    scpi: ":INITiate:SEMask"
+    type: write
+    description: "Initiate SEM measurement"
+
+  initiate_spurious:
+    scpi: ":INITiate:SPURious"
+    type: write
+    description: "Initiate spurious emissions measurement"
+
+  radio_standard:
+    getter: "[:SENSe]:RADio:STANdard[:SELect]?"
+    setter: "[:SENSe]:RADio:STANdard[:SELect] {standard}"
+    type: property
+    params:
+      standard:
+        type: enum
+        options:
+          - "NONE"
+          - "IS95a"
+          - "JSTD"
+          - "IS95C"
+          - "GSM"
+          - "W3GPP"
+          - "C2000MC1"
+          - "C2000DS"
+          - "C2000MC3"
+          - "NADC"
+          - "PDC"
+          - "BLUEtooth"
+          - "TETRa"
+          - "WL802DOT11A"
+          - "WL802DOT11B"
+          - "WL802DOT11G"
+          - "WL802DOT11N"
+          - "HIPERLAN2"
+          - "DVBTDLN"
+          - "DVBTGPN"
+          - "DVBTIPN"
+          - "FCC15"
+          - "SDMBSE"
+          - "UWBINDOOR"
+    returns:
+      type: string
+    description: "Select radio standard"
+
+  radio_standard_device:
+    getter: "[:SENSe]:RADio:STANdard:DEVice?"
+    setter: "[:SENSe]:RADio:STANdard:DEVice {device}"
+    type: property
+    params:
+      device:
+        type: enum
+        options: ["BTS", "MS"]
+    returns:
+      type: string
+    description: "Select base station or mobile station"
+
+  radio_standard_signal_bandwidth:
+    getter: "[:SENSe]:RADio:STANdard:SBWidth?"
+    setter: "[:SENSe]:RADio:STANdard:SBWidth {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set measurement bandwidth when no radio standard selected"
+
+  radio_standard_packet_type:
+    getter: "[:SENSe]:RADio:STANdard:PACKet?"
+    setter: "[:SENSe]:RADio:STANdard:PACKet {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["DH1", "DH3", "DH5"]
+    returns:
+      type: string
+    description: "Select Bluetooth packet type"
+
+  radio_standard_band_class:
+    getter: "[:SENSe]:RADio:STANdard:BAND:CLASs?"
+    setter: "[:SENSe]:RADio:STANdard:BAND:CLASs {class}"
+    type: property
+    params:
+      class:
+        type: enum
+        options: ["BC0", "BC1"]
+    returns:
+      type: string
+    description: "Select IS-95C band class"
+
+  optimize_reference_level:
+    scpi: "[:SENSe]:POWer[:RF]:RANGe:AUTO ONCE"
+    type: write
+    description: "Optimize reference level and attenuation"
+
+  chpower_integration_bandwidth:
+    getter: "[:SENSe]:CHPower:BANDwidth|BWIDth:INTegration?"
+    setter: "[:SENSe]:CHPower:BANDwidth|BWIDth:INTegration {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 100
+        max: 500000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Channel power integration bandwidth"
+
+  chpower_span:
+    getter: "[:SENSe]:CHPower:FREQuency:SPAN?"
+    setter: "[:SENSe]:CHPower:FREQuency:SPAN {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Channel power measurement span"
+
+  chpower_average_count:
+    getter: "[:SENSe]:CHPower:AVERage:COUNt?"
+    setter: "[:SENSe]:CHPower:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1000
+    returns:
+      type: int
+    description: "Channel power averaging count"
+
+  chpower_average_state:
+    getter: "[:SENSe]:CHPower:AVERage[:STATe]?"
+    setter: "[:SENSe]:CHPower:AVERage[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+        map:
+          "OFF": 0
+          "ON": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: bool
+    description: "Enable/disable channel power averaging"
+
+  chpower_average_type:
+    getter: "[:SENSe]:CHPower:AVERage:TCONrol?"
+    setter: "[:SENSe]:CHPower:AVERage:TCONrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EXPonential", "REPeat"]
+    returns:
+      type: string
+    description: "Channel power averaging mode"
+
+  chpower_rrc_filter_state:
+    getter: "[:SENSe]:CHPower:FILTer[:RRC][:STATe]?"
+    setter: "[:SENSe]:CHPower:FILTer[:RRC][:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "0", "1"]
+    returns:
+      type: bool
+    description: "Enable/disable RRC filter for channel power"
+
+  chpower_rrc_filter_alpha:
+    getter: "[:SENSe]:CHPower:FILTer[:RRC]:ALPHA?"
+    setter: "[:SENSe]:CHPower:FILTer[:RRC]:ALPHA {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 1.0
+    returns:
+      type: float
+    description: "RRC filter alpha (rolloff factor)"
+
+  measure_channel_power:
+    scpi: ":MEASure:CHPower?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure channel power and density"
+
+  read_channel_power:
+    scpi: ":READ:CHPower?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate and read channel power"
+
+  fetch_channel_power:
+    scpi: ":FETCh:CHPower?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch channel power results"
+
+  fetch_channel_power_value:
+    scpi: ":FETCh:CHPower:CHPower?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Fetch channel power value"
+
+  fetch_channel_power_density:
+    scpi: ":FETCh:CHPower:DENSity?"
+    type: query
+    returns:
+      type: float
+      unit: dBm/Hz
+    description: "Fetch power spectral density"
+
+  toi_span:
+    getter: "[:SENSe]:TOIN:FREQuency:SPAN?"
+    setter: "[:SENSe]:TOIN:FREQuency:SPAN {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "TOI measurement span"

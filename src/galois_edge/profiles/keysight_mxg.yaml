@@ -1,0 +1,706 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "X-Series"
+  class: rf_source
+  description: "CXG, EXG, and MXG X-Series Signal Generators with Vector Modulation"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEYSIGHT.*(CXG|EXG|MXG|N51[67][0-9])"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state"
+
+  # Power Subsystem
+  power_alc_bandwidth:
+    getter: ":POW:ALC:BAND?"
+    setter: ":POW:ALC:BAND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 200
+        max: 100000
+    returns:
+      type: float
+      unit: Hz
+    description: "ALC bandwidth"
+
+  power_alc_bandwidth_auto:
+    getter: ":POW:ALC:BAND:AUTO?"
+    setter: ":POW:ALC:BAND:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "ALC bandwidth auto mode"
+
+  power_alc_level:
+    getter: ":POW:ALC:LEV?"
+    setter: ":POW:ALC:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -20
+        max: 20
+    returns:
+      type: float
+      unit: dB
+    description: "ALC level"
+
+  power_alc_search:
+    getter: ":POW:ALC:SEAR?"
+    setter: ":POW:ALC:SEAR {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0", "ONCE"]
+    returns:
+      type: string
+    description: "Power search mode"
+
+  power_alc_search_reference:
+    getter: ":POW:ALC:SEAR:REF?"
+    setter: ":POW:ALC:SEAR:REF {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["RMS", "FIX", "MAN", "MOD"]
+    returns:
+      type: string
+    description: "Power search reference mode"
+
+  power_alc_search_reference_level:
+    getter: ":POW:ALC:SEAR:REF:LEV?"
+    setter: ":POW:ALC:SEAR:REF:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 1.414
+    returns:
+      type: float
+      unit: V
+    description: "Manual power search level"
+
+  power_alc_state:
+    getter: ":POW:ALC?"
+    setter: ":POW:ALC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "ALC state"
+
+  power_amplitude:
+    getter: ":POW?"
+    setter: ":POW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "RF output power"
+
+  power_offset:
+    getter: ":POW:OFFS?"
+    setter: ":POW:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: dB
+    description: "Power offset"
+
+  power_attenuation:
+    getter: ":POW:ATT?"
+    setter: ":POW:ATT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: 0
+        max: 130
+    returns:
+      type: float
+      unit: dB
+    description: "Attenuator level"
+
+  power_attenuation_auto:
+    getter: ":POW:ATT:AUTO?"
+    setter: ":POW:ATT:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Attenuator auto mode"
+
+  power_mode:
+    getter: ":POW:MODE?"
+    setter: ":POW:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIX", "LIST"]
+    returns:
+      type: string
+    description: "Power mode (fixed or sweep)"
+
+  power_reference:
+    getter: ":POW:REF?"
+    setter: ":POW:REF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -400
+        max: 300
+    returns:
+      type: float
+      unit: dBm
+    description: "Power reference level"
+
+  power_reference_state:
+    getter: ":POW:REF:STAT?"
+    setter: ":POW:REF:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Power reference state"
+
+  # Frequency Subsystem
+  frequency:
+    getter: ":FREQ?"
+    setter: ":FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Output frequency"
+
+  frequency_mode:
+    getter: ":FREQ:MODE?"
+    setter: ":FREQ:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CW", "LIST", "SWE"]
+    returns:
+      type: string
+    description: "Frequency mode"
+
+  frequency_offset:
+    getter: ":FREQ:OFFS?"
+    setter: ":FREQ:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency offset"
+
+  frequency_offset_state:
+    getter: ":FREQ:OFFS:STAT?"
+    setter: ":FREQ:OFFS:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Frequency offset state"
+
+  phase:
+    getter: ":PHAS?"
+    setter: ":PHAS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Phase adjustment"
+
+  phase_reference:
+    scpi: ":PHAS:REF"
+    type: write
+    description: "Set current phase as reference"
+
+  # Output Control
+  output_state:
+    getter: ":OUTP?"
+    setter: ":OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "RF output state"
+
+  output_modulation:
+    getter: ":OUTP:MOD?"
+    setter: ":OUTP:MOD {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Output modulation state"
+
+  # Pulse Modulation
+  pulse_modulation_state:
+    getter: ":PULM:STAT?"
+    setter: ":PULM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Pulse modulation state"
+
+  pulse_source:
+    getter: ":PULM:SOUR?"
+    setter: ":PULM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Pulse modulation source"
+
+  pulse_internal_source:
+    getter: ":PULM:SOUR:INT?"
+    setter: ":PULM:SOUR:INT {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["SQU", "FRUN", "TRIG", "ADOU", "DOUB", "GAT", "PTR"]
+    returns:
+      type: string
+    description: "Internal pulse source type"
+
+  pulse_frequency:
+    getter: ":PULM:INT:FREQ?"
+    setter: ":PULM:INT:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.1
+        max: 10000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Pulse frequency"
+
+  pulse_period:
+    getter: ":PULM:INT:PER?"
+    setter: ":PULM:INT:PER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 3e-8
+        max: 42
+    returns:
+      type: float
+      unit: s
+    description: "Pulse period"
+
+  pulse_width:
+    getter: ":PULM:INT:PWID?"
+    setter: ":PULM:INT:PWID {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2e-8
+    returns:
+      type: float
+      unit: s
+    description: "Pulse width"
+
+  pulse_delay:
+    getter: ":PULM:INT:DEL?"
+    setter: ":PULM:INT:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+    returns:
+      type: float
+      unit: s
+    description: "Pulse delay"
+
+  # Vector Modulation
+  iq_state:
+    getter: ":IQ:STAT?"
+    setter: ":IQ:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "I/Q modulation state"
+
+  iq_impairments_awgn_state:
+    getter: ":IQ:OUTP:IMP:AWGN?"
+    setter: ":IQ:OUTP:IMP:AWGN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "AWGN impairment state"
+
+  iq_impairments_awgn_bandwidth:
+    getter: ":IQ:OUTP:IMP:AWGN:BAND?"
+    setter: ":IQ:OUTP:IMP:AWGN:BAND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "AWGN bandwidth"
+
+  iq_impairments_awgn_snr:
+    getter: ":IQ:OUTP:IMP:AWGN:SNR?"
+    setter: ":IQ:OUTP:IMP:AWGN:SNR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -100
+        max: 100
+    returns:
+      type: float
+      unit: dB
+    description: "AWGN signal-to-noise ratio"
+
+  iq_impairments_phase_noise_state:
+    getter: ":IQ:OUTP:IMP:PHAS:NOIS?"
+    setter: ":IQ:OUTP:IMP:PHAS:NOIS {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Phase noise impairment state"
+
+  # ARB Commands
+  arb_state:
+    getter: ":RAD:ARB?"
+    setter: ":RAD:ARB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "ARB player state"
+
+  arb_waveform:
+    getter: ":RAD:ARB:WAV?"
+    setter: ":RAD:ARB:WAV {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select ARB waveform"
+
+  arb_sample_clock:
+    getter: ":RAD:ARB:SCL:RATE?"
+    setter: ":RAD:ARB:SCL:RATE {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "ARB sample clock rate"
+
+  arb_trigger_source:
+    getter: ":RAD:ARB:TRIG:SOUR?"
+    setter: ":RAD:ARB:TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["KEY", "EXT", "BUS"]
+    returns:
+      type: string
+    description: "ARB trigger source"
+
+  arb_trigger_type:
+    getter: ":RAD:ARB:TRIG:TYPE?"
+    setter: ":RAD:ARB:TRIG:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["CONT", "SING", "GATE", "SADV"]
+    returns:
+      type: string
+    description: "ARB trigger type"
+
+  # System Commands
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_preset:
+    scpi: ":SYST:PRES"
+    type: write
+    description: "System preset"
+
+  display_state:
+    getter: ":DISP?"
+    setter: ":DISP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Display state"
+
+  # Status Subsystem
+  status_questionable:
+    scpi: ":STAT:QUES?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable status"
+
+  status_operation:
+    scpi: ":STAT:OPER?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation status"
+
+sequences:
+  configure_cw_output:
+    description: "Configure continuous wave output"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+    steps:
+      - command: reset
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power_amplitude
+        args:
+          value: "{power}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  power_sweep:
+    description: "Perform power sweep"
+    params:
+      start_power:
+        type: float
+        unit: dBm
+      stop_power:
+        type: float
+        unit: dBm
+      frequency:
+        type: float
+        unit: Hz
+    steps:
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power_reference
+        args:
+          value: "{start_power}"
+      - scpi: ":POW:STOP {stop_power}"
+      - command: power_mode
+        args:
+          mode: "LIST"
+      - command: output_state
+        args:
+          state: "ON"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

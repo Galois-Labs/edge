@@ -1,0 +1,134 @@
+# HP 3478 Multimeter Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: HP_3478_Multimeter
+
+instrument:
+  manufacturer: "HP"
+  model: "3478 Multimeter"
+  class: multimeter
+  description: "HP 3478 Multimeter"
+
+identity:
+  query: "*IDN?"
+  pattern: "HP.*3478"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 2000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  function:
+    scpi: "F{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "5", "6", "3", "4"]
+    description: "Function"
+  voltage:
+    scpi: "T3"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Voltage"
+  current:
+    scpi: "T3"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Current"
+  resistance:
+    scpi: "T3"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance"
+  auto_zero:
+    scpi: "Z{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    description: "Auto-zero"
+  integration_time:
+    scpi: "N{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["5", "4", "3"]
+    description: "Integration time"
+  range_v_dc:
+    scpi: "R{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["A", "2", "1", "0", "-1", "-2"]
+    description: "Range (V_dc)"
+  range_v_ac:
+    scpi: "R{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["A", "2", "1", "0", "-1"]
+    description: "Range (V_ac)"
+  range_i:
+    scpi: "R{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["A", "0", "-1"]
+    description: "Range (I)"
+  range_r:
+    scpi: "R{value}"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["A", "7", "6", "5", "4", "3", "2", "1"]
+    description: "Range (R)"
+

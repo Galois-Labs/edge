@@ -1,0 +1,1077 @@
+instrument:
+  manufacturer: "Agilent"
+  model: "4155C/4156C"
+  class: parameter_analyzer
+  description: "Semiconductor Parameter Analyzer with multiple SMU/VMU/VSU/PGU units"
+
+identity:
+  query: "*IDN?"
+  pattern: "HEWLETT-PACKARD,415[56][C]"
+
+interfaces:
+  - type: gpib
+    default_address: 17
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit when all operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory"
+
+  # CALibration Commands
+  calibration_query:
+    scpi: ":CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Query calibration status"
+
+  calibration_auto:
+    getter: ":CAL:AUTO?"
+    setter: ":CAL:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto-calibration"
+
+  # Format Commands
+  format_data:
+    getter: ":FORM:DATA?"
+    setter: ":FORM:DATA {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL"]
+    returns:
+      type: string
+    description: "Data format for transfer"
+
+  format_border:
+    getter: ":FORM:BORD?"
+    setter: ":FORM:BORD {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORM", "SWAP"]
+    returns:
+      type: string
+    description: "Byte order for binary transfers"
+
+  # Display Commands
+  display_state:
+    getter: ":DISP?"
+    setter: ":DISP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display updates"
+
+  display_brightness:
+    getter: ":DISP:BRIG?"
+    setter: ":DISP:BRIG {intensity}"
+    type: property
+    params:
+      intensity:
+        type: float
+        min: 0.15
+        max: 1.0
+    returns:
+      type: float
+    description: "Display brightness (0.15-1.0)"
+
+  # Measurement Mode Selection
+  measurement_mode:
+    getter: ":PAGE:CHAN:MODE?"
+    setter: ":PAGE:CHAN:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SWE", "SAMP", "QSCV"]
+    returns:
+      type: string
+    description: "Measurement mode (sweep/sampling/QSCV)"
+
+  # SMU Configuration
+  smu_function:
+    getter: ":PAGE:CHAN:SMU{channel}:FUNC?"
+    setter: ":PAGE:CHAN:SMU{channel}:FUNC {function}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      function:
+        type: enum
+        options: ["VAR1", "VAR2", "VARD", "CONS"]
+    returns:
+      type: string
+    description: "SMU function (VAR1/VAR2/VARD/constant)"
+
+  smu_mode:
+    getter: ":PAGE:CHAN:SMU{channel}:MODE?"
+    setter: ":PAGE:CHAN:SMU{channel}:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      mode:
+        type: enum
+        options: ["V", "I", "VPUL", "IPUL", "COMM"]
+    returns:
+      type: string
+    description: "SMU output mode"
+
+  smu_voltage_name:
+    getter: ":PAGE:CHAN:SMU{channel}:VNAME?"
+    setter: ":PAGE:CHAN:SMU{channel}:VNAME {name}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      name:
+        type: string
+    returns:
+      type: string
+    description: "SMU voltage variable name"
+
+  smu_current_name:
+    getter: ":PAGE:CHAN:SMU{channel}:INAME?"
+    setter: ":PAGE:CHAN:SMU{channel}:INAME {name}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      name:
+        type: string
+    returns:
+      type: string
+    description: "SMU current variable name"
+
+  smu_standby:
+    getter: ":PAGE:CHAN:SMU{channel}:STAN?"
+    setter: ":PAGE:CHAN:SMU{channel}:STAN {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "SMU standby function enable"
+
+  smu_series_resistance:
+    getter: ":PAGE:CHAN:SMU{channel}:SRES?"
+    setter: ":PAGE:CHAN:SMU{channel}:SRES {resistance}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      resistance:
+        type: enum
+        options: ["0", "10000", "100000", "1000000"]
+    returns:
+      type: float
+      unit: Ohm
+    description: "SMU series resistance"
+
+  # Sweep Measurement Setup
+  sweep_var1_start:
+    getter: ":PAGE:MEAS:VAR1:START?"
+    setter: ":PAGE:MEAS:VAR1:START {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "VAR1 sweep start value"
+
+  sweep_var1_stop:
+    getter: ":PAGE:MEAS:VAR1:STOP?"
+    setter: ":PAGE:MEAS:VAR1:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "VAR1 sweep stop value"
+
+  sweep_var1_step:
+    getter: ":PAGE:MEAS:VAR1:STEP?"
+    setter: ":PAGE:MEAS:VAR1:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -400
+        max: 400
+    returns:
+      type: float
+    description: "VAR1 sweep step value"
+
+  sweep_var1_compliance:
+    getter: ":PAGE:MEAS:VAR1:COMP?"
+    setter: ":PAGE:MEAS:VAR1:COMP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "VAR1 compliance limit"
+
+  sweep_var1_mode:
+    getter: ":PAGE:MEAS:VAR1:MODE?"
+    setter: ":PAGE:MEAS:VAR1:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SING", "DOUB"]
+    returns:
+      type: string
+    description: "VAR1 sweep mode (single/double)"
+
+  sweep_var1_spacing:
+    getter: ":PAGE:MEAS:VAR1:SPAC?"
+    setter: ":PAGE:MEAS:VAR1:SPAC {spacing}"
+    type: property
+    params:
+      spacing:
+        type: enum
+        options: ["LIN", "L10", "L25", "L50"]
+    returns:
+      type: string
+    description: "VAR1 sweep spacing (linear/log)"
+
+  sweep_var2_start:
+    getter: ":PAGE:MEAS:VAR2:START?"
+    setter: ":PAGE:MEAS:VAR2:START {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "VAR2 sweep start value"
+
+  sweep_var2_step:
+    getter: ":PAGE:MEAS:VAR2:STEP?"
+    setter: ":PAGE:MEAS:VAR2:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -400
+        max: 400
+    returns:
+      type: float
+    description: "VAR2 sweep step value"
+
+  sweep_var2_points:
+    getter: ":PAGE:MEAS:VAR2:POIN?"
+    setter: ":PAGE:MEAS:VAR2:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 128
+    returns:
+      type: int
+    description: "VAR2 number of sweep steps"
+
+  sweep_constant_smu_source:
+    getter: ":PAGE:MEAS:CONS:SMU{channel}?"
+    setter: ":PAGE:MEAS:CONS:SMU{channel} {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "Constant SMU source value"
+
+  sweep_constant_smu_compliance:
+    getter: ":PAGE:MEAS:CONS:SMU{channel}:COMP?"
+    setter: ":PAGE:MEAS:CONS:SMU{channel}:COMP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "Constant SMU compliance"
+
+  sweep_delay:
+    getter: ":PAGE:MEAS:DEL?"
+    setter: ":PAGE:MEAS:DEL {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0
+        max: 65.535
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sweep delay time"
+
+  sweep_hold_time:
+    getter: ":PAGE:MEAS:HTIM?"
+    setter: ":PAGE:MEAS:HTIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0
+        max: 655.35
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sweep hold time"
+
+  # Integration Time Setup
+  integration_time_mode:
+    getter: ":PAGE:MEAS:MSET:ITIM?"
+    setter: ":PAGE:MEAS:MSET:ITIM {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SHOR", "LONG", "MED"]
+    returns:
+      type: string
+    description: "Integration time mode"
+
+  integration_time_short:
+    getter: ":PAGE:MEAS:MSET:ITIM:SHOR?"
+    setter: ":PAGE:MEAS:MSET:ITIM:SHOR {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0.00008
+        max: 0.00192
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Short integration time aperture"
+
+  integration_time_long:
+    getter: ":PAGE:MEAS:MSET:ITIM:LONG?"
+    setter: ":PAGE:MEAS:MSET:ITIM:LONG {nplc}"
+    type: property
+    params:
+      nplc:
+        type: int
+        min: 2
+        max: 100
+    returns:
+      type: int
+    description: "Long integration time in power line cycles"
+
+  # Measurement Range
+  measurement_range:
+    getter: ":PAGE:MEAS:MSET:SMU{channel}:RANG?"
+    setter: ":PAGE:MEAS:MSET:SMU{channel}:RANG {range}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      range:
+        type: float
+    returns:
+      type: float
+    description: "Measurement range for SMU"
+
+  measurement_range_mode:
+    getter: ":PAGE:MEAS:MSET:SMU{channel}:RANG:MODE?"
+    setter: ":PAGE:MEAS:MSET:SMU{channel}:RANG:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 6
+      mode:
+        type: enum
+        options: ["AUTO", "FIX", "LIM"]
+    returns:
+      type: string
+    description: "Range mode (auto/fixed/limited)"
+
+  # Sampling Measurement
+  sampling_mode:
+    getter: ":PAGE:MEAS:SAMP:MODE?"
+    setter: ":PAGE:MEAS:SAMP:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LIN", "L10", "L25", "L50", "THIN"]
+    returns:
+      type: string
+    description: "Sampling mode"
+
+  sampling_points:
+    getter: ":PAGE:MEAS:SAMP:POIN?"
+    setter: ":PAGE:MEAS:SAMP:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 10001
+    returns:
+      type: int
+    description: "Number of sampling points"
+
+  sampling_period:
+    getter: ":PAGE:MEAS:SAMP:PER?"
+    setter: ":PAGE:MEAS:SAMP:PER {period}"
+    type: property
+    params:
+      period:
+        type: float
+        min: 0.00006
+        max: 100000000000
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Total sampling time"
+
+  sampling_interval:
+    getter: ":PAGE:MEAS:SAMP:IINT?"
+    setter: ":PAGE:MEAS:SAMP:IINT {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        min: 0.00006
+        max: 65.535
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Initial sampling interval"
+
+  sampling_hold_time:
+    getter: ":PAGE:MEAS:SAMP:HTIM?"
+    setter: ":PAGE:MEAS:SAMP:HTIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0.03
+        max: 655.35
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sampling hold time"
+
+  # QSCV Measurement
+  qscv_var1_start:
+    getter: ":PAGE:MEAS:QSCV:VAR1:START?"
+    setter: ":PAGE:MEAS:QSCV:VAR1:START {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "QSCV VAR1 start voltage"
+
+  qscv_var1_stop:
+    getter: ":PAGE:MEAS:QSCV:VAR1:STOP?"
+    setter: ":PAGE:MEAS:QSCV:VAR1:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -200
+        max: 200
+    returns:
+      type: float
+    description: "QSCV VAR1 stop voltage"
+
+  qscv_var1_step:
+    getter: ":PAGE:MEAS:QSCV:VAR1:STEP?"
+    setter: ":PAGE:MEAS:QSCV:VAR1:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -400
+        max: 400
+    returns:
+      type: float
+    description: "QSCV VAR1 step voltage"
+
+  qscv_var1_cstep:
+    getter: ":PAGE:MEAS:QSCV:VAR1:CSTE?"
+    setter: ":PAGE:MEAS:QSCV:VAR1:CSTE {value}"
+    type: property
+    params:
+      value:
+        type: float
+        max: 10
+    returns:
+      type: float
+    description: "QSCV capacitance measurement voltage"
+
+  qscv_capacitance_integration:
+    getter: ":PAGE:MEAS:QSCV:CINT?"
+    setter: ":PAGE:MEAS:QSCV:CINT {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0.04
+        max: 400
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "QSCV capacitance integration time"
+
+  qscv_current_integration:
+    getter: ":PAGE:MEAS:QSCV:IINT?"
+    setter: ":PAGE:MEAS:QSCV:IINT {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0.02
+        max: 2
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "QSCV current integration time"
+
+  qscv_delay:
+    getter: ":PAGE:MEAS:QSCV:DEL?"
+    setter: ":PAGE:MEAS:QSCV:DEL {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0
+        max: 65.535
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "QSCV delay time"
+
+  qscv_hold_time:
+    getter: ":PAGE:MEAS:QSCV:HTIM?"
+    setter: ":PAGE:MEAS:QSCV:HTIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        min: 0
+        max: 655.35
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "QSCV hold time"
+
+  # Measurement Control
+  measurement_single:
+    scpi: ":PAGE:SCON:SING"
+    type: write
+    description: "Start single measurement"
+
+  measurement_repeat:
+    scpi: ":PAGE:SCON:REP"
+    type: write
+    description: "Start repeat measurement"
+
+  measurement_append:
+    scpi: ":PAGE:SCON:APP"
+    type: write
+    description: "Append measurement data"
+
+  measurement_stop:
+    scpi: ":PAGE:SCON:STOP"
+    type: write
+    description: "Stop measurement"
+
+  standby_state:
+    getter: ":PAGE:SCON:STAN?"
+    setter: ":PAGE:SCON:STAN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Standby state control"
+
+  measurement_state:
+    scpi: ":PAGE:SCON:STAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query measurement state (IDLE/STAN/MEAS/STR)"
+
+  zero_offset_cancel:
+    scpi: ":PAGE:SCON:ZERO"
+    type: write
+    description: "Measure zero offset for cancellation"
+
+  # Data Trace Commands
+  trace_catalog:
+    scpi: ":DATA:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "List all data variables"
+
+  trace_define:
+    scpi: ":DATA:DEF {name},{unit},{size}"
+    type: write
+    params:
+      name:
+        type: string
+      unit:
+        type: string
+      size:
+        type: int
+        min: 1
+        max: 10001
+    description: "Define user variable"
+
+  trace_data:
+    getter: ":DATA? {name}"
+    setter: ":DATA {name},{data}"
+    type: property
+    params:
+      name:
+        type: string
+      data:
+        type: string
+    returns:
+      type: array
+    description: "Set/get trace data"
+
+  trace_points:
+    getter: ":DATA:POIN? {name}"
+    setter: ":DATA:POIN {name},{size}"
+    type: property
+    params:
+      name:
+        type: string
+      size:
+        type: int
+        min: 1
+        max: 10001
+    returns:
+      type: int
+    description: "Resize user variable"
+
+  trace_unit:
+    getter: ":DATA:UNIT? {name}"
+    setter: ":DATA:UNIT {name},{unit}"
+    type: property
+    params:
+      name:
+        type: string
+      unit:
+        type: string
+    returns:
+      type: string
+    description: "Set/get variable unit"
+
+  # Memory Commands
+  memory_catalog:
+    scpi: ":MMEM:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "List files on mass storage"
+
+  memory_load_state:
+    scpi: ":MMEM:LOAD:STAT {location},{file}"
+    type: write
+    params:
+      location:
+        type: int
+      file:
+        type: string
+    description: "Load setup from file"
+
+  memory_store_state:
+    scpi: ":MMEM:STOR:STAT {location},{file}"
+    type: write
+    params:
+      location:
+        type: int
+      file:
+        type: string
+    description: "Save setup to file"
+
+  memory_load_trace:
+    scpi: ":MMEM:LOAD:TRAC DEF,{file}"
+    type: write
+    params:
+      file:
+        type: string
+    description: "Load trace data from file"
+
+  memory_store_trace:
+    scpi: ":MMEM:STOR:TRAC DEF,{file}"
+    type: write
+    params:
+      file:
+        type: string
+    description: "Save trace data to file"
+
+  memory_delete:
+    scpi: ":MMEM:DEL {file}"
+    type: write
+    params:
+      file:
+        type: string
+    description: "Delete file"
+
+  # System Commands
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  beeper_state:
+    getter: ":SYST:BEEP:STAT?"
+    setter: ":SYST:BEEP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Beeper enable/disable"
+
+  line_frequency:
+    getter: ":SYST:LFR?"
+    setter: ":SYST:LFR {frequency}"
+    type: property
+    params:
+      frequency:
+        type: enum
+        options: ["50", "60"]
+    returns:
+      type: int
+      unit: Hz
+    description: "Line frequency setting"
+
+status:
+  stb:
+    bit0: EMER
+    bit1: MEAS
+    bit3: QUES
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OPER
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON
+
+sequences:
+  iv_sweep:
+    description: "Perform IV characteristic sweep"
+    params:
+      start_v:
+        type: float
+        unit: V
+      stop_v:
+        type: float
+        unit: V
+      step_v:
+        type: float
+        unit: V
+      compliance_i:
+        type: float
+        unit: A
+        default: 0.1
+    steps:
+      - command: reset
+      - command: measurement_mode
+        args:
+          mode: "SWE"
+      - command: smu_function
+        args:
+          channel: "3"
+          function: "VAR1"
+      - command: smu_mode
+        args:
+          channel: "3"
+          mode: "V"
+      - command: sweep_var1_start
+        args:
+          value: "{start_v}"
+      - command: sweep_var1_stop
+        args:
+          value: "{stop_v}"
+      - command: sweep_var1_step
+        args:
+          value: "{step_v}"
+      - command: sweep_var1_compliance
+        args:
+          value: "{compliance_i}"
+      - command: measurement_single
+    returns: result
+
+  cv_sweep:
+    description: "Perform capacitance-voltage sweep using QSCV mode"
+    params:
+      start_v:
+        type: float
+        unit: V
+      stop_v:
+        type: float
+        unit: V
+      step_v:
+        type: float
+        unit: V
+      meas_voltage:
+        type: float
+        unit: V
+        default: 0.1
+    steps:
+      - command: reset
+      - command: measurement_mode
+        args:
+          mode: "QSCV"
+      - command: qscv_var1_start
+        args:
+          value: "{start_v}"
+      - command: qscv_var1_stop
+        args:
+          value: "{stop_v}"
+      - command: qscv_var1_step
+        args:
+          value: "{step_v}"
+      - command: qscv_var1_cstep
+        args:
+          value: "{meas_voltage}"
+      - command: measurement_single
+    returns: result
+
+  transient_measurement:
+    description: "Perform time-domain transient measurement"
+    params:
+      duration:
+        type: float
+        unit: s
+      points:
+        type: int
+      source_v:
+        type: float
+        unit: V
+    steps:
+      - command: reset
+      - command: measurement_mode
+        args:
+          mode: "SAMP"
+      - command: sampling_mode
+        args:
+          mode: "LIN"
+      - command: sampling_period
+        args:
+          period: "{duration}"
+      - command: sampling_points
+        args:
+          points: "{points}"
+      - command: sweep_constant_smu_source
+        args:
+          channel: "3"
+          value: "{source_v}"
+      - command: measurement_single
+    returns: result

@@ -1,0 +1,1604 @@
+instrument:
+  manufacturer: "Chroma"
+  model: "63600"
+  class: electronic_load
+  description: "Programmable DC Electronic Load - Multiple models (63610-80-20, 63630-80-60, 63640-80-80)"
+
+identity:
+  query: "*IDN?"
+  pattern: "Chroma.*63[0-9]{3}"
+
+interfaces:
+  - type: gpib
+    default_address: 1
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # Standard IEEE-488.2 Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 99
+    description: "Save current setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 99
+    description: "Recall setup from memory location"
+
+  # Channel Selection
+  select_channel:
+    scpi: "CHAN {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 10
+    description: "Select active channel for subsequent commands"
+
+  query_channel:
+    scpi: "CHAN?"
+    type: query
+    returns:
+      type: int
+    description: "Query currently selected channel"
+
+  # Mode Selection
+  mode:
+    getter: "MODE?"
+    setter: "MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CC", "CR", "CV", "CP", "CZ"]
+    returns:
+      type: string
+    description: "Select or query load operation mode"
+
+  # Current Range Selection
+  current_range:
+    getter: "CURR:RANG?"
+    setter: "CURR:RANG {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["LOW", "MID", "HIGH"]
+    returns:
+      type: string
+    description: "Select current range (low/middle/high)"
+
+  # Constant Current Mode
+  cc_current_level:
+    getter: "CURR:STAT:LEV?"
+    setter: "CURR:STAT:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "CC mode static current level"
+
+  cc_current_level_a:
+    getter: "CURR:STAT:L1?"
+    setter: "CURR:STAT:L1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "CC mode static current level A"
+
+  cc_current_level_b:
+    getter: "CURR:STAT:L2?"
+    setter: "CURR:STAT:L2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "CC mode static current level B"
+
+  cc_slew_rate_rise:
+    getter: "CURR:SLEW:RIS?"
+    setter: "CURR:SLEW:RIS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "CC mode rise slew rate"
+
+  cc_slew_rate_fall:
+    getter: "CURR:SLEW:FALL?"
+    setter: "CURR:SLEW:FALL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "CC mode fall slew rate"
+
+  # Constant Resistance Mode
+  cr_resistance_level:
+    getter: "RES:STAT:LEV?"
+    setter: "RES:STAT:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "CR mode resistance level"
+
+  cr_resistance_level_a:
+    getter: "RES:STAT:L1?"
+    setter: "RES:STAT:L1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "CR mode resistance level A"
+
+  cr_resistance_level_b:
+    getter: "RES:STAT:L2?"
+    setter: "RES:STAT:L2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "CR mode resistance level B"
+
+  # Constant Voltage Mode
+  cv_voltage_level:
+    getter: "VOLT:STAT:LEV?"
+    setter: "VOLT:STAT:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "CV mode voltage level"
+
+  cv_voltage_level_a:
+    getter: "VOLT:STAT:L1?"
+    setter: "VOLT:STAT:L1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "CV mode voltage level A"
+
+  cv_voltage_level_b:
+    getter: "VOLT:STAT:L2?"
+    setter: "VOLT:STAT:L2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "CV mode voltage level B"
+
+  cv_current_limit:
+    getter: "CURR:LIM?"
+    setter: "CURR:LIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "CV mode current limit"
+
+  cv_response_speed:
+    getter: "VOLT:RESP?"
+    setter: "VOLT:RESP {speed}"
+    type: property
+    params:
+      speed:
+        type: enum
+        options: ["FAST", "NORM", "SLOW"]
+    returns:
+      type: string
+    description: "CV mode response speed"
+
+  # Constant Power Mode
+  cp_power_level:
+    getter: "POW:STAT:LEV?"
+    setter: "POW:STAT:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "CP mode power level"
+
+  cp_power_level_a:
+    getter: "POW:STAT:L1?"
+    setter: "POW:STAT:L1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "CP mode power level A"
+
+  cp_power_level_b:
+    getter: "POW:STAT:L2?"
+    setter: "POW:STAT:L2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "CP mode power level B"
+
+  # Constant Impedance Mode
+  cz_capacitance:
+    getter: "IMP:CAP?"
+    setter: "IMP:CAP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: uF
+        min: 30
+        max: 50000
+    returns:
+      type: float
+      unit: uF
+    description: "CZ mode equivalent parallel load capacitance"
+
+  cz_resistance_parallel:
+    getter: "IMP:RES:PAR?"
+    setter: "IMP:RES:PAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "CZ mode equivalent parallel load resistance"
+
+  cz_inductance:
+    getter: "IMP:IND?"
+    setter: "IMP:IND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: uH
+        min: 0.1
+        max: 20
+    returns:
+      type: float
+      unit: uH
+    description: "CZ mode equivalent series inductance"
+
+  cz_resistance_series:
+    getter: "IMP:RES:SER?"
+    setter: "IMP:RES:SER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0.01
+        max: 20
+    returns:
+      type: float
+      unit: Ohm
+    description: "CZ mode equivalent series resistance"
+
+  # Dynamic Load Mode
+  dynamic_mode:
+    getter: "CURR:DYN:MODE?"
+    setter: "CURR:DYN:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONT", "PULS", "TOGG", "SWEP"]
+    returns:
+      type: string
+    description: "Dynamic load operation mode"
+
+  dynamic_current_load1:
+    getter: "CURR:DYN:L1?"
+    setter: "CURR:DYN:L1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Dynamic load current level 1"
+
+  dynamic_current_load2:
+    getter: "CURR:DYN:L2?"
+    setter: "CURR:DYN:L2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Dynamic load current level 2"
+
+  dynamic_period_t1:
+    getter: "CURR:DYN:T1?"
+    setter: "CURR:DYN:T1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00002
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Dynamic load period T1"
+
+  dynamic_period_t2:
+    getter: "CURR:DYN:T2?"
+    setter: "CURR:DYN:T2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00002
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Dynamic load period T2"
+
+  dynamic_slew_rise:
+    getter: "CURR:DYN:SLEW:RIS?"
+    setter: "CURR:DYN:SLEW:RIS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "Dynamic load rise slew rate"
+
+  dynamic_slew_fall:
+    getter: "CURR:DYN:SLEW:FALL?"
+    setter: "CURR:DYN:SLEW:FALL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "Dynamic load fall slew rate"
+
+  dynamic_repeat:
+    getter: "CURR:DYN:REP?"
+    setter: "CURR:DYN:REP {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Dynamic load repeat count (0 = infinite)"
+
+  # Frequency Sweep Mode
+  sweep_start_frequency:
+    getter: "CURR:SWE:FREQ:STAR?"
+    setter: "CURR:SWE:FREQ:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.01
+        max: 50000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency sweep start frequency"
+
+  sweep_end_frequency:
+    getter: "CURR:SWE:FREQ:STOP?"
+    setter: "CURR:SWE:FREQ:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.01
+        max: 50000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency sweep end frequency"
+
+  sweep_step_frequency:
+    getter: "CURR:SWE:FREQ:STEP?"
+    setter: "CURR:SWE:FREQ:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency sweep step size"
+
+  sweep_dwell_time:
+    getter: "CURR:SWE:DWEL?"
+    setter: "CURR:SWE:DWEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.001
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Frequency sweep dwell time per step"
+
+  sweep_duty_cycle:
+    getter: "CURR:SWE:DUTY?"
+    setter: "CURR:SWE:DUTY {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 1
+        max: 99
+    returns:
+      type: float
+      unit: "%"
+    description: "Frequency sweep duty cycle"
+
+  # Load Control
+  load_state:
+    getter: "LOAD?"
+    setter: "LOAD {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Load input on/off state"
+
+  short_state:
+    getter: "LOAD:SHOR?"
+    setter: "LOAD:SHOR {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Short circuit simulation on/off"
+
+  # Measurements
+  measure_voltage:
+    scpi: "MEAS:VOLT?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure input voltage"
+    streamable: true
+
+  measure_current:
+    scpi: "MEAS:CURR?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure input current"
+    streamable: true
+
+  measure_power:
+    scpi: "MEAS:POW?"
+    type: query
+    returns:
+      type: float
+      unit: W
+    description: "Measure input power"
+    streamable: true
+
+  measure_voltage_positive_peak:
+    scpi: "MEAS:VOLT:MAX?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure positive peak voltage"
+
+  measure_voltage_negative_peak:
+    scpi: "MEAS:VOLT:MIN?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure negative peak voltage"
+
+  # Configuration
+  von_voltage:
+    getter: "CONF:VON:LEV?"
+    setter: "CONF:VON:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Conduction voltage (Von) level"
+
+  von_latch:
+    getter: "CONF:VON:LATC?"
+    setter: "CONF:VON:LATC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Von latch mode on/off"
+
+  voff_voltage:
+    getter: "CONF:VOFF:LEV?"
+    setter: "CONF:VOFF:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Turn-off voltage (Voff) level for timing mode"
+
+  remote_sense:
+    getter: "CONF:REM:SENS?"
+    setter: "CONF:REM:SENS {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Remote sensing on/off"
+
+  # Timing Measurement Function
+  timing_mode:
+    getter: "TIM:MODE?"
+    setter: "TIM:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CC", "CR", "CP"]
+    returns:
+      type: string
+    description: "Timing measurement mode"
+
+  timing_current_level:
+    getter: "TIM:CURR?"
+    setter: "TIM:CURR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Timing measurement current level"
+
+  timing_trigger_mode:
+    getter: "TIM:TRIG:MODE?"
+    setter: "TIM:TRIG:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["RISE", "FALL"]
+    returns:
+      type: string
+    description: "Timing measurement trigger mode"
+
+  timing_trigger_voltage:
+    getter: "TIM:TRIG:VOLT?"
+    setter: "TIM:TRIG:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Timing measurement trigger voltage"
+
+  timing_timeout:
+    getter: "TIM:TIME?"
+    setter: "TIM:TIME {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.002
+        max: 100000
+    returns:
+      type: float
+      unit: s
+    description: "Timing measurement timeout"
+
+  timing_result:
+    scpi: "TIM:RES?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query timing measurement result"
+
+  # AC Impedance Measurement (Optional)
+  ac_impedance_dc_current:
+    getter: "ACIMP:CURR:DC?"
+    setter: "ACIMP:CURR:DC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "AC impedance DC current level"
+
+  ac_impedance_ac_current:
+    getter: "ACIMP:CURR:AC?"
+    setter: "ACIMP:CURR:AC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "AC impedance AC current level"
+
+  ac_impedance_frequency:
+    getter: "ACIMP:FREQ?"
+    setter: "ACIMP:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.1
+        max: 20000
+    returns:
+      type: float
+      unit: Hz
+    description: "AC impedance measurement frequency"
+
+  ac_impedance_result:
+    scpi: "ACIMP:RES?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Query AC impedance measurement result"
+
+  # Current Interrupt Function
+  current_interrupt_max:
+    getter: "CUR:INT:MAX?"
+    setter: "CUR:INT:MAX {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current interrupt maximum current"
+
+  current_interrupt_on_time:
+    getter: "CUR:INT:ON?"
+    setter: "CUR:INT:ON {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Current interrupt on time"
+
+  current_interrupt_off_time:
+    getter: "CUR:INT:OFF?"
+    setter: "CUR:INT:OFF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Current interrupt off time"
+
+  current_interrupt_repeat:
+    getter: "CUR:INT:REP?"
+    setter: "CUR:INT:REP {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Current interrupt repeat count"
+
+  # OCP Test Function
+  ocp_start_current:
+    getter: "OCP:CURR:STAR?"
+    setter: "OCP:CURR:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "OCP test start current"
+
+  ocp_end_current:
+    getter: "OCP:CURR:STOP?"
+    setter: "OCP:CURR:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "OCP test end current"
+
+  ocp_step:
+    getter: "OCP:STEP?"
+    setter: "OCP:STEP {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 990
+    returns:
+      type: int
+    description: "OCP test current step"
+
+  ocp_dwell_time:
+    getter: "OCP:DWEL?"
+    setter: "OCP:DWEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00001
+        max: 1
+    returns:
+      type: float
+      unit: s
+    description: "OCP test dwell time"
+
+  ocp_trigger_voltage:
+    getter: "OCP:TRIG:VOLT?"
+    setter: "OCP:TRIG:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "OCP test trigger voltage"
+
+  ocp_spec_low:
+    getter: "OCP:SPEC:LOW?"
+    setter: "OCP:SPEC:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "OCP test specification low limit"
+
+  ocp_spec_high:
+    getter: "OCP:SPEC:HIGH?"
+    setter: "OCP:SPEC:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "OCP test specification high limit"
+
+  ocp_result:
+    scpi: "OCP:RES?"
+    type: query
+    returns:
+      type: string
+    description: "Query OCP test result"
+
+  # Program Sequences
+  program_select:
+    getter: "PROG:SEL?"
+    setter: "PROG:SEL {number}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 1
+        max: 10
+    returns:
+      type: int
+    description: "Select program number (1-10)"
+
+  program_type:
+    getter: "PROG:TYPE?"
+    setter: "PROG:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LIST", "STEP"]
+    returns:
+      type: string
+    description: "Program type (list or step)"
+
+  program_chain:
+    getter: "PROG:CHAI?"
+    setter: "PROG:CHAI {number}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 0
+        max: 10
+    returns:
+      type: int
+    description: "Program chain number (0 = no chain)"
+
+  program_repeat:
+    getter: "PROG:REP?"
+    setter: "PROG:REP {count}"
+    type: property
+    params:
+      count:
+        type: int
+    returns:
+      type: int
+    description: "Program repeat count"
+
+  program_run:
+    scpi: "PROG:RUN"
+    type: write
+    description: "Run selected program"
+
+  program_stop:
+    scpi: "PROG:STOP"
+    type: write
+    description: "Stop running program"
+
+  program_result:
+    scpi: "PROG:RES?"
+    type: query
+    returns:
+      type: string
+    description: "Query program execution result"
+
+  # Digitizing Function
+  digitize_sampling_time:
+    getter: "DIG:SAMP:TIME?"
+    setter: "DIG:SAMP:TIME {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000002
+        max: 0.04
+    returns:
+      type: float
+      unit: s
+    description: "Digitizing sampling time interval"
+
+  digitize_sampling_points:
+    getter: "DIG:SAMP:POIN?"
+    setter: "DIG:SAMP:POIN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 4096
+    returns:
+      type: int
+    description: "Digitizing sampling points"
+
+  digitize_trigger_source:
+    getter: "DIG:TRIG:SOUR?"
+    setter: "DIG:TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["LON", "LOFF", "EXT", "SW", "FORC"]
+    returns:
+      type: string
+    description: "Digitizing trigger source"
+
+  digitize_trigger_point:
+    getter: "DIG:TRIG:POIN?"
+    setter: "DIG:TRIG:POIN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 4096
+    returns:
+      type: int
+    description: "Digitizing trigger point"
+
+  digitize_data_voltage:
+    scpi: "DIG:DATA:VOLT?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query digitized voltage data"
+
+  digitize_data_current:
+    scpi: "DIG:DATA:CURR?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query digitized current data"
+
+  # Specification/GO-NG
+  spec_enable:
+    getter: "SPEC:STAT?"
+    setter: "SPEC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable/disable specification checking"
+
+  spec_voltage_center:
+    getter: "SPEC:VOLT:CENT?"
+    setter: "SPEC:VOLT:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage specification center value"
+
+  spec_voltage_high:
+    getter: "SPEC:VOLT:HIGH?"
+    setter: "SPEC:VOLT:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Voltage specification high limit percentage"
+
+  spec_voltage_low:
+    getter: "SPEC:VOLT:LOW?"
+    setter: "SPEC:VOLT:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Voltage specification low limit percentage"
+
+  spec_current_center:
+    getter: "SPEC:CURR:CENT?"
+    setter: "SPEC:CURR:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current specification center value"
+
+  spec_current_high:
+    getter: "SPEC:CURR:HIGH?"
+    setter: "SPEC:CURR:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Current specification high limit percentage"
+
+  spec_current_low:
+    getter: "SPEC:CURR:LOW?"
+    setter: "SPEC:CURR:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Current specification low limit percentage"
+
+  spec_power_center:
+    getter: "SPEC:POW:CENT?"
+    setter: "SPEC:POW:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Power specification center value"
+
+  spec_power_high:
+    getter: "SPEC:POW:HIGH?"
+    setter: "SPEC:POW:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Power specification high limit percentage"
+
+  spec_power_low:
+    getter: "SPEC:POW:LOW?"
+    setter: "SPEC:POW:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Power specification low limit percentage"
+
+  spec_result:
+    scpi: "SPEC:RES?"
+    type: query
+    returns:
+      type: string
+    description: "Query GO/NG specification result"
+
+  # Protection Status
+  protection_status:
+    scpi: "PROT:STAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query protection status register"
+
+  protection_clear:
+    scpi: "PROT:CLE"
+    type: write
+    description: "Clear protection status"
+
+  protection_overvoltage:
+    scpi: "PROT:OV?"
+    type: query
+    returns:
+      type: bool
+    description: "Query over-voltage protection status"
+
+  protection_overcurrent:
+    scpi: "PROT:OC?"
+    type: query
+    returns:
+      type: bool
+    description: "Query over-current protection status"
+
+  protection_overpower:
+    scpi: "PROT:OP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query over-power protection status"
+
+  protection_overtemperature:
+    scpi: "PROT:OT?"
+    type: query
+    returns:
+      type: bool
+    description: "Query over-temperature protection status"
+
+  protection_reverse_voltage:
+    scpi: "PROT:RV?"
+    type: query
+    returns:
+      type: bool
+    description: "Query reverse voltage protection status"
+
+  # System Commands
+  system_error:
+    scpi: "SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Query next error from error queue"
+
+  system_version:
+    scpi: "SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_beeper:
+    scpi: "SYST:BEEP"
+    type: write
+    description: "Sound beeper"
+
+  system_beeper_state:
+    getter: "SYST:BEEP:STAT?"
+    setter: "SYST:BEEP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable/disable beeper"
+
+  # Status Commands
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+sequences:
+  cc_static_load:
+    description: "Configure constant current static load"
+    params:
+      current:
+        type: float
+        unit: A
+      slew_rate:
+        type: float
+        unit: A/us
+        default: 0.001
+    steps:
+      - command: mode
+        args:
+          mode: "CC"
+      - command: cc_current_level
+        args:
+          value: "{current}"
+      - command: cc_slew_rate_rise
+        args:
+          value: "{slew_rate}"
+      - command: cc_slew_rate_fall
+        args:
+          value: "{slew_rate}"
+      - command: load_state
+        args:
+          state: "ON"
+
+  cc_dynamic_load:
+    description: "Configure constant current dynamic load"
+    params:
+      load1:
+        type: float
+        unit: A
+      load2:
+        type: float
+        unit: A
+      period1:
+        type: float
+        unit: s
+      period2:
+        type: float
+        unit: s
+      slew_rate:
+        type: float
+        unit: A/us
+        default: 0.001
+    steps:
+      - command: mode
+        args:
+          mode: "CC"
+      - command: dynamic_mode
+        args:
+          mode: "PULS"
+      - command: dynamic_current_load1
+        args:
+          value: "{load1}"
+      - command: dynamic_current_load2
+        args:
+          value: "{load2}"
+      - command: dynamic_period_t1
+        args:
+          value: "{period1}"
+      - command: dynamic_period_t2
+        args:
+          value: "{period2}"
+      - command: dynamic_slew_rise
+        args:
+          value: "{slew_rate}"
+      - command: dynamic_slew_fall
+        args:
+          value: "{slew_rate}"
+      - command: load_state
+        args:
+          state: "ON"
+
+  cr_load:
+    description: "Configure constant resistance load"
+    params:
+      resistance:
+        type: float
+        unit: Ohm
+    steps:
+      - command: mode
+        args:
+          mode: "CR"
+      - command: cr_resistance_level
+        args:
+          value: "{resistance}"
+      - command: load_state
+        args:
+          state: "ON"
+
+  cv_load:
+    description: "Configure constant voltage load"
+    params:
+      voltage:
+        type: float
+        unit: V
+      current_limit:
+        type: float
+        unit: A
+        default: 1.0
+    steps:
+      - command: mode
+        args:
+          mode: "CV"
+      - command: cv_voltage_level
+        args:
+          value: "{voltage}"
+      - command: cv_current_limit
+        args:
+          value: "{current_limit}"
+      - command: load_state
+        args:
+          state: "ON"
+
+  cp_load:
+    description: "Configure constant power load"
+    params:
+      power:
+        type: float
+        unit: W
+    steps:
+      - command: mode
+        args:
+          mode: "CP"
+      - command: cp_power_level
+        args:
+          value: "{power}"
+      - command: load_state
+        args:
+          state: "ON"
+
+  battery_discharge_test:
+    description: "Battery discharge timing test"
+    params:
+      current:
+        type: float
+        unit: A
+      end_voltage:
+        type: float
+        unit: V
+      timeout:
+        type: float
+        unit: s
+        default: 3600
+    steps:
+      - command: timing_mode
+        args:
+          mode: "CC"
+      - command: timing_current_level
+        args:
+          value: "{current}"
+      - command: timing_trigger_mode
+        args:
+          mode: "FALL"
+      - command: timing_trigger_voltage
+        args:
+          value: "{end_voltage}"
+      - command: timing_timeout
+        args:
+          value: "{timeout}"
+      - command: load_state
+        args:
+          state: "ON"
+      - command: timing_result
+        capture: discharge_time
+
+  ocp_test:
+    description: "Over-current protection test"
+    params:
+      start_current:
+        type: float
+        unit: A
+      end_current:
+        type: float
+        unit: A
+      step:
+        type: int
+        default: 10
+      trigger_voltage:
+        type: float
+        unit: V
+    steps:
+      - command: ocp_start_current
+        args:
+          value: "{start_current}"
+      - command: ocp_end_current
+        args:
+          value: "{end_current}"
+      - command: ocp_step
+        args:
+          value: "{step}"
+      - command: ocp_trigger_voltage
+        args:
+          value: "{trigger_voltage}"
+      - command: load_state
+        args:
+          state: "ON"
+      - command: ocp_result
+        capture: ocp_trip_current
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

@@ -1,0 +1,378 @@
+# Newport MM4006 Motion Controller Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Newport MM4006
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Newport"
+  model: "MM4006 Motion Controller"
+  class: motion_controller
+  description: "Newport MM4006 Motion Controller"
+
+identity:
+  query: "*IDN?"
+  pattern: "Newport.*MM4006"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  ch1name:
+    scpi: "1SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch1Name"
+  ch1value:
+    getter: "1TP"
+    setter: "1PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch1Value"
+  ch1position:
+    getter: "1TP"
+    setter: "1PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch1Position"
+  ch1rotation:
+    getter: "1TP"
+    setter: "1PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch1Rotation"
+  ch2name:
+    scpi: "2SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch2Name"
+  ch2value:
+    getter: "2TP"
+    setter: "2PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch2Value"
+  ch2position:
+    getter: "2TP"
+    setter: "2PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch2Position"
+  ch2rotation:
+    getter: "2TP"
+    setter: "2PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch2Rotation"
+  ch3name:
+    scpi: "3SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch3Name"
+  ch3value:
+    getter: "3TP"
+    setter: "3PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch3Value"
+  ch3position:
+    getter: "3TP"
+    setter: "3PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch3Position"
+  ch3rotation:
+    getter: "3TP"
+    setter: "3PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch3Rotation"
+  ch4name:
+    scpi: "4SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch4Name"
+  ch4value:
+    getter: "4TP"
+    setter: "4PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch4Value"
+  ch4position:
+    getter: "4TP"
+    setter: "4PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch4Position"
+  ch4rotation:
+    getter: "4TP"
+    setter: "4PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch4Rotation"
+  ch5name:
+    scpi: "5SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch5Name"
+  ch5value:
+    getter: "5TP"
+    setter: "5PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch5Value"
+  ch5position:
+    getter: "5TP"
+    setter: "5PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch5Position"
+  ch5rotation:
+    getter: "5TP"
+    setter: "5PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch5Rotation"
+  ch6name:
+    scpi: "6SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch6Name"
+  ch6value:
+    getter: "6TP"
+    setter: "6PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch6Value"
+  ch6position:
+    getter: "6TP"
+    setter: "6PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch6Position"
+  ch6rotation:
+    getter: "6TP"
+    setter: "6PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch6Rotation"
+  ch7name:
+    scpi: "7SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch7Name"
+  ch7value:
+    getter: "7TP"
+    setter: "7PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch7Value"
+  ch7position:
+    getter: "7TP"
+    setter: "7PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch7Position"
+  ch7rotation:
+    getter: "7TP"
+    setter: "7PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch7Rotation"
+  ch8name:
+    scpi: "8SF?"
+    type: query
+    returns:
+      type: string
+    description: "Ch8Name"
+  ch8value:
+    getter: "8TP"
+    setter: "8PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ch8Value"
+  ch8position:
+    getter: "8TP"
+    setter: "8PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Ch8Position"
+  ch8rotation:
+    getter: "8TP"
+    setter: "8PA{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "Ch8Rotation"
+

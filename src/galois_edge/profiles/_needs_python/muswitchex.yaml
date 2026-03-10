@@ -1,0 +1,24 @@
+# MuSwitchEX Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: MuSwitchEX
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "MuSwitchEX"
+  model: "MuSwitchEX"
+  class: switch
+  description: "MuSwitchEX"
+
+identity:
+  query: "*IDN?"
+  pattern: "MuSwitchEX.*MuSwitchEX"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+

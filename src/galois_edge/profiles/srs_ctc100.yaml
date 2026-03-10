@@ -1,0 +1,1269 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "CTC100"
+  class: temperature_controller
+  description: "Cryogenic Temperature Controller with multiple input/output channels"
+
+identity:
+  query: "*IDN?"
+  pattern: "CTC100 Cryogenic Temperature Controller"
+
+interfaces:
+  - type: gpib
+    default_address: 10
+  - type: usb
+  - type: serial
+    port: 9600
+  - type: ethernet
+    port: 23
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  alarm_status_enable:
+    getter: "*ASE?"
+    setter: "*ASE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 4294967295
+    returns:
+      type: int
+    description: "Alarm Status Enable register"
+
+  alarm_status_register:
+    scpi: "*ASR?"
+    type: query
+    returns:
+      type: int
+    description: "Returns Alarm Status Register and clears it"
+
+  no_operation:
+    scpi: "*NOP"
+    type: write
+    description: "No operation command"
+
+  # Miscellaneous Instructions
+  abort:
+    scpi: "abort"
+    type: write
+    description: "Stops the macro"
+
+  description:
+    scpi: "description"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument description"
+
+  get_output:
+    scpi: "getOutput?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Get current value of all channels"
+
+  get_output_names:
+    scpi: "getOutput.names?"
+    type: query
+    returns:
+      type: string
+    description: "Get names of all channels"
+
+  get_output_units:
+    scpi: "getOutput.units?"
+    type: query
+    returns:
+      type: string
+    description: "Get units of all channels"
+
+  get_log:
+    scpi: "getLog \"{channel}\", {time}"
+    type: query
+    params:
+      channel:
+        type: string
+      time:
+        type: string
+    returns:
+      type: float
+    description: "Get a data point from the log"
+
+  group:
+    getter: "group?"
+    setter: "group {number}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Changes the channel selection group"
+
+  last_touch:
+    scpi: "lasttouch?"
+    type: query
+    returns:
+      type: int
+    description: "Seconds elapsed since last touchscreen/button press"
+
+  menu:
+    scpi: "menu {selection}"
+    type: write
+    params:
+      selection:
+        type: enum
+        options: ["Select Channels", "Show Data", "Program", "Setup", "Help", "Output Enable"]
+    description: "Simulates pressing a front-panel button"
+
+  output_enable:
+    getter: "outputEnable?"
+    setter: "outputEnable {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["on", "off"]
+    returns:
+      type: string
+    description: "Enables or disables all heater outputs"
+
+  select_none:
+    scpi: "selectNone"
+    type: write
+    description: "Deselects all channels in all selection groups"
+
+  system_time:
+    getter: "systemtime?"
+    setter: "systemtime \"{time}\""
+    type: property
+    params:
+      time:
+        type: string
+    returns:
+      type: string
+    description: "Set or query time and date"
+
+  # Program Menu Commands
+  clear_errors:
+    scpi: "clearerrors"
+    type: write
+    description: "Erases all error messages"
+
+  get_error:
+    scpi: "geterror?"
+    type: query
+    returns:
+      type: string
+    description: "Returns oldest message from error buffer"
+
+  pause:
+    scpi: "pause {time} {unit}"
+    type: write
+    params:
+      time:
+        type: float
+      unit:
+        type: enum
+        options: ["ms", "s", "min", "hr"]
+    description: "Pauses program for specified time"
+
+  popup:
+    scpi: "popup \"{text}\""
+    type: write
+    params:
+      text:
+        type: string
+    description: "Produces a popup window with message"
+
+  popup_close:
+    scpi: "popup.close"
+    type: write
+    description: "Closes any popup or help window"
+
+  print_message:
+    scpi: "print \"{message}\""
+    type: write
+    params:
+      message:
+        type: string
+    description: "Prints message to program screen"
+
+  standby:
+    scpi: "standby"
+    type: write
+    description: "Puts CTC100 into standby mode"
+
+  wait_for_ramp:
+    scpi: "waitForRamp"
+    type: write
+    description: "Pauses until all PID setpoint ramps complete"
+
+  wait_for_sample:
+    scpi: "waitForSample"
+    type: write
+    description: "Pauses until an ADC conversion occurs"
+
+  wait_for_tune:
+    scpi: "waitForTune"
+    type: write
+    description: "Pauses until all PID tuning processes complete"
+
+  # System Setup Commands
+  system_com_baud:
+    getter: "system.com.baud?"
+    setter: "system.com.baud {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["2400", "4800", "9600", "14400", "19200", "28800", "38400", "57600", "115200", "250000"]
+    returns:
+      type: string
+    description: "Sets baud rate for RS-232 and USB interfaces"
+
+  system_com_flow_ctl:
+    getter: "system.com.flow ctl?"
+    setter: "system.com.flow ctl {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["None", "RTS/CTS"]
+    returns:
+      type: string
+    description: "Enables or disables hardware flow control"
+
+  system_com_verbose:
+    getter: "system.com.verbose?"
+    setter: "system.com.verbose {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["Low", "Medium", "High"]
+    returns:
+      type: string
+    description: "Determines how CTC100 replies to remote instructions"
+
+  system_display_bright:
+    getter: "system.display.Bright?"
+    setter: "system.display.Bright {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["Min", "2", "3", "4", "5", "6", "Max"]
+    returns:
+      type: string
+    description: "Sets brightness of front-panel display backlight"
+
+  system_display_figures:
+    getter: "system.display.Figures?"
+    setter: "system.display.Figures {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 0
+        max: 6
+    returns:
+      type: int
+    description: "Maximum figures after decimal point"
+
+  system_display_monitors:
+    getter: "system.display.Monitors?"
+    setter: "system.display.Monitors {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["Show", "Hide", "Off"]
+    returns:
+      type: string
+    description: "Controls display of internal monitor channels"
+
+  system_display_stats:
+    getter: "system.display.Stats?"
+    setter: "system.display.Stats {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["Off", "On"]
+    returns:
+      type: string
+    description: "Controls statistics visibility in plot"
+
+  system_display_type:
+    getter: "system.display.Type?"
+    setter: "system.display.Type {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["Single", "Multiple", "Custom", "Ponytail"]
+    returns:
+      type: string
+    description: "Controls plot type"
+
+  system_display_units:
+    getter: "system.display.Units?"
+    setter: "system.display.Units {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["°C", "K", "mK", "°F", ""]
+    returns:
+      type: string
+    description: "Sets system temperature units"
+
+  system_display_xlabels:
+    getter: "system.display.XLabels?"
+    setter: "system.display.XLabels {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["None", "Absolute", "Elapsed"]
+    returns:
+      type: string
+    description: "Controls type of label at bottom of plot"
+
+  system_display_xrange:
+    getter: "system.display.XRange?"
+    setter: "system.display.XRange {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: ms
+        min: 10000
+        max: 2592000000
+    returns:
+      type: float
+      unit: ms
+    description: "Sets X range of plot in milliseconds"
+
+  system_ip_address:
+    getter: "system.IP.Address?"
+    setter: "system.IP.Address {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "Sets CTC100 IP address"
+
+  system_ip_dhcp:
+    getter: "system.IP.DHCP?"
+    setter: "system.IP.DHCP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["On", "Off"]
+    returns:
+      type: string
+    description: "Enables or disables DHCP"
+
+  system_ip_port:
+    getter: "system.IP.Port?"
+    setter: "system.IP.Port {port}"
+    type: property
+    params:
+      port:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Sets telnet port for Ethernet communications"
+
+  system_ip_timeout:
+    getter: "system.IP.Timeout?"
+    setter: "system.IP.Timeout {minutes}"
+    type: property
+    params:
+      minutes:
+        type: float
+        min: 0.1
+        max: 65535
+    returns:
+      type: float
+      unit: min
+    description: "Sets timeout period for Telnet connections"
+
+  system_log_clear:
+    scpi: "system.log.clear {target}"
+    type: write
+    params:
+      target:
+        type: enum
+        options: ["yes", "no", "USB", "RAM", "all"]
+    description: "Erases log files"
+
+  system_log_folder:
+    getter: "system.log.folder?"
+    setter: "system.log.folder \"{name}\""
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Sets folder on USB device for logged data"
+
+  system_log_interval:
+    getter: "system.log.interval?"
+    setter: "system.log.interval {interval}"
+    type: property
+    params:
+      interval:
+        type: enum
+        options: ["off", "0.1 s", "0.3 s", "1 s", "3 s", "10 s", "30 s", "1 min", "3 min", "10 min", "30 min", "1 hr"]
+    returns:
+      type: string
+    description: "Sets default log interval"
+
+  system_log_log_to:
+    getter: "system.log.Log to?"
+    setter: "system.log.Log to {target}"
+    type: property
+    params:
+      target:
+        type: enum
+        options: ["RAM", "USB", "None"]
+    returns:
+      type: string
+    description: "Sets logging destination"
+
+  system_log_usb:
+    getter: "system.log.USB?"
+    setter: "system.log.USB {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["Auto", "Manual"]
+    returns:
+      type: string
+    description: "Controls automatic USB logging"
+
+  system_other_ad_rate:
+    getter: "system.other.A/D rate?"
+    setter: "system.other.A/D rate {rate}"
+    type: property
+    params:
+      rate:
+        type: string
+    returns:
+      type: string
+    description: "Sets A/D conversion time"
+
+  system_other_fan:
+    getter: "system.other.fan?"
+    setter: "system.other.fan {speed}"
+    type: property
+    params:
+      speed:
+        type: enum
+        options: ["off", "low", "medium", "high", "max", "auto"]
+    returns:
+      type: string
+    description: "Controls system fan speed"
+
+  system_other_date:
+    getter: "system.other.date?"
+    setter: "system.other.date \"{date}\""
+    type: property
+    params:
+      date:
+        type: string
+    returns:
+      type: string
+    description: "Sets the date"
+
+  system_other_time:
+    getter: "system.other.time?"
+    setter: "system.other.time \"{time}\""
+    type: property
+    params:
+      time:
+        type: string
+    returns:
+      type: string
+    description: "Sets the time"
+
+  system_other_reset:
+    scpi: "system.other.reset {target}"
+    type: write
+    params:
+      target:
+        type: enum
+        options: ["Running macros", "Saved macros", "Front panel", "Ports", "Port settings", "Channels", "Log", "All"]
+    description: "Resets user settings"
+
+  system_other_volume:
+    getter: "system.other.Volume?"
+    setter: "system.other.Volume {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["off", "1", "2", "3", "4", "5", "6", "7", "max"]
+    returns:
+      type: string
+    description: "Controls speaker volume"
+
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read one error from error queue"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  # Channel Commands
+  channel_value:
+    getter: "{channel}?"
+    setter: "{channel} {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Get or set channel value"
+
+  channel_name:
+    getter: "{channel}.Name?"
+    setter: "{channel}.Name \"{name}\""
+    type: property
+    params:
+      channel:
+        type: string
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Changes name of channel"
+
+  channel_off:
+    scpi: "{channel}.Off"
+    type: write
+    params:
+      channel:
+        type: string
+    description: "Turns selected channel off"
+
+  channel_sensor:
+    getter: "{channel}.Sensor?"
+    setter: "{channel}.Sensor {type}"
+    type: property
+    params:
+      channel:
+        type: string
+      type:
+        type: enum
+        options: ["RTD", "Thermistor", "Diode", "ROX"]
+    returns:
+      type: string
+    description: "Selects sensor type"
+
+  channel_range:
+    getter: "{channel}.Range?"
+    setter: "{channel}.Range {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: string
+    returns:
+      type: string
+    description: "Sets sensor measurement range"
+
+  channel_current:
+    getter: "{channel}.Current?"
+    setter: "{channel}.Current {direction}"
+    type: property
+    params:
+      channel:
+        type: string
+      direction:
+        type: enum
+        options: ["Forward", "Reverse", "AC", "off"]
+    returns:
+      type: string
+    description: "Selects direction of excitation current"
+
+  channel_power:
+    getter: "{channel}.Power?"
+    setter: "{channel}.Power {mode}"
+    type: property
+    params:
+      channel:
+        type: string
+      mode:
+        type: enum
+        options: ["Auto", "Low", "High"]
+    returns:
+      type: string
+    description: "Determines excitation current level"
+
+  channel_lopass:
+    getter: "{channel}.Lopass?"
+    setter: "{channel}.Lopass {time}"
+    type: property
+    params:
+      channel:
+        type: string
+      time:
+        type: enum
+        options: ["Off", "1 s", "3 s", "10 s", "30 s", "100 s", "300 s"]
+    returns:
+      type: string
+    description: "Sets time constant for lowpass filter"
+
+  channel_selected:
+    getter: "{channel}.Selected?"
+    setter: "{channel}.Selected {state}"
+    type: property
+    params:
+      channel:
+        type: string
+      state:
+        type: enum
+        options: ["On", "Off"]
+    returns:
+      type: string
+    description: "Controls whether channel is selected"
+
+  channel_plot:
+    getter: "{channel}.Plot?"
+    setter: "{channel}.Plot {number}"
+    type: property
+    params:
+      channel:
+        type: string
+      number:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: int
+    description: "Indicates which plot channel appears in"
+
+  channel_logging:
+    getter: "{channel}.Logging?"
+    setter: "{channel}.Logging {interval}"
+    type: property
+    params:
+      channel:
+        type: string
+      interval:
+        type: enum
+        options: ["Off", "0.1 s", "0.3 s", "1 s", "3 s", "10 s", "30 s", "1 min", "3 min", "10 min", "30 min", "1 hr", "Default"]
+    returns:
+      type: string
+    description: "Sets log interval for channel"
+
+  channel_units:
+    getter: "{channel}.Units?"
+    setter: "{channel}.Units {unit}"
+    type: property
+    params:
+      channel:
+        type: string
+      unit:
+        type: enum
+        options: ["W", "A", "V"]
+    returns:
+      type: string
+    description: "Sets output units"
+
+  channel_io_type:
+    getter: "{channel}.IOtype?"
+    setter: "{channel}.IOtype {type}"
+    type: property
+    params:
+      channel:
+        type: string
+      type:
+        type: enum
+        options: ["Input", "Set out", "Meas out"]
+    returns:
+      type: string
+    description: "Determines channel direction"
+
+  channel_low_lmt:
+    getter: "{channel}.LowLmt?"
+    setter: "{channel}.LowLmt {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Constrains minimum value of output"
+
+  channel_hi_lmt:
+    getter: "{channel}.HiLmt?"
+    setter: "{channel}.HiLmt {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Constrains maximum value of output"
+
+  # Channel Alarm Commands
+  channel_alarm_mode:
+    getter: "{channel}.alarm.mode?"
+    setter: "{channel}.alarm.mode {mode}"
+    type: property
+    params:
+      channel:
+        type: string
+      mode:
+        type: enum
+        options: ["Off", "Level", "Rate /s"]
+    returns:
+      type: string
+    description: "Enables or disables alarm"
+
+  channel_alarm_latch:
+    getter: "{channel}.alarm.latch?"
+    setter: "{channel}.alarm.latch {state}"
+    type: property
+    params:
+      channel:
+        type: string
+      state:
+        type: enum
+        options: ["Yes", "No"]
+    returns:
+      type: string
+    description: "Controls alarm latching behavior"
+
+  channel_alarm_min:
+    getter: "{channel}.alarm.min?"
+    setter: "{channel}.alarm.min {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sets alarm minimum threshold"
+
+  channel_alarm_max:
+    getter: "{channel}.alarm.max?"
+    setter: "{channel}.alarm.max {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sets alarm maximum threshold"
+
+  channel_alarm_lag:
+    getter: "{channel}.alarm.lag?"
+    setter: "{channel}.alarm.lag {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Prevents glitches from triggering alarm"
+
+  channel_alarm_sound:
+    getter: "{channel}.alarm.sound?"
+    setter: "{channel}.alarm.sound {sound}"
+    type: property
+    params:
+      channel:
+        type: string
+      sound:
+        type: enum
+        options: ["None", "1 beep", "2 beeps", "3 beeps", "4 beeps"]
+    returns:
+      type: string
+    description: "Controls alarm sound"
+
+  channel_alarm_output:
+    getter: "{channel}.alarm.output?"
+    setter: "{channel}.alarm.output \"{output}\""
+    type: property
+    params:
+      channel:
+        type: string
+      output:
+        type: string
+    returns:
+      type: string
+    description: "Associates output with alarm"
+
+  channel_alarm_relay:
+    getter: "{channel}.alarm.relay?"
+    setter: "{channel}.alarm.relay {relay}"
+    type: property
+    params:
+      channel:
+        type: string
+      relay:
+        type: enum
+        options: ["None", "A", "B", "C", "D"]
+    returns:
+      type: string
+    description: "Assigns relay to alarm"
+
+  # Channel Calibration Commands
+  channel_cal_type:
+    getter: "{channel}.cal.Type?"
+    setter: "{channel}.cal.Type {type}"
+    type: property
+    params:
+      channel:
+        type: string
+      type:
+        type: string
+    returns:
+      type: string
+    description: "Determines calibration curve"
+
+  channel_cal_offset:
+    getter: "{channel}.cal.Offset?"
+    setter: "{channel}.cal.Offset {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Adjusts channel calibration offset"
+
+  channel_cal_gain:
+    getter: "{channel}.cal.Gain?"
+    setter: "{channel}.cal.Gain {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Adjusts channel calibration gain"
+
+  channel_cal_a:
+    getter: "{channel}.cal.A?"
+    setter: "{channel}.cal.A {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Custom calibration coefficient A"
+
+  channel_cal_b:
+    getter: "{channel}.cal.B?"
+    setter: "{channel}.cal.B {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Custom calibration coefficient B"
+
+  channel_cal_c:
+    getter: "{channel}.cal.C?"
+    setter: "{channel}.cal.C {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Custom calibration coefficient C"
+
+  channel_cal_r0:
+    getter: "{channel}.cal.R0?"
+    setter: "{channel}.cal.R0 {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "RTD resistance at 0°C"
+
+  # PID Commands
+  channel_pid_input:
+    getter: "{channel}.PID.Input?"
+    setter: "{channel}.PID.Input \"{input}\""
+    type: property
+    params:
+      channel:
+        type: string
+      input:
+        type: string
+    returns:
+      type: string
+    description: "Determines which temperature PID controls"
+
+  channel_pid_mode:
+    getter: "{channel}.PID.Mode?"
+    setter: "{channel}.PID.Mode {mode}"
+    type: property
+    params:
+      channel:
+        type: string
+      mode:
+        type: enum
+        options: ["Off", "On", "Follow"]
+    returns:
+      type: string
+    description: "Enables or disables PID feedback"
+
+  channel_pid_setpoint:
+    getter: "{channel}.PID.Setpoint?"
+    setter: "{channel}.PID.Setpoint {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Determines PID setpoint"
+
+  channel_pid_p:
+    getter: "{channel}.PID.P?"
+    setter: "{channel}.PID.P {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sets proportional gain factor"
+
+  channel_pid_i:
+    getter: "{channel}.PID.I?"
+    setter: "{channel}.PID.I {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sets integral gain factor"
+
+  channel_pid_d:
+    getter: "{channel}.PID.D?"
+    setter: "{channel}.PID.D {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Sets derivative gain factor"
+
+  channel_pid_ramp:
+    getter: "{channel}.PID.Ramp?"
+    setter: "{channel}.PID.Ramp {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+      unit: deg/s
+    description: "Sets ramp rate in degrees per second"
+
+  channel_pid_rampt:
+    getter: "{channel}.PID.RampT?"
+    setter: "{channel}.PID.RampT {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Ramp temperature setpoint"
+
+  channel_pid_zone:
+    getter: "{channel}.PID.Zone?"
+    setter: "{channel}.PID.Zone {zone}"
+    type: property
+    params:
+      channel:
+        type: string
+      zone:
+        type: enum
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "Auto"]
+    returns:
+      type: string
+    description: "Sets PID temperature zone"
+
+  channel_pid_tmin:
+    getter: "{channel}.PID.TMin?"
+    setter: "{channel}.PID.TMin {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Assigns lower temperature bound to memory location"
+
+  # Tune Commands
+  channel_tune_mode:
+    getter: "{channel}.Tune.Mode?"
+    setter: "{channel}.Tune.Mode {mode}"
+    type: property
+    params:
+      channel:
+        type: string
+      mode:
+        type: enum
+        options: ["Off", "Auto", "Step", "Relay"]
+    returns:
+      type: string
+    description: "Starts or stops PID autotuning"
+
+  channel_tune_stepy:
+    getter: "{channel}.Tune.StepY?"
+    setter: "{channel}.Tune.StepY {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Controls height of step response"
+
+  channel_tune_lag:
+    getter: "{channel}.Tune.Lag?"
+    setter: "{channel}.Tune.Lag {value}"
+    type: property
+    params:
+      channel:
+        type: string
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Controls wait time before evaluating response"
+
+  channel_tune_type:
+    getter: "{channel}.Tune.Type?"
+    setter: "{channel}.Tune.Type {type}"
+    type: property
+    params:
+      channel:
+        type: string
+      type:
+        type: enum
+        options: ["Cons", "Moderate", "Aggr", "Auto"]
+    returns:
+      type: string
+    description: "Determines how PID tuner sets feedback gains"
+
+sequences:
+  temperature_ramp:
+    description: "Ramp temperature to setpoint at controlled rate"
+    params:
+      channel:
+        type: string
+      target_temp:
+        type: float
+      ramp_rate:
+        type: float
+        unit: deg/s
+    steps:
+      - scpi: "{channel}.PID.Ramp {ramp_rate}"
+      - scpi: "{channel}.PID.Setpoint {target_temp}"
+      - command: wait_for_ramp
+
+  pid_autotune:
+    description: "Automatically tune PID parameters"
+    params:
+      channel:
+        type: string
+      step_size:
+        type: float
+      lag_time:
+        type: float
+    steps:
+      - scpi: "{channel}.Tune.StepY {step_size}"
+      - scpi: "{channel}.Tune.Lag {lag_time}"
+      - scpi: "{channel}.Tune.Mode Auto"
+      - command: wait_for_tune
+
+status:
+  stb:
+    bit0: MSB
+    bit2: EAV
+    bit3: QSB
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

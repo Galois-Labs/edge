@@ -1,0 +1,1517 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "E8267D"
+  class: rf_source
+  description: "PSG RF and Microwave Signal Generator with advanced modulation capabilities, supporting frequencies from 250 kHz to 70 GHz depending on options"
+
+identity:
+  query: "*IDN?"
+  pattern: "(KEYSIGHT|Agilent).*(E8257D|E8267D|E8663D)"
+
+interfaces:
+  - type: gpib
+    default_address: 19
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE 488.2 Common Commands
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status byte and event registers"
+
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in Standard Event Register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall instrument state from memory location"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save instrument state to memory location"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Power-on status clear setting"
+
+  # Output Control
+  output_state:
+    getter: ":OUTPut:STATe?"
+    setter: ":OUTPut:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "RF output on/off state"
+
+  modulation_state:
+    getter: ":OUTPut:MODulation:STATe?"
+    setter: ":OUTPut:MODulation:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Modulation on/off state"
+
+  # Frequency Commands
+  frequency:
+    getter: ":FREQuency:CW?"
+    setter: ":FREQuency:CW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 250000
+        max: 70000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "CW frequency setting"
+
+  frequency_mode:
+    getter: ":FREQuency:MODE?"
+    setter: ":FREQuency:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CW", "FIXed", "SWEep", "LIST"]
+    returns:
+      type: string
+    description: "Frequency operating mode"
+
+  frequency_step:
+    getter: ":FREQuency:CW:STEP:INCRement?"
+    setter: ":FREQuency:CW:STEP:INCRement {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency step increment"
+
+  frequency_start:
+    getter: ":FREQuency:STARt?"
+    setter: ":FREQuency:STARt {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep start frequency"
+
+  frequency_stop:
+    getter: ":FREQuency:STOP?"
+    setter: ":FREQuency:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep stop frequency"
+
+  frequency_center:
+    getter: ":FREQuency:CENTer?"
+    setter: ":FREQuency:CENTer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep center frequency"
+
+  frequency_span:
+    getter: ":FREQuency:SPAN?"
+    setter: ":FREQuency:SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep frequency span"
+
+  frequency_offset:
+    getter: ":FREQuency:OFFSet?"
+    setter: ":FREQuency:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency offset value"
+
+  frequency_offset_state:
+    getter: ":FREQuency:OFFSet:STATe?"
+    setter: ":FREQuency:OFFSet:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Frequency offset enable/disable"
+
+  frequency_multiplier:
+    getter: ":FREQuency:MULTiplier?"
+    setter: ":FREQuency:MULTiplier {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 65535
+    returns:
+      type: int
+    description: "Frequency multiplier value"
+
+  # Power/Amplitude Commands
+  power:
+    getter: ":POWer:LEVel:IMMediate:AMPLitude?"
+    setter: ":POWer:LEVel:IMMediate:AMPLitude {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -120
+        max: 30
+    returns:
+      type: float
+      unit: dBm
+    description: "Output power level"
+
+  power_mode:
+    getter: ":POWer:MODE?"
+    setter: ":POWer:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIXed", "SWEep", "LIST"]
+    returns:
+      type: string
+    description: "Power operating mode"
+
+  power_step:
+    getter: ":POWer:LEVel:IMMediate:AMPLitude:STEP:INCRement?"
+    setter: ":POWer:LEVel:IMMediate:AMPLitude:STEP:INCRement {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: 0.01
+        max: 100
+    returns:
+      type: float
+      unit: dB
+    description: "Power step increment"
+
+  power_start:
+    getter: ":POWer:STARt?"
+    setter: ":POWer:STARt {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Sweep start power"
+
+  power_stop:
+    getter: ":POWer:STOP?"
+    setter: ":POWer:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Sweep stop power"
+
+  power_offset:
+    getter: ":POWer:LEVel:IMMediate:OFFSet?"
+    setter: ":POWer:LEVel:IMMediate:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: dB
+    description: "Power offset value"
+
+  alc_state:
+    getter: ":POWer:ALC:STATe?"
+    setter: ":POWer:ALC:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic level control on/off"
+
+  alc_bandwidth:
+    getter: ":POWer:ALC:BANDwidth?"
+    setter: ":POWer:ALC:BANDwidth {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        options: ["100", "1000", "10000", "100000"]
+    returns:
+      type: float
+      unit: Hz
+    description: "ALC loop bandwidth"
+
+  alc_bandwidth_auto:
+    getter: ":POWer:ALC:BANDwidth:AUTO?"
+    setter: ":POWer:ALC:BANDwidth:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "ALC automatic bandwidth optimization"
+
+  power_search:
+    getter: ":POWer:ALC:SEARch?"
+    setter: ":POWer:ALC:SEARch {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MANUal", "AUTO", "SPAN"]
+    returns:
+      type: string
+    description: "Power search mode"
+
+  attenuation:
+    getter: ":POWer:ATTenuation?"
+    setter: ":POWer:ATTenuation {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: 0
+        max: 115
+    returns:
+      type: float
+      unit: dB
+    description: "RF attenuator setting"
+
+  attenuation_auto:
+    getter: ":POWer:ATTenuation:AUTO?"
+    setter: ":POWer:ATTenuation:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic attenuator control"
+
+  # Reference Oscillator
+  reference_oscillator_source:
+    getter: ":ROSCillator:SOURce?"
+    setter: ":ROSCillator:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Reference oscillator source"
+
+  reference_oscillator_source_auto:
+    getter: ":ROSCillator:SOURce:AUTO?"
+    setter: ":ROSCillator:SOURce:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic reference source selection"
+
+  # Phase Adjustment
+  phase_adjust:
+    getter: ":PHASe:ADJust?"
+    setter: ":PHASe:ADJust {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Phase adjustment value"
+
+  phase_reference:
+    scpi: ":PHASe:REFerence"
+    type: write
+    description: "Set current phase as reference (zero)"
+
+  # Amplitude Modulation
+  am_state:
+    getter: ":AM:STATe?"
+    setter: ":AM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "AM modulation on/off"
+
+  am_depth:
+    getter: ":AM:DEPTh?"
+    setter: ":AM:DEPTh {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "AM modulation depth (linear percent)"
+
+  am_depth_exponential:
+    getter: ":AM:DEPTh:EXPonential?"
+    setter: ":AM:DEPTh:EXPonential {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: "AM modulation depth (exponential dB)"
+
+  am_source:
+    getter: ":AM:SOURce?"
+    setter: ":AM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal", "INT1", "INT2", "EXT1", "EXT2"]
+    returns:
+      type: string
+    description: "AM modulation source"
+
+  am_type:
+    getter: ":AM:TYPE?"
+    setter: ":AM:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LINear", "EXPonential"]
+    returns:
+      type: string
+    description: "AM modulation type"
+
+  am_internal_frequency:
+    getter: ":AM:INTernal:FREQuency?"
+    setter: ":AM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.5
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "AM internal modulation frequency"
+
+  am_internal_function:
+    getter: ":AM:INTernal:FUNCtion:SHAPe?"
+    setter: ":AM:INTernal:FUNCtion:SHAPe {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "AM internal waveform shape"
+
+  am_external_coupling:
+    getter: ":AM:EXTernal:COUPling?"
+    setter: ":AM:EXTernal:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "AM external input coupling"
+
+  am_external_impedance:
+    getter: ":AM:EXTernal:IMPedance?"
+    setter: ":AM:EXTernal:IMPedance {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "600", "G10K"]
+    returns:
+      type: string
+    description: "AM external input impedance"
+
+  # Frequency Modulation
+  fm_state:
+    getter: ":FM:STATe?"
+    setter: ":FM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "FM modulation on/off"
+
+  fm_deviation:
+    getter: ":FM:DEViation?"
+    setter: ":FM:DEViation {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0
+        max: 80000000
+    returns:
+      type: float
+      unit: Hz
+    description: "FM frequency deviation"
+
+  fm_source:
+    getter: ":FM:SOURce?"
+    setter: ":FM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal", "INT1", "INT2", "EXT1", "EXT2"]
+    returns:
+      type: string
+    description: "FM modulation source"
+
+  fm_internal_frequency:
+    getter: ":FM:INTernal:FREQuency?"
+    setter: ":FM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.5
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "FM internal modulation frequency"
+
+  fm_internal_function:
+    getter: ":FM:INTernal:FUNCtion:SHAPe?"
+    setter: ":FM:INTernal:FUNCtion:SHAPe {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "FM internal waveform shape"
+
+  fm_external_coupling:
+    getter: ":FM:EXTernal:COUPling?"
+    setter: ":FM:EXTernal:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "FM external input coupling"
+
+  fm_external_impedance:
+    getter: ":FM:EXTernal:IMPedance?"
+    setter: ":FM:EXTernal:IMPedance {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "600", "G10K"]
+    returns:
+      type: string
+    description: "FM external input impedance"
+
+  # Phase Modulation
+  pm_state:
+    getter: ":PM:STATe?"
+    setter: ":PM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "PM modulation on/off"
+
+  pm_deviation:
+    getter: ":PM:DEViation?"
+    setter: ":PM:DEViation {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: rad
+        min: 0
+        max: 20
+    returns:
+      type: float
+      unit: rad
+    description: "PM phase deviation"
+
+  pm_source:
+    getter: ":PM:SOURce?"
+    setter: ":PM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal", "INT1", "INT2", "EXT1", "EXT2"]
+    returns:
+      type: string
+    description: "PM modulation source"
+
+  pm_internal_frequency:
+    getter: ":PM:INTernal:FREQuency?"
+    setter: ":PM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.5
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "PM internal modulation frequency"
+
+  pm_internal_function:
+    getter: ":PM:INTernal:FUNCtion:SHAPe?"
+    setter: ":PM:INTernal:FUNCtion:SHAPe {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "PM internal waveform shape"
+
+  pm_bandwidth:
+    getter: ":PM:BANDwidth?"
+    setter: ":PM:BANDwidth {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LOW", "HIGH"]
+    returns:
+      type: string
+    description: "PM bandwidth setting"
+
+  pm_external_coupling:
+    getter: ":PM:EXTernal:COUPling?"
+    setter: ":PM:EXTernal:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "PM external input coupling"
+
+  pm_external_impedance:
+    getter: ":PM:EXTernal:IMPedance?"
+    setter: ":PM:EXTernal:IMPedance {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "600", "G10K"]
+    returns:
+      type: string
+    description: "PM external input impedance"
+
+  # Pulse Modulation
+  pulse_modulation_state:
+    getter: ":PULM:STATe?"
+    setter: ":PULM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Pulse modulation on/off"
+
+  pulse_source:
+    getter: ":PULM:SOURce?"
+    setter: ":PULM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Pulse modulation source"
+
+  pulse_internal_frequency:
+    getter: ":PULM:INTernal:FREQuency?"
+    setter: ":PULM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.5
+        max: 10000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Pulse internal frequency (PRF)"
+
+  pulse_internal_period:
+    getter: ":PULM:INTernal:PERiod?"
+    setter: ":PULM:INTernal:PERiod {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Pulse internal period"
+
+  pulse_internal_width:
+    getter: ":PULM:INTernal:PWIDth?"
+    setter: ":PULM:INTernal:PWIDth {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Pulse internal width"
+
+  pulse_internal_delay:
+    getter: ":PULM:INTernal:DELay?"
+    setter: ":PULM:INTernal:DELay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 42
+    returns:
+      type: float
+      unit: s
+    description: "Pulse internal delay"
+
+  pulse_external_polarity:
+    getter: ":PULM:EXTernal:POLarity?"
+    setter: ":PULM:EXTernal:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "External pulse input polarity"
+
+  # List/Sweep Control
+  sweep_mode:
+    getter: ":SWEep:MODE?"
+    setter: ":SWEep:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MANual"]
+    returns:
+      type: string
+    description: "Sweep mode (auto or manual)"
+
+  sweep_points:
+    getter: ":SWEep:POINts?"
+    setter: ":SWEep:POINts {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 2
+        max: 65535
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_dwell:
+    getter: ":SWEep:DWELl?"
+    setter: ":SWEep:DWELl {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.001
+        max: 60
+    returns:
+      type: float
+      unit: s
+    description: "Sweep dwell time per point"
+
+  list_frequency:
+    getter: ":LIST:FREQuency?"
+    setter: ":LIST:FREQuency {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List of frequency values for list sweep"
+
+  list_power:
+    getter: ":LIST:POWer?"
+    setter: ":LIST:POWer {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List of power values for list sweep"
+
+  list_dwell:
+    getter: ":LIST:DWELl?"
+    setter: ":LIST:DWELl {values}"
+    type: property
+    params:
+      values:
+        type: string
+    returns:
+      type: string
+    description: "List of dwell time values for list sweep"
+
+  list_mode:
+    getter: ":LIST:MODE?"
+    setter: ":LIST:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MANual"]
+    returns:
+      type: string
+    description: "List sweep mode"
+
+  list_type:
+    getter: ":LIST:TYPE?"
+    setter: ":LIST:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LIST", "STEP"]
+    returns:
+      type: string
+    description: "Sweep type (list or step)"
+
+  list_direction:
+    getter: ":LIST:DIRection?"
+    setter: ":LIST:DIRection {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["UP", "DOWN"]
+    returns:
+      type: string
+    description: "List sweep direction"
+
+  list_trigger_source:
+    getter: ":LIST:TRIGger:SOURce?"
+    setter: ":LIST:TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "IMMediate", "EXTernal", "KEY"]
+    returns:
+      type: string
+    description: "List sweep trigger source"
+
+  # Trigger Control
+  trigger_source:
+    getter: ":TRIGger:SOURce?"
+    setter: ":TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "BUS", "EXTernal"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_slope:
+    getter: ":TRIGger:SLOPe?"
+    setter: ":TRIGger:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "External trigger slope"
+
+  initiate_continuous:
+    getter: ":INITiate:CONTinuous?"
+    setter: ":INITiate:CONTinuous {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous trigger initiation"
+
+  initiate:
+    scpi: ":INITiate:IMMediate"
+    type: write
+    description: "Initiate trigger system"
+
+  abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Abort current operation"
+
+  # Display Control
+  display_state:
+    getter: ":DISPlay:STATe?"
+    setter: ":DISPlay:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Display on/off state"
+
+  display_brightness:
+    getter: ":DISPlay:BRIGhtness?"
+    setter: ":DISPlay:BRIGhtness {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 100
+    returns:
+      type: int
+    description: "Display brightness level"
+
+  # System Control
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Preset instrument to default state"
+
+  system_preset_type:
+    getter: ":SYSTem:PRESet:TYPE?"
+    setter: ":SYSTem:PRESet:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FACTory", "USER"]
+    returns:
+      type: string
+    description: "Preset type selection"
+
+  system_language:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {lang}"
+    type: property
+    params:
+      lang:
+        type: enum
+        options: ["SCPI", "COMP", "8360", "8662", "8663"]
+    returns:
+      type: string
+    description: "Command language mode"
+
+  # GPIB Configuration
+  gpib_address:
+    getter: ":SYSTem:COMMunicate:GPIB:ADDRess?"
+    setter: ":SYSTem:COMMunicate:GPIB:ADDRess {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 0
+        max: 30
+    returns:
+      type: int
+    description: "GPIB address"
+
+  # LAN Configuration
+  lan_config:
+    getter: ":SYSTem:COMMunicate:LAN:CONFig?"
+    setter: ":SYSTem:COMMunicate:LAN:CONFig {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MANual"]
+    returns:
+      type: string
+    description: "LAN configuration mode"
+
+  lan_hostname:
+    getter: ":SYSTem:COMMunicate:LAN:HOSTname?"
+    setter: ":SYSTem:COMMunicate:LAN:HOSTname {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "LAN hostname"
+
+  lan_ip_address:
+    getter: ":SYSTem:COMMunicate:LAN:IP?"
+    setter: ":SYSTem:COMMunicate:LAN:IP {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "LAN IP address"
+
+sequences:
+  basic_cw_output:
+    description: "Configure basic CW output with specified frequency and power"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 250000
+        max: 70000000000
+      power:
+        type: float
+        unit: dBm
+        min: -120
+        max: 30
+    steps:
+      - command: reset
+      - command: frequency_mode
+        args:
+          mode: "CW"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power
+        args:
+          value: "{power}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  frequency_sweep:
+    description: "Perform a frequency sweep from start to stop"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 101
+      dwell:
+        type: float
+        unit: s
+        default: 0.01
+      power:
+        type: float
+        unit: dBm
+        default: 0
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+      - command: power_mode
+        args:
+          mode: "FIXed"
+      - command: power
+        args:
+          value: "{power}"
+      - command: frequency_start
+        args:
+          value: "{start_freq}"
+      - command: frequency_stop
+        args:
+          value: "{stop_freq}"
+      - command: sweep_points
+        args:
+          value: "{points}"
+      - command: sweep_dwell
+        args:
+          value: "{dwell}"
+      - command: list_type
+        args:
+          type: "STEP"
+      - command: frequency_mode
+        args:
+          mode: "SWEep"
+      - command: output_state
+        args:
+          state: "ON"
+
+  power_sweep:
+    description: "Perform a power sweep at fixed frequency"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      start_power:
+        type: float
+        unit: dBm
+      stop_power:
+        type: float
+        unit: dBm
+      points:
+        type: int
+        default: 101
+      dwell:
+        type: float
+        unit: s
+        default: 0.01
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+      - command: frequency_mode
+        args:
+          mode: "CW"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power_start
+        args:
+          value: "{start_power}"
+      - command: power_stop
+        args:
+          value: "{stop_power}"
+      - command: sweep_points
+        args:
+          value: "{points}"
+      - command: sweep_dwell
+        args:
+          value: "{dwell}"
+      - command: list_type
+        args:
+          type: "STEP"
+      - command: power_mode
+        args:
+          mode: "SWEep"
+      - command: output_state
+        args:
+          state: "ON"
+
+  am_modulated_output:
+    description: "Configure AM modulated output"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+      am_depth:
+        type: float
+        unit: "%"
+        default: 50
+      am_frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      am_source:
+        type: string
+        default: "INTernal"
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+      - command: modulation_state
+        args:
+          state: "OFF"
+      - command: frequency_mode
+        args:
+          mode: "CW"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power
+        args:
+          value: "{power}"
+      - command: am_source
+        args:
+          source: "{am_source}"
+      - command: am_internal_frequency
+        args:
+          value: "{am_frequency}"
+      - command: am_depth
+        args:
+          value: "{am_depth}"
+      - command: am_state
+        args:
+          state: "ON"
+      - command: modulation_state
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+  fm_modulated_output:
+    description: "Configure FM modulated output"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+      fm_deviation:
+        type: float
+        unit: Hz
+        default: 100000
+      fm_frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      fm_source:
+        type: string
+        default: "INTernal"
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+      - command: modulation_state
+        args:
+          state: "OFF"
+      - command: frequency_mode
+        args:
+          mode: "CW"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power
+        args:
+          value: "{power}"
+      - command: fm_source
+        args:
+          source: "{fm_source}"
+      - command: fm_internal_frequency
+        args:
+          value: "{fm_frequency}"
+      - command: fm_deviation
+        args:
+          value: "{fm_deviation}"
+      - command: fm_state
+        args:
+          state: "ON"
+      - command: modulation_state
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+  pulse_modulated_output:
+    description: "Configure pulse modulated output"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+      pulse_width:
+        type: float
+        unit: s
+        default: 0.000001
+      pulse_period:
+        type: float
+        unit: s
+        default: 0.00001
+      pulse_source:
+        type: string
+        default: "INTernal"
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+      - command: modulation_state
+        args:
+          state: "OFF"
+      - command: frequency_mode
+        args:
+          mode: "CW"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: power
+        args:
+          value: "{power}"
+      - command: pulse_source
+        args:
+          source: "{pulse_source}"
+      - command: pulse_internal_width
+        args:
+          value: "{pulse_width}"
+      - command: pulse_internal_period
+        args:
+          value: "{pulse_period}"
+      - command: pulse_modulation_state
+        args:
+          state: "ON"
+      - command: modulation_state
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+status:
+  stb:
+    bit0: "NULL"
+    bit1: "NULL"
+    bit2: "Error Available"
+    bit3: "Questionable Data"
+    bit4: "Message Available"
+    bit5: "Event Status"
+    bit6: "Request Service"
+    bit7: "Operation Complete"
+  esr:
+    bit0: "Operation Complete"
+    bit1: "NULL"
+    bit2: "Query Error"
+    bit3: "Device Dependent Error"
+    bit4: "Execution Error"
+    bit5: "Command Error"
+    bit6: "User Request"
+    bit7: "Power On"

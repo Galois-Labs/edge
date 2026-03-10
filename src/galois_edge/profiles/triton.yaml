@@ -1,0 +1,290 @@
+# Triton 200 dilution fridge Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Triton
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Triton"
+  model: "200 dilution fridge"
+  class: cryostat
+  description: "Triton 200 dilution fridge"
+
+identity:
+  query: "*IDN?"
+  pattern: "Triton.*Triton"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  t1:
+    scpi: "READ:DEV:T1:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T1"
+  t2:
+    scpi: "READ:DEV:T2:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T2"
+  t3:
+    scpi: "READ:DEV:T3:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T3"
+  t4:
+    scpi: "READ:DEV:T4:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T4"
+  t5:
+    scpi: "READ:DEV:T5:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T5"
+  t6:
+    scpi: "READ:DEV:T6:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T6"
+  t7:
+    scpi: "READ:DEV:T7:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T7"
+  t8:
+    scpi: "READ:DEV:T8:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T8"
+  t9:
+    scpi: "READ:DEV:T9:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T9"
+  t10:
+    scpi: "READ:DEV:T10:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T10"
+  t11:
+    scpi: "READ:DEV:T11:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T11"
+  t12:
+    scpi: "READ:DEV:T12:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T12"
+  t13:
+    scpi: "READ:DEV:T13:TEMP:SIG:TEMP"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: "T13"
+  controlloop:
+    getter: "READ:DEV:T<c>:TEMP:LOOP:MODE"
+    setter: "SET:DEV:T<c>:TEMP:LOOP:MODE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "ControlLoop"
+  tset:
+    getter: "READ:DEV:T<c>:TEMP:LOOP:TSET"
+    setter: "SET:DEV:T<c>:TEMP:LOOP:TSET:{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: K
+        max: 300.0
+    returns:
+      type: float
+      unit: K
+    description: "TSet"
+  heaterrange:
+    getter: "READ:DEV:T<c>:TEMP:LOOP:RANGE"
+    setter: "SET:DEV:T<c>:TEMP:LOOP:RANGE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0.0", "0.0316", "0.1", "0.316", "1.0", "3.16", "10.0", "31.6", "100.0"]
+    returns:
+      type: string
+    description: "HeaterRange"
+  coordsys:
+    getter: "READ:SYS:VRM:COO"
+    setter: "SET:SYS:VRM:COO:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["CART", "CYL", "SPH"]
+    returns:
+      type: string
+    description: "CoordSys"
+  bx:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "Bx"
+  by:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "By"
+  br:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "Br"
+  brho:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "Brho"
+  btheta:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: rad
+    returns:
+      type: float
+      unit: rad
+    description: "Btheta"
+  bz:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "Bz"
+  bphi:
+    getter: "READ:SYS:VRM:VECT"
+    setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
+    type: property
+    params:
+      value:
+        type: float
+        unit: rad
+    returns:
+      type: float
+      unit: rad
+    description: "Bphi"
+  poc:
+    getter: "READ:SYS:VRM:POC"
+    setter: "SET:SYS:VRM:POC:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "PoC"
+

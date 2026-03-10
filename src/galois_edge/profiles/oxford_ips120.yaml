@@ -1,0 +1,82 @@
+# Oxford IPS120 Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Oxford IPS120
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Oxford"
+  model: "IPS120"
+  class: magnet_controller
+  description: "Oxford IPS120"
+
+identity:
+  query: "*IDN?"
+  pattern: "Oxford.*IPS120"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\r"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  b:
+    getter: "R7"
+    setter: "J{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T
+    returns:
+      type: float
+      unit: T
+    description: "B"
+  sweeprate:
+    getter: "R9"
+    setter: "T{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: T/min
+    returns:
+      type: float
+      unit: T/min
+    description: "SweepRate"
+

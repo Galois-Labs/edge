@@ -1,0 +1,24 @@
+# Aeroflex 302x Signal Generator Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: PXI_Aeroflex302x
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Aeroflex"
+  model: "302x Signal Generator"
+  class: signal_generator
+  description: "Aeroflex 302x Signal Generator"
+
+identity:
+  query: "*IDN?"
+  pattern: "Aeroflex.*302x\ Signal\ Generator"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+

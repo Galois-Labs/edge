@@ -1,0 +1,2012 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "34970A"
+  class: daq
+  description: "Data Acquisition/Switch Unit with 6½-digit multimeter, 3 module slots, scanning up to 60 channels"
+
+identity:
+  query: "*IDN?"
+  pattern: "(HEWLETT-PACKARD|Agilent Technologies),34970A"
+
+interfaces:
+  - type: gpib
+    default_address: 9
+  - type: serial
+    port: 57600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default conditions"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return '1' to output queue when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass, 1 = fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 5
+    description: "Save present setup to memory location (0-5)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 5
+    description: "Recall setup from memory location (0-5)"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  configure_dc_voltage:
+    scpi: "CONF:VOLT:DC {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 300
+      resolution:
+        type: float
+        unit: V
+      channels:
+        type: string
+    description: "Configure channels for DC voltage measurement"
+
+  configure_ac_voltage:
+    scpi: "CONF:VOLT:AC {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 300
+      resolution:
+        type: float
+        unit: V
+      channels:
+        type: string
+    description: "Configure channels for AC voltage measurement"
+
+  configure_dc_current:
+    scpi: "CONF:CURR:DC {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.01
+        max: 1
+      resolution:
+        type: float
+        unit: A
+      channels:
+        type: string
+    description: "Configure channels for DC current measurement"
+
+  configure_ac_current:
+    scpi: "CONF:CURR:AC {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.01
+        max: 1
+      resolution:
+        type: float
+        unit: A
+      channels:
+        type: string
+    description: "Configure channels for AC current measurement"
+
+  configure_resistance:
+    scpi: "CONF:RES {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Ohm
+        min: 100
+        max: 100000000
+      resolution:
+        type: float
+        unit: Ohm
+      channels:
+        type: string
+    description: "Configure channels for 2-wire resistance measurement"
+
+  configure_fresistance:
+    scpi: "CONF:FRES {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Ohm
+        min: 100
+        max: 100000000
+      resolution:
+        type: float
+        unit: Ohm
+      channels:
+        type: string
+    description: "Configure channels for 4-wire resistance measurement"
+
+  configure_temperature_tc:
+    scpi: "CONF:TEMP TC,{type},(@{channels})"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["B", "E", "J", "K", "N", "R", "S", "T"]
+      channels:
+        type: string
+    description: "Configure channels for thermocouple temperature measurement"
+
+  configure_temperature_rtd:
+    scpi: "CONF:TEMP RTD,{type},(@{channels})"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["85", "91"]
+      channels:
+        type: string
+    description: "Configure channels for RTD temperature measurement"
+
+  configure_temperature_thermistor:
+    scpi: "CONF:TEMP THER,{type},(@{channels})"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["2252", "5000", "10000"]
+      channels:
+        type: string
+    description: "Configure channels for thermistor temperature measurement"
+
+  configure_frequency:
+    scpi: "CONF:FREQ {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Hz
+      resolution:
+        type: float
+        unit: Hz
+      channels:
+        type: string
+    description: "Configure channels for frequency measurement"
+
+  configure_period:
+    scpi: "CONF:PER {range},{resolution},(@{channels})"
+    type: write
+    params:
+      range:
+        type: float
+        unit: s
+      resolution:
+        type: float
+        unit: s
+      channels:
+        type: string
+    description: "Configure channels for period measurement"
+
+  measure_dc_voltage:
+    scpi: "MEAS:VOLT:DC? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: V
+        default: 10
+      resolution:
+        type: float
+        unit: V
+        default: 0.00001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+    streamable: true
+
+  measure_ac_voltage:
+    scpi: "MEAS:VOLT:AC? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: V
+        default: 10
+      resolution:
+        type: float
+        unit: V
+        default: 0.00001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Measure AC voltage"
+    streamable: true
+
+  measure_dc_current:
+    scpi: "MEAS:CURR:DC? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: A
+        default: 1
+      resolution:
+        type: float
+        unit: A
+        default: 0.000001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+    streamable: true
+
+  measure_ac_current:
+    scpi: "MEAS:CURR:AC? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: A
+        default: 1
+      resolution:
+        type: float
+        unit: A
+        default: 0.000001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Measure AC current"
+    streamable: true
+
+  measure_resistance:
+    scpi: "MEAS:RES? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Ohm
+        default: 10000
+      resolution:
+        type: float
+        unit: Ohm
+        default: 0.001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 2-wire resistance"
+    streamable: true
+
+  measure_fresistance:
+    scpi: "MEAS:FRES? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Ohm
+        default: 10000
+      resolution:
+        type: float
+        unit: Ohm
+        default: 0.001
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 4-wire resistance"
+    streamable: true
+
+  measure_temperature:
+    scpi: "MEAS:TEMP? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: C
+    description: "Measure temperature"
+    streamable: true
+
+  measure_frequency:
+    scpi: "MEAS:FREQ? {range},{resolution},(@{channels})"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Hz
+      resolution:
+        type: float
+        unit: Hz
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency"
+    streamable: true
+
+  read:
+    scpi: "READ?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate and fetch readings (combines INIT and FETCH)"
+
+  fetch:
+    scpi: "FETCH?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch post-processed readings from memory"
+
+  initiate:
+    scpi: "INIT"
+    type: write
+    description: "Initiate scan - take instrument out of idle"
+
+  abort:
+    scpi: "ABOR"
+    type: write
+    description: "Abort and return to idle state"
+
+  route_scan:
+    getter: "ROUT:SCAN?"
+    setter: "ROUT:SCAN (@{channels})"
+    type: property
+    params:
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Define scan list"
+
+  route_close:
+    scpi: "ROUT:CLOSE (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Close specified channels"
+
+  route_open:
+    scpi: "ROUT:OPEN (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Open specified channels"
+
+  route_open_all:
+    scpi: "ROUT:OPEN:ALL"
+    type: write
+    description: "Open all channels in all slots"
+
+  channel_delay:
+    getter: "ROUT:CHAN:DEL? (@{channels})"
+    setter: "ROUT:CHAN:DEL {delay},(@{channels})"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 60
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Channel delay between relay closure and measurement"
+
+  channel_delay_auto:
+    getter: "ROUT:CHAN:DEL:AUTO? (@{channels})"
+    setter: "ROUT:CHAN:DEL:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable automatic channel delay"
+
+  channel_advance_source:
+    getter: "ROUT:CHAN:ADV:SOUR?"
+    setter: "ROUT:CHAN:ADV:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT"]
+    returns:
+      type: string
+    description: "Channel advance source for external scanning"
+
+  channel_fwire:
+    getter: "ROUT:CHAN:FWIR? (@{channels})"
+    setter: "ROUT:CHAN:FWIR {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire external scanning"
+
+  route_monitor:
+    getter: "ROUT:MON?"
+    setter: "ROUT:MON (@{channel})"
+    type: property
+    params:
+      channel:
+        type: string
+    returns:
+      type: string
+    description: "Select channel to monitor"
+
+  route_monitor_state:
+    getter: "ROUT:MON:STAT?"
+    setter: "ROUT:MON:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable monitor function"
+
+  route_monitor_data:
+    scpi: "ROUT:MON:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Read monitor data from selected channel"
+
+  trigger_source:
+    getter: "TRIG:SOUR?"
+    setter: "TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT", "BUS", "TIM", "ALARM1", "ALARM2", "ALARM3", "ALARM4"]
+    returns:
+      type: string
+    description: "Trigger source for scan"
+
+  trigger_count:
+    getter: "TRIG:COUN?"
+    setter: "TRIG:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 50000
+    returns:
+      type: int
+    description: "Trigger count (number of scan sweeps)"
+
+  trigger_count_infinite:
+    scpi: "TRIG:COUN INF"
+    type: write
+    description: "Set trigger count to infinite (continuous scanning)"
+
+  trigger_timer:
+    getter: "TRIG:TIM?"
+    setter: "TRIG:TIM {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0
+        max: 359999
+    returns:
+      type: float
+      unit: s
+    description: "Trigger timer interval for interval scanning"
+
+  trigger_delay:
+    getter: "TRIG:DEL?"
+    setter: "TRIG:DEL {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay"
+
+  sense_function:
+    getter: "SENS:FUNC? (@{channels})"
+    setter: "SENS:FUNC \"{function}\",(@{channels})"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLT:DC", "VOLT:AC", "CURR:DC", "CURR:AC", "RES", "FRES", "FREQ", "PER", "TEMP"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  sense_voltage_dc_range:
+    getter: "SENS:VOLT:DC:RANG? (@{channels})"
+    setter: "SENS:VOLT:DC:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 300
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage measurement range"
+
+  sense_voltage_dc_range_auto:
+    getter: "SENS:VOLT:DC:RANG:AUTO? (@{channels})"
+    setter: "SENS:VOLT:DC:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage auto-ranging"
+
+  sense_voltage_dc_nplc:
+    getter: "SENS:VOLT:DC:NPLC? (@{channels})"
+    setter: "SENS:VOLT:DC:NPLC {nplc},(@{channels})"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.02
+        max: 200
+        default: 1.0
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "DC voltage integration time in power line cycles"
+
+  sense_voltage_dc_resolution:
+    getter: "SENS:VOLT:DC:RES? (@{channels})"
+    setter: "SENS:VOLT:DC:RES {resolution},(@{channels})"
+    type: property
+    params:
+      resolution:
+        type: float
+        unit: V
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage resolution"
+
+  sense_voltage_ac_range:
+    getter: "SENS:VOLT:AC:RANG? (@{channels})"
+    setter: "SENS:VOLT:AC:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 300
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "AC voltage measurement range"
+
+  sense_voltage_ac_range_auto:
+    getter: "SENS:VOLT:AC:RANG:AUTO? (@{channels})"
+    setter: "SENS:VOLT:AC:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable AC voltage auto-ranging"
+
+  sense_voltage_ac_bandwidth:
+    getter: "SENS:VOLT:AC:BAND? (@{channels})"
+    setter: "SENS:VOLT:AC:BAND {frequency},(@{channels})"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "AC voltage low frequency filter setting"
+
+  sense_current_dc_range:
+    getter: "SENS:CURR:DC:RANG? (@{channels})"
+    setter: "SENS:CURR:DC:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.01
+        max: 1
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "DC current measurement range"
+
+  sense_current_dc_range_auto:
+    getter: "SENS:CURR:DC:RANG:AUTO? (@{channels})"
+    setter: "SENS:CURR:DC:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable DC current auto-ranging"
+
+  sense_current_dc_nplc:
+    getter: "SENS:CURR:DC:NPLC? (@{channels})"
+    setter: "SENS:CURR:DC:NPLC {nplc},(@{channels})"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.02
+        max: 200
+        default: 1.0
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "DC current integration time in power line cycles"
+
+  sense_current_ac_range:
+    getter: "SENS:CURR:AC:RANG? (@{channels})"
+    setter: "SENS:CURR:AC:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.01
+        max: 1
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "AC current measurement range"
+
+  sense_current_ac_range_auto:
+    getter: "SENS:CURR:AC:RANG:AUTO? (@{channels})"
+    setter: "SENS:CURR:AC:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable AC current auto-ranging"
+
+  sense_current_ac_bandwidth:
+    getter: "SENS:CURR:AC:BAND? (@{channels})"
+    setter: "SENS:CURR:AC:BAND {frequency},(@{channels})"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "AC current low frequency filter setting"
+
+  sense_resistance_range:
+    getter: "SENS:RES:RANG? (@{channels})"
+    setter: "SENS:RES:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: Ohm
+        min: 100
+        max: 100000000
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "2-wire resistance measurement range"
+
+  sense_resistance_range_auto:
+    getter: "SENS:RES:RANG:AUTO? (@{channels})"
+    setter: "SENS:RES:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable 2-wire resistance auto-ranging"
+
+  sense_resistance_nplc:
+    getter: "SENS:RES:NPLC? (@{channels})"
+    setter: "SENS:RES:NPLC {nplc},(@{channels})"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.02
+        max: 200
+        default: 1.0
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "2-wire resistance integration time in power line cycles"
+
+  sense_resistance_offset_compensated:
+    getter: "SENS:RES:OCOM? (@{channels})"
+    setter: "SENS:RES:OCOM {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable offset-compensated resistance measurement"
+
+  sense_fresistance_range:
+    getter: "SENS:FRES:RANG? (@{channels})"
+    setter: "SENS:FRES:RANG {range},(@{channels})"
+    type: property
+    params:
+      range:
+        type: float
+        unit: Ohm
+        min: 100
+        max: 100000000
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "4-wire resistance measurement range"
+
+  sense_fresistance_range_auto:
+    getter: "SENS:FRES:RANG:AUTO? (@{channels})"
+    setter: "SENS:FRES:RANG:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire resistance auto-ranging"
+
+  sense_fresistance_nplc:
+    getter: "SENS:FRES:NPLC? (@{channels})"
+    setter: "SENS:FRES:NPLC {nplc},(@{channels})"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.02
+        max: 200
+        default: 1.0
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "4-wire resistance integration time in power line cycles"
+
+  sense_fresistance_offset_compensated:
+    getter: "SENS:FRES:OCOM? (@{channels})"
+    setter: "SENS:FRES:OCOM {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable offset-compensated 4-wire resistance measurement"
+
+  sense_temperature_transducer_tc_type:
+    getter: "SENS:TEMP:TRAN:TC:TYPE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:TC:TYPE {type},(@{channels})"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["B", "E", "J", "K", "N", "R", "S", "T"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Thermocouple type"
+
+  sense_temperature_transducer_tc_rjunction_type:
+    getter: "SENS:TEMP:TRAN:TC:RJUN:TYPE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:TC:RJUN:TYPE {type},(@{channels})"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["INT", "EXT", "FIX"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Thermocouple reference junction type"
+
+  sense_temperature_transducer_tc_rjunction:
+    getter: "SENS:TEMP:TRAN:TC:RJUN? (@{channels})"
+    setter: "SENS:TEMP:TRAN:TC:RJUN {temperature},(@{channels})"
+    type: property
+    params:
+      temperature:
+        type: float
+        unit: C
+        min: -20
+        max: 80
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: C
+    description: "Fixed reference junction temperature"
+
+  sense_temperature_transducer_tc_check:
+    getter: "SENS:TEMP:TRAN:TC:CHE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:TC:CHE {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable thermocouple check feature"
+
+  sense_temperature_transducer_frtd_type:
+    getter: "SENS:TEMP:TRAN:FRTD:TYPE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:FRTD:TYPE {type},(@{channels})"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["85", "91"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "4-wire RTD type (alpha coefficient)"
+
+  sense_temperature_transducer_frtd_resistance:
+    getter: "SENS:TEMP:TRAN:FRTD:RES? (@{channels})"
+    setter: "SENS:TEMP:TRAN:FRTD:RES {resistance},(@{channels})"
+    type: property
+    params:
+      resistance:
+        type: float
+        unit: Ohm
+        min: 49
+        max: 2100
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "4-wire RTD nominal resistance (R0)"
+
+  sense_temperature_transducer_rtd_type:
+    getter: "SENS:TEMP:TRAN:RTD:TYPE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:RTD:TYPE {type},(@{channels})"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["85", "91"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "2-wire RTD type (alpha coefficient)"
+
+  sense_temperature_transducer_rtd_resistance:
+    getter: "SENS:TEMP:TRAN:RTD:RES? (@{channels})"
+    setter: "SENS:TEMP:TRAN:RTD:RES {resistance},(@{channels})"
+    type: property
+    params:
+      resistance:
+        type: float
+        unit: Ohm
+        min: 49
+        max: 2100
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Ohm
+    description: "2-wire RTD nominal resistance (R0)"
+
+  sense_temperature_transducer_thermistor_type:
+    getter: "SENS:TEMP:TRAN:THER:TYPE? (@{channels})"
+    setter: "SENS:TEMP:TRAN:THER:TYPE {type},(@{channels})"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["2252", "5000", "10000"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Thermistor type"
+
+  sense_frequency_range_lower:
+    getter: "SENS:FREQ:RANG:LOW? (@{channels})"
+    setter: "SENS:FREQ:RANG:LOW {frequency},(@{channels})"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+      channels:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency measurement low frequency timeout"
+
+  input_impedance_auto:
+    getter: "INP:IMP:AUTO? (@{channels})"
+    setter: "INP:IMP:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable automatic input impedance (>10G for low DC voltage ranges)"
+
+  unit_temperature:
+    getter: "UNIT:TEMP? (@{channels})"
+    setter: "UNIT:TEMP {unit},(@{channels})"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["C", "F", "K"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Temperature measurement units"
+
+  zero_auto:
+    getter: "ZERO:AUTO? (@{channels})"
+    setter: "ZERO:AUTO {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Auto zero control"
+
+  calculate_scale_gain:
+    getter: "CALC:SCAL:GAIN? (@{channels})"
+    setter: "CALC:SCAL:GAIN {gain},(@{channels})"
+    type: property
+    params:
+      gain:
+        type: float
+        min: -1e15
+        max: 1e15
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Mx+B scaling gain (M)"
+
+  calculate_scale_offset:
+    getter: "CALC:SCAL:OFFS? (@{channels})"
+    setter: "CALC:SCAL:OFFS {offset},(@{channels})"
+    type: property
+    params:
+      offset:
+        type: float
+        min: -1e15
+        max: 1e15
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Mx+B scaling offset (B)"
+
+  calculate_scale_offset_null:
+    scpi: "CALC:SCAL:OFFS:NULL (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Make null measurement and store as offset"
+
+  calculate_scale_unit:
+    getter: "CALC:SCAL:UNIT? (@{channels})"
+    setter: "CALC:SCAL:UNIT '{label}',(@{channels})"
+    type: property
+    params:
+      label:
+        type: string
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Mx+B scaling custom measurement label"
+
+  calculate_scale_state:
+    getter: "CALC:SCAL:STAT? (@{channels})"
+    setter: "CALC:SCAL:STAT {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable Mx+B scaling"
+
+  calculate_limit_upper:
+    getter: "CALC:LIM:UPP? (@{channels})"
+    setter: "CALC:LIM:UPP {limit},(@{channels})"
+    type: property
+    params:
+      limit:
+        type: float
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Upper alarm limit"
+
+  calculate_limit_upper_state:
+    getter: "CALC:LIM:UPP:STAT? (@{channels})"
+    setter: "CALC:LIM:UPP:STAT {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable upper alarm limit"
+
+  calculate_limit_lower:
+    getter: "CALC:LIM:LOW? (@{channels})"
+    setter: "CALC:LIM:LOW {limit},(@{channels})"
+    type: property
+    params:
+      limit:
+        type: float
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Lower alarm limit"
+
+  calculate_limit_lower_state:
+    getter: "CALC:LIM:LOW:STAT? (@{channels})"
+    setter: "CALC:LIM:LOW:STAT {state},(@{channels})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      channels:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable lower alarm limit"
+
+  calculate_average_minimum:
+    scpi: "CALC:AVER:MIN? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Minimum reading stored during scan"
+
+  calculate_average_maximum:
+    scpi: "CALC:AVER:MAX? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Maximum reading stored during scan"
+
+  calculate_average_average:
+    scpi: "CALC:AVER:AVER? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Average of readings stored during scan"
+
+  calculate_average_count:
+    scpi: "CALC:AVER:COUN? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: int
+    description: "Number of readings taken during scan"
+
+  calculate_average_clear:
+    scpi: "CALC:AVER:CLE (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Clear statistics memory for selected channel"
+
+  output_alarm_source:
+    getter: "OUTP:ALARM{alarm}:SOUR?"
+    setter: "OUTP:ALARM{alarm}:SOUR (@{channels})"
+    type: property
+    params:
+      alarm:
+        type: int
+        min: 1
+        max: 4
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Assign alarm number to report conditions on specified channels"
+
+  output_alarm_clear:
+    scpi: "OUTP:ALARM{alarm}:CLE"
+    type: write
+    params:
+      alarm:
+        type: int
+        min: 1
+        max: 4
+    description: "Clear specified alarm output line"
+
+  output_alarm_clear_all:
+    scpi: "OUTP:ALARM:CLE:ALL"
+    type: write
+    description: "Clear all four alarm output lines"
+
+  output_alarm_mode:
+    getter: "OUTP:ALARM:MODE?"
+    setter: "OUTP:ALARM:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LATC", "TRAC"]
+    returns:
+      type: string
+    description: "Alarm output mode (latch or track)"
+
+  output_alarm_slope:
+    getter: "OUTP:ALARM:SLOP?"
+    setter: "OUTP:ALARM:SLOP {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Alarm output slope (rising or falling edge)"
+
+  format_reading_alarm:
+    getter: "FORM:READ:ALAR?"
+    setter: "FORM:READ:ALAR {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Include alarm status with readings"
+
+  format_reading_channel:
+    getter: "FORM:READ:CHAN?"
+    setter: "FORM:READ:CHAN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Include channel number with readings"
+
+  format_reading_time:
+    getter: "FORM:READ:TIME?"
+    setter: "FORM:READ:TIME {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Include time stamp with readings"
+
+  format_reading_time_type:
+    getter: "FORM:READ:TIME:TYPE?"
+    setter: "FORM:READ:TIME:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["ABS", "REL"]
+    returns:
+      type: string
+    description: "Time stamp format (absolute or relative)"
+
+  format_reading_unit:
+    getter: "FORM:READ:UNIT?"
+    setter: "FORM:READ:UNIT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Include measurement units with readings"
+
+  data_last:
+    scpi: "DATA:LAST? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: float
+    description: "Return most recent reading from specified channel"
+
+  data_points:
+    scpi: "DATA:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query total number of readings stored in memory"
+
+  data_remove:
+    scpi: "DATA:REM? {count}"
+    type: query
+    params:
+      count:
+        type: int
+        min: 1
+        max: 50000
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read and clear specified number of readings from memory"
+
+  sense_digital_data_byte:
+    scpi: "SENS:DIG:DATA:BYTE? (@{channel})"
+    type: query
+    params:
+      channel:
+        type: string
+    returns:
+      type: int
+    description: "Read 8-bit byte from digital input port"
+
+  sense_digital_data_word:
+    scpi: "SENS:DIG:DATA:WORD? (@{channel})"
+    type: query
+    params:
+      channel:
+        type: string
+    returns:
+      type: int
+    description: "Read 16-bit word from both digital input ports"
+
+  configure_digital_byte:
+    scpi: "CONF:DIG:BYTE (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Add digital input port to scan list"
+
+  source_digital_data_byte:
+    scpi: "SOUR:DIG:DATA:BYTE {value},(@{channel})"
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+      channel:
+        type: string
+    description: "Output 8-bit byte to digital output port"
+
+  source_digital_data_word:
+    scpi: "SOUR:DIG:DATA:WORD {value},(@{channel})"
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 65535
+      channel:
+        type: string
+    description: "Output 16-bit word to both digital output ports"
+
+  sense_totalize_data:
+    scpi: "SENS:TOT:DATA? (@{channel})"
+    type: query
+    params:
+      channel:
+        type: string
+    returns:
+      type: int
+    description: "Read count from totalizer"
+
+  sense_totalize_type:
+    getter: "SENS:TOT:TYPE? (@{channels})"
+    setter: "SENS:TOT:TYPE {mode},(@{channels})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["READ", "RRES"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Totalizer reset mode (read or read+reset)"
+
+  sense_totalize_slope:
+    getter: "SENS:TOT:SLOP? (@{channels})"
+    setter: "SENS:TOT:SLOP {slope},(@{channels})"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+      channels:
+        type: string
+    returns:
+      type: string
+    description: "Totalizer edge detection (positive or negative)"
+
+  sense_totalize_clear_immediate:
+    scpi: "SENS:TOT:CLE:IMM (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Immediately clear totalizer count"
+
+  configure_totalize:
+    scpi: "CONF:TOT {mode},(@{channels})"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["READ", "RRES"]
+      channels:
+        type: string
+    description: "Configure totalizer and add to scan list"
+
+  source_voltage:
+    scpi: "SOUR:VOLT {voltage},(@{channel})"
+    type: write
+    params:
+      voltage:
+        type: float
+        unit: V
+        min: -12
+        max: 12
+      channel:
+        type: string
+    description: "Output voltage from DAC channel"
+
+  display:
+    getter: "DISP?"
+    setter: "DISP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable front panel display"
+
+  display_text:
+    getter: "DISP:TEXT?"
+    setter: "DISP:TEXT '{text}'"
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message on front panel"
+
+  display_text_clear:
+    scpi: "DISP:TEXT:CLE"
+    type: write
+    description: "Clear text message from front panel display"
+
+  system_error:
+    scpi: "SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear one error from error queue"
+
+  system_error_count:
+    scpi: "SYST:ERR:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  system_version:
+    scpi: "SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  system_preset:
+    scpi: "SYST:PRES"
+    type: write
+    description: "Return to instrument preset defaults"
+
+  system_time:
+    getter: "SYST:TIME?"
+    setter: "SYST:TIME {hour},{minute},{second}"
+    type: property
+    params:
+      hour:
+        type: int
+        min: 0
+        max: 23
+      minute:
+        type: int
+        min: 0
+        max: 59
+      second:
+        type: int
+        min: 0
+        max: 59
+    returns:
+      type: string
+    description: "System time"
+
+  system_date:
+    getter: "SYST:DATE?"
+    setter: "SYST:DATE {year},{month},{day}"
+    type: property
+    params:
+      year:
+        type: int
+        min: 1996
+        max: 2099
+      month:
+        type: int
+        min: 1
+        max: 12
+      day:
+        type: int
+        min: 1
+        max: 31
+    returns:
+      type: string
+    description: "System date"
+
+  system_ctype:
+    scpi: "SYST:CTYP? {slot}"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 100
+        max: 300
+    returns:
+      type: string
+    description: "Query module type in specified slot"
+
+  system_cpon:
+    scpi: "SYST:CPON {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 100
+        max: 300
+    description: "Issue card reset to module in specified slot"
+
+  system_beeper:
+    scpi: "SYST:BEEP"
+    type: write
+    description: "Sound beeper"
+
+  system_beeper_state:
+    getter: "SYST:BEEP:STAT?"
+    setter: "SYST:BEEP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable beeper"
+
+  system_alarm:
+    scpi: "SYST:ALAR?"
+    type: query
+    returns:
+      type: string
+    description: "Read one alarm event from alarm queue"
+
+  system_interface:
+    getter: "SYST:INT?"
+    setter: "SYST:INT {interface}"
+    type: property
+    params:
+      interface:
+        type: enum
+        options: ["GPIB", "RS232"]
+    returns:
+      type: string
+    description: "Select remote interface (34970A only)"
+
+  instrument_dmm:
+    getter: "INST:DMM?"
+    setter: "INST:DMM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable internal DMM"
+
+  diagnostic_relay_cycles:
+    scpi: "DIAG:REL:CYC? (@{channels})"
+    type: query
+    params:
+      channels:
+        type: string
+    returns:
+      type: int
+    description: "Read relay cycle count for specified channels"
+
+  diagnostic_relay_cycles_clear:
+    scpi: "DIAG:REL:CYC:CLE (@{channels})"
+    type: write
+    params:
+      channels:
+        type: string
+    description: "Clear relay cycle count for specified channels (instrument must be unsecured)"
+
+  diagnostic_dmm_cycles:
+    scpi: "DIAG:DMM:CYC?"
+    type: query
+    returns:
+      type: string
+    description: "Read relay count for all three internal DMM relays"
+
+  diagnostic_dmm_cycles_clear:
+    scpi: "DIAG:DMM:CYC:CLE {relay}"
+    type: write
+    params:
+      relay:
+        type: int
+        min: 1
+        max: 3
+    description: "Clear relay count for specified internal DMM relay (instrument must be unsecured)"
+
+  memory_state_name:
+    scpi: "MEM:STAT:NAME {location},'{name}'"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 5
+      name:
+        type: string
+    description: "Assign name to stored state location"
+
+  memory_state_recall_auto:
+    getter: "MEM:STAT:REC:AUTO?"
+    setter: "MEM:STAT:REC:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto-recall power-down state on power-up"
+
+  calibration_secure_state:
+    getter: "CAL:SEC:STAT?"
+    setter: "CAL:SEC:STAT {state},{code}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+      code:
+        type: string
+    returns:
+      type: string
+    description: "Secure/unsecure instrument for calibration"
+
+  calibration_secure_code:
+    scpi: "CAL:SEC:CODE {code}"
+    type: write
+    params:
+      code:
+        type: string
+    description: "Change calibration security code"
+
+  calibration_string:
+    getter: "CAL:STR?"
+    setter: "CAL:STR '{message}'"
+    type: property
+    params:
+      message:
+        type: string
+    returns:
+      type: string
+    description: "Store/read calibration message"
+
+  calibration_count:
+    scpi: "CAL:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of calibrations performed"
+
+sequences:
+  scan_dc_voltage:
+    description: "Scan multiple channels for DC voltage"
+    params:
+      channels:
+        type: string
+      range:
+        type: float
+        unit: V
+        default: 10
+      nplc:
+        type: float
+        default: 1
+    steps:
+      - command: configure_dc_voltage
+        args:
+          range: "{range}"
+          resolution: "DEF"
+          channels: "{channels}"
+      - command: sense_voltage_dc_nplc
+        args:
+          nplc: "{nplc}"
+          channels: "{channels}"
+      - command: route_scan
+        args:
+          channels: "{channels}"
+      - command: trigger_count
+        args:
+          count: "1"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+  scan_temperature:
+    description: "Scan multiple channels for temperature"
+    params:
+      channels:
+        type: string
+      tc_type:
+        type: string
+        default: "J"
+    steps:
+      - command: configure_temperature_tc
+        args:
+          type: "{tc_type}"
+          channels: "{channels}"
+      - command: route_scan
+        args:
+          channels: "{channels}"
+      - command: trigger_count
+        args:
+          count: "1"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result
+
+  continuous_scan:
+    description: "Continuous interval scanning with specified channels"
+    params:
+      channels:
+        type: string
+      interval:
+        type: float
+        unit: s
+        default: 10
+    steps:
+      - command: route_scan
+        args:
+          channels: "{channels}"
+      - command: trigger_source
+        args:
+          source: "TIM"
+      - command: trigger_timer
+        args:
+          interval: "{interval}"
+      - command: trigger_count_infinite
+      - command: initiate
+    returns: null
+
+  monitor_channel:
+    description: "Monitor single channel continuously"
+    params:
+      channel:
+        type: string
+    steps:
+      - command: route_monitor
+        args:
+          channel: "{channel}"
+      - command: route_monitor_state
+        args:
+          state: "ON"
+    returns: null
+
+  read_with_scaling:
+    description: "Read channel with Mx+B scaling applied"
+    params:
+      channel:
+        type: string
+      gain:
+        type: float
+        default: 1
+      offset:
+        type: float
+        default: 0
+      label:
+        type: string
+        default: "SCALED"
+    steps:
+      - command: calculate_scale_gain
+        args:
+          gain: "{gain}"
+          channels: "{channel}"
+      - command: calculate_scale_offset
+        args:
+          offset: "{offset}"
+          channels: "{channel}"
+      - command: calculate_scale_unit
+        args:
+          label: "{label}"
+          channels: "{channel}"
+      - command: calculate_scale_state
+        args:
+          state: "ON"
+          channels: "{channel}"
+      - command: route_scan
+        args:
+          channels: "{channel}"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: result
+    returns: result

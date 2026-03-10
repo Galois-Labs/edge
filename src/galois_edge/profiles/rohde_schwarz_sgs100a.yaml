@@ -1,0 +1,1435 @@
+instrument:
+  manufacturer: "Rohde & Schwarz"
+  model: "SGS100A"
+  class: rf_source
+  description: "RF Signal Generator - up to 12.75 GHz, analog/vector modulation, pulse modulation"
+
+identity:
+  query: "*IDN?"
+  pattern: "Rohde&Schwarz,SGS"
+
+interfaces:
+  - type: gpib
+    default_address: 28
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all commands execute"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  options_installed:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  # Frequency Commands
+  frequency:
+    getter: ":SOURce:FREQuency:CW?"
+    setter: ":SOURce:FREQuency:CW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000000
+        max: 12750000000
+    returns:
+      type: float
+      unit: Hz
+    description: "RF output frequency"
+
+  frequency_offset:
+    getter: ":SOURce:FREQuency:OFFSet?"
+    setter: ":SOURce:FREQuency:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: -3000000000
+        max: 3000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency offset"
+
+  frequency_fast:
+    scpi: ":FFASt {value}"
+    type: write
+    params:
+      value:
+        type: float
+        unit: Hz
+    description: "Fast frequency setting with minimum latency"
+
+  # Power/Level Commands
+  power_level:
+    getter: ":SOURce:POWer:LEVel:IMMediate:AMPLitude?"
+    setter: ":SOURce:POWer:LEVel:IMMediate:AMPLitude {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -120
+        max: 25
+    returns:
+      type: float
+      unit: dBm
+    description: "RF output power level"
+
+  power_level_direct:
+    getter: ":SOURce:POWer:POWer?"
+    setter: ":SOURce:POWer:POWer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -20
+        max: 25
+    returns:
+      type: float
+      unit: dBm
+    description: "RF output power at connector (without offset)"
+
+  power_offset:
+    getter: ":SOURce:POWer:LEVel:IMMediate:OFFSet?"
+    setter: ":SOURce:POWer:LEVel:IMMediate:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -100
+        max: 100
+    returns:
+      type: float
+      unit: dB
+    description: "Power level offset"
+
+  power_limit:
+    getter: ":SOURce:POWer:LIMit:AMPLitude?"
+    setter: ":SOURce:POWer:LIMit:AMPLitude {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -120
+        max: 25
+    returns:
+      type: float
+      unit: dBm
+    description: "Upper power level limit"
+
+  power_pep:
+    scpi: ":SOURce:POWer:PEP?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query peak envelope power"
+
+  power_range_lower:
+    scpi: ":SOURce:POWer:RANGe:LOWer?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query minimum power level range"
+
+  power_range_upper:
+    scpi: ":SOURce:POWer:RANGe:UPPer?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query maximum power level range"
+
+  power_fast:
+    scpi: ":PFASt {value}"
+    type: write
+    params:
+      value:
+        type: float
+        unit: dBm
+    description: "Fast power setting with minimum latency"
+
+  # ALC Commands
+  alc_state:
+    getter: ":SOURce:POWer:ALC:STATe?"
+    setter: ":SOURce:POWer:ALC:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "OFFTable", "ONTable", "AUTO", "ON"]
+    returns:
+      type: string
+    description: "Automatic level control state"
+
+  alc_readjust:
+    scpi: ":SOURce:POWer:ALC:SONCe"
+    type: write
+    description: "Trigger ALC readjustment"
+
+  alc_detector_sensitivity:
+    getter: ":SOURce:POWer:ALC:DSENsitivity?"
+    setter: ":SOURce:POWer:ALC:DSENsitivity {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["OFF", "LOW", "MED", "HIGH"]
+    returns:
+      type: string
+    description: "ALC detector sensitivity"
+
+  # Level Mode Commands
+  level_mode:
+    getter: ":SOURce:POWer:LMODe?"
+    setter: ":SOURce:POWer:LMODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORM", "LNOise", "LDIStortion"]
+    returns:
+      type: string
+    description: "Level mode optimization"
+
+  level_characteristic:
+    getter: ":SOURce:POWer:SCHaracteristic?"
+    setter: ":SOURce:POWer:SCHaracteristic {char}"
+    type: property
+    params:
+      char:
+        type: enum
+        options: ["AUTO", "UNINterrupted", "CVSWr", "USER", "MONotone"]
+    returns:
+      type: string
+    description: "Level setting characteristic"
+
+  # Attenuator Commands
+  attenuator_mode:
+    getter: ":OUTPut:AMODe?"
+    setter: ":OUTPut:AMODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "FIXed", "APASsive"]
+    returns:
+      type: string
+    description: "Attenuator operating mode"
+
+  attenuator_rf_off_mode:
+    getter: ":SOURce:POWer:ATTenuation:RFOFf:MODE?"
+    setter: ":SOURce:POWer:ATTenuation:RFOFf:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MAX", "FATTenuated", "FIXed", "UNCHanged"]
+    returns:
+      type: string
+    description: "Attenuator state when RF is off"
+
+  attenuator_switchover_offset:
+    getter: ":SOURce:POWer:ATTenuation:SOVer:OFFSet?"
+    setter: ":SOURce:POWer:ATTenuation:SOVer:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: dB
+    description: "Attenuator switchover offset"
+
+  attenuator_range_lower:
+    scpi: ":OUTPut:AFIXed:RANGe:LOWer?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query minimum level in attenuator fixed mode"
+
+  attenuator_range_upper:
+    scpi: ":OUTPut:AFIXed:RANGe:UPPer?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query maximum level in attenuator fixed mode"
+
+  # Output Commands
+  output_state:
+    getter: ":OUTPut:STATe?"
+    setter: ":OUTPut:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "OFF": 0
+          "ON": 1
+    returns:
+      type: bool
+    description: "RF output on/off state"
+
+  output_power_on_state:
+    getter: ":OUTPut:STATe:PON?"
+    setter: ":OUTPut:STATe:PON {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "UNCHanged"]
+    returns:
+      type: string
+    description: "RF output state on power-on"
+
+  # Reference Oscillator Commands
+  reference_source:
+    getter: ":SOURce:ROSCillator:SOURce?"
+    setter: ":SOURce:ROSCillator:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Reference oscillator source"
+
+  reference_external_frequency:
+    getter: ":SOURce:ROSCillator:EXTernal:FREQuency?"
+    setter: ":SOURce:ROSCillator:EXTernal:FREQuency {freq}"
+    type: property
+    params:
+      freq:
+        type: enum
+        options: ["10MHZ", "100MHZ", "1000MHZ", "13MHZ"]
+    returns:
+      type: string
+    description: "External reference input frequency"
+
+  reference_output_frequency:
+    getter: ":SOURce:ROSCillator:OUTPut:FREQuency?"
+    setter: ":SOURce:ROSCillator:OUTPut:FREQuency {freq}"
+    type: property
+    params:
+      freq:
+        type: enum
+        options: ["10MHZ", "100MHZ", "1000MHZ", "13MHZ"]
+    returns:
+      type: string
+    description: "Reference oscillator output frequency"
+
+  reference_sync_bandwidth:
+    getter: ":SOURce:ROSCillator:EXTernal:SBANdwidth?"
+    setter: ":SOURce:ROSCillator:EXTernal:SBANdwidth {bw}"
+    type: property
+    params:
+      bw:
+        type: enum
+        options: ["WIDE", "NARRow"]
+    returns:
+      type: string
+    description: "External reference synchronization bandwidth"
+
+  reference_adjust_active:
+    getter: ":SOURce:ROSCillator:INTernal:ADJust:STATe?"
+    setter: ":SOURce:ROSCillator:INTernal:ADJust:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Reference oscillator adjustment active"
+
+  reference_adjust_value:
+    getter: ":SOURce:ROSCillator:INTernal:ADJust:VALue?"
+    setter: ":SOURce:ROSCillator:INTernal:ADJust:VALue {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Reference oscillator adjustment DAC value"
+
+  # Local Oscillator Commands
+  lo_source:
+    getter: ":SOURce:LOSCillator:SOURce?"
+    setter: ":SOURce:LOSCillator:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Local oscillator source"
+
+  # I/Q Modulation Commands
+  iq_state:
+    getter: ":SOURce:IQ:STATe?"
+    setter: ":SOURce:IQ:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "I/Q modulation state"
+
+  iq_wideband_state:
+    getter: ":SOURce:IQ:WBSTate?"
+    setter: ":SOURce:IQ:WBSTate {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "I/Q wideband optimization"
+
+  iq_crest_factor:
+    getter: ":SOURce:IQ:CREStfactor?"
+    setter: ":SOURce:IQ:CREStfactor {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: 0
+        max: 35
+    returns:
+      type: float
+      unit: dB
+    description: "I/Q modulation signal crest factor"
+
+  iq_impairment_state:
+    getter: ":SOURce:IQ:IMPairment:STATe?"
+    setter: ":SOURce:IQ:IMPairment:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "I/Q impairment state"
+
+  iq_impairment_leakage_i:
+    getter: ":SOURce:IQ:IMPairment:LEAKage:I?"
+    setter: ":SOURce:IQ:IMPairment:LEAKage:I {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: "%"
+    description: "I carrier leakage"
+
+  iq_impairment_leakage_q:
+    getter: ":SOURce:IQ:IMPairment:LEAKage:Q?"
+    setter: ":SOURce:IQ:IMPairment:LEAKage:Q {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: "%"
+    description: "Q carrier leakage"
+
+  iq_impairment_gain_imbalance:
+    getter: ":SOURce:IQ:IMPairment:IQRatio:MAGNitude?"
+    setter: ":SOURce:IQ:IMPairment:IQRatio:MAGNitude {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -1
+        max: 1
+    returns:
+      type: float
+      unit: dB
+    description: "I/Q gain imbalance"
+
+  iq_impairment_quadrature:
+    getter: ":SOURce:IQ:IMPairment:QUADrature:ANGLe?"
+    setter: ":SOURce:IQ:IMPairment:QUADrature:ANGLe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -8
+        max: 8
+    returns:
+      type: float
+      unit: deg
+    description: "I/Q quadrature offset"
+
+  # Phase Commands
+  phase:
+    getter: ":SOURce:PHASe?"
+    setter: ":SOURce:PHASe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Output phase offset"
+
+  phase_reference:
+    scpi: ":SOURce:PHASe:REFerence"
+    type: write
+    description: "Set current phase as reference"
+
+  # Pulse Modulation Commands
+  pulse_state:
+    getter: ":SOURce:PULM:STATe?"
+    setter: ":SOURce:PULM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Pulse modulation state"
+
+  pulse_source:
+    getter: ":SOURce:PULM:SOURce?"
+    setter: ":SOURce:PULM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Pulse modulation source"
+
+  pulse_polarity:
+    getter: ":SOURce:PULM:POLarity?"
+    setter: ":SOURce:PULM:POLarity {pol}"
+    type: property
+    params:
+      pol:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "External pulse modulation polarity"
+
+  pulse_mode:
+    getter: ":SOURce:PULM:MODE?"
+    setter: ":SOURce:PULM:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SINGle", "DOUBle"]
+    returns:
+      type: string
+    description: "Pulse generator mode"
+
+  pulse_period:
+    getter: ":SOURce:PULM:PERiod?"
+    setter: ":SOURce:PULM:PERiod {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.0000001
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Pulse period"
+
+  pulse_width:
+    getter: ":SOURce:PULM:WIDTh?"
+    setter: ":SOURce:PULM:WIDTh {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00000002
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Pulse width"
+
+  pulse_delay:
+    getter: ":SOURce:PULM:DELay?"
+    setter: ":SOURce:PULM:DELay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Pulse delay"
+
+  pulse_double_width:
+    getter: ":SOURce:PULM:DOUBle:WIDTh?"
+    setter: ":SOURce:PULM:DOUBle:WIDTh {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00000002
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Double pulse width"
+
+  pulse_double_delay:
+    getter: ":SOURce:PULM:DOUBle:DELay?"
+    setter: ":SOURce:PULM:DOUBle:DELay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00000004
+        max: 100
+    returns:
+      type: float
+      unit: s
+    description: "Double pulse delay"
+
+  pulse_trigger_mode:
+    getter: ":SOURce:PULM:TRIGger:MODE?"
+    setter: ":SOURce:PULM:TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "EXTernal", "EGATe"]
+    returns:
+      type: string
+    description: "Pulse trigger mode"
+
+  pulse_trigger_slope:
+    getter: ":SOURce:PULM:TRIGger:EXTernal:SLOPe?"
+    setter: ":SOURce:PULM:TRIGger:EXTernal:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["NEGative", "POSitive"]
+    returns:
+      type: string
+    description: "External pulse trigger slope"
+
+  pulse_trigger_impedance:
+    getter: ":SOURce:PULM:TRIGger:EXTernal:IMPedance?"
+    setter: ":SOURce:PULM:TRIGger:EXTernal:IMPedance {imp}"
+    type: property
+    params:
+      imp:
+        type: enum
+        options: ["G50", "G10K"]
+    returns:
+      type: string
+    description: "External pulse trigger impedance"
+
+  pulse_gate_polarity:
+    getter: ":SOURce:PULM:TRIGger:EXTernal:GATE:POLarity?"
+    setter: ":SOURce:PULM:TRIGger:EXTernal:GATE:POLarity {pol}"
+    type: property
+    params:
+      pol:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "External gate polarity"
+
+  # Connector Commands
+  connector_reflo_output:
+    getter: ":CONNector:REFLo:OUTPut?"
+    setter: ":CONNector:REFLo:OUTPut {output}"
+    type: property
+    params:
+      output:
+        type: enum
+        options: ["REF", "LO", "OFF"]
+    returns:
+      type: string
+    description: "REF/LO output connector signal"
+
+  connector_trigger_mode:
+    getter: ":CONNector:TRIGger:OMODe?"
+    setter: ":CONNector:TRIGger:OMODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SVALid", "SNValid", "PVOut", "PETRigger", "PEMSource"]
+    returns:
+      type: string
+    description: "Trigger connector operating mode"
+
+  # Operation Mode
+  operation_mode:
+    getter: ":SOURce:OPMode?"
+    setter: ":SOURce:OPMode {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "BBBYpass"]
+    returns:
+      type: string
+    description: "Instrument operation mode"
+
+  # Path Count
+  path_count:
+    scpi: ":SOURce:PATH:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of installed RF paths"
+
+  # Calibration Commands
+  calibration_all:
+    scpi: ":CALibration:ALL:MEASure?"
+    type: query
+    returns:
+      type: bool
+    description: "Perform all internal adjustments"
+
+  calibration_frequency:
+    scpi: ":CALibration:FREQuency:MEASure?"
+    type: query
+    returns:
+      type: bool
+    description: "Perform frequency adjustments"
+
+  calibration_level:
+    scpi: ":CALibration:LEVel:MEASure?"
+    type: query
+    returns:
+      type: bool
+    description: "Perform level adjustments"
+
+  calibration_iq_full:
+    scpi: ":CALibration:IQModulator:FULL?"
+    type: query
+    returns:
+      type: bool
+    description: "Adjust I/Q modulator for entire frequency range"
+
+  calibration_iq_local:
+    scpi: ":CALibration:IQModulator:LOCal?"
+    type: query
+    returns:
+      type: bool
+    description: "Adjust I/Q modulator at current frequency"
+
+  calibration_delta_temp_level:
+    scpi: ":CALibration:LEVel:TEMPerature?"
+    type: query
+    returns:
+      type: string
+    description: "Query temperature delta since last level calibration"
+
+  calibration_delta_temp_freq:
+    scpi: ":CALibration:FREQuency:TEMPerature?"
+    type: query
+    returns:
+      type: string
+    description: "Query temperature delta since last frequency calibration"
+
+  calibration_delta_temp_iq:
+    scpi: ":CALibration:IQModulator:TEMPerature?"
+    type: query
+    returns:
+      type: string
+    description: "Query temperature delta since last I/Q calibration"
+
+  calibration_extension_only:
+    getter: ":CALibration:OEXTension?"
+    setter: ":CALibration:OEXTension {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Calibrate only extension instrument"
+
+  # User Correction Commands
+  user_correction_state:
+    getter: ":SOURce:CORRection:STATe?"
+    setter: ":SOURce:CORRection:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "User correction state"
+
+  user_correction_value:
+    scpi: ":SOURce:CORRection:VALue?"
+    type: query
+    returns:
+      type: float
+      unit: dB
+    description: "Current user correction value"
+
+  user_correction_select:
+    getter: ":SOURce:CORRection:CSET:SELect?"
+    setter: ":SOURce:CORRection:CSET:SELect {filename}"
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Select user correction file"
+
+  user_correction_catalog:
+    scpi: ":SOURce:CORRection:CSET:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "List available user correction tables"
+
+  user_correction_delete:
+    scpi: ":SOURce:CORRection:CSET:DELete {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete user correction table"
+
+  user_correction_set_frequencies:
+    scpi: ":SOURce:CORRection:CSET:DATA:FREQuency {frequencies}"
+    type: write
+    params:
+      frequencies:
+        type: string
+    description: "Set frequency values for user correction table"
+
+  user_correction_frequency_points:
+    scpi: ":SOURce:CORRection:CSET:DATA:FREQuency:POINts?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of frequency points in table"
+
+  user_correction_set_powers:
+    scpi: ":SOURce:CORRection:CSET:DATA:POWer {powers}"
+    type: write
+    params:
+      powers:
+        type: string
+    description: "Set power correction values for user correction table"
+
+  user_correction_power_points:
+    scpi: ":SOURce:CORRection:CSET:DATA:POWer:POINts?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of power points in table"
+
+  user_correction_fill_sensor:
+    scpi: ":SOURce:CORRection:CSET:DATA:SENSor:POWer:SONCe"
+    type: write
+    description: "Fill user correction table with sensor measurements"
+
+  user_correction_zeroing:
+    getter: ":SOURce:CORRection:ZERoing:STATe?"
+    setter: ":SOURce:CORRection:ZERoing:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Enable zeroing before filling with sensor data"
+
+  # System Commands
+  system_error_next:
+    scpi: ":SYSTem:ERRor:NEXT?"
+    type: query
+    returns:
+      type: string
+    description: "Read next error from queue"
+
+  system_error_all:
+    scpi: ":SYSTem:ERRor:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Read all errors from queue"
+
+  system_error_count:
+    scpi: ":SYSTem:ERRor:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Preset instrument to default state"
+
+  system_factory_preset:
+    scpi: ":SYSTem:FPReset"
+    type: write
+    description: "Reset instrument to factory state"
+
+  system_eco_mode:
+    getter: ":SYSTem:EMODe?"
+    setter: ":SYSTem:EMODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "EM1"]
+    returns:
+      type: string
+    description: "Eco mode (limits frequency to 6 GHz)"
+
+  system_startup_complete:
+    scpi: ":SYSTem:STARtup:COMPlete?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if instrument startup is complete"
+
+  # Network Commands
+  network_ip_address:
+    getter: ":SYSTem:COMMunicate:NETWork:IPADdress?"
+    setter: ":SYSTem:COMMunicate:NETWork:IPADdress {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "Network IP address"
+
+  network_ip_mode:
+    getter: ":SYSTem:COMMunicate:NETWork:IPADdress:MODE?"
+    setter: ":SYSTem:COMMunicate:NETWork:IPADdress:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "STATic"]
+    returns:
+      type: string
+    description: "IP address assignment mode"
+
+  network_hostname:
+    getter: ":SYSTem:COMMunicate:NETWork:COMMon:HOSTname?"
+    setter: ":SYSTem:COMMunicate:NETWork:COMMon:HOSTname {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Network hostname"
+
+  network_gateway:
+    getter: ":SYSTem:COMMunicate:NETWork:IPADdress:GATeway?"
+    setter: ":SYSTem:COMMunicate:NETWork:IPADdress:GATeway {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "Default gateway IP address"
+
+  network_subnet_mask:
+    getter: ":SYSTem:COMMunicate:NETWork:IPADdress:SUBNet:MASK?"
+    setter: ":SYSTem:COMMunicate:NETWork:IPADdress:SUBNet:MASK {mask}"
+    type: property
+    params:
+      mask:
+        type: string
+    returns:
+      type: string
+    description: "Subnet mask"
+
+  network_restart:
+    scpi: ":SYSTem:COMMunicate:NETWork:RESTart"
+    type: write
+    description: "Restart network connection"
+
+  network_visa_resource:
+    scpi: ":SYSTem:COMMunicate:NETWork:RESource?"
+    type: query
+    returns:
+      type: string
+    description: "Query VXI-11 VISA resource string"
+
+  hislip_visa_resource:
+    scpi: ":SYSTem:COMMunicate:HISLip:RESource?"
+    type: query
+    returns:
+      type: string
+    description: "Query HiSLIP VISA resource string"
+
+  socket_visa_resource:
+    scpi: ":SYSTem:COMMunicate:SOCKet:RESource?"
+    type: query
+    returns:
+      type: string
+    description: "Query socket VISA resource string"
+
+  usb_visa_resource:
+    scpi: ":SYSTem:COMMunicate:USB:RESource?"
+    type: query
+    returns:
+      type: string
+    description: "Query USB VISA resource string"
+
+  pcie_visa_resource:
+    scpi: ":SYSTem:COMMunicate:PCIexpress:RESource?"
+    type: query
+    returns:
+      type: string
+    description: "Query PCIe VISA resource string"
+
+  # Memory Commands
+  memory_catalog:
+    scpi: ":MMEMory:CATalog? {path}"
+    type: query
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "List directory contents"
+
+  memory_catalog_length:
+    scpi: ":MMEMory:CATalog:LENGth? {path}"
+    type: query
+    params:
+      path:
+        type: string
+    returns:
+      type: int
+    description: "Query number of files in directory"
+
+  memory_change_directory:
+    getter: ":MMEMory:CDIRectory?"
+    setter: ":MMEMory:CDIRectory {path}"
+    type: property
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "Change default directory"
+
+  memory_copy:
+    scpi: ":MMEMory:COPY {source},{destination}"
+    type: write
+    params:
+      source:
+        type: string
+      destination:
+        type: string
+    description: "Copy file"
+
+  memory_delete:
+    scpi: ":MMEMory:DELete {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete file"
+
+  memory_move:
+    scpi: ":MMEMory:MOVE {source},{destination}"
+    type: write
+    params:
+      source:
+        type: string
+      destination:
+        type: string
+    description: "Move or rename file"
+
+  memory_make_directory:
+    scpi: ":MMEMory:MDIRectory {path}"
+    type: write
+    params:
+      path:
+        type: string
+    description: "Create directory"
+
+  memory_remove_directory:
+    scpi: ":MMEMory:RDIRectory {path}"
+    type: write
+    params:
+      path:
+        type: string
+    description: "Remove directory"
+
+  memory_load_state:
+    scpi: ":MMEMory:LOAD:STATe {number},{filename}"
+    type: write
+    params:
+      number:
+        type: int
+        min: 0
+        max: 4
+      filename:
+        type: string
+    description: "Load instrument state from file"
+
+  memory_store_state:
+    scpi: ":MMEMory:STORe:STATe {number},{filename}"
+    type: write
+    params:
+      number:
+        type: int
+        min: 0
+        max: 4
+      filename:
+        type: string
+    description: "Store instrument state to file"
+
+  # Status Commands
+  status_operation_condition:
+    scpi: ":STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation status condition register"
+
+  status_operation_event:
+    scpi: ":STATus:OPERation:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation status event register"
+
+  status_operation_enable:
+    getter: ":STATus:OPERation:ENABle?"
+    setter: ":STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation status enable register"
+
+  status_questionable_condition:
+    scpi: ":STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable status condition register"
+
+  status_questionable_event:
+    scpi: ":STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable status event register"
+
+  status_questionable_enable:
+    getter: ":STATus:QUEStionable:ENABle?"
+    setter: ":STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_preset:
+    scpi: ":STATus:PRESet"
+    type: write
+    description: "Preset status registers"
+
+  status_queue:
+    scpi: ":STATus:QUEue:NEXT?"
+    type: query
+    returns:
+      type: string
+    description: "Read next status queue entry"
+
+  # Test Commands
+  test_all_start:
+    scpi: ":TEST:ALL:STARt"
+    type: write
+    description: "Start self-test"
+
+  test_all_result:
+    scpi: ":TEST:ALL:RESult?"
+    type: query
+    returns:
+      type: string
+    description: "Query self-test result"
+
+  # Diagnostic Commands
+  diagnostic_catalog:
+    scpi: ":DIAGnostic:POINt:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "List diagnostic measurement points"
+
+  diagnostic_measure:
+    scpi: ":DIAGnostic:MEASure:POINt? {point}"
+    type: query
+    params:
+      point:
+        type: string
+    returns:
+      type: float
+    description: "Measure diagnostic point"
+
+  # Lock/Unlock Commands
+  lock:
+    scpi: ":LOCK? {key}"
+    type: query
+    params:
+      key:
+        type: int
+    returns:
+      type: bool
+    description: "Lock instrument for exclusive access"
+
+  unlock:
+    scpi: ":UNLock {key}"
+    type: write
+    params:
+      key:
+        type: int
+    description: "Unlock instrument"
+
+  # Restart/Standby Commands
+  restart:
+    scpi: ":RESTart"
+    type: write
+    description: "Restart instrument"
+
+  standby:
+    scpi: ":STANdby"
+    type: write
+    description: "Enter standby mode"
+
+  # Unit Commands
+  unit_angle:
+    getter: ":UNIT:ANGLe?"
+    setter: ":UNIT:ANGLe {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["DEGRee", "RADian"]
+    returns:
+      type: string
+    description: "Default angle unit"
+
+  unit_power:
+    getter: ":UNIT:POWer?"
+    setter: ":UNIT:POWer {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["V", "DBUV", "DBM"]
+    returns:
+      type: string
+    description: "Default power unit"
+
+status:
+  stb:
+    bit2: "Error queue not empty"
+    bit3: "Questionable status summary"
+    bit4: "Message available"
+    bit5: "Event status bit"
+    bit6: "Master status summary"
+    bit7: "Operation status summary"
+  esr:
+    bit0: "Operation complete"
+    bit2: "Query error"
+    bit3: "Device dependent error"
+    bit4: "Execution error"
+    bit5: "Command error"
+    bit6: "User request"
+    bit7: "Power on"

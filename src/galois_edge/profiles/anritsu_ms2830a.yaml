@@ -1,0 +1,1617 @@
+instrument:
+  manufacturer: "Anritsu"
+  model: "MS2830A"
+  class: spectrum_analyzer
+  description: "BER Test and Power Meter functionality for MS2690A/MS2691A/MS2692A, MS2830A, MS2840A, MS2850A Signal Analyzers"
+
+identity:
+  query: "*IDN?"
+  pattern: "ANRITSU.*MS26[0-9]{2}A|MS28[0-9]{2}A|MS2850A"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: ethernet
+    port: 5025
+  - type: usb
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  application_select:
+    getter: ":INSTrument[:SELect]?"
+    setter: ":INSTrument[:SELect] {app}"
+    type: property
+    params:
+      app:
+        type: enum
+        options: ["SIGANA", "SPECT", "PNOISE", "CONFIG", "SG", "BER", "WIMAX", "WCDMADL", "WCDMAUL", "GSM", "ETC_DSRC", "TDSCDMA", "XGPHS", "VMA", "AMA", "3GLTE_DL", "3GLTE_UL", "LTETDDDL", "LTETDDUL", "CDMA2KFWD", "EVDOFWD", "WDEVICE", "WLAN", "WCDMA_BS", "RNC", "MEDIAFLO", "ISDBTMM", "UMTS", "BBIF", "EXTDIG", "BASE5G", "PA", "TRXSC", "PMETer"]
+    returns:
+      type: string
+    description: "Select application for control"
+
+  application_status:
+    getter: ":INSTrument:SYSTem? {app}"
+    setter: ":INSTrument:SYSTem {app},{window}"
+    type: property
+    params:
+      app:
+        type: enum
+        options: ["SIGANA", "SPECT", "PNOISE", "CONFIG", "PMETer", "BER"]
+      window:
+        type: enum
+        options: ["ACTive", "INACtive", "MINimum"]
+        default: "ACTive"
+    returns:
+      type: string
+    description: "Set/query application status"
+
+  application_load:
+    scpi: ":SYSTem:APPLication:LOAD {app}"
+    type: write
+    params:
+      app:
+        type: enum
+        options: ["SIGANA", "SPECT", "PNOISE", "PMETer", "BER"]
+    description: "Load and activate application"
+
+  application_unload:
+    scpi: ":SYSTem:APPLication:UNLoad {app}"
+    type: write
+    params:
+      app:
+        type: enum
+        options: ["SIGANA", "SPECT", "PNOISE", "PMETer", "BER"]
+    description: "Unload application"
+
+  system_reboot:
+    scpi: ":SYSTem:REBoot"
+    type: write
+    description: "Reboot system"
+
+  preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Initialize current application settings"
+
+  display_enable:
+    getter: ":DISPlay:ENABle?"
+    setter: ":DISPlay:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "LCD backlight on/off"
+
+  display_screen:
+    getter: ":DISPlay:SCReen?"
+    setter: ":DISPlay:SCReen {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LCD screen on/off"
+
+  display_annotation:
+    getter: ":DISPlay:WINDow[1]:ANNotation[:ALL]?"
+    setter: ":DISPlay:WINDow[1]:ANNotation[:ALL] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Display annotation on/off"
+
+  display_title_state:
+    getter: ":DISPlay:ANNotation:TITLe[:STATe]?"
+    setter: ":DISPlay:ANNotation:TITLe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Title display on/off"
+
+  display_title:
+    getter: ":DISPlay:ANNotation:TITLe:DATA?"
+    setter: ":DISPlay:ANNotation:TITLe:DATA \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display title text (max 32 chars)"
+
+  display_error_mode:
+    getter: ":DISPlay:ERRor:MODE?"
+    setter: ":DISPlay:ERRor:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "REMain", "LAST"]
+    returns:
+      type: string
+    description: "Error message display mode"
+
+  screen_capture:
+    scpi: ":MMEMory:STORe:SCReen [{filename}[,{device}]]"
+    type: write
+    params:
+      filename:
+        type: string
+        default: "Auto-generated"
+      device:
+        type: string
+        default: "D"
+    description: "Save screen capture"
+
+  screen_capture_mode:
+    getter: ":MMEMory:STORe:SCReen:MODE?"
+    setter: ":MMEMory:STORe:SCReen:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["BMP", "PNG"]
+    returns:
+      type: string
+    description: "Screen capture file format"
+
+  screen_capture_theme:
+    getter: ":MMEMory:STORe:SCReen:THEMe?"
+    setter: ":MMEMory:STORe:SCReen:THEMe {theme}"
+    type: property
+    params:
+      theme:
+        type: enum
+        options: ["NORMal", "REVerse", "MONochrome", "MREVerse"]
+    returns:
+      type: string
+    description: "Screen capture color theme"
+
+  save_state:
+    scpi: ":MMEMory:STORe:STATe [{filename}[,{device}]]"
+    type: write
+    params:
+      filename:
+        type: string
+      device:
+        type: string
+        default: "D"
+    description: "Save parameter settings"
+
+  recall_state:
+    scpi: ":MMEMory:LOAD:STATe {filename}[,{device}[,{mode}]]"
+    type: write
+    params:
+      filename:
+        type: string
+      device:
+        type: string
+        default: "D"
+      mode:
+        type: enum
+        options: ["ALL", "CURR"]
+        default: "ALL"
+    description: "Recall parameter settings"
+
+  convert_state:
+    scpi: ":MMEMory:CONVert:STATe {filename}[,{device}]"
+    type: write
+    params:
+      filename:
+        type: string
+      device:
+        type: string
+        default: "D"
+    description: "Convert parameter file for cross-compatibility"
+
+  system_info_catalog:
+    scpi: ":SYSTem:INFormation:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query all system information"
+
+  system_model:
+    scpi: ":SYSTem:INFormation:MODel?"
+    type: query
+    returns:
+      type: string
+    description: "Query product model"
+
+  system_type:
+    scpi: ":SYSTem:INFormation:TYPE?"
+    type: query
+    returns:
+      type: string
+    description: "Query product type"
+
+  system_serial:
+    scpi: ":SYSTem:INFormation:SERial?"
+    type: query
+    returns:
+      type: string
+    description: "Query serial number"
+
+  system_runtime:
+    scpi: ":SYSTem:INFormation:RTIMe?"
+    type: query
+    returns:
+      type: int
+      unit: minutes
+    description: "Query running time"
+
+  system_switches:
+    scpi: ":SYSTem:INFormation:SWITch?"
+    type: query
+    returns:
+      type: string
+    description: "Query attenuator switching times"
+
+  system_options:
+    scpi: ":SYSTem:HARDware:OPTion:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  system_software_catalog:
+    scpi: ":SYSTem:SOFTware:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query software licenses"
+
+  system_software_all:
+    scpi: ":SYSTem:SOFTware:CATalog:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Query software licenses including options"
+
+  application_version:
+    scpi: ":SYSTem:APPLication:VERSion? {app}"
+    type: query
+    params:
+      app:
+        type: enum
+        options: ["SIGANA", "SPECT", "PNOISE", "PMETer", "BER"]
+    returns:
+      type: string
+    description: "Query application version"
+
+  fpga_version:
+    scpi: ":SYSTem:FPGA:VERSion? {hardware}"
+    type: query
+    params:
+      hardware:
+        type: string
+    returns:
+      type: string
+    description: "Query FPGA/PLD/DSP version"
+
+  fpga_version_catalog:
+    scpi: ":SYSTem:FPGA:VERSion:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query all FPGA/PLD/DSP versions"
+
+  hardware_revision:
+    scpi: ":SYSTem:HARDware:REVision? {hardware}"
+    type: query
+    params:
+      hardware:
+        type: string
+    returns:
+      type: string
+    description: "Query hardware revision"
+
+  hardware_revision_catalog:
+    scpi: ":SYSTem:HARDware:REVision:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query all hardware revisions"
+
+  rf_temperature:
+    scpi: ":SYSTem:TEMPerature:RF?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query RF unit temperature"
+
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear error from queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  language_mode:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SCPI", "NATive"]
+    returns:
+      type: string
+    description: "Command language mode"
+
+  result_mode:
+    getter: ":SYSTem:RESult:MODE?"
+    setter: ":SYSTem:RESult:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["A", "B"]
+    returns:
+      type: string
+    description: "Result output mode"
+
+  beeper_state:
+    getter: ":SYSTem:BEEPer?"
+    setter: ":SYSTem:BEEPer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "0", "1"]
+    returns:
+      type: bool
+    description: "Beeper on/off"
+
+  gpib_delimiter:
+    getter: ":SYSTem:COMMunicate:GPIB[1][:SELF]:DELimiter?"
+    setter: ":SYSTem:COMMunicate:GPIB[1][:SELF]:DELimiter {delim}"
+    type: property
+    params:
+      delim:
+        type: enum
+        options: ["LF", "CRLF", "NONE"]
+    returns:
+      type: string
+    description: "GPIB terminator/delimiter"
+
+  reference_source_auto:
+    getter: "[:SENSe]:ROSCillator:SOURce:AUTO?"
+    setter: "[:SENSe]:ROSCillator:SOURce:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto reference source selection"
+
+  reference_source:
+    scpi: "[:SENSe]:ROSCillator:SOURce?"
+    type: query
+    returns:
+      type: string
+    description: "Query reference source (INT/INTU/EXT/EXTU)"
+
+  external_reference_frequency:
+    getter: "[:SENSe]:ROSCillator:EXTernal:FREQuency?"
+    setter: "[:SENSe]:ROSCillator:EXTernal:FREQuency {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        options: ["5000000", "10000000", "13000000"]
+    returns:
+      type: float
+      unit: Hz
+    description: "External reference frequency"
+
+  calibration_all:
+    scpi: ":CALibration:ALL"
+    type: write
+    description: "Execute all calibrations"
+
+  calibration_level:
+    scpi: ":CALibration:LEVel"
+    type: write
+    description: "Execute level calibration"
+
+  calibration_local_leak:
+    scpi: ":CALibration:LOLeak"
+    type: write
+    description: "Execute local leak calibration"
+
+  calibration_band:
+    scpi: ":CALibration:BAND"
+    type: write
+    description: "Execute bandwidth calibration"
+
+  calibration_band_extra:
+    scpi: ":CALibration:BAND:EXTRa"
+    type: write
+    description: "Execute extra bandwidth calibration at current frequency"
+
+  calibration_band_extra_clear:
+    scpi: ":CALibration:BAND:EXTRa:CLEar"
+    type: write
+    description: "Clear extra bandwidth calibration data"
+
+  calibration_noise_floor:
+    scpi: ":CALibration:NFLoor"
+    type: write
+    description: "Acquire noise floor calibration values"
+
+  calibration_noise_floor_mixer:
+    scpi: ":CALibration:NFLoor:MIXer"
+    type: write
+    description: "Acquire external mixer noise floor calibration"
+
+  calibration_noise_floor_clear:
+    scpi: ":CALibration:NFLoor:CLEar"
+    type: write
+    description: "Clear noise floor calibration values"
+
+  calibration_time_all:
+    scpi: ":CALibration:TIME:ALL?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last all calibration"
+
+  calibration_time_level:
+    scpi: ":CALibration:TIME:LEVel?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last level calibration"
+
+  calibration_time_local_leak:
+    scpi: ":CALibration:TIME:LOLeak?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last local leak calibration"
+
+  calibration_time_band:
+    scpi: ":CALibration:TIME:BAND?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last bandwidth calibration"
+
+  calibration_time_band_extra:
+    scpi: ":CALibration:TIME:BAND:EXTRa?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last extra bandwidth calibration"
+
+  calibration_time_noise_floor:
+    scpi: ":CALibration:TIME:NFLoor?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last noise floor calibration"
+
+  calibration_time_noise_floor_mixer:
+    scpi: ":CALibration:TIME:NFLoor:MIXer?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time since last external mixer noise floor calibration"
+
+  calibration_temperature_all:
+    scpi: ":CALibration:TEMPerature:ALL?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last all calibration"
+
+  calibration_temperature_level:
+    scpi: ":CALibration:TEMPerature:LEVel?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last level calibration"
+
+  calibration_temperature_local_leak:
+    scpi: ":CALibration:TEMPerature:LOLeak?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last local leak calibration"
+
+  calibration_temperature_band:
+    scpi: ":CALibration:TEMPerature:BAND?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last bandwidth calibration"
+
+  calibration_temperature_noise_floor:
+    scpi: ":CALibration:TEMPerature:NFLoor?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last noise floor calibration"
+
+  calibration_temperature_noise_floor_mixer:
+    scpi: ":CALibration:TEMPerature:NFLoor:MIXer?"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    description: "Query temperature at last external mixer noise floor calibration"
+
+  calibration_alert_mode:
+    getter: ":CALibration:ALERt:MODE?"
+    setter: ":CALibration:ALERt:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "TEMPerature", "TIME", "BOTH"]
+    returns:
+      type: string
+    description: "Calibration alert mode"
+
+  calibration_alert_temperature:
+    getter: ":CALibration:ALERt:TEMPerature?"
+    setter: ":CALibration:ALERt:TEMPerature {temp}"
+    type: property
+    params:
+      temp:
+        type: float
+        unit: "°C"
+        min: 0.5
+        max: 50.0
+    returns:
+      type: float
+      unit: "°C"
+    description: "Calibration alert temperature threshold"
+
+  calibration_alert_time:
+    getter: ":CALibration:ALERt:TIME?"
+    setter: ":CALibration:ALERt:TIME {time}"
+    type: property
+    params:
+      time:
+        type: int
+        unit: hours
+        min: 1
+        max: 200
+    returns:
+      type: int
+      unit: hours
+    description: "Calibration alert time threshold"
+
+  calibration_alert_state:
+    scpi: ":CALibration:ALERt:STATe?"
+    type: query
+    returns:
+      type: bool
+    description: "Query calibration alert status"
+
+  correction_state:
+    getter: "[:SENSe]:CORRection[:STATe]?"
+    setter: "[:SENSe]:CORRection[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Level frequency correction on/off"
+
+  correction_make:
+    scpi: "[:SENSe]:CORRection:MAKE {freq},{level}"
+    type: write
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: -1000000000
+        max: 400000000000
+      level:
+        type: float
+        unit: dB
+        min: -100
+        max: 100
+    description: "Add correction point to table"
+
+  correction_make_clear:
+    scpi: "[:SENSe]:CORRection:MAKE:CLEar"
+    type: write
+    description: "Clear correction table"
+
+  correction_store:
+    scpi: ":MMEMory:STORe:CORRection [{filename}[,{device}]]"
+    type: write
+    params:
+      filename:
+        type: string
+      device:
+        type: string
+        default: "D"
+    description: "Save correction table"
+
+  correction_load:
+    scpi: ":MMEMory:LOAD:CORRection {filename}[,{device}]"
+    type: write
+    params:
+      filename:
+        type: string
+      device:
+        type: string
+        default: "D"
+    description: "Load correction table"
+
+  correction_data:
+    scpi: "[:SENSe]:CORRection:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read correction table data"
+
+  power_attenuation_mode:
+    getter: "[:SENSe]:POWer[:RF]:ATTenuation:MODE?"
+    setter: "[:SENSe]:POWer[:RF]:ATTenuation:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["COMBined", "MECHanical"]
+    returns:
+      type: string
+    description: "Attenuator mode"
+
+  frequency_synthesis_low_phase:
+    getter: "[:SENSe]:FREQuency:SYNThesis:LPHase?"
+    setter: "[:SENSe]:FREQuency:SYNThesis:LPHase {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Low phase noise mode"
+
+  noise_source_manual:
+    getter: ":OUTPut:MANual:NOISe[:STATe]?"
+    setter: ":OUTPut:MANual:NOISe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Manual noise source power control"
+
+  ber_state:
+    getter: "[:SENSe]:BERT[:BASeband]:STATe?"
+    setter: "[:SENSe]:BERT[:BASeband]:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "BER measurement on/off"
+
+  ber_mode:
+    getter: "[:SENSe]:BERT[:BASeband]:MODE?"
+    setter: "[:SENSe]:BERT[:BASeband]:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SINGle", "CONTinuous", "ENDLess"]
+    returns:
+      type: string
+    description: "BER measurement mode"
+
+  ber_pattern:
+    getter: "[:SENSe]:BERT[:BASeband]:PRBS[:DATA]?"
+    setter: "[:SENSe]:BERT[:BASeband]:PRBS[:DATA] {pattern}"
+    type: property
+    params:
+      pattern:
+        type: enum
+        options: ["PN9", "PN11", "PN15", "PN20", "PN23", "ALL0", "ALL1", "ALT", "FPN9", "FPN11", "FPN15", "FPN20", "FPN23", "USER"]
+    returns:
+      type: string
+    description: "BER data pattern type"
+
+  ber_total_bits:
+    getter: "[:SENSe]:BERT[:BASeband]:TBITs?"
+    setter: "[:SENSe]:BERT[:BASeband]:TBITs {bits}"
+    type: property
+    params:
+      bits:
+        type: int
+        min: 1000
+        max: 4294967295
+    returns:
+      type: int
+    description: "Total measurement bits"
+
+  ber_stop_criteria:
+    getter: "[:SENSe]:BERT[:BASeband]:STOP:CRITeria[:SELect]?"
+    setter: "[:SENSe]:BERT[:BASeband]:STOP:CRITeria[:SELect] {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["EBIT", "NONE"]
+    returns:
+      type: string
+    description: "BER stop criteria (error bits or total bits)"
+
+  ber_stop_error_bits:
+    getter: "[:SENSe]:BERT[:BASeband]:STOP:CRITeria:EBIT?"
+    setter: "[:SENSe]:BERT[:BASeband]:STOP:CRITeria:EBIT {bits}"
+    type: property
+    params:
+      bits:
+        type: int
+        min: 1
+        max: 2147483647
+    returns:
+      type: int
+    description: "Stop measurement at this many error bits"
+
+  ber_clock_polarity:
+    getter: ":INPut:BERT[:BASeband]:CLOCk:POLarity?"
+    setter: ":INPut:BERT[:BASeband]:CLOCk:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Clock signal polarity (rising/falling edge)"
+
+  ber_data_polarity:
+    getter: ":INPut:BERT[:BASeband]:DATA:POLarity?"
+    setter: ":INPut:BERT[:BASeband]:DATA:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Data signal polarity"
+
+  ber_enable_gate_state:
+    getter: ":INPut:BERT[:BASeband]:CGATe[:STATe]?"
+    setter: ":INPut:BERT[:BASeband]:CGATe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable gate signal on/off"
+
+  ber_enable_gate_polarity:
+    getter: ":INPut:BERT[:BASeband]:CGATe:POLarity?"
+    setter: ":INPut:BERT[:BASeband]:CGATe:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative", "DISable"]
+    returns:
+      type: string
+    description: "Enable gate signal polarity"
+
+  ber_resync_state:
+    getter: "[:SENSe]:BERT[:BASeband]:RSYNc[:STATe]?"
+    setter: "[:SENSe]:BERT[:BASeband]:RSYNc[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto re-synchronization on/off"
+
+  ber_resync_threshold:
+    getter: "[:SENSe]:BERT[:BASeband]:RSYNc:THReshold?"
+    setter: "[:SENSe]:BERT[:BASeband]:RSYNc:THReshold {numerator},{denominator}"
+    type: property
+    params:
+      numerator:
+        type: int
+        min: 1
+      denominator:
+        type: enum
+        options: ["500", "5000", "50000"]
+    returns:
+      type: string
+    description: "Sync loss threshold (errors in window)"
+
+  ber_resync_count_action:
+    getter: "[:SENSe]:BERT[:BASeband]:RSYNc:COUNt:ACTion?"
+    setter: "[:SENSe]:BERT[:BASeband]:RSYNc:COUNt:ACTion {action}"
+    type: property
+    params:
+      action:
+        type: enum
+        options: ["CLEar", "KEEP"]
+    returns:
+      type: string
+    description: "Action on sync loss (clear or keep count)"
+
+  ber_sync_loss_count:
+    scpi: "[:SENSe]:BERT[:BASeband]:SYNLoss:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query sync loss count"
+
+  ber_pn_fix_length:
+    getter: "[:SENSe]:BERT[:BASeband]:PRBS:PNFix:LENGth?"
+    setter: "[:SENSe]:BERT[:BASeband]:PRBS:PNFix:LENGth {bits}"
+    type: property
+    params:
+      bits:
+        type: int
+        min: 96
+        max: 134217728
+    returns:
+      type: int
+    description: "PN Fix pattern length in bits"
+
+  ber_pn_fix_initial:
+    getter: "[:SENSe]:BERT[:BASeband]:PRBS:PNFix:INITial?"
+    setter: "[:SENSe]:BERT[:BASeband]:PRBS:PNFix:INITial {value}"
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: string
+    description: "PN Fix pattern initial value (binary string)"
+
+  ber_user_pattern_load:
+    scpi: ":MMEMory:LOAD:PATTern {pattern}"
+    type: write
+    params:
+      pattern:
+        type: string
+    description: "Load user-defined pattern file"
+
+  ber_user_pattern_list:
+    scpi: ":MMEMory:LIST:PATTern?"
+    type: query
+    returns:
+      type: string
+    description: "List available user pattern files"
+
+  ber_user_pattern_drive:
+    getter: ":MMEMory:MSIS?"
+    setter: ":MMEMory:MSIS {drive}"
+    type: property
+    params:
+      drive:
+        type: string
+    returns:
+      type: string
+    description: "Drive to load user pattern from"
+
+  ber_user_pattern_name:
+    scpi: "[:SENSe]:BERT[:BASeband]:PRBS:USER:PATTern?"
+    type: query
+    returns:
+      type: string
+    description: "Query loaded user pattern name"
+
+  ber_user_pattern_length:
+    scpi: "[:SENSe]:BERT[:BASeband]:PRBS:USER:LENGth?"
+    type: query
+    returns:
+      type: int
+    description: "Query user pattern length"
+
+  ber_user_sync_length:
+    getter: "[:SENSe]:BERT[:BASeband]:PRBS:USER:SYNC:LENGth?"
+    setter: "[:SENSe]:BERT[:BASeband]:PRBS:USER:SYNC:LENGth {bits}"
+    type: property
+    params:
+      bits:
+        type: int
+        min: 8
+        max: 1024
+    returns:
+      type: int
+    description: "User pattern sync bit string length"
+
+  ber_user_sync_start:
+    getter: "[:SENSe]:BERT[:BASeband]:PRBS:USER:SYNC:STARt?"
+    setter: "[:SENSe]:BERT[:BASeband]:PRBS:USER:SYNC:STARt {position}"
+    type: property
+    params:
+      position:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "User pattern sync start position"
+
+  ber_initiate:
+    scpi: ":INITiate[:IMMediate]"
+    type: write
+    description: "Start BER measurement"
+
+  ber_abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Stop BER measurement"
+
+  ber_initiate_continuous:
+    scpi: ":INITiate:MODE:CONTinuous"
+    type: write
+    description: "Start BER measurement in continuous mode"
+
+  ber_initiate_single:
+    scpi: ":INITiate:MODE:SINGle"
+    type: write
+    description: "Start BER measurement in single mode"
+
+  ber_initiate_endless:
+    scpi: ":INITiate:MODE:ENDLess"
+    type: write
+    description: "Start BER measurement in endless mode"
+
+  ber_count_clear:
+    scpi: ":DATA:COUNt:CLEar"
+    type: write
+    description: "Clear BER measurement count"
+
+  ber_ratio:
+    scpi: ":CALCurate:BERT[:BASeband]:BER? {format}"
+    type: query
+    params:
+      format:
+        type: enum
+        options: ["EP", "ER"]
+    returns:
+      type: float
+    description: "Query bit error rate (EP=percent, ER=exponent)"
+
+  ber_data_count:
+    scpi: ":CALCurate:BERT[:BASeband]:DATA:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query received bit count"
+
+  ber_error_count:
+    scpi: ":DATA:DATA:BEC?"
+    type: query
+    returns:
+      type: int
+    description: "Query error bit count"
+
+  ber_data_result:
+    scpi: ":DATA:DATA? {format}"
+    type: query
+    params:
+      format:
+        type: enum
+        options: ["ER", "EP"]
+    returns:
+      type: string
+    description: "Query BER and status (EP=percent, ER=exponent)"
+
+  ber_measurement_status:
+    scpi: ":STATus:BERT:MEASure?"
+    type: query
+    returns:
+      type: int
+    description: "Query BER measurement status"
+
+  ber_status_error:
+    scpi: ":STATus:ERRor?"
+    type: query
+    returns:
+      type: int
+    description: "Query measurement status errors"
+
+  power_meter_configure:
+    scpi: ":CONFigure:PMETer:POWer"
+    type: write
+    description: "Configure power meter measurement"
+
+  power_meter_configure_query:
+    scpi: ":CONFigure?"
+    type: query
+    returns:
+      type: string
+    description: "Query current measurement configuration"
+
+  power_meter_connection:
+    scpi: ":SYSTem:PMETer:CONNection?"
+    type: query
+    returns:
+      type: bool
+    description: "Query power sensor connection status"
+
+  power_meter_usb_port:
+    scpi: ":SYSTem:PMETer:COMMunicate:USB:PORT?"
+    type: query
+    returns:
+      type: int
+    description: "Query USB COM port number"
+
+  power_meter_sensor_model:
+    scpi: ":SYSTem:PMETer:SENSe:MODel?"
+    type: query
+    returns:
+      type: string
+    description: "Query connected sensor model"
+
+  power_meter_zero_set:
+    scpi: ":SYSTem:PMETer:ZERoset"
+    type: write
+    description: "Execute zeroing for power sensor"
+
+  power_meter_frequency:
+    getter: ":SYSTem:PMETer:SENSe:FREQuency[:CW|:FIXed]?"
+    setter: ":SYSTem:PMETer:SENSe:FREQuency[:CW|:FIXed] {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Power meter center frequency"
+
+  frequency_center:
+    getter: "[:SENSe]:FREQuency:CENTer?"
+    setter: "[:SENSe]:FREQuency:CENTer {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency (for power meter)"
+
+  power_meter_offset_state:
+    getter: ":SYSTem:PMETer:SENSe:CORRection:GAIN2:STATe?"
+    setter: ":SYSTem:PMETer:SENSe:CORRection:GAIN2:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Level offset on/off"
+
+  power_meter_offset_value:
+    getter: ":SYSTem:PMETer:SENSe:CORRection:GAIN2[:INPut][:MAGNitude]?"
+    setter: ":SYSTem:PMETer:SENSe:CORRection:GAIN2[:INPut][:MAGNitude] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -100
+        max: 100
+    returns:
+      type: float
+      unit: dB
+    description: "Level offset value"
+
+  power_meter_average_state:
+    getter: ":SYSTem:PMETer:SENSe:AVERage[:STATe]?"
+    setter: ":SYSTem:PMETer:SENSe:AVERage[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Averaging on/off"
+
+  power_meter_average_count:
+    getter: ":SYSTem:PMETer:SENSe:AVERage:COUNt?"
+    setter: ":SYSTem:PMETer:SENSe:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 1000
+    returns:
+      type: int
+    description: "Number of averaging samples"
+
+  power_meter_range:
+    getter: ":SYSTem:PMETer:SENSe:RANGe?"
+    setter: ":SYSTem:PMETer:SENSe:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["AUTO", "LOW", "HIGH"]
+    returns:
+      type: string
+    description: "Power measurement range"
+
+  power_meter_relative_set:
+    scpi: ":SYSTem:PMETer:SENSe:RELativeset"
+    type: write
+    description: "Set current reading as reference"
+
+  power_meter_aperture_time:
+    getter: ":SYSTem:PMETer:APERture:TIME?"
+    setter: ":SYSTem:PMETer:APERture:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: ms
+        min: 0.01
+        max: 300.0
+    returns:
+      type: float
+      unit: ms
+    description: "Aperture time for MA24108A/MA24118A/MA24126A"
+
+  power_meter_aperture_mode:
+    getter: ":SYSTem:PMETer:APERture:MODE?"
+    setter: ":SYSTem:PMETer:APERture:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LAT", "HAT"]
+    returns:
+      type: string
+    description: "Aperture mode for MA24104A/MA24106A"
+
+  power_meter_measure:
+    scpi: ":SYSTem:PMETer:MEASure? [{unit}]"
+    type: query
+    params:
+      unit:
+        type: enum
+        options: ["DBM", "WATT", "DB"]
+        default: "DBM"
+    returns:
+      type: float
+    description: "Measure power in specified units"
+
+  power_meter_device_error:
+    scpi: ":SYSTem:PMETer:DEVice:ERRor?"
+    type: query
+    returns:
+      type: int
+    description: "Query device status error"
+
+  status_questionable_event:
+    scpi: ":STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable event register"
+
+  status_questionable_condition:
+    scpi: ":STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable condition register"
+
+  status_questionable_enable:
+    getter: ":STATus:QUEStionable:ENABle?"
+    setter: ":STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable enable register"
+
+  status_questionable_ntransition:
+    getter: ":STATus:QUEStionable:NTRansition?"
+    setter: ":STATus:QUEStionable:NTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable negative transition filter"
+
+  status_questionable_ptransition:
+    getter: ":STATus:QUEStionable:PTRansition?"
+    setter: ":STATus:QUEStionable:PTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable positive transition filter"
+
+  status_questionable_calibration_event:
+    scpi: ":STATus:QUEStionable:CALibration[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable calibration event register"
+
+  status_questionable_calibration_condition:
+    scpi: ":STATus:QUEStionable:CALibration:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable calibration condition register"
+
+  status_questionable_calibration_enable:
+    getter: ":STATus:QUEStionable:CALibration:ENABle?"
+    setter: ":STATus:QUEStionable:CALibration:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable calibration enable register"
+
+  status_questionable_calibration_ntransition:
+    getter: ":STATus:QUEStionable:CALibration:NTRansition?"
+    setter: ":STATus:QUEStionable:CALibration:NTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable calibration negative transition filter"
+
+  status_questionable_calibration_ptransition:
+    getter: ":STATus:QUEStionable:CALibration:PTRansition?"
+    setter: ":STATus:QUEStionable:CALibration:PTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable calibration positive transition filter"
+
+  status_operation_event:
+    scpi: ":STATus:OPERation[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation event register"
+
+  status_operation_condition:
+    scpi: ":STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation condition register"
+
+  status_operation_enable:
+    getter: ":STATus:OPERation:ENABle?"
+    setter: ":STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Operation enable register"
+
+  status_operation_ntransition:
+    getter: ":STATus:OPERation:NTRansition?"
+    setter: ":STATus:OPERation:NTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Operation negative transition filter"
+
+  status_operation_ptransition:
+    getter: ":STATus:OPERation:PTRansition?"
+    setter: ":STATus:OPERation:PTRansition {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Operation positive transition filter"
+
+sequences:
+  ber_single_measurement:
+    description: "Perform single BER measurement"
+    params:
+      pattern:
+        type: enum
+        options: ["PN9", "PN11", "PN15", "PN20", "PN23"]
+        default: "PN15"
+      total_bits:
+        type: int
+        default: 1000000
+    steps:
+      - command: application_select
+        args:
+          app: "BER"
+      - command: ber_pattern
+        args:
+          pattern: "{pattern}"
+      - command: ber_total_bits
+        args:
+          bits: "{total_bits}"
+      - command: ber_mode
+        args:
+          mode: "SINGle"
+      - command: ber_stop_criteria
+        args:
+          mode: "NONE"
+      - command: ber_initiate
+      - command: wait
+      - command: ber_ratio
+        args:
+          format: "EP"
+        capture: ber_percent
+      - command: ber_data_count
+        capture: total_bits
+      - command: ber_error_count
+        capture: error_bits
+    returns: ber_percent
+
+  power_meter_reading:
+    description: "Take power meter reading with averaging"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      average_count:
+        type: int
+        default: 10
+      offset:
+        type: float
+        unit: dB
+        default: 0
+    steps:
+      - command: application_select
+        args:
+          app: "PMETer"
+      - command: power_meter_configure
+      - command: power_meter_frequency
+        args:
+          freq: "{frequency}"
+      - command: power_meter_offset_value
+        args:
+          value: "{offset}"
+      - command: power_meter_offset_state
+        args:
+          state: "ON"
+      - command: power_meter_average_count
+        args:
+          count: "{average_count}"
+      - command: power_meter_average_state
+        args:
+          state: "ON"
+      - command: power_meter_zero_set
+      - command: wait
+      - command: power_meter_measure
+        args:
+          unit: "DBM"
+        capture: power_dbm
+    returns: power_dbm
+
+status:
+  stb:
+    bit0: EESB0
+    bit1: EESB1
+    bit2: EESB2
+    bit3: EESB3
+    bit4: MAV
+    bit5: ESB
+    bit6: MSS_RQS
+    bit7: EESB7
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

@@ -1,0 +1,419 @@
+# Tabor AWG Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Tabor_SE5082_AWG
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Tabor"
+  model: "AWG"
+  class: signal_generator
+  description: "Tabor AWG"
+
+identity:
+  query: "*IDN?"
+  pattern: "Tabor.*SE5082"
+
+interfaces:
+  - type: gpib
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 1000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  sample_clock:
+    getter: ":INST:COUP:STAT?"
+    setter: ":INST:COUP:STAT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Sample clock"
+  ch1_clock_source:
+    getter: ":INST 1;:FREQ:RAST:SOUR?"
+    setter: ":INST 1;:FREQ:RAST:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Ch1 - Clock source"
+  ch1_sampling_rate:
+    getter: ":INST 1;:FREQ:RAST?"
+    setter: ":INST 1;:FREQ:RAST {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch1 - Sampling rate"
+  ch2_clock_source:
+    getter: ":INST 2;:FREQ:RAST:SOUR?"
+    setter: ":INST 2;:FREQ:RAST:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Ch2 - Clock source"
+  ch2_sampling_rate:
+    getter: ":INST 2;:FREQ:RAST?"
+    setter: ":INST 2;:FREQ:RAST {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch2 - Sampling rate"
+  reference:
+    getter: ":INST 1;:ROSC:SOUR?"
+    setter: ":INST 1;:ROSC:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Reference"
+  ref_frequency:
+    getter: ":INST 1;:ROSC:EXT:FREQ?"
+    setter: ":INST 1;:ROSC:EXT:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["10M", "20M", "50M", "100M"]
+    returns:
+      type: string
+    description: "Ref. frequency"
+  ch1_trigger:
+    getter: ":INST 1;:TRIG:SOUR?"
+    setter: ":INST 1;:TRIG:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["TIM", "EXT"]
+    returns:
+      type: string
+    description: "Ch1 - Trigger"
+  ch1_trig_interval:
+    getter: ":INST 1;:TRIG:TIM:TIME?"
+    setter: ":INST 1;:TRIG:TIM:TIME {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Ch1 - Trig interval"
+  ch2_trigger:
+    getter: ":INST 2;:TRIG:SOUR?"
+    setter: ":INST 2;:TRIG:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["TIM", "EXT"]
+    returns:
+      type: string
+    description: "Ch2 - Trigger"
+  ch2_trig_interval:
+    getter: ":INST 2;:TRIG:TIM:TIME?"
+    setter: ":INST 2;:TRIG:TIM:TIME {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Ch2 - Trig interval"
+  trig_level:
+    getter: ":TRIG:LEV?"
+    setter: ":TRIG:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Trig level"
+  trig_slope:
+    getter: ":TRIG:SLOP?"
+    setter: ":TRIG:SLOP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["POS", "NEG", "EITH"]
+    returns:
+      type: string
+    description: "Trig slope"
+  trig_impedance:
+    getter: ":TRIG:INP:IMP?"
+    setter: ":TRIG:INP:IMP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "10K"]
+    returns:
+      type: string
+    description: "Trig impedance"
+  ch1_enabled:
+    getter: ":INST 1;:OUTP?"
+    setter: ":INST 1;:OUTP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch1 - Enabled"
+  ch1_mode:
+    getter: ":INST 1;:FUNC:MODE?"
+    setter: ":INST 1;:FUNC:MODE {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["FIX", "USER"]
+    returns:
+      type: string
+    description: "Ch1 - Mode"
+  ch1_function:
+    getter: ":INST 1;:FUNC:SHAP?"
+    setter: ":INST 1;:FUNC:SHAP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["SIN", "TRI", "SQU", "RAMP", "SINC", "GAUS", "EXP", "NOIS", "DC"]
+    returns:
+      type: string
+    description: "Ch1 - Function"
+  ch1_frequency:
+    getter: ":INST 1;:FREQ?"
+    setter: ":INST 1;:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 2500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch1 - Frequency"
+  ch1_duty_cycle:
+    getter: ":INST 1;:SQU:DCYC?"
+    setter: ":INST 1;:SQU:DCYC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: %
+        min: 0.0
+        max: 99.99
+    returns:
+      type: float
+      unit: %
+    description: "Ch1 - Duty cycle"
+  ch1_range:
+    getter: ":INST 1;:VOLT?"
+    setter: ":INST 1;:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.05
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Range"
+  ch1_offset:
+    getter: ":INST 1;:VOLT:OFFS?"
+    setter: ":INST 1;:VOLT:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1.0
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Offset"
+  ch1_sampling_mode:
+    getter: ":INST 1;:OUTP:SAMP:FORM?"
+    setter: ":INST 1;:OUTP:SAMP:FORM {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["NRZ", "NRTZ", "RTZ", "RF"]
+    returns:
+      type: string
+    description: "Ch1 - Sampling mode"
+  ch2_enabled:
+    getter: ":INST 2;:OUTP?"
+    setter: ":INST 2;:OUTP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch2 - Enabled"
+  ch2_mode:
+    getter: ":INST 2;:FUNC:MODE?"
+    setter: ":INST 2;:FUNC:MODE {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["FIX", "USER"]
+    returns:
+      type: string
+    description: "Ch2 - Mode"
+  ch2_function:
+    getter: ":INST 2;:FUNC:SHAP?"
+    setter: ":INST 2;:FUNC:SHAP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["SIN", "TRI", "SQU", "RAMP", "SINC", "GAUS", "EXP", "NOIS", "DC"]
+    returns:
+      type: string
+    description: "Ch2 - Function"
+  ch2_frequency:
+    getter: ":INST 2;:FREQ?"
+    setter: ":INST 2;:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 2500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch2 - Frequency"
+  ch2_duty_cycle:
+    getter: ":INST 2;:SQU:DCYC?"
+    setter: ":INST 2;:SQU:DCYC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: %
+        min: 0.0
+        max: 99.99
+    returns:
+      type: float
+      unit: %
+    description: "Ch2 - Duty cycle"
+  ch2_range:
+    getter: ":INST 2;:VOLT?"
+    setter: ":INST 2;:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.05
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Range"
+  ch2_offset:
+    getter: ":INST 2;:VOLT:OFFS?"
+    setter: ":INST 2;:VOLT:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1.0
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Offset"
+  ch2_sampling_mode:
+    getter: ":INST 2;:OUTP:SAMP:FORM?"
+    setter: ":INST 2;:OUTP:SAMP:FORM {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["NRZ", "NRTZ", "RTZ", "RF"]
+    returns:
+      type: string
+    description: "Ch2 - Sampling mode"
+

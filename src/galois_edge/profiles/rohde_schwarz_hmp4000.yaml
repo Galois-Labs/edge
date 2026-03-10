@@ -1,0 +1,776 @@
+instrument:
+  manufacturer: "Rohde & Schwarz"
+  model: "HMP Series"
+  class: power_supply
+  description: "Programmable DC Power Supply - HMP2020/HMP2030/HMP4030/HMP4040 series, up to 4 channels, 32V/10A per channel"
+
+identity:
+  query: "*IDN?"
+  pattern: "HAMEG,HMP[0-9]{4}"
+
+interfaces:
+  - type: gpib
+    default_address: 20
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to GPIB default conditions"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification (manufacturer, model, serial, firmware)"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 to output queue when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save present setup to memory location (0-9)"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall setup from memory location (0-9)"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  # ============================================================================
+  # System Commands
+  # ============================================================================
+  beeper:
+    scpi: "SYSTem:BEEPer"
+    type: write
+    description: "Sound beeper immediately"
+
+  error_query:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Query and remove oldest error from error queue"
+
+  system_local:
+    scpi: "SYSTem:LOCal"
+    type: write
+    description: "Set system to front panel control (unlock front panel)"
+
+  system_remote:
+    scpi: "SYSTem:REMote"
+    type: write
+    description: "Set system to remote state (lock front panel, can unlock with REMOTE button)"
+
+  system_rwlock:
+    scpi: "SYSTem:RWLock"
+    type: write
+    description: "Set system to remote state with locked front panel (cannot unlock via button)"
+
+  system_mix:
+    scpi: "SYSTem:MIX"
+    type: write
+    description: "Set system to mixed mode (front panel and remote control simultaneously)"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  # ============================================================================
+  # Channel Selection
+  # ============================================================================
+  select_channel:
+    getter: "INSTrument:SELect?"
+    setter: "INSTrument:SELect {channel}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["OUTPut1", "OUTPut2", "OUTPut3", "OUTPut4", "OUT1", "OUT2", "OUT3", "OUT4"]
+    returns:
+      type: string
+    description: "Select active channel"
+
+  select_channel_number:
+    getter: "INSTrument:NSELect?"
+    setter: "INSTrument:NSELect {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Select active channel by number (1-4)"
+
+  # ============================================================================
+  # Voltage Source Commands
+  # ============================================================================
+  source_voltage:
+    getter: "VOLTage?"
+    setter: "VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 32.05
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage level for selected channel"
+
+  source_voltage_up:
+    scpi: "VOLTage UP"
+    type: write
+    description: "Increase voltage by step size"
+
+  source_voltage_down:
+    scpi: "VOLTage DOWN"
+    type: write
+    description: "Decrease voltage by step size"
+
+  voltage_step:
+    getter: "VOLTage:STEP?"
+    setter: "VOLTage:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 32.05
+    returns:
+      type: float
+      unit: V
+    description: "Voltage step size for UP/DOWN commands"
+
+  # ============================================================================
+  # Current Source Commands
+  # ============================================================================
+  source_current:
+    getter: "CURRent?"
+    setter: "CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.0005
+        max: 10.01
+    returns:
+      type: float
+      unit: A
+    description: "Source current level for selected channel"
+
+  source_current_up:
+    scpi: "CURRent UP"
+    type: write
+    description: "Increase current by step size"
+
+  source_current_down:
+    scpi: "CURRent DOWN"
+    type: write
+    description: "Decrease current by step size"
+
+  current_step:
+    getter: "CURRent:STEP?"
+    setter: "CURRent:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.0005
+        max: 10.01
+    returns:
+      type: float
+      unit: A
+    description: "Current step size for UP/DOWN commands"
+
+  # ============================================================================
+  # Combined Apply Command
+  # ============================================================================
+  apply:
+    scpi: "APPLy {voltage},{current}"
+    type: write
+    params:
+      voltage:
+        type: float
+        unit: V
+        min: 0.0
+        max: 32.05
+      current:
+        type: float
+        unit: A
+        min: 0.0005
+        max: 10.01
+    description: "Set voltage and current for selected channel simultaneously"
+
+  apply_query:
+    scpi: "APPLy?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: voltage
+          type: float
+          unit: V
+        - name: current
+          type: float
+          unit: A
+    description: "Query voltage and current settings"
+
+  # ============================================================================
+  # Output Control
+  # ============================================================================
+  output_select:
+    getter: "OUTPut:SELect?"
+    setter: "OUTPut:SELect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Activate/deactivate selected channel without affecting output button"
+
+  output_state:
+    getter: "OUTPut:STATe?"
+    setter: "OUTPut:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Activate/deactivate selected channel and turn on output"
+
+  output_general:
+    scpi: "OUTPut:GENeral {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    description: "Turn on/off all previously selected channels simultaneously"
+
+  # ============================================================================
+  # Fuse Protection
+  # ============================================================================
+  fuse_state:
+    getter: "FUSE:STATe?"
+    setter: "FUSE:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable/disable electronic fuse for selected channel"
+
+  fuse_delay:
+    getter: "FUSE:DELay?"
+    setter: "FUSE:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: ms
+        min: 0
+        max: 250
+    returns:
+      type: float
+      unit: ms
+    description: "Fuse delay time in milliseconds (0-250ms in 10ms steps)"
+
+  fuse_link:
+    scpi: "FUSE:LINK {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: "Link fuse of selected channel with another channel"
+
+  fuse_link_query:
+    scpi: "FUSE:LINK? {channel}"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: bool
+    description: "Query if fuse is linked to specified channel"
+
+  fuse_unlink:
+    scpi: "FUSE:UNLink {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: "Unlink fuse from specified channel"
+
+  fuse_tripped:
+    scpi: "FUSE:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if fuse has tripped for selected channel"
+
+  # ============================================================================
+  # Over Voltage Protection (OVP)
+  # ============================================================================
+  ovp_level:
+    getter: "VOLTage:PROTection:LEVel?"
+    setter: "VOLTage:PROTection:LEVel {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+        min: 0.1
+        max: 32.5
+    returns:
+      type: float
+      unit: V
+    description: "Over voltage protection threshold (0.1-32.5V in 10mV steps)"
+
+  ovp_tripped:
+    scpi: "VOLTage:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if OVP has tripped for selected channel"
+
+  ovp_clear:
+    scpi: "VOLTage:PROTection:CLEar"
+    type: write
+    description: "Reset OVP state and clear OVP message"
+
+  ovp_mode:
+    getter: "VOLTage:PROTection:MODE?"
+    setter: "VOLTage:PROTection:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MEASured", "PROTected"]
+    returns:
+      type: string
+    description: "OVP mode (MEASured = monitor only, PROTected = prevent turn-on if exceeded)"
+
+  # ============================================================================
+  # Measurement Commands
+  # ============================================================================
+  measure_current:
+    scpi: "MEASure:CURRent?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure current on selected channel"
+    streamable: true
+
+  measure_voltage:
+    scpi: "MEASure:VOLTage?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure voltage on selected channel"
+    streamable: true
+
+  # ============================================================================
+  # Arbitrary Waveform Commands
+  # ============================================================================
+  arbitrary_data:
+    scpi: "ARBitrary:DATA {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "Define arbitrary waveform data as comma-separated voltage,current,time triplets (max 128 points)"
+
+  arbitrary_transfer:
+    scpi: "ARBitrary:TRANsfer {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: "Transfer arbitrary waveform data to specified channel"
+
+  arbitrary_start:
+    scpi: "ARBitrary:STARt {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: "Start arbitrary waveform on specified channel"
+
+  arbitrary_stop:
+    scpi: "ARBitrary:STOP {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: "Stop arbitrary waveform on specified channel"
+
+  arbitrary_save:
+    scpi: "ARBitrary:SAVE {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    description: "Save arbitrary waveform to internal memory (1-3)"
+
+  arbitrary_restore:
+    scpi: "ARBitrary:RESTore {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    description: "Restore arbitrary waveform from internal memory (1-3)"
+
+  arbitrary_repetitions:
+    getter: "ARBitrary:REPetitions?"
+    setter: "ARBitrary:REPetitions {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set repetition count for arbitrary waveform (0 = infinite)"
+
+  arbitrary_clear:
+    scpi: "ARBitrary:CLEar"
+    type: write
+    description: "Clear arbitrary waveform data for selected channel"
+
+  # ============================================================================
+  # Status Reporting Commands
+  # ============================================================================
+  status_questionable_event:
+    scpi: "STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable status event register (0-65535)"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_questionable_instrument_event:
+    scpi: "STATus:QUEStionable:INSTrument:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable instrument event register"
+
+  status_questionable_instrument_enable:
+    getter: "STATus:QUEStionable:INSTrument:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable instrument enable register"
+
+  status_questionable_isummary_event:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query instrument summary event register"
+
+  status_questionable_isummary_condition:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query instrument summary condition register (bit 0=CC mode, bit 1=CV mode)"
+
+  status_questionable_isummary_enable:
+    getter: "STATus:QUEStionable:INSTrument:ISUMmary:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ISUMmary:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Instrument summary enable register"
+
+sequences:
+  configure_channel:
+    description: "Configure a channel with voltage, current, and enable output"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    steps:
+      - command: select_channel_number
+        args:
+          channel: "{channel}"
+      - command: apply
+        args:
+          voltage: "{voltage}"
+          current: "{current}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  measure_channel:
+    description: "Measure voltage and current on a channel"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    steps:
+      - command: select_channel_number
+        args:
+          channel: "{channel}"
+      - command: measure_voltage
+        capture: voltage
+      - command: measure_current
+        capture: current
+    returns: voltage
+
+  setup_ovp:
+    description: "Configure over voltage protection"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      ovp_voltage:
+        type: float
+        unit: V
+      mode:
+        type: enum
+        options: ["MEASured", "PROTected"]
+        default: "MEASured"
+    steps:
+      - command: select_channel_number
+        args:
+          channel: "{channel}"
+      - command: ovp_level
+        args:
+          voltage: "{ovp_voltage}"
+      - command: ovp_mode
+        args:
+          mode: "{mode}"
+
+  arbitrary_sequence:
+    description: "Create and run an arbitrary waveform sequence"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      data:
+        type: string
+      repetitions:
+        type: int
+        default: 1
+    steps:
+      - command: select_channel_number
+        args:
+          channel: "{channel}"
+      - command: arbitrary_data
+        args:
+          data: "{data}"
+      - command: arbitrary_repetitions
+        args:
+          count: "{repetitions}"
+      - command: arbitrary_transfer
+        args:
+          channel: "{channel}"
+      - command: arbitrary_start
+        args:
+          channel: "{channel}"
+
+  enable_all_channels:
+    description: "Enable all configured channels simultaneously"
+    steps:
+      - command: output_general
+        args:
+          state: "ON"
+
+  disable_all_outputs:
+    description: "Disable all channel outputs"
+    steps:
+      - command: output_general
+        args:
+          state: "OFF"
+
+status:
+  stb:
+    bit3: QSB   # Questionable Summary Bit
+    bit4: MAV   # Message Available
+    bit5: ESB   # Event Summary Bit
+    bit6: RQS   # Request for Service
+  esr:
+    bit0: OPC   # Operation Complete
+    bit2: QYE   # Query Error
+    bit3: DDE   # Device Dependent Error
+    bit4: EXE   # Execution Error
+    bit5: CME   # Command Error
+    bit7: PON   # Power On

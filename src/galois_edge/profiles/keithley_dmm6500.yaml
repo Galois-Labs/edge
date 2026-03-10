@@ -1,0 +1,1959 @@
+instrument:
+  manufacturer: "Keithley"
+  model: "DMM6500"
+  class: dmm
+  description: "6½-Digit Multimeter with Scanning - 22 functions including DC/AC voltage/current, 2/4-wire resistance, temperature, capacitance, frequency, period, diode, continuity, and digitize functions"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY INSTRUMENTS,MODEL DMM6500"
+
+interfaces:
+  - type: gpib
+    default_address: 16
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all previous commands to execute"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: float
+    description: "Make measurement and return reading"
+    streamable: true
+
+  fetch:
+    scpi: ":FETC?"
+    type: query
+    returns:
+      type: float
+    description: "Fetch last measurement from buffer"
+
+  measure_voltage:
+    scpi: ":MEAS:VOLT?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+    streamable: true
+
+  measure_voltage_ac:
+    scpi: ":MEAS:VOLT:AC?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure AC voltage"
+    streamable: true
+
+  measure_current:
+    scpi: ":MEAS:CURR?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+    streamable: true
+
+  measure_current_ac:
+    scpi: ":MEAS:CURR:AC?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure AC current"
+    streamable: true
+
+  measure_resistance:
+    scpi: ":MEAS:RES?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 2-wire resistance"
+    streamable: true
+
+  measure_resistance_4wire:
+    scpi: ":MEAS:FRES?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 4-wire resistance"
+    streamable: true
+
+  measure_temperature:
+    scpi: ":MEAS:TEMP?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Measure temperature"
+    streamable: true
+
+  measure_capacitance:
+    scpi: ":MEAS:CAP?"
+    type: query
+    returns:
+      type: float
+      unit: F
+    description: "Measure capacitance"
+    streamable: true
+
+  measure_frequency:
+    scpi: ":MEAS:FREQ?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency"
+    streamable: true
+
+  measure_period:
+    scpi: ":MEAS:PER?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure period"
+    streamable: true
+
+  measure_diode:
+    scpi: ":MEAS:DIOD?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure diode"
+    streamable: true
+
+  measure_continuity:
+    scpi: ":MEAS:CONT?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure continuity"
+    streamable: true
+
+  measure_digitize:
+    scpi: ":MEAS:DIG?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+    description: "Make digitize measurement"
+
+  read_digitize:
+    scpi: ":READ:DIG?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+    description: "Make digitize measurement and return readings"
+
+  function:
+    getter: ":SENS:FUNC?"
+    setter: ":SENS:FUNC \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLT", "VOLT:AC", "CURR", "CURR:AC", "RES", "FRES", "TEMP", "CAP", "FREQ", "PER", "DIOD", "CONT", "VOLT:RAT"]
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  digitize_function:
+    getter: ":SENS:DIG:FUNC?"
+    setter: ":SENS:DIG:FUNC \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLT", "CURR"]
+    returns:
+      type: string
+    description: "Select digitize function"
+
+  voltage_range:
+    getter: ":SENS:VOLT:RANG?"
+    setter: ":SENS:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage measurement range"
+
+  voltage_range_auto:
+    getter: ":SENS:VOLT:RANG:AUTO?"
+    setter: ":SENS:VOLT:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage autorange"
+
+  voltage_ac_range:
+    getter: ":SENS:VOLT:AC:RANG?"
+    setter: ":SENS:VOLT:AC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 750
+    returns:
+      type: float
+      unit: V
+    description: "AC voltage measurement range"
+
+  voltage_ac_range_auto:
+    getter: ":SENS:VOLT:AC:RANG:AUTO?"
+    setter: ":SENS:VOLT:AC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable AC voltage autorange"
+
+  current_range:
+    getter: ":SENS:CURR:RANG?"
+    setter: ":SENS:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.00001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "DC current measurement range"
+
+  current_range_auto:
+    getter: ":SENS:CURR:RANG:AUTO?"
+    setter: ":SENS:CURR:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC current autorange"
+
+  current_ac_range:
+    getter: ":SENS:CURR:AC:RANG?"
+    setter: ":SENS:CURR:AC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.0001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "AC current measurement range"
+
+  current_ac_range_auto:
+    getter: ":SENS:CURR:AC:RANG:AUTO?"
+    setter: ":SENS:CURR:AC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable AC current autorange"
+
+  resistance_range:
+    getter: ":SENS:RES:RANG?"
+    setter: ":SENS:RES:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 10
+        max: 100000000
+    returns:
+      type: float
+      unit: Ohm
+    description: "2-wire resistance measurement range"
+
+  resistance_range_auto:
+    getter: ":SENS:RES:RANG:AUTO?"
+    setter: ":SENS:RES:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable 2-wire resistance autorange"
+
+  resistance_4wire_range:
+    getter: ":SENS:FRES:RANG?"
+    setter: ":SENS:FRES:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 10
+        max: 100000000
+    returns:
+      type: float
+      unit: Ohm
+    description: "4-wire resistance measurement range"
+
+  resistance_4wire_range_auto:
+    getter: ":SENS:FRES:RANG:AUTO?"
+    setter: ":SENS:FRES:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire resistance autorange"
+
+  voltage_nplc:
+    getter: ":SENS:VOLT:NPLC?"
+    setter: ":SENS:VOLT:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 15
+        default: 1.0
+    returns:
+      type: float
+    description: "DC voltage integration time in power line cycles"
+
+  voltage_aperture:
+    getter: ":SENS:VOLT:APER?"
+    setter: ":SENS:VOLT:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000008333
+        max: 0.25
+    returns:
+      type: float
+      unit: s
+    description: "DC voltage aperture time"
+
+  current_nplc:
+    getter: ":SENS:CURR:NPLC?"
+    setter: ":SENS:CURR:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 15
+        default: 1.0
+    returns:
+      type: float
+    description: "DC current integration time in power line cycles"
+
+  current_aperture:
+    getter: ":SENS:CURR:APER?"
+    setter: ":SENS:CURR:APER {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.000008333
+        max: 0.25
+    returns:
+      type: float
+      unit: s
+    description: "DC current aperture time"
+
+  resistance_nplc:
+    getter: ":SENS:RES:NPLC?"
+    setter: ":SENS:RES:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 15
+        default: 1.0
+    returns:
+      type: float
+    description: "2-wire resistance integration time in power line cycles"
+
+  resistance_4wire_nplc:
+    getter: ":SENS:FRES:NPLC?"
+    setter: ":SENS:FRES:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 15
+        default: 1.0
+    returns:
+      type: float
+    description: "4-wire resistance integration time in power line cycles"
+
+  voltage_autozero:
+    getter: ":SENS:VOLT:AZER?"
+    setter: ":SENS:VOLT:AZER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: string
+    description: "DC voltage autozero setting"
+
+  current_autozero:
+    getter: ":SENS:CURR:AZER?"
+    setter: ":SENS:CURR:AZER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: string
+    description: "DC current autozero setting"
+
+  resistance_autozero:
+    getter: ":SENS:RES:AZER?"
+    setter: ":SENS:RES:AZER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: string
+    description: "2-wire resistance autozero setting"
+
+  resistance_4wire_autozero:
+    getter: ":SENS:FRES:AZER?"
+    setter: ":SENS:FRES:AZER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: string
+    description: "4-wire resistance autozero setting"
+
+  autozero_once:
+    scpi: ":SENS:AZER:ONCE"
+    type: write
+    description: "Perform immediate autozero"
+
+  voltage_average_state:
+    getter: ":SENS:VOLT:AVER?"
+    setter: ":SENS:VOLT:AVER {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage averaging filter"
+
+  voltage_average_count:
+    getter: ":SENS:VOLT:AVER:COUN?"
+    setter: ":SENS:VOLT:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "DC voltage averaging filter count"
+
+  voltage_average_type:
+    getter: ":SENS:VOLT:AVER:TCON?"
+    setter: ":SENS:VOLT:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: "DC voltage averaging filter type (moving or repeating)"
+
+  current_average_state:
+    getter: ":SENS:CURR:AVER?"
+    setter: ":SENS:CURR:AVER {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC current averaging filter"
+
+  current_average_count:
+    getter: ":SENS:CURR:AVER:COUN?"
+    setter: ":SENS:CURR:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "DC current averaging filter count"
+
+  current_average_type:
+    getter: ":SENS:CURR:AVER:TCON?"
+    setter: ":SENS:CURR:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: "DC current averaging filter type"
+
+  resistance_average_state:
+    getter: ":SENS:RES:AVER?"
+    setter: ":SENS:RES:AVER {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable resistance averaging filter"
+
+  resistance_average_count:
+    getter: ":SENS:RES:AVER:COUN?"
+    setter: ":SENS:RES:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Resistance averaging filter count"
+
+  resistance_average_type:
+    getter: ":SENS:RES:AVER:TCON?"
+    setter: ":SENS:RES:AVER:TCON {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: "Resistance averaging filter type"
+
+  resistance_4wire_offset_comp:
+    getter: ":SENS:FRES:OCOM?"
+    setter: ":SENS:FRES:OCOM {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire resistance offset compensation"
+
+  temperature_transducer:
+    getter: ":SENS:TEMP:TRAN?"
+    setter: ":SENS:TEMP:TRAN {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["TC", "RTD", "FRTD", "THER"]
+    returns:
+      type: string
+    description: "Temperature transducer type (thermocouple, RTD, 4-wire RTD, thermistor)"
+
+  temperature_thermocouple_type:
+    getter: ":SENS:TEMP:TC:TYPE?"
+    setter: ":SENS:TEMP:TC:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["B", "E", "J", "K", "N", "R", "S", "T"]
+    returns:
+      type: string
+    description: "Thermocouple type"
+
+  temperature_rtd_type:
+    getter: ":SENS:TEMP:RTD:THR?"
+    setter: ":SENS:TEMP:RTD:THR {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["PT100", "PT385", "PT3916", "D100", "F100", "PT1000", "USER"]
+    returns:
+      type: string
+    description: "RTD type"
+
+  temperature_rtd_alpha:
+    getter: ":SENS:TEMP:RTD:ALPH?"
+    setter: ":SENS:TEMP:RTD:ALPH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 0.01
+        default: 0.00385055
+    returns:
+      type: float
+    description: "User-defined RTD alpha value"
+
+  temperature_rtd_beta:
+    getter: ":SENS:TEMP:RTD:BETA?"
+    setter: ":SENS:TEMP:RTD:BETA {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 1
+        default: 0.10863
+    returns:
+      type: float
+    description: "User-defined RTD beta value"
+
+  temperature_rtd_delta:
+    getter: ":SENS:TEMP:RTD:DELT?"
+    setter: ":SENS:TEMP:RTD:DELT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 5
+        default: 1.4999
+    returns:
+      type: float
+    description: "User-defined RTD delta value"
+
+  temperature_rtd_zero:
+    getter: ":SENS:TEMP:RTD:ZERO?"
+    setter: ":SENS:TEMP:RTD:ZERO {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 10000
+        default: 100
+    returns:
+      type: float
+    description: "User-defined RTD zero resistance value"
+
+  temperature_reference_junction:
+    getter: ":SENS:TEMP:TC:RJUN:RSEL?"
+    setter: ":SENS:TEMP:TC:RJUN:RSEL {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["INT", "SIM", "EXT"]
+    returns:
+      type: string
+    description: "Thermocouple reference junction type (internal, simulated, external)"
+
+  temperature_simulated_reference:
+    getter: ":SENS:TEMP:TC:RJUN:SIM?"
+    setter: ":SENS:TEMP:TC:RJUN:SIM {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: C
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: C
+    description: "Simulated reference junction temperature"
+
+  temperature_units:
+    getter: ":SENS:TEMP:UNIT?"
+    setter: ":SENS:TEMP:UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["C", "F", "K"]
+    returns:
+      type: string
+    description: "Temperature measurement units"
+
+  voltage_relative_enable:
+    getter: ":SENS:VOLT:REL:STAT?"
+    setter: ":SENS:VOLT:REL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage relative offset"
+
+  voltage_relative_offset:
+    getter: ":SENS:VOLT:REL?"
+    setter: ":SENS:VOLT:REL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage relative offset value"
+
+  voltage_relative_acquire:
+    scpi: ":SENS:VOLT:REL:ACQ"
+    type: write
+    description: "Use current DC voltage reading as relative offset"
+
+  current_relative_enable:
+    getter: ":SENS:CURR:REL:STAT?"
+    setter: ":SENS:CURR:REL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC current relative offset"
+
+  current_relative_offset:
+    getter: ":SENS:CURR:REL?"
+    setter: ":SENS:CURR:REL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "DC current relative offset value"
+
+  current_relative_acquire:
+    scpi: ":SENS:CURR:REL:ACQ"
+    type: write
+    description: "Use current DC current reading as relative offset"
+
+  resistance_relative_enable:
+    getter: ":SENS:RES:REL:STAT?"
+    setter: ":SENS:RES:REL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable resistance relative offset"
+
+  resistance_relative_offset:
+    getter: ":SENS:RES:REL?"
+    setter: ":SENS:RES:REL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance relative offset value"
+
+  resistance_relative_acquire:
+    scpi: ":SENS:RES:REL:ACQ"
+    type: write
+    description: "Use current resistance reading as relative offset"
+
+  voltage_math_enable:
+    getter: ":CALC:VOLT:MATH:STAT?"
+    setter: ":CALC:VOLT:MATH:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage math operations"
+
+  voltage_math_format:
+    getter: ":CALC:VOLT:MATH:FORM?"
+    setter: ":CALC:VOLT:MATH:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MXB", "PERC", "REC"]
+    returns:
+      type: string
+    description: "DC voltage math format (mx+b, percent, reciprocal)"
+
+  voltage_math_mfactor:
+    getter: ":CALC:VOLT:MATH:MMF?"
+    setter: ":CALC:VOLT:MATH:MMF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+    description: "DC voltage math m factor (scale)"
+
+  voltage_math_bfactor:
+    getter: ":CALC:VOLT:MATH:MBF?"
+    setter: ":CALC:VOLT:MATH:MBF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 0
+    returns:
+      type: float
+    description: "DC voltage math b factor (offset)"
+
+  voltage_math_percent:
+    getter: ":CALC:VOLT:MATH:PERC?"
+    setter: ":CALC:VOLT:MATH:PERC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+    description: "DC voltage math percent reference value"
+
+  current_math_enable:
+    getter: ":CALC:CURR:MATH:STAT?"
+    setter: ":CALC:CURR:MATH:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC current math operations"
+
+  current_math_format:
+    getter: ":CALC:CURR:MATH:FORM?"
+    setter: ":CALC:CURR:MATH:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MXB", "PERC", "REC"]
+    returns:
+      type: string
+    description: "DC current math format"
+
+  current_math_mfactor:
+    getter: ":CALC:CURR:MATH:MMF?"
+    setter: ":CALC:CURR:MATH:MMF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+    description: "DC current math m factor"
+
+  current_math_bfactor:
+    getter: ":CALC:CURR:MATH:MBF?"
+    setter: ":CALC:CURR:MATH:MBF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 0
+    returns:
+      type: float
+    description: "DC current math b factor"
+
+  current_math_percent:
+    getter: ":CALC:CURR:MATH:PERC?"
+    setter: ":CALC:CURR:MATH:PERC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+    description: "DC current math percent reference value"
+
+  voltage_limit1_enable:
+    getter: ":CALC2:VOLT:LIM1:STAT?"
+    setter: ":CALC2:VOLT:LIM1:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage limit 1 test"
+
+  voltage_limit1_high:
+    getter: ":CALC2:VOLT:LIM1:UPP?"
+    setter: ":CALC2:VOLT:LIM1:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage limit 1 upper limit"
+
+  voltage_limit1_low:
+    getter: ":CALC2:VOLT:LIM1:LOW?"
+    setter: ":CALC2:VOLT:LIM1:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1000000000000
+        max: 1000000000000
+        default: -1
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage limit 1 lower limit"
+
+  voltage_limit1_fail:
+    scpi: ":CALC2:VOLT:LIM1:FAIL?"
+    type: query
+    returns:
+      type: string
+    description: "Query DC voltage limit 1 test result"
+
+  voltage_limit1_clear:
+    scpi: ":CALC2:VOLT:LIM1:CLE"
+    type: write
+    description: "Clear DC voltage limit 1 test result"
+
+  voltage_limit1_autoclear:
+    getter: ":CALC2:VOLT:LIM1:CLE:AUTO?"
+    setter: ":CALC2:VOLT:LIM1:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage limit 1 autoclear"
+
+  voltage_limit1_audible:
+    getter: ":CALC2:VOLT:LIM1:AUD?"
+    setter: ":CALC2:VOLT:LIM1:AUD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "FAIL", "PASS"]
+    returns:
+      type: string
+    description: "DC voltage limit 1 audible indicator mode"
+
+  voltage_limit2_enable:
+    getter: ":CALC2:VOLT:LIM2:STAT?"
+    setter: ":CALC2:VOLT:LIM2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable DC voltage limit 2 test"
+
+  voltage_limit2_high:
+    getter: ":CALC2:VOLT:LIM2:UPP?"
+    setter: ":CALC2:VOLT:LIM2:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1000000000000
+        max: 1000000000000
+        default: 1
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage limit 2 upper limit"
+
+  voltage_limit2_low:
+    getter: ":CALC2:VOLT:LIM2:LOW?"
+    setter: ":CALC2:VOLT:LIM2:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -1000000000000
+        max: 1000000000000
+        default: -1
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage limit 2 lower limit"
+
+  voltage_limit2_fail:
+    scpi: ":CALC2:VOLT:LIM2:FAIL?"
+    type: query
+    returns:
+      type: string
+    description: "Query DC voltage limit 2 test result"
+
+  voltage_limit2_clear:
+    scpi: ":CALC2:VOLT:LIM2:CLE"
+    type: write
+    description: "Clear DC voltage limit 2 test result"
+
+  measure_count:
+    getter: ":SENS:COUN?"
+    setter: ":SENS:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 300000
+        default: 1
+    returns:
+      type: int
+    description: "Number of measurements per trigger"
+
+  digitize_count:
+    getter: ":SENS:DIG:COUN?"
+    setter: ":SENS:DIG:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 55000000
+        default: 1
+    returns:
+      type: int
+    description: "Number of digitize measurements per trigger"
+
+  digitize_voltage_samplerate:
+    getter: ":SENS:DIG:VOLT:SRAT?"
+    setter: ":SENS:DIG:VOLT:SRAT {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: Hz
+        min: 1
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Digitize voltage sample rate"
+
+  digitize_current_samplerate:
+    getter: ":SENS:DIG:CURR:SRAT?"
+    setter: ":SENS:DIG:CURR:SRAT {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: Hz
+        min: 1
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Digitize current sample rate"
+
+  digitize_voltage_range:
+    getter: ":SENS:DIG:VOLT:RANG?"
+    setter: ":SENS:DIG:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "Digitize voltage range"
+
+  digitize_current_range:
+    getter: ":SENS:DIG:CURR:RANG?"
+    setter: ":SENS:DIG:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.00001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "Digitize current range"
+
+  voltage_analog_trigger_mode:
+    getter: ":SENS:VOLT:ATR:MODE?"
+    setter: ":SENS:VOLT:ATR:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "EDGE", "WIND"]
+    returns:
+      type: string
+    description: "DC voltage analog trigger mode"
+
+  voltage_analog_trigger_edge_level:
+    getter: ":SENS:VOLT:ATR:EDGE:LEV?"
+    setter: ":SENS:VOLT:ATR:EDGE:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        default: 0
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage analog trigger edge level"
+
+  voltage_analog_trigger_edge_slope:
+    getter: ":SENS:VOLT:ATR:EDGE:SLOP?"
+    setter: ":SENS:VOLT:ATR:EDGE:SLOP {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RIS", "FALL"]
+    returns:
+      type: string
+    description: "DC voltage analog trigger edge slope"
+
+  voltage_analog_trigger_window_direction:
+    getter: ":SENS:VOLT:ATR:WIND:DIR?"
+    setter: ":SENS:VOLT:ATR:WIND:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["ENT", "LEAV"]
+    returns:
+      type: string
+    description: "DC voltage analog trigger window direction"
+
+  voltage_analog_trigger_window_high:
+    getter: ":SENS:VOLT:ATR:WIND:LEV:HIGH?"
+    setter: ":SENS:VOLT:ATR:WIND:LEV:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        default: 0.05
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage analog trigger window high level"
+
+  voltage_analog_trigger_window_low:
+    getter: ":SENS:VOLT:ATR:WIND:LEV:LOW?"
+    setter: ":SENS:VOLT:ATR:WIND:LEV:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        default: 0
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage analog trigger window low level"
+
+  channel_close:
+    scpi: ":ROUT:CLOS (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Close specified channels"
+
+  channel_open:
+    scpi: ":ROUT:OPEN (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Open specified channels"
+
+  channel_open_all:
+    scpi: ":ROUT:OPEN:ALL"
+    type: write
+    description: "Open all channels"
+
+  channel_state:
+    scpi: ":ROUT:CLOS?"
+    type: query
+    returns:
+      type: string
+    description: "Query state of closed channels"
+
+  channel_multiple_close:
+    scpi: ":ROUT:MULT:CLOS (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Close multiple channels without affecting others"
+
+  channel_multiple_open:
+    scpi: ":ROUT:MULT:OPEN (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Open multiple channels without affecting others"
+
+  channel_delay:
+    getter: ":ROUT:DEL? (@{channelList})"
+    setter: ":ROUT:DEL {delay}, (@{channelList})"
+    type: property
+    params:
+      channelList:
+        type: string
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Channel settling delay"
+
+  channel_label:
+    getter: ":ROUT:LAB? (@{channel})"
+    setter: ":ROUT:LAB \"{label}\", (@{channel})"
+    type: property
+    params:
+      channel:
+        type: string
+      label:
+        type: string
+    returns:
+      type: string
+    description: "Channel label"
+
+  scan_create:
+    scpi: ":ROUT:SCAN:CRE (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Create scan list with specified channels"
+
+  scan_add:
+    scpi: ":ROUT:SCAN:ADD (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Add channels to scan list"
+
+  scan_count:
+    getter: ":ROUT:SCAN:COUN:SCAN?"
+    setter: ":ROUT:SCAN:COUN:SCAN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 0
+        max: 100000000
+        default: 1
+    returns:
+      type: int
+    description: "Number of times to repeat scan (0 = infinite)"
+
+  scan_interval:
+    getter: ":ROUT:SCAN:INT?"
+    setter: ":ROUT:SCAN:INT {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Interval between scan starts"
+
+  scan_buffer:
+    getter: ":ROUT:SCAN:BUFF?"
+    setter: ":ROUT:SCAN:BUFF \"{bufferName}\""
+    type: property
+    params:
+      bufferName:
+        type: string
+    returns:
+      type: string
+    description: "Reading buffer for scan data"
+
+  scan_state:
+    scpi: ":ROUT:SCAN:STAT?"
+    type: query
+    returns:
+      type: bool
+    description: "Query scan state"
+
+  scan_mode:
+    getter: ":ROUT:SCAN:MODE?"
+    setter: ":ROUT:SCAN:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "ONCE", "ALL"]
+    returns:
+      type: string
+    description: "Scan relay action mode"
+
+  scan_bypass:
+    getter: ":ROUT:SCAN:BYP?"
+    setter: ":ROUT:SCAN:BYP {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable scan bypass for first channel"
+
+  scan_channel_stimulus:
+    getter: ":ROUT:SCAN:CHAN:STIM?"
+    setter: ":ROUT:SCAN:CHAN:STIM {event}"
+    type: property
+    params:
+      event:
+        type: enum
+        options: ["NONE", "EXT", "DIG1", "DIG2", "DIG3", "DIG4", "DIG5", "DIG6", "LAN1", "LAN2", "LAN3", "LAN4", "LAN5", "LAN6", "LAN7", "LAN8", "TIM1", "TIM2", "TIM3", "TIM4"]
+    returns:
+      type: string
+    description: "Channel close trigger stimulus event"
+
+  scan_start_stimulus:
+    getter: ":ROUT:SCAN:STAR:STIM?"
+    setter: ":ROUT:SCAN:STAR:STIM {event}"
+    type: property
+    params:
+      event:
+        type: enum
+        options: ["NONE", "EXT", "DIG1", "DIG2", "DIG3", "DIG4", "DIG5", "DIG6", "LAN1", "LAN2", "LAN3", "LAN4", "LAN5", "LAN6", "LAN7", "LAN8", "TIM1", "TIM2", "TIM3", "TIM4", "SCANCHAN"]
+    returns:
+      type: string
+    description: "Scan start trigger stimulus event"
+
+  scan_measure_stimulus:
+    getter: ":ROUT:SCAN:MEAS:STIM?"
+    setter: ":ROUT:SCAN:MEAS:STIM {event}"
+    type: property
+    params:
+      event:
+        type: enum
+        options: ["NONE", "EXT", "DIG1", "DIG2", "DIG3", "DIG4", "DIG5", "DIG6", "LAN1", "LAN2", "LAN3", "LAN4", "LAN5", "LAN6", "LAN7", "LAN8", "TIM1", "TIM2", "TIM3", "TIM4", "SCANMEAS"]
+    returns:
+      type: string
+    description: "Scan measurement trigger stimulus event"
+
+  scan_measure_interval:
+    getter: ":ROUT:SCAN:MEAS:INT?"
+    setter: ":ROUT:SCAN:MEAS:INT {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Interval between measurements in scan"
+
+  scan_monitor_channel:
+    getter: ":ROUT:SCAN:MON:CHAN?"
+    setter: ":ROUT:SCAN:MON:CHAN (@{channel})"
+    type: property
+    params:
+      channel:
+        type: string
+    returns:
+      type: string
+    description: "Channel to monitor for scan start"
+
+  scan_monitor_mode:
+    getter: ":ROUT:SCAN:MON:MODE?"
+    setter: ":ROUT:SCAN:MON:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "HIGH", "LOW", "WIND"]
+    returns:
+      type: string
+    description: "Scan monitor mode"
+
+  scan_monitor_limit_high:
+    getter: ":ROUT:SCAN:MON:LIM:UPP?"
+    setter: ":ROUT:SCAN:MON:LIM:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        default: 0
+    returns:
+      type: float
+    description: "Scan monitor high limit"
+
+  scan_monitor_limit_low:
+    getter: ":ROUT:SCAN:MON:LIM:LOW?"
+    setter: ":ROUT:SCAN:MON:LIM:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        default: 0
+    returns:
+      type: float
+    description: "Scan monitor low limit"
+
+  scan_learn_limits:
+    scpi: ":ROUT:SCAN:LEAR:LIM {window}, {iterations}"
+    type: write
+    params:
+      window:
+        type: float
+        min: 0.1
+        max: 1000
+      iterations:
+        type: int
+        min: 1
+        max: 10
+    description: "Automatically calculate scan alarm limits"
+
+  scan_restart:
+    getter: ":ROUT:SCAN:REST?"
+    setter: ":ROUT:SCAN:REST {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable scan auto-restart after power loss"
+
+  scan_alarm_notify:
+    getter: ":ROUT:SCAN:ALAR?"
+    setter: ":ROUT:SCAN:ALAR {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable scan alarm notification"
+
+  scan_export:
+    scpi: ":ROUT:SCAN:EXP \"{path}\", {when}, {what}"
+    type: write
+    params:
+      path:
+        type: string
+      when:
+        type: enum
+        options: ["END", "SCAN", "STEP"]
+      what:
+        type: enum
+        options: ["ALL", "NEW"]
+    description: "Export scan data to USB flash drive"
+
+  initiate:
+    scpi: ":INIT"
+    type: write
+    description: "Initiate trigger model"
+
+  abort:
+    scpi: ":ABOR"
+    type: write
+    description: "Abort trigger model"
+
+  trigger_load_empty:
+    scpi: ":TRIG:LOAD \"Empty\""
+    type: write
+    description: "Clear trigger model"
+
+  trigger_load_simple_loop:
+    scpi: ":TRIG:LOAD \"SimpleLoop\", {count}, {delay}"
+    type: write
+    params:
+      count:
+        type: int
+        min: 1
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 10000
+        default: 0
+    description: "Load simple loop trigger model"
+
+  trigger_load_config_list:
+    scpi: ":TRIG:LOAD \"ConfigList\", \"{configList}\", {delay}"
+    type: write
+    params:
+      configList:
+        type: string
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 10000
+        default: 0
+    description: "Load configuration list trigger model"
+
+  trigger_load_duration_loop:
+    scpi: ":TRIG:LOAD \"DurationLoop\", {duration}"
+    type: write
+    params:
+      duration:
+        type: float
+        unit: s
+        min: 0
+        max: 100000000
+    description: "Load duration loop trigger model"
+
+  trigger_state:
+    scpi: ":TRIG:STAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query trigger model state"
+
+  trigger_pause:
+    scpi: ":TRIG:PAUS"
+    type: write
+    description: "Pause trigger model"
+
+  trigger_resume:
+    scpi: ":TRIG:RES"
+    type: write
+    description: "Resume trigger model"
+
+  trigger_block_buffer_clear:
+    scpi: ":TRIG:BLOC:BUFF:CLE {blockNumber}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+    description: "Define buffer clear trigger block"
+
+  trigger_block_measure_digitize:
+    scpi: ":TRIG:BLOC:MDIG {blockNumber}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+    description: "Define measure/digitize trigger block"
+
+  trigger_block_branch_counter:
+    scpi: ":TRIG:BLOC:BRAN:COUN {blockNumber}, {targetCount}, {branchBlock}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+      targetCount:
+        type: int
+        min: 1
+      branchBlock:
+        type: int
+        min: 1
+    description: "Define branch counter trigger block"
+
+  trigger_block_delay_constant:
+    scpi: ":TRIG:BLOC:DEL:CONS {blockNumber}, {delay}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 10000
+    description: "Define constant delay trigger block"
+
+  trigger_block_wait:
+    scpi: ":TRIG:BLOC:WAIT {blockNumber}, {event}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+      event:
+        type: enum
+        options: ["NONE", "EXT", "DIG1", "DIG2", "DIG3", "DIG4", "DIG5", "DIG6", "LAN1", "LAN2", "LAN3", "LAN4", "LAN5", "LAN6", "LAN7", "LAN8", "TIM1", "TIM2", "TIM3", "TIM4", "DISP", "ATR"]
+    description: "Define wait trigger block"
+
+  trigger_block_notify:
+    scpi: ":TRIG:BLOC:NOT {blockNumber}, {notifyId}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+      notifyId:
+        type: int
+        min: 1
+        max: 8
+    description: "Define notify trigger block"
+
+  trigger_block_nop:
+    scpi: ":TRIG:BLOC:NOP {blockNumber}"
+    type: write
+    params:
+      blockNumber:
+        type: int
+        min: 1
+    description: "Define no-operation trigger block"
+
+  trigger_external_in_edge:
+    getter: ":TRIG:EXT:IN:EDGE?"
+    setter: ":TRIG:EXT:IN:EDGE {edge}"
+    type: property
+    params:
+      edge:
+        type: enum
+        options: ["RIS", "FALL", "EITH"]
+    returns:
+      type: string
+    description: "External trigger input edge"
+
+  trigger_external_in_clear:
+    scpi: ":TRIG:EXT:IN:CLE"
+    type: write
+    description: "Clear external trigger input event"
+
+  trigger_external_in_overrun:
+    scpi: ":TRIG:EXT:IN:OVER?"
+    type: query
+    returns:
+      type: bool
+    description: "Query external trigger input overrun status"
+
+  trigger_external_out_logic:
+    getter: ":TRIG:EXT:OUT:LOG?"
+    setter: ":TRIG:EXT:OUT:LOG {logic}"
+    type: property
+    params:
+      logic:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "External trigger output logic (positive or negative)"
+
+  trigger_external_out_stimulus:
+    getter: ":TRIG:EXT:OUT:STIM?"
+    setter: ":TRIG:EXT:OUT:STIM {event}"
+    type: property
+    params:
+      event:
+        type: enum
+        options: ["NONE", "NOT1", "NOT2", "NOT3", "NOT4", "NOT5", "NOT6", "NOT7", "NOT8", "EXT", "TIM1", "TIM2", "TIM3", "TIM4"]
+    returns:
+      type: string
+    description: "External trigger output stimulus event"
+
+  digital_line_mode:
+    getter: ":DIG:LINE{line}:MODE?"
+    setter: ":DIG:LINE{line}:MODE {mode}, {direction}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      mode:
+        type: enum
+        options: ["DIG", "TRIG", "SYNC"]
+      direction:
+        type: enum
+        options: ["IN", "OUT"]
+    returns:
+      type: string
+    description: "Digital I/O line mode and direction"
+
+  digital_line_state:
+    getter: ":DIG:LINE{line}:STAT?"
+    setter: ":DIG:LINE{line}:STAT {state}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Digital I/O line state (0=low, 1=high)"
+
+  digital_read:
+    scpi: ":DIG:READ?"
+    type: query
+    returns:
+      type: int
+    description: "Read digital I/O port state"
+
+  digital_write:
+    scpi: ":DIG:WRIT {value}"
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 63
+    description: "Write value to digital I/O port"
+
+  trigger_digital_in_edge:
+    getter: ":TRIG:DIG{line}:IN:EDGE?"
+    setter: ":TRIG:DIG{line}:IN:EDGE {edge}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      edge:
+        type: enum
+        options: ["RIS", "FALL", "EITH"]
+    returns:
+      type: string
+    description: "Digital trigger input edge"
+
+  trigger_digital_in_clear:
+    scpi: ":TRIG:DIG{line}:IN:CLE"
+    type: write
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+    description: "Clear digital trigger input event"
+
+  trigger_digital_out_logic:
+    getter: ":TRIG:DIG{line}:OUT:LOG?"
+    setter: ":TRIG:DIG{line}:OUT:LOG {logic}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      logic:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Digital trigger output logic"
+
+  trigger_digital_out_pulsewidth:
+    getter: ":TRIG:DIG{line}:OUT:PULS?"
+    setter: ":TRIG:DIG{line}:OUT:PULS {width}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      width:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+        default: 0.00001
+    returns:
+      type: float
+      unit: s
+    description: "Digital trigger output pulse width"
+
+  trigger_digital_out_stimulus:
+    getter: ":TRIG:DIG{line}:OUT:STIM?"
+    setter: ":TRIG:DIG{line}:OUT:STIM {event}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+      event:
+        type: enum
+        options: ["NONE", "NOT1", "NOT2", "NOT3", "NOT4", "NOT5", "NOT6", "NOT7", "NOT8", "TIM1", "TIM2", "TIM3", "TIM4"]
+    returns:
+      type: string
+    description: "Digital trigger output stimulus event"

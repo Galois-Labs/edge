@@ -1,0 +1,838 @@
+instrument:
+  manufacturer: "Teledyne LeCroy"
+  model: "T3DSO"
+  class: oscilloscope
+  description: "Digital Storage Oscilloscope - T3DSO Series (T3DSO3000, T3DSO2000A, T3DSO2000HD, T3DSO1000HD, T3DSO3000HD, T3DSO4000L-HD)"
+
+identity:
+  query: "*IDN?"
+  pattern: ".*T3DSO.*"
+
+interfaces:
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for operations to complete"
+
+  # Trigger Commands
+  trigger_mode:
+    getter: ":TRIGger:MODE?"
+    setter: ":TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SINGle", "NORMal", "AUTO", "FTRIG"]
+    returns:
+      type: string
+    description: "Set/query trigger mode"
+
+  trigger_run:
+    scpi: ":TRIGger:RUN"
+    type: write
+    description: "Start acquisition"
+
+  trigger_stop:
+    scpi: ":TRIGger:STOP"
+    type: write
+    description: "Stop acquisition"
+
+  trigger_status:
+    scpi: ":TRIGger:STATus?"
+    type: query
+    returns:
+      type: string
+    description: "Query trigger status"
+
+  trigger_type:
+    getter: ":TRIGger:TYPE?"
+    setter: ":TRIGger:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EDGE", "PULSE", "SLOPe", "INTerval", "PATTern", "RUNT", "WINDow", "DROPout", "VIDeo", "QUALified", "NEDGe", "DELay", "SHOLd", "IIC", "SPI", "UART", "LIN", "CAN", "FLEXray", "CANFd", "IIS", "M1553", "SENT", "ARINC429"]
+    returns:
+      type: string
+    description: "Set/query trigger type"
+
+  # Edge Trigger
+  trigger_edge_coupling:
+    getter: ":TRIGger:EDGE:COUPling?"
+    setter: ":TRIGger:EDGE:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Edge trigger coupling mode"
+
+  trigger_edge_holdoff_events:
+    getter: ":TRIGger:EDGE:HLDEVent?"
+    setter: ":TRIGger:EDGE:HLDEVent {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100000000
+    returns:
+      type: int
+    description: "Edge trigger holdoff event count"
+
+  trigger_edge_holdoff_time:
+    getter: ":TRIGger:EDGE:HLDTime?"
+    setter: ":TRIGger:EDGE:HLDTime {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 8.00e-09
+        max: 3.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Edge trigger holdoff time"
+
+  trigger_edge_holdoff_type:
+    getter: ":TRIGger:EDGE:HOLDoff?"
+    setter: ":TRIGger:EDGE:HOLDoff {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["OFF", "EVENts", "TIME"]
+    returns:
+      type: string
+    description: "Edge trigger holdoff type"
+
+  trigger_edge_holdoff_start:
+    getter: ":TRIGger:EDGE:HSTart?"
+    setter: ":TRIGger:EDGE:HSTart {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LAST_TRIG", "ACQ_START"]
+    returns:
+      type: string
+    description: "Edge trigger holdoff start position"
+
+  trigger_edge_impedance:
+    getter: ":TRIGger:EDGE:IMPedance?"
+    setter: ":TRIGger:EDGE:IMPedance {ohms}"
+    type: property
+    params:
+      ohms:
+        type: enum
+        options: ["ONEMeg", "FIFTy"]
+    returns:
+      type: string
+    description: "Edge trigger source impedance"
+
+  trigger_edge_level:
+    getter: ":TRIGger:EDGE:LEVel?"
+    setter: ":TRIGger:EDGE:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Edge trigger level"
+
+  trigger_edge_noise_reject:
+    getter: ":TRIGger:EDGE:NREJect?"
+    setter: ":TRIGger:EDGE:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Edge trigger noise rejection"
+
+  trigger_edge_slope:
+    getter: ":TRIGger:EDGE:SLOPe?"
+    setter: ":TRIGger:EDGE:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISing", "FALLing", "ALTernate"]
+    returns:
+      type: string
+    description: "Edge trigger slope"
+
+  trigger_edge_source:
+    getter: ":TRIGger:EDGE:SOURce?"
+    setter: ":TRIGger:EDGE:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Edge trigger source"
+
+  # Slope Trigger
+  trigger_slope_coupling:
+    getter: ":TRIGger:SLOPe:COUPling?"
+    setter: ":TRIGger:SLOPe:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Slope trigger coupling"
+
+  trigger_slope_high_level:
+    getter: ":TRIGger:SLOPe:HLEVel?"
+    setter: ":TRIGger:SLOPe:HLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Slope trigger high level"
+
+  trigger_slope_low_level:
+    getter: ":TRIGger:SLOPe:LLEVel?"
+    setter: ":TRIGger:SLOPe:LLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Slope trigger low level"
+
+  trigger_slope_limit:
+    getter: ":TRIGger:SLOPe:LIMit?"
+    setter: ":TRIGger:SLOPe:LIMit {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LESSthan", "GREATerthan", "INNer", "OUTer"]
+    returns:
+      type: string
+    description: "Slope trigger limit type"
+
+  trigger_slope_time_upper:
+    getter: ":TRIGger:SLOPe:TUPPer?"
+    setter: ":TRIGger:SLOPe:TUPPer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Slope trigger upper time limit"
+
+  trigger_slope_time_lower:
+    getter: ":TRIGger:SLOPe:TLOWer?"
+    setter: ":TRIGger:SLOPe:TLOWer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Slope trigger lower time limit"
+
+  trigger_slope_slope:
+    getter: ":TRIGger:SLOPe:SLOPe?"
+    setter: ":TRIGger:SLOPe:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISing", "FALLing", "ALTernate"]
+    returns:
+      type: string
+    description: "Slope trigger edge type"
+
+  trigger_slope_source:
+    getter: ":TRIGger:SLOPe:SOURce?"
+    setter: ":TRIGger:SLOPe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Slope trigger source"
+
+  # Pulse Trigger
+  trigger_pulse_coupling:
+    getter: ":TRIGger:PULSe:COUPling?"
+    setter: ":TRIGger:PULSe:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Pulse trigger coupling"
+
+  trigger_pulse_level:
+    getter: ":TRIGger:PULSe:LEVel?"
+    setter: ":TRIGger:PULSe:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Pulse trigger level"
+
+  trigger_pulse_limit:
+    getter: ":TRIGger:PULSe:LIMit?"
+    setter: ":TRIGger:PULSe:LIMit {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LESSthan", "GREATerthan", "INNer", "OUTer"]
+    returns:
+      type: string
+    description: "Pulse trigger limit type"
+
+  trigger_pulse_polarity:
+    getter: ":TRIGger:PULSe:POLarity?"
+    setter: ":TRIGger:PULSe:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Pulse trigger polarity"
+
+  trigger_pulse_source:
+    getter: ":TRIGger:PULSe:SOURce?"
+    setter: ":TRIGger:PULSe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Pulse trigger source"
+
+  trigger_pulse_time_upper:
+    getter: ":TRIGger:PULSe:TUPPer?"
+    setter: ":TRIGger:PULSe:TUPPer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Pulse trigger upper time"
+
+  trigger_pulse_time_lower:
+    getter: ":TRIGger:PULSe:TLOWer?"
+    setter: ":TRIGger:PULSe:TLOWer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Pulse trigger lower time"
+
+  # Video Trigger
+  trigger_video_standard:
+    getter: ":TRIGger:VIDeo:STANdard?"
+    setter: ":TRIGger:VIDeo:STANdard {standard}"
+    type: property
+    params:
+      standard:
+        type: enum
+        options: ["NTSC", "PAL", "P720L50", "P720L60", "P1080L50", "P1080L60", "I1080L50", "I1080L60", "CUSTom"]
+    returns:
+      type: string
+    description: "Video trigger standard"
+
+  trigger_video_sync:
+    getter: ":TRIGger:VIDeo:SYNC?"
+    setter: ":TRIGger:VIDeo:SYNC {sync}"
+    type: property
+    params:
+      sync:
+        type: enum
+        options: ["SELect", "ANY"]
+    returns:
+      type: string
+    description: "Video trigger sync mode"
+
+  trigger_video_level:
+    getter: ":TRIGger:VIDeo:LEVel?"
+    setter: ":TRIGger:VIDeo:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Video trigger level"
+
+  trigger_video_source:
+    getter: ":TRIGger:VIDeo:SOURce?"
+    setter: ":TRIGger:VIDeo:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Video trigger source"
+
+  trigger_video_line:
+    getter: ":TRIGger:VIDeo:LINE?"
+    setter: ":TRIGger:VIDeo:LINE {line}"
+    type: property
+    params:
+      line:
+        type: int
+    returns:
+      type: int
+    description: "Video trigger line number"
+
+  # System Commands
+  system_buzzer:
+    getter: ":SYSTem:BUZZer?"
+    setter: ":SYSTem:BUZZer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "System buzzer enable"
+
+  system_clock:
+    getter: ":SYSTem:CLOCk?"
+    setter: ":SYSTem:CLOCk {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["EXT", "IN_ON", "IN_OFF"]
+    returns:
+      type: string
+    description: "System clock source"
+
+  system_lan_gateway:
+    getter: ":SYSTem:COMMunicate:LAN:GATeway?"
+    setter: ":SYSTem:COMMunicate:LAN:GATeway {gateway}"
+    type: property
+    params:
+      gateway:
+        type: string
+    returns:
+      type: string
+    description: "LAN gateway address"
+
+  system_lan_ip_address:
+    getter: ":SYSTem:COMMunicate:LAN:IPADdress?"
+    setter: ":SYSTem:COMMunicate:LAN:IPADdress {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "LAN IP address"
+
+  system_lan_subnet_mask:
+    getter: ":SYSTem:COMMunicate:LAN:SMASk?"
+    setter: ":SYSTem:COMMunicate:LAN:SMASk {mask}"
+    type: property
+    params:
+      mask:
+        type: string
+    returns:
+      type: string
+    description: "LAN subnet mask"
+
+  system_lan_mac:
+    scpi: ":SYSTem:COMMunicate:LAN:MAC?"
+    type: query
+    returns:
+      type: string
+    description: "Query LAN MAC address"
+
+  system_lan_type:
+    getter: ":SYSTem:COMMunicate:LAN:TYPE?"
+    setter: ":SYSTem:COMMunicate:LAN:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["STATIC", "DHCP"]
+    returns:
+      type: string
+    description: "LAN configuration type"
+
+  system_date:
+    getter: ":SYSTem:DATE?"
+    setter: ":SYSTem:DATE {date}"
+    type: property
+    params:
+      date:
+        type: int
+    returns:
+      type: int
+    description: "System date (YYYYMMDD)"
+
+  system_time:
+    getter: ":SYSTem:TIME?"
+    setter: ":SYSTem:TIME {time}"
+    type: property
+    params:
+      time:
+        type: int
+    returns:
+      type: int
+    description: "System time (HHMMSS)"
+
+  system_language:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["SCHinese", "TCHinese", "ENGLish", "FRENch", "JAPanese", "KORean", "DEUTsch", "ESPan", "RUSSian", "ITALiana", "PORTuguese"]
+    returns:
+      type: string
+    description: "System display language"
+
+  system_menu:
+    getter: ":SYSTem:MENU?"
+    setter: ":SYSTem:MENU {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Menu visibility"
+
+  system_remote:
+    getter: ":SYSTem:REMote?"
+    setter: ":SYSTem:REMote {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Remote control lock"
+
+  system_reboot:
+    scpi: ":SYSTem:REBoot"
+    type: write
+    description: "Reboot the instrument"
+
+  system_shutdown:
+    scpi: ":SYSTem:SHUTdown"
+    type: write
+    description: "Shutdown the instrument"
+
+  system_self_cal:
+    scpi: ":SYSTem:SELFCal"
+    type: write
+    description: "Perform self-calibration"
+
+  system_self_cal_status:
+    scpi: ":SYSTem:SELFCal?"
+    type: query
+    returns:
+      type: string
+    description: "Query self-calibration status"
+
+  system_touch:
+    getter: ":SYSTem:TOUCh?"
+    setter: ":SYSTem:TOUCh {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Touchscreen enable"
+
+  # Measurement Commands
+  measure_enable:
+    getter: ":MEASure?"
+    setter: ":MEASure {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable measurement function"
+
+  measure_mode:
+    getter: ":MEASure:MODE?"
+    setter: ":MEASure:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SIMPle", "ADVanced"]
+    returns:
+      type: string
+    description: "Measurement mode"
+
+  measure_advanced_clear:
+    scpi: ":MEASure:ADVanced:CLEar"
+    type: write
+    description: "Clear all advanced measurements"
+
+  measure_advanced_line_number:
+    getter: ":MEASure:ADVanced:LINenumber?"
+    setter: ":MEASure:ADVanced:LINenumber {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 12
+    returns:
+      type: int
+    description: "Number of measurement items displayed"
+
+  measure_gate:
+    getter: ":MEASure:GATE?"
+    setter: ":MEASure:GATE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Measurement gate enable"
+
+  # Decode Commands
+  decode_enable:
+    getter: ":DECode?"
+    setter: ":DECode {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable decode function"
+
+  decode_list:
+    getter: ":DECode:LIST?"
+    setter: ":DECode:LIST {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "D1", "D2"]
+    returns:
+      type: string
+    description: "Decode list display"
+
+  # Function/Math Commands
+  function_fft_display:
+    getter: ":FUNCtion:FFTDisplay?"
+    setter: ":FUNCtion:FFTDisplay {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SPLit", "FULL", "EXCLusive"]
+    returns:
+      type: string
+    description: "FFT display mode"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+
+sequences:
+  basic_edge_trigger_setup:
+    description: "Configure basic edge trigger"
+    params:
+      source:
+        type: string
+        default: "C1"
+      level:
+        type: float
+        unit: V
+        default: 0.0
+      slope:
+        type: string
+        default: "RISing"
+    steps:
+      - command: trigger_type
+        args:
+          type: "EDGE"
+      - command: trigger_edge_source
+        args:
+          source: "{source}"
+      - command: trigger_edge_level
+        args:
+          value: "{level}"
+      - command: trigger_edge_slope
+        args:
+          slope: "{slope}"
+
+  pulse_width_trigger_setup:
+    description: "Configure pulse width trigger"
+    params:
+      source:
+        type: string
+        default: "C1"
+      level:
+        type: float
+        unit: V
+        default: 0.0
+      width_lower:
+        type: float
+        unit: s
+      width_upper:
+        type: float
+        unit: s
+    steps:
+      - command: trigger_type
+        args:
+          type: "PULSE"
+      - command: trigger_pulse_source
+        args:
+          source: "{source}"
+      - command: trigger_pulse_level
+        args:
+          value: "{level}"
+      - command: trigger_pulse_limit
+        args:
+          type: "INNer"
+      - command: trigger_pulse_time_lower
+        args:
+          value: "{width_lower}"
+      - command: trigger_pulse_time_upper
+        args:
+          value: "{width_upper}"
+
+  single_acquisition:
+    description: "Perform single acquisition"
+    steps:
+      - command: trigger_mode
+        args:
+          mode: "SINGle"
+      - command: trigger_run
+
+  continuous_acquisition:
+    description: "Start continuous acquisition"
+    steps:
+      - command: trigger_mode
+        args:
+          mode: "NORMal"
+      - command: trigger_run
+
+  stop_acquisition:
+    description: "Stop acquisition"
+    steps:
+      - command: trigger_stop

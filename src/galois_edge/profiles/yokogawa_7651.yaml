@@ -1,0 +1,126 @@
+# Yokogawa 7651 DC Source Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Yokogawa_7651
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Yokogawa"
+  model: "7651 DC Source"
+  class: sourcemeter
+  description: "Yokogawa 7651 DC Source"
+
+identity:
+  query: "*IDN?"
+  pattern: "Yokogawa.*7651\ DC\ Source"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  function:
+    getter: "F<*> E?"
+    setter: "F{value} E"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["1", "5"]
+    returns:
+      type: string
+    description: "Function"
+  range_v:
+    getter: "R<*> E?"
+    setter: "R{value} E"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["6", "5", "4", "3", "2"]
+    returns:
+      type: string
+    description: "Range (V)"
+  range_i:
+    getter: "R<*> E?"
+    setter: "R{value} E"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["6", "5", "4"]
+    returns:
+      type: string
+    description: "Range (I)"
+  output:
+    getter: "O<*> E?"
+    setter: "O{value} E"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Output"
+  voltage:
+    getter: "H0 OD"
+    setter: "S{value} E"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage"
+  current:
+    getter: "H0 OD"
+    setter: "S{value} E"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current"
+

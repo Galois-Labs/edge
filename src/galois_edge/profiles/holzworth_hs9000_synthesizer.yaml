@@ -1,0 +1,327 @@
+# Holzworth HS9000 Synthesizer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Holzworth_HS9000_Synthesizer
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Holzworth"
+  model: "HS9000 Synthesizer"
+  class: signal_generator
+  description: "Holzworth HS9000 Synthesizer"
+
+identity:
+  query: "*IDN?"
+  pattern: "Holzworth.*(HS9004A|HS9003A|HS9002A|HS9001A)"
+
+interfaces:
+  - type: gpib
+  - type: ethernet
+    port: 9760
+
+settings:
+  timeout_ms: 2000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  ch1_output:
+    getter: ":CH1:PWR:RF?"
+    setter: ":CH1:PWR:RF:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch1 - Output"
+  ch1_frequency:
+    getter: ":CH1:FREQ:<*>Hz?"
+    setter: ":CH1:FREQ:{value}Hz"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 10000000.0
+        max: 12500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch1 - Frequency"
+  ch1_power:
+    getter: ":CH1:PWR?"
+    setter: ":CH1:PWR:{value}DBM"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -23.0
+        max: 20.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Ch1 - Power"
+  ch1_phase:
+    getter: ":CH1:PHASE?"
+    setter: ":CH1:PHASE:{value}DEG"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0.0
+        max: 360.0
+    returns:
+      type: float
+      unit: deg
+    description: "Ch1 - Phase"
+  ch1_modulation:
+    getter: ":CH1:MOD:MODE?"
+    setter: ":CH1:MOD:MODE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["OFF", "PULSE:EXT"]
+    returns:
+      type: string
+    description: "Ch1 - Modulation"
+  ch2_output:
+    getter: ":CH2:PWR:RF?"
+    setter: ":CH2:PWR:RF:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch2 - Output"
+  ch2_frequency:
+    getter: ":CH2:FREQ:<*>Hz?"
+    setter: ":CH2:FREQ:{value}Hz"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 10000000.0
+        max: 12500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch2 - Frequency"
+  ch2_power:
+    getter: ":CH2:PWR?"
+    setter: ":CH2:PWR:{value}DBM"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -23.0
+        max: 20.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Ch2 - Power"
+  ch2_phase:
+    getter: ":CH2:PHASE?"
+    setter: ":CH2:PHASE:{value}DEG"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0.0
+        max: 360.0
+    returns:
+      type: float
+      unit: deg
+    description: "Ch2 - Phase"
+  ch2_modulation:
+    getter: ":CH2:MOD:MODE?"
+    setter: ":CH2:MOD:MODE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["OFF", "PULSE:EXT"]
+    returns:
+      type: string
+    description: "Ch2 - Modulation"
+  ch3_output:
+    getter: ":CH3:PWR:RF?"
+    setter: ":CH3:PWR:RF:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch3 - Output"
+  ch3_frequency:
+    getter: ":CH3:FREQ:<*>Hz?"
+    setter: ":CH3:FREQ:{value}Hz"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 10000000.0
+        max: 12500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch3 - Frequency"
+  ch3_power:
+    getter: ":CH3:PWR?"
+    setter: ":CH3:PWR:{value}DBM"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -23.0
+        max: 20.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Ch3 - Power"
+  ch3_phase:
+    getter: ":CH3:PHASE?"
+    setter: ":CH3:PHASE:{value}DEG"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0.0
+        max: 360.0
+    returns:
+      type: float
+      unit: deg
+    description: "Ch3 - Phase"
+  ch3_modulation:
+    getter: ":CH3:MOD:MODE?"
+    setter: ":CH3:MOD:MODE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["OFF", "PULSE:EXT"]
+    returns:
+      type: string
+    description: "Ch3 - Modulation"
+  ch4_output:
+    getter: ":CH4:PWR:RF?"
+    setter: ":CH4:PWR:RF:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch4 - Output"
+  ch4_frequency:
+    getter: ":CH4:FREQ:<*>Hz?"
+    setter: ":CH4:FREQ:{value}Hz"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 10000000.0
+        max: 12500000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Ch4 - Frequency"
+  ch4_power:
+    getter: ":CH4:PWR?"
+    setter: ":CH4:PWR:{value}DBM"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -23.0
+        max: 20.0
+    returns:
+      type: float
+      unit: dBm
+    description: "Ch4 - Power"
+  ch4_phase:
+    getter: ":CH4:PHASE?"
+    setter: ":CH4:PHASE:{value}DEG"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0.0
+        max: 360.0
+    returns:
+      type: float
+      unit: deg
+    description: "Ch4 - Phase"
+  ch4_modulation:
+    getter: ":CH4:MOD:MODE?"
+    setter: ":CH4:MOD:MODE:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["OFF", "PULSE:EXT"]
+    returns:
+      type: string
+    description: "Ch4 - Modulation"
+  reference:
+    getter: ":CH0:STATUS?"
+    setter: ":CH0:{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT:100MHz", "EXT:10MHz", "EXT:100MHz"]
+    returns:
+      type: string
+    description: "Reference"
+

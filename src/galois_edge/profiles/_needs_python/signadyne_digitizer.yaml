@@ -1,0 +1,24 @@
+# Signadyne Digitizer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Signadyne_Digitizer
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Signadyne"
+  model: "Digitizer"
+  class: digitizer
+  description: "Signadyne Digitizer"
+
+identity:
+  query: "*IDN?"
+  pattern: "Signadyne.*(M3100|M3102|M3300|M3302)"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 1000
+  terminator: "\n"
+  opc_query: false
+
+

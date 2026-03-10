@@ -1,0 +1,1583 @@
+instrument:
+  manufacturer: "Yokogawa"
+  model: "WT3000"
+  class: power_analyzer
+  description: "Precision Power Analyzer - Multi-channel power measurement with voltage/current/power analysis"
+
+identity:
+  query: "*IDN?"
+  pattern: "YOKOGAWA,7603[0-9]{2}-[0-9]{2}"
+
+interfaces:
+  - type: gpib
+    default_address: 1
+  - type: ethernet
+    port: 10001
+  - type: usb
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # Standard IEEE-488.2 Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after commands complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Execute single measurement"
+
+  calibrate:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Execute zero calibration (0=success, 1=error)"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Query status byte register"
+
+  options:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Clear registers at power on"
+
+  # Data Update Rate
+  data_update_rate:
+    getter: ":RATE?"
+    setter: ":RATE {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["0.1", "0.25", "0.5", "1", "2.5", "5", "10"]
+    returns:
+      type: float
+    description: "Data update rate in seconds"
+
+  # Measurement Hold
+  hold:
+    getter: ":HOLD?"
+    setter: ":HOLD {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Hold all measurement data"
+
+  # Input Configuration - Wiring
+  wiring:
+    getter: "[:INPut]:WIRing?"
+    setter: "[:INPut]:WIRing {config}"
+    type: property
+    params:
+      config:
+        type: string
+    returns:
+      type: string
+    description: "Wiring system configuration (P1W2, P1W3, P3W3, P3W4, V3A3)"
+
+  crest_factor:
+    getter: "[:INPut]:CFACtor?"
+    setter: "[:INPut]:CFACtor {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["3", "6"]
+    returns:
+      type: int
+    description: "Crest factor setting"
+
+  independent_elements:
+    getter: "[:INPut]:INDependent?"
+    setter: "[:INPut]:INDependent {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Independent element configuration"
+
+  null_function:
+    getter: "[:INPut]:NULL?"
+    setter: "[:INPut]:NULL {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "NULL function on/off"
+
+  module_type:
+    scpi: "[:INPut]:MODUle? {element}"
+    type: query
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Query input element type"
+
+  peak_over_status:
+    scpi: "[:INPut]:POVer?"
+    type: query
+    returns:
+      type: int
+    description: "Query peak over information"
+
+  # Voltage Measurement
+  voltage_range_element:
+    getter: "[:INPut]:VOLTage:RANGe:ELEMent{element}?"
+    setter: "[:INPut]:VOLTage:RANGe:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage range for element"
+
+  voltage_auto_range_element:
+    getter: "[:INPut]:VOLTage:AUTO:ELEMent{element}?"
+    setter: "[:INPut]:VOLTage:AUTO:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Voltage auto range for element"
+
+  voltage_mode_element:
+    getter: "[:INPut]:VOLTage:MODE:ELEMent{element}?"
+    setter: "[:INPut]:VOLTage:MODE:ELEMent{element} {mode}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: enum
+        options: ["RMS", "MEAN", "DC", "RMEAN"]
+    returns:
+      type: string
+    description: "Voltage measurement mode for element"
+
+  # Current Measurement
+  current_range_element:
+    getter: "[:INPut]:CURRent:RANGe:ELEMent{element}?"
+    setter: "[:INPut]:CURRent:RANGe:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current range for element"
+
+  current_auto_range_element:
+    getter: "[:INPut]:CURRent:AUTO:ELEMent{element}?"
+    setter: "[:INPut]:CURRent:AUTO:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Current auto range for element"
+
+  current_mode_element:
+    getter: "[:INPut]:CURRent:MODE:ELEMent{element}?"
+    setter: "[:INPut]:CURRent:MODE:ELEMent{element} {mode}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: enum
+        options: ["RMS", "MEAN", "DC", "RMEAN"]
+    returns:
+      type: string
+    description: "Current measurement mode for element"
+
+  current_sensor_ratio_element:
+    getter: "[:INPut]:CURRent:SRATio:ELEMent{element}?"
+    setter: "[:INPut]:CURRent:SRATio:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "Current sensor scaling ratio for element"
+
+  # Filters
+  line_filter_element:
+    getter: "[:INPut]:FILTer:ELEMent{element}?"
+    setter: "[:INPut]:FILTer:ELEMent{element} {setting}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      setting:
+        type: enum
+        options: ["OFF", "500Hz", "5.5KHz", "50KHz"]
+    returns:
+      type: string
+    description: "Line filter for element"
+
+  frequency_filter_element:
+    getter: "[:INPut]:FILTer:FREQuency:ELEMent{element}?"
+    setter: "[:INPut]:FILTer:FREQuency:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Frequency filter for element"
+
+  # Scaling
+  scaling_state_element:
+    getter: "[:INPut]:SCALing:ELEMent{element}?"
+    setter: "[:INPut]:SCALing:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Scaling on/off for element"
+
+  scaling_vt_element:
+    getter: "[:INPut]:SCALing:VT:ELEMent{element}?"
+    setter: "[:INPut]:SCALing:VT:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "VT ratio for element"
+
+  scaling_ct_element:
+    getter: "[:INPut]:SCALing:CT:ELEMent{element}?"
+    setter: "[:INPut]:SCALing:CT:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "CT ratio for element"
+
+  scaling_power_factor_element:
+    getter: "[:INPut]:SCALing:SFACtor:ELEMent{element}?"
+    setter: "[:INPut]:SCALing:SFACtor:ELEMent{element} {value}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "Power scaling factor for element"
+
+  # Synchronization
+  sync_source_element:
+    getter: "[:INPut]:SYNChronize:ELEMent{element}?"
+    setter: "[:INPut]:SYNChronize:ELEMent{element} {source}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 4
+      source:
+        type: enum
+        options: ["U1", "U2", "U3", "U4", "I1", "I2", "I3", "I4", "EXTernal", "NONE"]
+    returns:
+      type: string
+    description: "Synchronization source for element"
+
+  # Measurement Configuration
+  sampling_frequency:
+    getter: ":MEASure:SAMPling?"
+    setter: ":MEASure:SAMPling {freq}"
+    type: property
+    params:
+      freq:
+        type: enum
+        options: ["AUTO", "CLKA", "CLKB", "CLKC"]
+    returns:
+      type: string
+    description: "Sampling frequency setting"
+
+  averaging_state:
+    getter: ":MEASure:AVERaging?"
+    setter: ":MEASure:AVERaging {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Averaging on/off"
+
+  averaging_type:
+    getter: ":MEASure:AVERaging:TYPE?"
+    setter: ":MEASure:AVERaging:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EXPonent", "LINear"]
+    returns:
+      type: string
+    description: "Averaging type"
+
+  averaging_count:
+    getter: ":MEASure:AVERaging:COUNt?"
+    setter: ":MEASure:AVERaging:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+    returns:
+      type: int
+    description: "Averaging coefficient"
+
+  phase_display_format:
+    getter: ":MEASure:PHASe?"
+    setter: ":MEASure:PHASe {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["180", "360"]
+    returns:
+      type: int
+    description: "Phase difference display format (±180 or 0-360)"
+
+  sq_formula:
+    getter: ":MEASure:SQFormula?"
+    setter: ":MEASure:SQFormula {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["TYPE1", "TYPE2", "TYPE3"]
+    returns:
+      type: string
+    description: "Apparent power and reactive power equation"
+
+  max_hold:
+    getter: ":MEASure:MHOLd?"
+    setter: ":MEASure:MHOLd {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "MAX HOLD function for user-defined functions"
+
+  synchronized_measurement:
+    getter: ":MEASure:SYNChronize?"
+    setter: ":MEASure:SYNChronize {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MASTer", "SLAVe"]
+    returns:
+      type: string
+    description: "Synchronized measurement mode"
+
+  # User-Defined Functions
+  user_function_state:
+    getter: ":MEASure:FUNCtion{num}?"
+    setter: ":MEASure:FUNCtion{num} {state}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 20
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable user-defined function"
+
+  user_function_expression:
+    getter: ":MEASure:FUNCtion{num}:EXPRession?"
+    setter: ":MEASure:FUNCtion{num}:EXPRession {expr}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 20
+      expr:
+        type: string
+    returns:
+      type: string
+    description: "User-defined function equation"
+
+  user_function_unit:
+    getter: ":MEASure:FUNCtion{num}:UNIT?"
+    setter: ":MEASure:FUNCtion{num}:UNIT {unit}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 20
+      unit:
+        type: string
+    returns:
+      type: string
+    description: "User-defined function unit"
+
+  # Efficiency Calculation
+  efficiency_formula:
+    getter: ":MEASure:EFFiciency:ETA{num}?"
+    setter: ":MEASure:EFFiciency:ETA{num} {formula}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 4
+      formula:
+        type: string
+    returns:
+      type: string
+    description: "Efficiency calculation formula"
+
+  efficiency_user_def:
+    getter: ":MEASure:EFFiciency:UDEF{num}?"
+    setter: ":MEASure:EFFiciency:UDEF{num} {params}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 2
+      params:
+        type: string
+    returns:
+      type: string
+    description: "User-defined efficiency parameters"
+
+  # Frequency Measurement
+  frequency_item:
+    getter: ":MEASure:FREQuency:ITEM{num}?"
+    setter: ":MEASure:FREQuency:ITEM{num} {source}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["U1", "U2", "U3", "U4", "I1", "I2", "I3", "I4"]
+    returns:
+      type: string
+    description: "Frequency measurement item"
+
+  # Integration
+  integration_mode:
+    getter: ":INTEGrate:MODE?"
+    setter: ":INTEGrate:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "CONTinuous", "RNORmal", "RCONtinuous"]
+    returns:
+      type: string
+    description: "Integration mode"
+
+  integration_auto_cal:
+    getter: ":INTEGrate:ACAL?"
+    setter: ":INTEGrate:ACAL {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Auto calibration during integration"
+
+  integration_timer:
+    getter: ":INTEGrate:TIMer?"
+    setter: ":INTEGrate:TIMer {hours},{minutes},{seconds}"
+    type: property
+    params:
+      hours:
+        type: int
+        min: 0
+        max: 10000
+      minutes:
+        type: int
+        min: 0
+        max: 59
+      seconds:
+        type: int
+        min: 0
+        max: 59
+    returns:
+      type: string
+    description: "Integration timer"
+
+  integration_start:
+    scpi: ":INTEGrate:STARt"
+    type: write
+    description: "Start integration"
+
+  integration_stop:
+    scpi: ":INTEGrate:STOP"
+    type: write
+    description: "Stop integration"
+
+  integration_reset:
+    scpi: ":INTEGrate:RESet"
+    type: write
+    description: "Reset integrated values"
+
+  integration_state:
+    scpi: ":INTEGrate:STATe?"
+    type: query
+    returns:
+      type: string
+    description: "Query integration state"
+
+  # Harmonics Measurement
+  harmonics_order:
+    getter: ":HARMonics:ORDer?"
+    setter: ":HARMonics:ORDer {min},{max}"
+    type: property
+    params:
+      min:
+        type: int
+        min: 0
+        max: 1
+      max:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: string
+    description: "Harmonic order range"
+
+  harmonics_pll_source:
+    getter: ":HARMonics:PLLSource?"
+    setter: ":HARMonics:PLLSource {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["U1", "U2", "U3", "U4", "I1", "I2", "I3", "I4", "EXTernal", "SAMPle"]
+    returns:
+      type: string
+    description: "PLL source for harmonics"
+
+  harmonics_thd_formula:
+    getter: ":HARMonics:THD?"
+    setter: ":HARMonics:THD {formula}"
+    type: property
+    params:
+      formula:
+        type: enum
+        options: ["TOTal", "FUNDamental"]
+    returns:
+      type: string
+    description: "THD calculation formula"
+
+  harmonics_frequency_band:
+    getter: ":HARMonics:FBANd?"
+    setter: ":HARMonics:FBANd {band}"
+    type: property
+    params:
+      band:
+        type: enum
+        options: ["NORMal", "WIDE"]
+    returns:
+      type: string
+    description: "Frequency bandwidth for harmonics"
+
+  # Numeric Data Output
+  numeric_format:
+    getter: ":NUMeric:FORMat?"
+    setter: ":NUMeric:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "FLOat"]
+    returns:
+      type: string
+    description: "Numeric data output format"
+
+  numeric_hold:
+    getter: ":NUMeric:HOLD?"
+    setter: ":NUMeric:HOLD {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Hold numeric data"
+
+  numeric_item:
+    getter: ":NUMeric:ITEM{num}?"
+    setter: ":NUMeric:ITEM{num} {function},{element},{order}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 255
+      function:
+        type: string
+      element:
+        type: string
+      order:
+        type: string
+    returns:
+      type: string
+    description: "Numeric data output item"
+
+  numeric_number:
+    getter: ":NUMeric:NUMber?"
+    setter: ":NUMeric:NUMber {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 255
+    returns:
+      type: int
+    description: "Number of numeric data items"
+
+  numeric_value:
+    scpi: ":NUMeric:VALue?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query numeric measurement data"
+    streamable: true
+
+  numeric_preset:
+    scpi: ":NUMeric:PRESet {pattern}"
+    type: write
+    params:
+      pattern:
+        type: int
+        min: 1
+        max: 4
+    description: "Preset numeric output items"
+
+  numeric_clear:
+    scpi: ":NUMeric:CLEar {range}"
+    type: write
+    params:
+      range:
+        type: string
+    description: "Clear numeric output items"
+
+  numeric_delete:
+    scpi: ":NUMeric:DELete {range}"
+    type: write
+    params:
+      range:
+        type: string
+    description: "Delete numeric output items"
+
+  # Waveform Data Output
+  waveform_format:
+    getter: ":WAVeform:FORMat?"
+    setter: ":WAVeform:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "FLOat"]
+    returns:
+      type: string
+    description: "Waveform data output format"
+
+  waveform_hold:
+    getter: ":WAVeform:HOLD?"
+    setter: ":WAVeform:HOLD {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Hold waveform data"
+
+  waveform_trace:
+    getter: ":WAVeform:TRACe?"
+    setter: ":WAVeform:TRACe {trace}"
+    type: property
+    params:
+      trace:
+        type: enum
+        options: ["U1", "U2", "U3", "U4", "I1", "I2", "I3", "I4"]
+    returns:
+      type: string
+    description: "Waveform trace selection"
+
+  waveform_start:
+    getter: ":WAVeform:STARt?"
+    setter: ":WAVeform:STARt {point}"
+    type: property
+    params:
+      point:
+        type: int
+        min: 0
+        max: 1001
+    returns:
+      type: int
+    description: "Waveform output start point"
+
+  waveform_end:
+    getter: ":WAVeform:END?"
+    setter: ":WAVeform:END {point}"
+    type: property
+    params:
+      point:
+        type: int
+        min: 0
+        max: 1001
+    returns:
+      type: int
+    description: "Waveform output end point"
+
+  waveform_length:
+    scpi: ":WAVeform:LENGth?"
+    type: query
+    returns:
+      type: int
+    description: "Query waveform data length"
+
+  waveform_sample_rate:
+    scpi: ":WAVeform:SRATe?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query waveform sample rate"
+
+  waveform_send:
+    scpi: ":WAVeform:SEND?"
+    type: query
+    returns:
+      type: binary
+    description: "Query waveform data"
+
+  waveform_trigger_position:
+    scpi: ":WAVeform:TRIGger?"
+    type: query
+    returns:
+      type: int
+    description: "Query waveform trigger position"
+
+  waveform_byte_order:
+    getter: ":WAVeform:BYTeorder?"
+    setter: ":WAVeform:BYTeorder {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["LSBFirst", "MSBFirst"]
+    returns:
+      type: string
+    description: "Waveform data byte order"
+
+  # Display Configuration
+  display_mode:
+    getter: ":DISPlay:MODE?"
+    setter: ":DISPlay:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NUMeric", "WAVE", "BAR", "VECTor", "TRENd", "NWAVe", "NBAR", "NTRend", "WBAR", "WTRend", "BTRend"]
+    returns:
+      type: string
+    description: "Display mode"
+
+  # Waveform Display
+  waveform_display_u1:
+    getter: ":DISPlay:WAVE:U1?"
+    setter: ":DISPlay:WAVE:U1 {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Display U1 waveform"
+
+  waveform_display_i1:
+    getter: ":DISPlay:WAVE:I1?"
+    setter: ":DISPlay:WAVE:I1 {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Display I1 waveform"
+
+  waveform_display_format:
+    getter: ":DISPlay:WAVE:FORMat?"
+    setter: ":DISPlay:WAVE:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["SINGle", "DUAL", "TRIad", "QUAD"]
+    returns:
+      type: string
+    description: "Waveform display format"
+
+  waveform_display_tdiv:
+    getter: ":DISPlay:WAVE:TDIV?"
+    setter: ":DISPlay:WAVE:TDIV {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Waveform time/div"
+
+  waveform_trigger_mode:
+    getter: ":DISPlay:WAVE:TRIGger:MODE?"
+    setter: ":DISPlay:WAVE:TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "NORMal"]
+    returns:
+      type: string
+    description: "Waveform trigger mode"
+
+  waveform_trigger_source:
+    getter: ":DISPlay:WAVE:TRIGger:SOURce?"
+    setter: ":DISPlay:WAVE:TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["U1", "U2", "U3", "U4", "I1", "I2", "I3", "I4", "EXTernal"]
+    returns:
+      type: string
+    description: "Waveform trigger source"
+
+  waveform_trigger_slope:
+    getter: ":DISPlay:WAVE:TRIGger:SLOPe?"
+    setter: ":DISPlay:WAVE:TRIGger:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISE", "FALL", "BOTH"]
+    returns:
+      type: string
+    description: "Waveform trigger slope"
+
+  waveform_trigger_level:
+    getter: ":DISPlay:WAVE:TRIGger:LEVel?"
+    setter: ":DISPlay:WAVE:TRIGger:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: "%"
+        min: -100.0
+        max: 100.0
+    returns:
+      type: float
+    description: "Waveform trigger level"
+
+  # Cursor Measurement
+  cursor_waveform_state:
+    getter: ":CURSor:WAVE?"
+    setter: ":CURSor:WAVE {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Waveform cursor on/off"
+
+  cursor_waveform_position1:
+    getter: ":CURSor:WAVE:POSition1?"
+    setter: ":CURSor:WAVE:POSition1 {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 20.0
+    returns:
+      type: float
+      unit: s
+    description: "Waveform cursor 1 position"
+
+  cursor_waveform_position2:
+    getter: ":CURSor:WAVE:POSition2?"
+    setter: ":CURSor:WAVE:POSition2 {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 20.0
+    returns:
+      type: float
+      unit: s
+    description: "Waveform cursor 2 position"
+
+  cursor_waveform_y1:
+    scpi: ":CURSor:WAVE:Y1?"
+    type: query
+    returns:
+      type: float
+    description: "Waveform cursor 1 Y value"
+
+  cursor_waveform_y2:
+    scpi: ":CURSor:WAVE:Y2?"
+    type: query
+    returns:
+      type: float
+    description: "Waveform cursor 2 Y value"
+
+  cursor_waveform_dy:
+    scpi: ":CURSor:WAVE:DY?"
+    type: query
+    returns:
+      type: float
+    description: "Waveform cursor delta Y"
+
+  # File Operations
+  file_drive:
+    scpi: ":FILE:DRIVe {drive}"
+    type: write
+    params:
+      drive:
+        type: string
+    description: "Set target drive"
+
+  file_change_directory:
+    scpi: ":FILE:CDIRectory {path}"
+    type: write
+    params:
+      path:
+        type: string
+    description: "Change directory"
+
+  file_make_directory:
+    scpi: ":FILE:MDIRectory {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Create directory"
+
+  file_path:
+    scpi: ":FILE:PATH?"
+    type: query
+    returns:
+      type: string
+    description: "Query current directory path"
+
+  file_free_space:
+    scpi: ":FILE:FREE?"
+    type: query
+    returns:
+      type: int
+    description: "Query free disk space"
+
+  file_format:
+    scpi: ":FILE:FORMat:EXECute"
+    type: write
+    description: "Format PC card"
+
+  # Save/Load Setup
+  save_setup:
+    scpi: ":FILE:SAVE:SETup {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save setup to file"
+
+  load_setup:
+    scpi: ":FILE:LOAD:SETup {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load setup from file"
+
+  # Save Numeric Data
+  save_numeric_format:
+    getter: ":FILE:SAVE:NUMeric:TYPE?"
+    setter: ":FILE:SAVE:NUMeric:TYPE {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "FLOat"]
+    returns:
+      type: string
+    description: "Numeric data save format"
+
+  save_numeric_execute:
+    scpi: ":FILE:SAVE:NUMeric {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save numeric data to file"
+
+  # Store and Recall
+  store_mode:
+    getter: ":STORe:MODE?"
+    setter: ":STORe:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["STORe", "RECall"]
+    returns:
+      type: string
+    description: "Store or recall mode"
+
+  store_direction:
+    getter: ":STORe:DIRection?"
+    setter: ":STORe:DIRection {dest}"
+    type: property
+    params:
+      dest:
+        type: enum
+        options: ["MEMory", "FILE"]
+    returns:
+      type: string
+    description: "Store destination"
+
+  store_count:
+    getter: ":STORe:COUNt?"
+    setter: ":STORe:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 999999
+    returns:
+      type: int
+    description: "Store count"
+
+  store_interval:
+    getter: ":STORe:INTerval?"
+    setter: ":STORe:INTerval {hours},{minutes},{seconds}"
+    type: property
+    params:
+      hours:
+        type: int
+        min: 0
+        max: 99
+      minutes:
+        type: int
+        min: 0
+        max: 59
+      seconds:
+        type: int
+        min: 1
+        max: 59
+    returns:
+      type: string
+    description: "Store interval"
+
+  store_item:
+    getter: ":STORe:ITEM?"
+    setter: ":STORe:ITEM {item}"
+    type: property
+    params:
+      item:
+        type: enum
+        options: ["NUMeric", "WAVE", "NWAVe"]
+    returns:
+      type: string
+    description: "Stored item type"
+
+  store_start:
+    scpi: ":STORe:STARt"
+    type: write
+    description: "Start data storage"
+
+  store_stop:
+    scpi: ":STORe:STOP"
+    type: write
+    description: "Stop data storage"
+
+  store_recall_number:
+    getter: ":STORe:RECall?"
+    setter: ":STORe:RECall {number}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 1
+        max: 999999
+    returns:
+      type: int
+    description: "Data number to recall"
+
+  # System Settings
+  system_date:
+    getter: ":SYSTem:DATE?"
+    setter: ":SYSTem:DATE {date}"
+    type: property
+    params:
+      date:
+        type: string
+    returns:
+      type: string
+    description: "System date (YY/MM/DD)"
+
+  system_time:
+    getter: ":SYSTem:TIME?"
+    setter: ":SYSTem:TIME {time}"
+    type: property
+    params:
+      time:
+        type: string
+    returns:
+      type: string
+    description: "System time (HH:MM:SS)"
+
+  system_font:
+    getter: ":SYSTem:FONT?"
+    setter: ":SYSTem:FONT {font}"
+    type: property
+    params:
+      font:
+        type: enum
+        options: ["GOTHic", "ROMan"]
+    returns:
+      type: string
+    description: "Display font"
+
+  system_key_lock:
+    getter: ":SYSTem:KLOCk?"
+    setter: ":SYSTem:KLOCk {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Front panel key lock"
+
+  system_shift_lock:
+    getter: ":SYSTem:SLOCk?"
+    setter: ":SYSTem:SLOCk {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "SHIFT key lock state"
+
+  system_language_menu:
+    getter: ":SYSTem:LANGuage:MENU?"
+    setter: ":SYSTem:LANGuage:MENU {lang}"
+    type: property
+    params:
+      lang:
+        type: enum
+        options: ["JAPANese", "ENGLish"]
+    returns:
+      type: string
+    description: "Menu language"
+
+  system_language_message:
+    getter: ":SYSTem:LANGuage:MESSage?"
+    setter: ":SYSTem:LANGuage:MESSage {lang}"
+    type: property
+    params:
+      lang:
+        type: enum
+        options: ["JAPANese", "ENGLish"]
+    returns:
+      type: string
+    description: "Message language"
+
+  system_lcd_brightness:
+    getter: ":SYSTem:LCD:BRIGhtness?"
+    setter: ":SYSTem:LCD:BRIGhtness {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: -1
+        max: 3
+    returns:
+      type: int
+    description: "LCD brightness"
+
+  system_beeper_state:
+    getter: ":SYSTem:BEEPer:STATe?"
+    setter: ":SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Beeper on/off"
+
+  system_beeper:
+    scpi: ":SYSTem:BEEPer"
+    type: write
+    description: "Sound beeper once"
+
+  system_error_clear:
+    scpi: ":SYSTem:ECLear"
+    type: write
+    description: "Clear error message on screen"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  # Communication Settings
+  communicate_header:
+    getter: ":COMMunicate:HEADer?"
+    setter: ":COMMunicate:HEADer {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Add header to query responses"
+
+  communicate_verbose:
+    getter: ":COMMunicate:VERBose?"
+    setter: ":COMMunicate:VERBose {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Full spelling or abbreviation in responses"
+
+  communicate_remote:
+    getter: ":COMMunicate:REMote?"
+    setter: ":COMMunicate:REMote {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Remote/local mode"
+
+  communicate_lockout:
+    getter: ":COMMunicate:LOCKout?"
+    setter: ":COMMunicate:LOCKout {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Local lockout"
+
+  communicate_wait:
+    scpi: ":COMMunicate:WAIT {mask}"
+    type: write
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    description: "Wait for specified event"
+
+  # Status Operations
+  status_error:
+    scpi: ":STATus:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  status_condition:
+    scpi: ":STATus:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query condition register"
+
+  status_extended_event:
+    scpi: ":STATus:EESR?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear extended event register"
+
+  status_extended_enable:
+    getter: ":STATus:EESE?"
+    setter: ":STATus:EESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Extended event enable register"
+
+  status_filter:
+    getter: ":STATus:FILTer{num}?"
+    setter: ":STATus:FILTer{num} {filter}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 16
+      filter:
+        type: enum
+        options: ["RISE", "FALL", "BOTH", "NEVer"]
+    returns:
+      type: string
+    description: "Transition filter"
+
+  status_qenable:
+    getter: ":STATus:QENable?"
+    setter: ":STATus:QENable {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Store non-error messages in queue"
+
+  status_qmessage:
+    getter: ":STATus:QMESsage?"
+    setter: ":STATus:QMESsage {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Attach message to error response"
+
+status:
+  stb:
+    bit2: EAV
+    bit3: EES
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

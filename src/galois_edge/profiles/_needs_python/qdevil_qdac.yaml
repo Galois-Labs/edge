@@ -1,0 +1,24 @@
+# QDevil QDAC Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: QDevil_QDAC
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "QDevil"
+  model: "QDAC"
+  class: instrument
+  description: "QDevil QDAC"
+
+identity:
+  query: "*IDN?"
+  pattern: "QDevil.*(QDAC\ 1,\ 24\ Channels|QDAC\ 1,\ 48\ Channels)"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+

@@ -1,0 +1,81 @@
+# Hameg 813x Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Hameg HM813x
+
+instrument:
+  manufacturer: "Hameg"
+  model: "813x"
+  class: instrument
+  description: "Hameg 813x"
+
+identity:
+  query: "*IDN?"
+  pattern: "Hameg.*(Hameg\ HM8133\-0|HM8133\-0|Hameg\ HM8131\-2|HM8131\-2)"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 2000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  amplitude:
+    getter: "AMP?"
+    setter: "AMP: {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Amplitude"
+  frequency:
+    getter: "FRQ?"
+    setter: "FRQ: {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency"
+

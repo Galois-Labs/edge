@@ -1,0 +1,2075 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "N1913A/N1914A"
+  class: rf_power_meter
+  description: "EPM Series Power Meter - Single/Dual channel RF power measurements"
+
+identity:
+  query: "*IDN?"
+  pattern: "Agilent Technologies,N191[34]A"
+
+interfaces:
+  - type: gpib
+    default_address: 13
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit when all operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Save instrument state to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Recall instrument state from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  options:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  learn:
+    scpi: "*LRN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument state"
+
+  measure_power:
+    scpi: "MEAS?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Configure and measure power (combined operation)"
+    streamable: true
+
+  configure_measurement:
+    scpi: "CONF? {expected},{resolution}"
+    type: query
+    params:
+      expected:
+        type: float
+        unit: dBm
+        default: 20
+      resolution:
+        type: int
+        min: 1
+        max: 4
+        default: 3
+    returns:
+      type: string
+    description: "Query measurement configuration"
+
+  fetch_power:
+    scpi: "FETC?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Fetch measurement result from buffer"
+    streamable: true
+
+  read_power:
+    scpi: "READ?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Initiate and fetch power measurement"
+    streamable: true
+
+  abort_channel_1:
+    scpi: "ABOR1"
+    type: write
+    description: "Abort channel A measurement"
+
+  abort_channel_2:
+    scpi: "ABOR2"
+    type: write
+    description: "Abort channel B measurement"
+
+  calc_hold_state:
+    getter: "CALC:HOLD:STAT?"
+    setter: "CALC:HOLD:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "MIN", "MAX", "AVER"]
+    returns:
+      type: string
+    description: "Hold state for measurement display"
+
+  calc_feed:
+    getter: "CALC:FEED?"
+    setter: "CALC:FEED {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: string
+    description: "Select input measurement type for CALC block"
+
+  calc_gain:
+    getter: "CALC:GAIN?"
+    setter: "CALC:GAIN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: dB
+    description: "Display offset value"
+
+  calc_gain_state:
+    getter: "CALC:GAIN:STAT?"
+    setter: "CALC:GAIN:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display offset"
+
+  calc_limit_clear_auto:
+    getter: "CALC:LIM:CLE:AUTO?"
+    setter: "CALC:LIM:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Auto-clear limit data at measurement initiation"
+
+  calc_limit_clear:
+    scpi: "CALC:LIM:CLE"
+    type: write
+    description: "Clear limit failure counter immediately"
+
+  calc_limit_fail:
+    scpi: "CALC:LIM:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if limit failure occurred"
+
+  calc_limit_fcount:
+    scpi: "CALC:LIM:FCO?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of limit failures"
+
+  calc_limit_lower:
+    getter: "CALC:LIM:LOW?"
+    setter: "CALC:LIM:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Lower limit for limit checking"
+
+  calc_limit_upper:
+    getter: "CALC:LIM:UPP?"
+    setter: "CALC:LIM:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Upper limit for limit checking"
+
+  calc_limit_state:
+    getter: "CALC:LIM:STAT?"
+    setter: "CALC:LIM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit checking"
+
+  calc_math_expression:
+    getter: "CALC:MATH?"
+    setter: "CALC:MATH {expr}"
+    type: property
+    params:
+      expr:
+        type: string
+    returns:
+      type: string
+    description: "Math expression for measurement calculation"
+
+  calc_math_catalog:
+    scpi: "CALC:MATH:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "List all defined math expressions"
+
+  calc_relative_auto:
+    setter: "CALC:REL:AUTO {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ONCE"]
+    description: "Set reference value for relative measurement"
+
+  calc_relative_state:
+    getter: "CALC:REL:STAT?"
+    setter: "CALC:REL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable relative mode"
+
+  calibrate_all:
+    scpi: "CAL:ALL"
+    type: write
+    description: "Perform complete calibration sequence (zero and calibrate)"
+
+  calibrate_all_query:
+    scpi: "CAL:ALL?"
+    type: query
+    returns:
+      type: int
+    description: "Perform calibration sequence and return result (0=pass, 1=fail)"
+
+  calibrate_auto:
+    getter: "CAL:AUTO?"
+    setter: "CAL:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ONCE"]
+    returns:
+      type: string
+    description: "Calibrate power meter with 1mW reference"
+
+  calibrate_rcal:
+    getter: "CAL:RCAL?"
+    setter: "CAL:RCAL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Zero/calibration lockout facility"
+
+  calibrate_rcfactor:
+    getter: "CAL:RCF?"
+    setter: "CAL:RCF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: PCT
+        min: 1
+        max: 150
+        default: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Reference calibration factor"
+
+  calibrate_zero_auto:
+    getter: "CAL:ZERO:AUTO?"
+    setter: "CAL:ZERO:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Perform zeroing routine"
+
+  calibrate_zero_type:
+    getter: "CAL3:ZERO:TYPE?"
+    setter: "CAL3:ZERO:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EXT", "INT"]
+    returns:
+      type: string
+    description: "Zeroing type for U2000 Series sensor (external or internal)"
+
+  display_enable:
+    getter: "DISP:ENAB?"
+    setter: "DISP:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable front panel display"
+
+  display_screen_format:
+    getter: "DISP:SCR:FORM?"
+    setter: "DISP:SCR:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["WIND", "FSCR"]
+    returns:
+      type: string
+    description: "Display format (windowed or full screen)"
+
+  display_analog_lower:
+    getter: "DISP:WIND:ANAL:LOW?"
+    setter: "DISP:WIND:ANAL:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+        default: -70
+    returns:
+      type: float
+      unit: dBm
+    description: "Analog meter lower scale limit"
+
+  display_analog_upper:
+    getter: "DISP:WIND:ANAL:UPP?"
+    setter: "DISP:WIND:ANAL:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+        default: 20
+    returns:
+      type: float
+      unit: dBm
+    description: "Analog meter upper scale limit"
+
+  display_format:
+    getter: "DISP:WIND:FORM?"
+    setter: "DISP:WIND:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["DIG", "ANAL", "DNUM"]
+    returns:
+      type: string
+    description: "Window display format"
+
+  display_meter_lower:
+    getter: "DISP:WIND:MET:LOW?"
+    setter: "DISP:WIND:MET:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Meter lower scale limit"
+
+  display_meter_upper:
+    getter: "DISP:WIND:MET:UPP?"
+    setter: "DISP:WIND:MET:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Meter upper scale limit"
+
+  display_resolution:
+    getter: "DISP:WIND:NUM:RES?"
+    setter: "DISP:WIND:NUM:RES {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 4
+        default: 3
+    returns:
+      type: int
+    description: "Display resolution"
+
+  display_select:
+    getter: "DISP:WIND:SEL?"
+    setter: "DISP:WIND:SEL {window}"
+    type: property
+    params:
+      window:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: int
+    description: "Select measurement in window"
+
+  display_state:
+    getter: "DISP:WIND:STAT?"
+    setter: "DISP:WIND:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable window display"
+
+  format_border:
+    getter: "FORM:BORD?"
+    setter: "FORM:BORD {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORM", "SWAP"]
+    returns:
+      type: string
+    description: "Binary data byte order"
+
+  format_data:
+    getter: "FORM?"
+    setter: "FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL", "REAL32"]
+    returns:
+      type: string
+    description: "Data format for readings"
+
+  screen_dump:
+    scpi: "HCOP:SDUM:DATA?"
+    type: query
+    returns:
+      type: binary
+    description: "Capture screen image"
+
+  screen_dump_format:
+    getter: "HCOP:SDUM:DATA:FORM?"
+    setter: "HCOP:SDUM:DATA:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["BMP", "PNG"]
+    returns:
+      type: string
+    description: "Screen image format"
+
+  lxi_identify:
+    getter: "LXI:IDEN?"
+    setter: "LXI:IDEN {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LXI identification state"
+
+  memory_catalog_all:
+    scpi: "MEM:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "List all stored tables and registers"
+
+  memory_catalog_state:
+    scpi: "MEM:CAT:STAT?"
+    type: query
+    returns:
+      type: string
+    description: "List save/recall registers"
+
+  memory_catalog_table:
+    scpi: "MEM:CAT:TABL?"
+    type: query
+    returns:
+      type: string
+    description: "List stored sensor calibration tables"
+
+  memory_clear:
+    scpi: "MEM:CLE {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Clear contents of specified table or register"
+
+  memory_clear_table:
+    scpi: "MEM:CLE:TABL"
+    type: write
+    description: "Clear currently selected table"
+
+  memory_free_all:
+    scpi: "MEM:FREE?"
+    type: query
+    returns:
+      type: int
+    description: "Query total free memory"
+
+  memory_free_state:
+    scpi: "MEM:FREE:STAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query free memory for save/recall registers"
+
+  memory_free_table:
+    scpi: "MEM:FREE:TABL?"
+    type: query
+    returns:
+      type: int
+    description: "Query free memory for tables"
+
+  memory_nstates:
+    scpi: "MEM:NST?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of available save/recall registers"
+
+  memory_state_catalog:
+    scpi: "MEM:STAT:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query register names"
+
+  memory_state_define:
+    scpi: "MEM:STAT:DEF {name},{number}"
+    type: write
+    params:
+      name:
+        type: string
+      number:
+        type: int
+        min: 0
+        max: 9
+    description: "Define name for save/recall register"
+
+  memory_table_frequency:
+    getter: "MEM:TABL:FREQ?"
+    setter: "MEM:TABL:FREQ {frequencies}"
+    type: property
+    params:
+      frequencies:
+        type: string
+    returns:
+      type: string
+    description: "Frequency points in calibration table"
+
+  memory_table_frequency_points:
+    scpi: "MEM:TABL:FREQ:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of frequency points in table"
+
+  memory_table_gain:
+    getter: "MEM:TABL:GAIN?"
+    setter: "MEM:TABL:GAIN {factors}"
+    type: property
+    params:
+      factors:
+        type: string
+    returns:
+      type: string
+    description: "Calibration factors in table"
+
+  memory_table_gain_points:
+    scpi: "MEM:TABL:GAIN:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of calibration factor points in table"
+
+  memory_table_move:
+    scpi: "MEM:TABL:MOVE {old_name},{new_name}"
+    type: write
+    params:
+      old_name:
+        type: string
+      new_name:
+        type: string
+    description: "Rename table"
+
+  memory_table_select:
+    getter: "MEM:TABL:SEL?"
+    setter: "MEM:TABL:SEL {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select calibration table by name"
+
+  output_recorder_feed:
+    getter: "OUTP:REC:FEED?"
+    setter: "OUTP:REC:FEED {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Select measurement source for recorder output"
+
+  output_recorder_limit_auto:
+    getter: "OUTP:REC:LIM:AUTO?"
+    setter: "OUTP:REC:LIM:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto-scaling for recorder output"
+
+  output_recorder_limit_lower:
+    getter: "OUTP:REC:LIM:LOW?"
+    setter: "OUTP:REC:LIM:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Minimum scaling value for recorder"
+
+  output_recorder_limit_upper:
+    getter: "OUTP:REC:LIM:UPP?"
+    setter: "OUTP:REC:LIM:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -150
+        max: 230
+    returns:
+      type: float
+      unit: dBm
+    description: "Maximum scaling value for recorder"
+
+  output_recorder_state:
+    getter: "OUTP:REC:STAT?"
+    setter: "OUTP:REC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Recorder output on/off"
+
+  output_rosc_state:
+    getter: "OUTP:ROSC?"
+    setter: "OUTP:ROSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Power reference oscillator on/off"
+
+  output_trigger_state:
+    getter: "OUTP:TRIG?"
+    setter: "OUTP:TRIG {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Trigger output signal on/off"
+
+  sense_average_count:
+    getter: "AVER:COUN?"
+    setter: "AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1024
+        default: 4
+    returns:
+      type: int
+    description: "Filter length (number of readings to average)"
+
+  sense_average_count_auto:
+    getter: "AVER:COUN:AUTO?"
+    setter: "AVER:COUN:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Auto-filter mode"
+
+  sense_average_sdetect:
+    getter: "AVER:SDET?"
+    setter: "AVER:SDET {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Step detection on/off"
+
+  sense_average_state:
+    getter: "AVER?"
+    setter: "AVER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable averaging"
+
+  sense_buffer_count:
+    getter: "BUFF:COUN?"
+    setter: "BUFF:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2048
+    returns:
+      type: int
+    description: "Average trigger measurement buffer size"
+
+  sense_correction_cfactor:
+    getter: "CORR:GAIN1?"
+    setter: "CORR:GAIN1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: PCT
+        min: 1
+        max: 150
+        default: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Calibration factor"
+
+  sense_correction_cset_select:
+    getter: "CORR:CSET1?"
+    setter: "CORR:CSET1 {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select sensor calibration table"
+
+  sense_correction_cset_state:
+    getter: "CORR:CSET1:STAT?"
+    setter: "CORR:CSET1:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable sensor calibration table"
+
+  sense_correction_cset2_select:
+    getter: "CORR:CSET2?"
+    setter: "CORR:CSET2 {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select frequency dependent offset table"
+
+  sense_correction_cset2_state:
+    getter: "CORR:CSET2:STAT?"
+    setter: "CORR:CSET2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable frequency dependent offset table"
+
+  sense_correction_dcycle:
+    getter: "CORR:DCYC?"
+    setter: "CORR:DCYC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: PCT
+        min: 0.001
+        max: 99.999
+        default: 1
+    returns:
+      type: float
+      unit: PCT
+    description: "Duty cycle for pulsed measurements"
+
+  sense_correction_dcycle_state:
+    getter: "CORR:DCYC:STAT?"
+    setter: "CORR:DCYC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable duty cycle correction"
+
+  sense_correction_fdoffset:
+    scpi: "CORR:GAIN4?"
+    type: query
+    returns:
+      type: float
+      unit: PCT
+    description: "Query current frequency dependent offset"
+
+  sense_correction_fdoffset_unit:
+    getter: "CORR:FDOF:UNIT?"
+    setter: "CORR:FDOF:UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["PCT", "DB"]
+    returns:
+      type: string
+    description: "Unit for frequency dependent offset"
+
+  sense_correction_gain2:
+    getter: "CORR:GAIN2?"
+    setter: "CORR:GAIN2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dB
+        min: -200
+        max: 200
+        default: 0
+    returns:
+      type: float
+      unit: dB
+    description: "Channel offset correction"
+
+  sense_correction_gain2_state:
+    getter: "CORR:GAIN2:STAT?"
+    setter: "CORR:GAIN2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel offset"
+
+  sense_frequency:
+    getter: "FREQ?"
+    setter: "FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000
+        max: 1000000000000
+        default: 50000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Measurement frequency"
+
+  sense_frequency_start:
+    getter: "FREQ:STAR?"
+    setter: "FREQ:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000
+        max: 1000000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency sweep start frequency"
+
+  sense_frequency_step:
+    getter: "FREQ:STEP?"
+    setter: "FREQ:STEP {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 2048
+    returns:
+      type: int
+    description: "Frequency sweep step count"
+
+  sense_frequency_stop:
+    getter: "FREQ:STOP?"
+    setter: "FREQ:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1000
+        max: 1000000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency sweep stop frequency"
+
+  sense_mrate:
+    getter: "MRAT?"
+    setter: "MRAT {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORM", "DOUB", "FAST"]
+    returns:
+      type: string
+    description: "Measurement rate/speed mode"
+
+  sense_power_range:
+    getter: "POW:AC:RANG?"
+    setter: "POW:AC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Power range selection (0=lower, 1=upper)"
+
+  sense_power_range_auto:
+    getter: "POW:AC:RANG:AUTO?"
+    setter: "POW:AC:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto-ranging"
+
+  sense_speed:
+    getter: "SPE?"
+    setter: "SPE {speed}"
+    type: property
+    params:
+      speed:
+        type: int
+        options: ["20", "40", "200"]
+    returns:
+      type: int
+    description: "Measurement speed in readings/second"
+
+  sense_v2p:
+    getter: "V2P?"
+    setter: "V2P {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ATYP", "DTYP"]
+    returns:
+      type: string
+    description: "Select linearity correction type"
+
+  service_backlight_brightness:
+    getter: "SERV:BACK:BRIG?"
+    setter: "SERV:BACK:BRIG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 15
+        max: 100
+        default: 80
+    returns:
+      type: int
+    description: "Backlight intensity"
+
+  service_backlight_mode:
+    getter: "SERV:BACK:MODE?"
+    setter: "SERV:BACK:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "Backlight mode (0=ON, 1=OFF, 2=TIMED)"
+
+  service_battery_capacity:
+    scpi: "SERV:BATT:CAP?"
+    type: query
+    returns:
+      type: int
+      unit: mAh
+    description: "Query battery capacity"
+
+  service_battery_charge:
+    scpi: "SERV:BATT:CHAR?"
+    type: query
+    returns:
+      type: float
+      unit: PCT
+    description: "Query battery remaining charge"
+
+  service_battery_temperature:
+    scpi: "SERV:BATT:TEMP?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Query battery temperature"
+
+  service_battery_time:
+    scpi: "SERV:BATT:TIME?"
+    type: query
+    returns:
+      type: int
+      unit: min
+    description: "Query battery remaining time"
+
+  service_bist_calibrator:
+    getter: "SERV:BIST:CAL?"
+    setter: "SERV:BIST:CAL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: bool
+    description: "Calibrator self-test"
+
+  service_bist_linearity:
+    scpi: "SERV:BIST:CW:LIN"
+    type: write
+    description: "CW linearity test"
+
+  service_bist_linearity_error:
+    scpi: "SERV:BIST:CW:LIN:PERR?"
+    type: query
+    returns:
+      type: float
+    description: "Query worst case error in CW linearity test"
+
+  service_bist_zset:
+    scpi: "SERV:BIST:CW:ZSET"
+    type: write
+    description: "Zero set and noise test"
+
+  service_bist_zset_number:
+    scpi: "SERV:BIST:CW:ZSET:NUM?"
+    type: query
+    returns:
+      type: float
+    description: "Query worst case error in CW zero test"
+
+  service_calibrator_adj_coarse:
+    getter: "SERV:CAL:ADJ:COUR?"
+    setter: "SERV:CAL:ADJ:COUR {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1023
+    returns:
+      type: int
+    description: "Reference calibrator coarse adjustment"
+
+  service_calibrator_adj_fine:
+    getter: "SERV:CAL:ADJ:FINE?"
+    setter: "SERV:CAL:ADJ:FINE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1023
+    returns:
+      type: int
+    description: "Reference calibrator fine adjustment"
+
+  service_display_vga:
+    getter: "SERV:DISP:VGA?"
+    setter: "SERV:DISP:VGA {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "VGA output state"
+
+  service_display_bscreen:
+    setter: "SERV:DISP:BSCR {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    description: "Blank screen on/off"
+
+  service_display_bscreen_activation:
+    setter: "SERV:DISP:BSCR:SEC:ACT {password}"
+    type: write
+    params:
+      password:
+        type: string
+    description: "Activate secure blank screen with password"
+
+  service_display_bscreen_deactivation:
+    setter: "SERV:DISP:BSCR:SEC:DEAC {password}"
+    type: write
+    params:
+      password:
+        type: string
+    description: "Deactivate secure blank screen with password"
+
+  service_fan_full:
+    getter: "SERV:FAN:FULL?"
+    setter: "SERV:FAN:FULL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Fan full speed on/off"
+
+  service_lan_phostname:
+    scpi: "SERV:LAN:PHOS"
+    type: write
+    description: "Preset LAN hostname to default"
+
+  service_secure_erase:
+    scpi: "SERV:SEC:ERAS"
+    type: write
+    description: "Erase power meter memory"
+
+  service_sensor_calfactor:
+    getter: "SERV:SENS:CALF?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor calibration factor block"
+
+  service_sensor_cdate:
+    scpi: "SERV:SENS:CDAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor calibration date"
+
+  service_sensor_cplace:
+    scpi: "SERV:SENS:CPL?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor calibration place"
+
+  service_sensor_freq_max:
+    scpi: "SERV:SENS:FREQ:MAX?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query sensor maximum frequency"
+
+  service_sensor_freq_min:
+    scpi: "SERV:SENS:FREQ:MIN?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query sensor minimum frequency"
+
+  service_sensor_power_avg_max:
+    scpi: "SERV:SENS:POW:AVER:MAX?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query sensor maximum average power"
+
+  service_sensor_power_usable_max:
+    scpi: "SERV:SENS:POW:USAB:MAX?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query sensor maximum usable power"
+
+  service_sensor_power_usable_min:
+    scpi: "SERV:SENS:POW:USAB:MIN?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query sensor minimum usable power"
+
+  service_sensor_radc:
+    scpi: "SERV:SENS:RADC?"
+    type: query
+    returns:
+      type: float
+    description: "Query raw uncorrected measurement"
+
+  service_sensor_snumber:
+    scpi: "SERV:SENS:SNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor serial number"
+
+  service_sensor_tnumber:
+    scpi: "SERV:SENS:TNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor model number"
+
+  service_sensor_type:
+    scpi: "SERV:SENS:TYPE?"
+    type: query
+    returns:
+      type: string
+    description: "Query sensor type"
+
+  service_snumber:
+    scpi: "SERV:SNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query power meter serial number"
+
+  service_state:
+    getter: "SERV:STAT?"
+    setter: "SERV:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Warm start state"
+
+  service_version_processor:
+    getter: "SERV:VERS:PROC?"
+    setter: "SERV:VERS:PROC {version}"
+    type: property
+    params:
+      version:
+        type: string
+    returns:
+      type: string
+    description: "Processor board revision version"
+
+  service_version_system:
+    getter: "SERV:VERS:SYST?"
+    setter: "SERV:VERS:SYST {version}"
+    type: property
+    params:
+      version:
+        type: string
+    returns:
+      type: string
+    description: "System version number"
+
+  status_preset:
+    scpi: "STAT:PRES"
+    type: write
+    description: "Reset status registers to default states"
+
+  status_device_condition:
+    scpi: "STAT:DEV:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read device status condition register"
+
+  status_device_event:
+    scpi: "STAT:DEV?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear device status event register"
+
+  status_device_enable:
+    getter: "STAT:DEV:ENAB?"
+    setter: "STAT:DEV:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Device status enable register"
+
+  status_device_ntr:
+    getter: "STAT:DEV:NTR?"
+    setter: "STAT:DEV:NTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Device status negative transition register"
+
+  status_device_ptr:
+    getter: "STAT:DEV:PTR?"
+    setter: "STAT:DEV:PTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Device status positive transition register"
+
+  status_operation_condition:
+    scpi: "STAT:OPER:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation status condition register"
+
+  status_operation_event:
+    scpi: "STAT:OPER?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear operation status event register"
+
+  status_operation_enable:
+    getter: "STAT:OPER:ENAB?"
+    setter: "STAT:OPER:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation status enable register"
+
+  status_operation_ntr:
+    getter: "STAT:OPER:NTR?"
+    setter: "STAT:OPER:NTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation status negative transition register"
+
+  status_operation_ptr:
+    getter: "STAT:OPER:PTR?"
+    setter: "STAT:OPER:PTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation status positive transition register"
+
+  status_questionable_condition:
+    scpi: "STAT:QUES:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable status condition register"
+
+  status_questionable_event:
+    scpi: "STAT:QUES?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear questionable status event register"
+
+  status_questionable_enable:
+    getter: "STAT:QUES:ENAB?"
+    setter: "STAT:QUES:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_questionable_ntr:
+    getter: "STAT:QUES:NTR?"
+    setter: "STAT:QUES:NTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable status negative transition register"
+
+  status_questionable_ptr:
+    getter: "STAT:QUES:PTR?"
+    setter: "STAT:QUES:PTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable status positive transition register"
+
+  system_error:
+    scpi: "SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error message"
+
+  system_help_headers:
+    scpi: "SYST:HELP:HEAD?"
+    type: query
+    returns:
+      type: string
+    description: "List all supported SCPI commands"
+
+  system_language:
+    getter: "SYST:LANG?"
+    setter: "SYST:LANG {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["SCPI", "HP436A", "HP437B", "HP438A"]
+    returns:
+      type: string
+    description: "Remote programming language"
+
+  system_license_install:
+    scpi: "SYST:LIC:INST {license}"
+    type: write
+    params:
+      license:
+        type: string
+    description: "Install license option"
+
+  system_license_list:
+    scpi: "SYST:LIC:LIST?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed licenses"
+
+  system_license_remove:
+    scpi: "SYST:LIC:REM {license}"
+    type: write
+    params:
+      license:
+        type: string
+    description: "Remove license option"
+
+  system_local:
+    scpi: "SYST:LOC"
+    type: write
+    description: "Return to local mode"
+
+  system_preset:
+    scpi: "SYST:PRES"
+    type: write
+    description: "Preset instrument to default state"
+
+  system_remote:
+    scpi: "SYST:REM"
+    type: write
+    description: "Place in remote mode"
+
+  system_rwlock:
+    scpi: "SYST:RWL"
+    type: write
+    description: "Lock front panel including Local key"
+
+  system_set:
+    scpi: "SYST:SET {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "Restore instrument state from learn string"
+
+  system_version:
+    scpi: "SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  system_gpib_address:
+    getter: "SYST:COMM:GPIB:ADDR?"
+    setter: "SYST:COMM:GPIB:ADDR {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 0
+        max: 30
+        default: 13
+    returns:
+      type: int
+    description: "GPIB address"
+
+  system_lan_aip:
+    getter: "SYST:COMM:LAN:AIP?"
+    setter: "SYST:COMM:LAN:AIP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto-IP enable/disable"
+
+  system_lan_address:
+    getter: "SYST:COMM:LAN:ADDR?"
+    setter: "SYST:COMM:LAN:ADDR {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "LAN IP address"
+
+  system_lan_current_address:
+    scpi: "SYST:COMM:LAN:CURR:ADDR?"
+    type: query
+    returns:
+      type: string
+    description: "Query current LAN IP address"
+
+  system_lan_current_gateway:
+    scpi: "SYST:COMM:LAN:CURR:DGAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query current LAN gateway address"
+
+  system_lan_current_dname:
+    scpi: "SYST:COMM:LAN:CURR:DNAM?"
+    type: query
+    returns:
+      type: string
+    description: "Query current LAN domain name"
+
+  system_lan_current_smask:
+    scpi: "SYST:COMM:LAN:CURR:SMAS?"
+    type: query
+    returns:
+      type: string
+    description: "Query current LAN subnet mask"
+
+  system_lan_dgateway:
+    getter: "SYST:COMM:LAN:DGAT?"
+    setter: "SYST:COMM:LAN:DGAT {gateway}"
+    type: property
+    params:
+      gateway:
+        type: string
+    returns:
+      type: string
+    description: "LAN gateway address"
+
+  system_lan_dhcp:
+    getter: "SYST:COMM:LAN:DHCP?"
+    setter: "SYST:COMM:LAN:DHCP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "DHCP enable/disable"
+
+  system_lan_dname:
+    getter: "SYST:COMM:LAN:DNAM?"
+    setter: "SYST:COMM:LAN:DNAM {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "LAN domain name"
+
+  system_lan_hostname:
+    getter: "SYST:COMM:LAN:HNAM?"
+    setter: "SYST:COMM:LAN:HNAM {hostname}"
+    type: property
+    params:
+      hostname:
+        type: string
+    returns:
+      type: string
+    description: "LAN hostname"
+
+  system_lan_mac:
+    scpi: "SYST:COMM:LAN:MAC?"
+    type: query
+    returns:
+      type: string
+    description: "Query LAN MAC address"
+
+  system_lan_restart:
+    scpi: "SYST:COMM:LAN:REST"
+    type: write
+    description: "Restart LAN with new configuration"
+
+  system_lan_smask:
+    getter: "SYST:COMM:LAN:SMAS?"
+    setter: "SYST:COMM:LAN:SMAS {mask}"
+    type: property
+    params:
+      mask:
+        type: string
+    returns:
+      type: string
+    description: "LAN subnet mask"
+
+  system_tcpip_control:
+    scpi: "SYST:COMM:TCP:CONT?"
+    type: query
+    returns:
+      type: int
+    description: "Query TCP/IP control socket number"
+
+  system_display_bmp:
+    scpi: "SYST:DISP:BMP?"
+    type: query
+    returns:
+      type: binary
+    description: "Capture display bitmap"
+
+  abort:
+    scpi: "ABOR"
+    type: write
+    description: "Abort measurement and return to idle state"
+
+  abort_channel_1:
+    scpi: "ABOR1"
+    type: write
+    description: "Abort channel A measurement"
+
+  abort_channel_2:
+    scpi: "ABOR2"
+    type: write
+    description: "Abort channel B measurement"
+
+  initiate_continuous:
+    getter: "INIT:CONT?"
+    setter: "INIT:CONT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous triggering on/off"
+
+  initiate:
+    scpi: "INIT"
+    type: write
+    description: "Initiate measurement (enter wait-for-trigger state)"
+
+  initiate_immediate:
+    scpi: "INIT:IMM"
+    type: write
+    description: "Immediately initiate measurement"
+
+  initiate_continuous_all:
+    getter: "INIT:CONT:ALL?"
+    setter: "INIT:CONT:ALL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous triggering for all channels"
+
+  initiate_all:
+    scpi: "INIT:IMM:ALL"
+    type: write
+    description: "Initiate all channels immediately"
+
+  trigger_delay_auto:
+    getter: "TRIG:DEL:AUTO?"
+    setter: "TRIG:DEL:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic trigger delay"
+
+  trigger_immediate:
+    scpi: "TRIG:IMM"
+    type: write
+    description: "Force trigger event"
+
+  trigger_source:
+    getter: "TRIG:SOUR?"
+    setter: "TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "EXT", "HOLD", "IMM"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_slope:
+    getter: "TRIG:SEQ:SLOP?"
+    setter: "TRIG:SEQ:SLOP {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "External trigger edge slope"
+
+  trigger_count:
+    getter: "TRIG:SEQ:COUN?"
+    setter: "TRIG:SEQ:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2048
+        default: 1
+    returns:
+      type: int
+    description: "Number of trigger events per measurement cycle"
+
+  unit_power:
+    getter: "UNIT:POW?"
+    setter: "UNIT:POW {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["DBM", "W"]
+    returns:
+      type: string
+    description: "Power measurement units"
+
+  unit_power_ratio:
+    getter: "UNIT:POW:RAT?"
+    setter: "UNIT:POW:RAT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["DB", "PCT"]
+    returns:
+      type: string
+    description: "Ratio measurement units"
+
+sequences:
+  quick_power_measurement:
+    description: "Quick power measurement at current settings"
+    steps:
+      - command: sense_frequency
+        args:
+          value: "1000000000"
+      - command: sense_average_count
+        args:
+          count: "16"
+      - command: initiate
+      - command: fetch_power
+        capture: result
+    returns: result
+
+  calibrate_and_measure:
+    description: "Zero, calibrate, and measure power"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 50000000
+    steps:
+      - command: calibrate_zero_auto
+        args:
+          state: "ONCE"
+      - command: calibrate_auto
+        args:
+          state: "ONCE"
+      - command: sense_frequency
+        args:
+          value: "{frequency}"
+      - command: initiate
+      - command: fetch_power
+        capture: result
+    returns: result
+
+  frequency_sweep:
+    description: "Perform frequency sweep measurement"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      steps:
+        type: int
+        min: 2
+        max: 2048
+    steps:
+      - command: sense_frequency_start
+        args:
+          value: "{start_freq}"
+      - command: sense_frequency_stop
+        args:
+          value: "{stop_freq}"
+      - command: sense_frequency_step
+        args:
+          value: "{steps}"
+      - command: trigger

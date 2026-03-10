@@ -1,0 +1,397 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "CS580"
+  class: power_supply
+  description: "Voltage Controlled Current Source - femtoamp to milliamp precision current source with analog input"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford Research Systems,CS580"
+
+interfaces:
+  - type: serial
+    port: 9600
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default configuration (GAIN 1mA/V, INPUT ON, SPEED FAST, SHIELD RETURN, ISOLATION FLOAT, OUTPUT OFF, COMPLIANCE 10V, DC CURRENT 0A)"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification (manufacturer, model, serial, firmware)"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Status register after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 to output queue when all pending operations complete"
+
+  # ============================================================================
+  # Configuration Commands
+  # ============================================================================
+  gain:
+    getter: "GAIN?"
+    setter: "GAIN {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["G1nA", "G10nA", "G100nA", "G1uA", "G10uA", "G100uA", "G1mA", "G10mA", "G50mA"]
+        map:
+          "G1nA": 0
+          "G10nA": 1
+          "G100nA": 2
+          "G1uA": 3
+          "G10uA": 4
+          "G100uA": 5
+          "G1mA": 6
+          "G10mA": 7
+          "G50mA": 8
+    returns:
+      type: string
+    description: "Voltage-to-current gain setting (cannot be changed while output and input both enabled)"
+
+  input_enable:
+    getter: "INPT?"
+    setter: "INPT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "OFF": 0
+          "ON": 1
+    returns:
+      type: string
+    description: "Enable or disable analog input BNC"
+
+  speed:
+    getter: "RESP?"
+    setter: "RESP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FAST", "SLOW"]
+        map:
+          "FAST": 0
+          "SLOW": 1
+    returns:
+      type: string
+    description: "Current source filter response speed (SLOW adds 470pF capacitor to output)"
+
+  shield_mode:
+    getter: "SHLD?"
+    setter: "SHLD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["GUARD", "RETURN"]
+        map:
+          "GUARD": 0
+          "RETURN": 1
+    returns:
+      type: string
+    description: "Inner shield connection mode (GUARD=driven guard, RETURN=current return node). Cannot be changed while output enabled."
+
+  isolation_mode:
+    getter: "ISOL?"
+    setter: "ISOL {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["GROUND", "FLOAT"]
+        map:
+          "GROUND": 0
+          "FLOAT": 1
+    returns:
+      type: string
+    description: "Current source isolation mode (FLOAT=isolated from chassis ground, GROUND=return tied to ground). Cannot be changed while output enabled."
+
+  output_enable:
+    getter: "SOUT?"
+    setter: "SOUT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "OFF": 0
+          "ON": 1
+    returns:
+      type: string
+    description: "Enable or disable current source output"
+
+  # ============================================================================
+  # Setting Commands
+  # ============================================================================
+  dc_current:
+    getter: "CURR?"
+    setter: "CURR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.00000000022
+        max: 0.00000000022
+    returns:
+      type: float
+      unit: A
+    description: "Internally-generated DC current in amperes (range depends on gain setting: ±2V × gain)"
+
+  compliance_voltage:
+    getter: "VOLT?"
+    setter: "VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 50
+        default: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "Compliance voltage limit in volts (0.5% + 50mV accuracy, up to 1.5V overshoot possible)"
+
+  # ============================================================================
+  # Setup Commands
+  # ============================================================================
+  audible_alarms:
+    getter: "ALRM?"
+    setter: "ALRM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "OFF": 0
+          "ON": 1
+    returns:
+      type: string
+    description: "Enable or disable audible alarms (all sounds except key clicks)"
+
+  token_mode:
+    getter: "TOKN?"
+    setter: "TOKN {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "OFF": 0
+          "ON": 1
+    returns:
+      type: string
+    description: "Token response mode (OFF=numeric responses, ON=text responses)"
+
+  # ============================================================================
+  # Status Commands
+  # ============================================================================
+  overload_status:
+    scpi: "OVLD?"
+    type: query
+    returns:
+      type: int
+    description: "Read overload status (0=none, 1=compliance limit, 2=input overload, 3=both)"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read Status Byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service Request Enable register mask"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Standard Event Status register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Standard Event Status Enable register mask"
+
+  last_execution_error:
+    scpi: "LEXE?"
+    type: query
+    returns:
+      type: int
+    description: "Query last execution error code (0=none, 1=illegal value, 2=wrong token, 3=invalid bit, 4=queue full, 5=not compatible). Clears error upon query."
+
+  last_command_error:
+    scpi: "LCME?"
+    type: query
+    returns:
+      type: int
+    description: "Query last command error code (0=none, 1=illegal command, 2=undefined command, 3=illegal query, 4=illegal set, 5=missing parameter, 6=extra parameter, 7=null parameter, 8=buffer overflow, 9=bad float, 10=bad integer, 11=bad integer token, 12=bad token value, 13=bad hex block, 14=unknown token). Clears error upon query."
+
+# ============================================================================
+# Measurement Sequences
+# ============================================================================
+sequences:
+  source_dc_current:
+    description: "Configure and enable DC current output with specified compliance"
+    params:
+      current:
+        type: float
+        unit: A
+      compliance:
+        type: float
+        unit: V
+        default: 10.0
+      gain_setting:
+        type: string
+        default: "G1mA"
+    steps:
+      - command: output_enable
+        args:
+          state: "OFF"
+      - command: gain
+        args:
+          value: "{gain_setting}"
+      - command: dc_current
+        args:
+          value: "{current}"
+      - command: compliance_voltage
+        args:
+          value: "{compliance}"
+      - command: output_enable
+        args:
+          state: "ON"
+
+  configure_guarded_float:
+    description: "Configure for floating operation with driven guard on inner shield"
+    steps:
+      - command: output_enable
+        args:
+          state: "OFF"
+      - command: shield_mode
+        args:
+          mode: "GUARD"
+      - command: isolation_mode
+        args:
+          mode: "FLOAT"
+
+  configure_grounded_return:
+    description: "Configure for grounded operation with current return on inner shield"
+    steps:
+      - command: output_enable
+        args:
+          state: "OFF"
+      - command: shield_mode
+        args:
+          mode: "RETURN"
+      - command: isolation_mode
+        args:
+          mode: "GROUND"
+
+  safe_shutdown:
+    description: "Safely disable output and reset to default configuration"
+    steps:
+      - command: output_enable
+        args:
+          state: "OFF"
+      - command: dc_current
+        args:
+          value: "0"
+      - command: input_enable
+        args:
+          state: "OFF"
+
+  low_noise_setup:
+    description: "Configure for low-noise, low-level current measurements"
+    params:
+      gain_range:
+        type: string
+        default: "G1nA"
+      filter_mode:
+        type: string
+        default: "SLOW"
+    steps:
+      - command: output_enable
+        args:
+          state: "OFF"
+      - command: gain
+        args:
+          value: "{gain_range}"
+      - command: speed
+        args:
+          mode: "{filter_mode}"
+      - command: shield_mode
+        args:
+          mode: "GUARD"
+      - command: isolation_mode
+        args:
+          mode: "FLOAT"
+
+# ============================================================================
+# Status Register Definitions
+# ============================================================================
+status:
+  stb:
+    bit5: ESB   # Event Status Bit
+    bit6: MSS   # Master Summary Status
+  esr:
+    bit0: OPC   # Operation Complete
+    bit2: QYE   # Query Error
+    bit3: DDE   # Device Dependent Error
+    bit4: EXE   # Execution Error
+    bit5: CME   # Command Error

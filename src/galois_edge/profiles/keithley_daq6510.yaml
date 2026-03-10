@@ -1,0 +1,1777 @@
+---
+instrument:
+  manufacturer: "Keithley"
+  model: "DAQ6510"
+  class: daq
+  description: "Data Acquisition and Multimeter System - 7.5 digit, scanning, switching, and digitizing"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY INSTRUMENTS.*DAQ6510"
+
+interfaces:
+  - type: gpib
+    default_address: 26
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Return instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Save setup to memory slot"
+
+  recall_setup:
+    scpi: "*RCL {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory slot"
+
+  # Status Commands
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  # Measurement Commands
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate measurement and return reading"
+    streamable: true
+
+  fetch:
+    scpi: ":FETCh?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest reading from buffer"
+
+  measure_voltage:
+    scpi: ":MEASure:VOLTage?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+
+  measure_voltage_ac:
+    scpi: ":MEASure:VOLTage:AC?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure AC voltage"
+
+  measure_current:
+    scpi: ":MEASure:CURRent?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+
+  measure_current_ac:
+    scpi: ":MEASure:CURRent:AC?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure AC current"
+
+  measure_resistance:
+    scpi: ":MEASure:RESistance?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 2-wire resistance"
+
+  measure_fresistance:
+    scpi: ":MEASure:FRESistance?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 4-wire resistance"
+
+  measure_temperature:
+    scpi: ":MEASure:TEMPerature?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Measure temperature"
+
+  measure_diode:
+    scpi: ":MEASure:DIODe?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure diode voltage"
+
+  measure_continuity:
+    scpi: ":MEASure:CONTinuity?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure continuity"
+
+  measure_frequency:
+    scpi: ":MEASure:FREQuency?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency"
+
+  measure_period:
+    scpi: ":MEASure:PERiod?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure period"
+
+  measure_capacitance:
+    scpi: ":MEASure:CAPacitance?"
+    type: query
+    returns:
+      type: float
+      unit: F
+    description: "Measure capacitance"
+
+  measure_digitize_voltage:
+    scpi: ":MEASure:DIGitize:VOLTage?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Digitize voltage measurement"
+
+  measure_digitize_current:
+    scpi: ":MEASure:DIGitize:CURRent?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Digitize current measurement"
+
+  read_digitize:
+    scpi: ":READ:DIGitize?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate digitize and return readings"
+
+  # Sense Function Selection
+  sense_function:
+    getter: "[:SENSe[1]]:FUNCtion[:ON]?"
+    setter: "[:SENSe[1]]:FUNCtion[:ON] \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLTage:DC", "VOLTage:AC", "CURRent:DC", "CURRent:AC", "RESistance", "FRESistance", "TEMPerature", "DIODe", "CONTinuity", "FREQuency", "PERiod", "CAPacitance", "VOLTage:DC:RATio"]
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  digitize_function:
+    getter: "[:SENSe[1]]:DIGitize:FUNCtion[:ON]?"
+    setter: "[:SENSe[1]]:DIGitize:FUNCtion[:ON] \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLTage", "CURRent"]
+    returns:
+      type: string
+    description: "Select digitize function"
+
+  measure_count:
+    getter: "[:SENSe[1]]:COUNt?"
+    setter: "[:SENSe[1]]:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100000000
+    returns:
+      type: int
+    description: "Number of measurements per trigger"
+
+  digitize_count:
+    getter: "[:SENSe[1]]:DIGitize:COUNt?"
+    setter: "[:SENSe[1]]:DIGitize:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 55000000
+    returns:
+      type: int
+    description: "Number of digitize samples per trigger"
+
+  # Voltage Measurement Settings
+  voltage_range:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage measurement range"
+
+  voltage_autorange:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable voltage autorange"
+
+  voltage_nplc:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:NPLCycles?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:NPLCycles {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 12
+    returns:
+      type: float
+    description: "Voltage integration time in NPLCs"
+
+  voltage_aperture:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:APERture?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.00001
+        max: 0.2
+    returns:
+      type: float
+      unit: s
+    description: "Voltage measurement aperture time"
+
+  voltage_autozero:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:AZERo[:STATe]?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:AZERo[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Voltage autozero setting"
+
+  voltage_input_impedance:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:INPutimpedance?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:INPutimpedance {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["AUTO", "10000000000"]
+    returns:
+      type: string
+    description: "Voltage input impedance"
+
+  # AC Voltage Settings
+  voltage_ac_range:
+    getter: "[:SENSe[1]]:VOLTage:AC:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:VOLTage:AC:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 750
+    returns:
+      type: float
+      unit: V
+    description: "AC voltage measurement range"
+
+  voltage_ac_autorange:
+    getter: "[:SENSe[1]]:VOLTage:AC:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:VOLTage:AC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable AC voltage autorange"
+
+  voltage_ac_bandwidth:
+    getter: "[:SENSe[1]]:VOLTage:AC:DETector:BANDwidth?"
+    setter: "[:SENSe[1]]:VOLTage:AC:DETector:BANDwidth {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["3", "30", "300"]
+    returns:
+      type: int
+    description: "AC voltage detector bandwidth (Hz)"
+
+  # Current Measurement Settings
+  current_range:
+    getter: "[:SENSe[1]]:CURRent[:DC]:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:CURRent[:DC]:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.00001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "DC current measurement range"
+
+  current_autorange:
+    getter: "[:SENSe[1]]:CURRent[:DC]:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:CURRent[:DC]:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable current autorange"
+
+  current_nplc:
+    getter: "[:SENSe[1]]:CURRent[:DC]:NPLCycles?"
+    setter: "[:SENSe[1]]:CURRent[:DC]:NPLCycles {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 12
+    returns:
+      type: float
+    description: "Current integration time in NPLCs"
+
+  current_autozero:
+    getter: "[:SENSe[1]]:CURRent[:DC]:AZERo[:STATe]?"
+    setter: "[:SENSe[1]]:CURRent[:DC]:AZERo[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Current autozero setting"
+
+  # AC Current Settings
+  current_ac_range:
+    getter: "[:SENSe[1]]:CURRent:AC:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:CURRent:AC:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "AC current measurement range"
+
+  current_ac_autorange:
+    getter: "[:SENSe[1]]:CURRent:AC:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:CURRent:AC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable AC current autorange"
+
+  current_ac_bandwidth:
+    getter: "[:SENSe[1]]:CURRent:AC:DETector:BANDwidth?"
+    setter: "[:SENSe[1]]:CURRent:AC:DETector:BANDwidth {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["3", "30", "300"]
+    returns:
+      type: int
+    description: "AC current detector bandwidth (Hz)"
+
+  # Resistance Measurement Settings
+  resistance_range:
+    getter: "[:SENSe[1]]:RESistance:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:RESistance:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 10
+        max: 100000000
+    returns:
+      type: float
+      unit: Ohm
+    description: "2-wire resistance range"
+
+  resistance_autorange:
+    getter: "[:SENSe[1]]:RESistance:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:RESistance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable resistance autorange"
+
+  resistance_nplc:
+    getter: "[:SENSe[1]]:RESistance:NPLCycles?"
+    setter: "[:SENSe[1]]:RESistance:NPLCycles {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 12
+    returns:
+      type: float
+    description: "Resistance integration time in NPLCs"
+
+  resistance_offset_comp:
+    getter: "[:SENSe[1]]:RESistance:OCOMpensated?"
+    setter: "[:SENSe[1]]:RESistance:OCOMpensated {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "AUTO"]
+    returns:
+      type: string
+    description: "Resistance offset compensation"
+
+  resistance_open_detector:
+    getter: "[:SENSe[1]]:RESistance:ODETector?"
+    setter: "[:SENSe[1]]:RESistance:ODETector {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable open detector for resistance"
+
+  # 4-Wire Resistance Settings
+  fresistance_range:
+    getter: "[:SENSe[1]]:FRESistance:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:FRESistance:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 10
+        max: 100000000
+    returns:
+      type: float
+      unit: Ohm
+    description: "4-wire resistance range"
+
+  fresistance_autorange:
+    getter: "[:SENSe[1]]:FRESistance:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:FRESistance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable 4-wire resistance autorange"
+
+  fresistance_nplc:
+    getter: "[:SENSe[1]]:FRESistance:NPLCycles?"
+    setter: "[:SENSe[1]]:FRESistance:NPLCycles {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.0005
+        max: 12
+    returns:
+      type: float
+    description: "4-wire resistance integration time in NPLCs"
+
+  fresistance_offset_comp:
+    getter: "[:SENSe[1]]:FRESistance:OCOMpensated?"
+    setter: "[:SENSe[1]]:FRESistance:OCOMpensated {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "AUTO"]
+    returns:
+      type: string
+    description: "4-wire resistance offset compensation"
+
+  # Temperature Measurement Settings
+  temperature_transducer:
+    getter: "[:SENSe[1]]:TEMPerature:TRANsducer?"
+    setter: "[:SENSe[1]]:TEMPerature:TRANsducer {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["TC", "RTD", "FRTD", "THER"]
+    returns:
+      type: string
+    description: "Temperature transducer type"
+
+  temperature_thermocouple_type:
+    getter: "[:SENSe[1]]:TEMPerature:TCouple:TYPE?"
+    setter: "[:SENSe[1]]:TEMPerature:TCouple:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["B", "E", "J", "K", "N", "R", "S", "T"]
+    returns:
+      type: string
+    description: "Thermocouple type"
+
+  temperature_refjunction:
+    getter: "[:SENSe[1]]:TEMPerature:TCouple:RJUNction:RSELect?"
+    setter: "[:SENSe[1]]:TEMPerature:TCouple:RJUNction:RSELect {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["INTernal", "SIMulated", "EXTernal"]
+    returns:
+      type: string
+    description: "Reference junction type"
+
+  temperature_simulated_ref:
+    getter: "[:SENSe[1]]:TEMPerature:TCouple:RJUNction:SIMulated?"
+    setter: "[:SENSe[1]]:TEMPerature:TCouple:RJUNction:SIMulated {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: C
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: C
+    description: "Simulated reference junction temperature"
+
+  temperature_rtd_type:
+    getter: "[:SENSe[1]]:TEMPerature:RTD:FOUR?"
+    setter: "[:SENSe[1]]:TEMPerature:RTD:FOUR {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["PT100", "PT385", "PT3916", "D100", "F100", "PT1000", "USER"]
+    returns:
+      type: string
+    description: "4-wire RTD type"
+
+  temperature_rtd_alpha:
+    getter: "[:SENSe[1]]:TEMPerature:RTD:ALPHa?"
+    setter: "[:SENSe[1]]:TEMPerature:RTD:ALPHa {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 0.01
+    returns:
+      type: float
+    description: "RTD alpha coefficient (user-defined RTD)"
+
+  temperature_rtd_beta:
+    getter: "[:SENSe[1]]:TEMPerature:RTD:BETA?"
+    setter: "[:SENSe[1]]:TEMPerature:RTD:BETA {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "RTD beta coefficient (user-defined RTD)"
+
+  temperature_rtd_delta:
+    getter: "[:SENSe[1]]:TEMPerature:RTD:DELTa?"
+    setter: "[:SENSe[1]]:TEMPerature:RTD:DELTa {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 5
+    returns:
+      type: float
+    description: "RTD delta coefficient (user-defined RTD)"
+
+  temperature_rtd_zero:
+    getter: "[:SENSe[1]]:TEMPerature:RTD:ZERO?"
+    setter: "[:SENSe[1]]:TEMPerature:RTD:ZERO {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 10000
+    returns:
+      type: float
+    description: "RTD zero resistance (user-defined RTD)"
+
+  temperature_thermistor:
+    getter: "[:SENSe[1]]:TEMPerature:THERmistor?"
+    setter: "[:SENSe[1]]:TEMPerature:THERmistor {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["2252", "5000", "10000"]
+    returns:
+      type: int
+    description: "Thermistor resistance at 25°C"
+
+  temperature_unit:
+    getter: "[:SENSe[1]]:TEMPerature:UNIT?"
+    setter: "[:SENSe[1]]:TEMPerature:UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["C", "F", "K"]
+    returns:
+      type: string
+    description: "Temperature unit"
+
+  # Diode Settings
+  diode_bias:
+    getter: "[:SENSe[1]]:DIODe:BIAS:LEVel?"
+    setter: "[:SENSe[1]]:DIODe:BIAS:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["1e-05", "0.0001", "0.001", "0.01"]
+    returns:
+      type: float
+    description: "Diode bias current level"
+
+  # Capacitance Settings
+  capacitance_range:
+    getter: "[:SENSe[1]]:CAPacitance:RANGe[:UPPer]?"
+    setter: "[:SENSe[1]]:CAPacitance:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: F
+        min: 0.000000001
+        max: 0.0001
+    returns:
+      type: float
+      unit: F
+    description: "Capacitance measurement range"
+
+  capacitance_autorange:
+    getter: "[:SENSe[1]]:CAPacitance:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:CAPacitance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable capacitance autorange"
+
+  # Frequency and Period Settings
+  frequency_aperture:
+    getter: "[:SENSe[1]]:FREQuency[:VOLTage]:APERture?"
+    setter: "[:SENSe[1]]:FREQuency[:VOLTage]:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.01
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Frequency measurement aperture time"
+
+  frequency_threshold_autorange:
+    getter: "[:SENSe[1]]:FREQuency[:VOLTage]:THReshold:RANGe:AUTO?"
+    setter: "[:SENSe[1]]:FREQuency[:VOLTage]:THReshold:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable frequency threshold autorange"
+
+  period_aperture:
+    getter: "[:SENSe[1]]:PERiod[:VOLTage]:APERture?"
+    setter: "[:SENSe[1]]:PERiod[:VOLTage]:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.01
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Period measurement aperture time"
+
+  # Digitize Settings
+  digitize_voltage_range:
+    getter: "[:SENSe[1]]:DIGitize:VOLTage:RANGe?"
+    setter: "[:SENSe[1]]:DIGitize:VOLTage:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "Digitize voltage range"
+
+  digitize_current_range:
+    getter: "[:SENSe[1]]:DIGitize:CURRent:RANGe?"
+    setter: "[:SENSe[1]]:DIGitize:CURRent:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.00001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "Digitize current range"
+
+  digitize_sample_rate:
+    getter: "[:SENSe[1]]:DIGitize:VOLTage:SRATe?"
+    setter: "[:SENSe[1]]:DIGitize:VOLTage:SRATe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 10
+        max: 1000000
+    returns:
+      type: float
+    description: "Digitize sample rate (samples/s)"
+
+  digitize_aperture:
+    getter: "[:SENSe[1]]:DIGitize:VOLTage:APERture?"
+    setter: "[:SENSe[1]]:DIGitize:VOLTage:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Digitize aperture time"
+
+  # Analog Trigger Settings
+  analog_trigger_mode:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:MODE?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "EDGE", "WINDow"]
+    returns:
+      type: string
+    description: "Analog trigger mode"
+
+  analog_trigger_edge_level:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:EDGE:LEVel?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:EDGE:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Analog trigger edge level"
+
+  analog_trigger_edge_slope:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:EDGE:SLOPe?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:EDGE:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISing", "FALLing"]
+    returns:
+      type: string
+    description: "Analog trigger edge slope"
+
+  analog_trigger_window_direction:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:DIRection?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:DIRection {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["ENTer", "LEAVe"]
+    returns:
+      type: string
+    description: "Analog trigger window direction"
+
+  analog_trigger_window_high:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:LEVel:HIGH?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:LEVel:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Analog trigger window high level"
+
+  analog_trigger_window_low:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:LEVel:LOW?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:ATRigger:WINDow:LEVel:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Analog trigger window low level"
+
+  # Filter Settings
+  filter_enable:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:AVERage[:STATe]?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:AVERage[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable averaging filter"
+
+  filter_count:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:COUNt?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Filter count"
+
+  filter_type:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:TCONtrol?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:TCONtrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["REPeat", "MOVing"]
+    returns:
+      type: string
+    description: "Filter type"
+
+  filter_window:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:WINDow?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:AVERage:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        min: 0
+        max: 10
+    returns:
+      type: float
+    description: "Filter window percentage"
+
+  # Relative Offset
+  relative_enable:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:RELative:STATe?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:RELative:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable relative offset"
+
+  relative_level:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:RELative?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:RELative {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Relative offset value"
+
+  relative_acquire:
+    scpi: "[:SENSe[1]]:VOLTage[:DC]:RELative:ACQuire"
+    type: write
+    description: "Acquire relative offset from current measurement"
+
+  relative_method:
+    getter: "[:SENSe[1]]:VOLTage[:DC]:RELative:METHod?"
+    setter: "[:SENSe[1]]:VOLTage[:DC]:RELative:METHod {method}"
+    type: property
+    params:
+      method:
+        type: enum
+        options: ["MATH", "SAVE"]
+    returns:
+      type: string
+    description: "Relative offset method"
+
+  # Autozero
+  autozero_once:
+    scpi: "[:SENSe[1]]:AZERo:ONCE"
+    type: write
+    description: "Perform autozero once immediately"
+
+  # Math Operations
+  math_format:
+    getter: ":CALCulate[1]:VOLTage[:DC]:MATH:FORMat?"
+    setter: ":CALCulate[1]:VOLTage[:DC]:MATH:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MXB", "PERCent", "RECiprocal"]
+    returns:
+      type: string
+    description: "Math operation format"
+
+  math_enable:
+    getter: ":CALCulate[1]:VOLTage[:DC]:MATH:STATe?"
+    setter: ":CALCulate[1]:VOLTage[:DC]:MATH:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable math operations"
+
+  math_mxb_m_factor:
+    getter: ":CALCulate[1]:VOLTage[:DC]:MATH:MMFactor?"
+    setter: ":CALCulate[1]:VOLTage[:DC]:MATH:MMFactor {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "MX+B M factor"
+
+  math_mxb_b_factor:
+    getter: ":CALCulate[1]:VOLTage[:DC]:MATH:MBFactor?"
+    setter: ":CALCulate[1]:VOLTage[:DC]:MATH:MBFactor {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "MX+B B factor"
+
+  math_percent:
+    getter: ":CALCulate[1]:VOLTage[:DC]:MATH:PERCent?"
+    setter: ":CALCulate[1]:VOLTage[:DC]:MATH:PERCent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "Percent reference value"
+
+  # Limit Testing
+  limit1_enable:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit1:STATe?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit1:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit 1 testing"
+
+  limit1_lower:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit1:LOWer[:DATA]?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit1:LOWer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "Limit 1 lower boundary"
+
+  limit1_upper:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit1:UPPer[:DATA]?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit1:UPPer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "Limit 1 upper boundary"
+
+  limit1_fail:
+    scpi: ":CALCulate2:VOLTage[:DC]:LIMit1:FAIL?"
+    type: query
+    returns:
+      type: string
+    description: "Query limit 1 test result"
+
+  limit1_clear:
+    scpi: ":CALCulate2:VOLTage[:DC]:LIMit1:CLEar[:IMMediate]"
+    type: write
+    description: "Clear limit 1 test results"
+
+  limit1_autoclear:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit1:CLEar:AUTO?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit1:CLEar:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit 1 auto clear"
+
+  limit1_audible:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit1:AUDible?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit1:AUDible {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "FAIL", "PASS"]
+    returns:
+      type: string
+    description: "Limit 1 audible beeper mode"
+
+  limit2_enable:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit2:STATe?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit2:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit 2 testing"
+
+  limit2_lower:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit2:LOWer[:DATA]?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit2:LOWer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "Limit 2 lower boundary"
+
+  limit2_upper:
+    getter: ":CALCulate2:VOLTage[:DC]:LIMit2:UPPer[:DATA]?"
+    setter: ":CALCulate2:VOLTage[:DC]:LIMit2:UPPer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000000000000
+        max: 1000000000000
+    returns:
+      type: float
+    description: "Limit 2 upper boundary"
+
+  # Configuration Lists
+  config_list_create:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:CREate \"{name}\""
+    type: write
+    params:
+      name:
+        type: string
+    description: "Create configuration list"
+
+  config_list_store:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:STORe \"{name}\""
+    type: write
+    params:
+      name:
+        type: string
+    description: "Store current settings to configuration list"
+
+  config_list_recall:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:RECall \"{name}\", {index}"
+    type: write
+    params:
+      name:
+        type: string
+      index:
+        type: int
+        min: 1
+    description: "Recall configuration from list"
+
+  config_list_delete:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:DELete \"{name}\", {index}"
+    type: write
+    params:
+      name:
+        type: string
+      index:
+        type: int
+    description: "Delete configuration from list"
+
+  config_list_catalog:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of configuration lists"
+
+  config_list_size:
+    scpi: "[:SENSe[1]]:CONFiguration:LIST:SIZE? \"{name}\""
+    type: query
+    params:
+      name:
+        type: string
+    returns:
+      type: int
+    description: "Query size of configuration list"
+
+  # Route/Scan Commands
+  scan_create:
+    scpi: ":ROUTe:SCAN[:CREate] (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Create scan with specified channels"
+
+  scan_create_empty:
+    scpi: ":ROUTe:SCAN[:CREate]"
+    type: write
+    description: "Clear scan list"
+
+  scan_query:
+    scpi: ":ROUTe:SCAN[:CREate]?"
+    type: query
+    returns:
+      type: string
+    description: "Query current scan list"
+
+  scan_add:
+    scpi: ":ROUTe:SCAN:ADD (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Add channels to scan"
+
+  scan_add_single:
+    scpi: ":ROUTe:SCAN:ADD:SINGle (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Add channels as single scan step"
+
+  scan_count:
+    getter: ":ROUTe:SCAN:COUNt:SCAN?"
+    setter: ":ROUTe:SCAN:COUNt:SCAN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 0
+        max: 100000000
+    returns:
+      type: int
+    description: "Number of scan iterations (0=infinite)"
+
+  scan_step_count:
+    scpi: ":ROUTe:SCAN:COUNt:STEP?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of steps in scan"
+
+  scan_interval:
+    getter: ":ROUTe:SCAN:INTerval?"
+    setter: ":ROUTe:SCAN:INTerval {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+    returns:
+      type: float
+      unit: s
+    description: "Time between scan iterations"
+
+  scan_buffer:
+    getter: ":ROUTe:SCAN:BUFFer?"
+    setter: ":ROUTe:SCAN:BUFFer \"{bufferName}\""
+    type: property
+    params:
+      bufferName:
+        type: string
+    returns:
+      type: string
+    description: "Buffer for scan data"
+
+  scan_mode:
+    getter: ":ROUTe:SCAN:MODE?"
+    setter: ":ROUTe:SCAN:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NONE", "SINGle", "ALL"]
+    returns:
+      type: string
+    description: "Scan relay action mode"
+
+  scan_bypass:
+    getter: ":ROUTe:SCAN:BYPass?"
+    setter: ":ROUTe:SCAN:BYPass {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Bypass first channel stimulus"
+
+  scan_start_stimulus:
+    getter: ":ROUTe:SCAN:STARt:STIMulus?"
+    setter: ":ROUTe:SCAN:STARt:STIMulus {event}"
+    type: property
+    params:
+      event:
+        type: string
+    returns:
+      type: string
+    description: "Event that starts scan"
+
+  scan_channel_stimulus:
+    getter: ":ROUTe:SCAN:CHANnel:STIMulus?"
+    setter: ":ROUTe:SCAN:CHANnel:STIMulus {event}"
+    type: property
+    params:
+      event:
+        type: string
+    returns:
+      type: string
+    description: "Event for channel action"
+
+  scan_measure_stimulus:
+    getter: ":ROUTe:SCAN:MEASure:STIMulus?"
+    setter: ":ROUTe:SCAN:MEASure:STIMulus {event}"
+    type: property
+    params:
+      event:
+        type: string
+    returns:
+      type: string
+    description: "Event for measurement"
+
+  scan_measure_interval:
+    getter: ":ROUTe:SCAN:MEASure:INTerval?"
+    setter: ":ROUTe:SCAN:MEASure:INTerval {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+    returns:
+      type: float
+      unit: s
+    description: "Time between measurements in scan"
+
+  scan_monitor_channel:
+    getter: ":ROUTe:SCAN:MONitor:CHANnel?"
+    setter: ":ROUTe:SCAN:MONitor:CHANnel (@{channel})"
+    type: property
+    params:
+      channel:
+        type: string
+    returns:
+      type: string
+    description: "Channel to monitor before scan"
+
+  scan_monitor_mode:
+    getter: ":ROUTe:SCAN:MONitor:MODE?"
+    setter: ":ROUTe:SCAN:MONitor:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "UPPer", "LOWer", "WINDow"]
+    returns:
+      type: string
+    description: "Scan monitor limit mode"
+
+  scan_monitor_limit_low:
+    getter: ":ROUTe:SCAN:MONitor:LIMit:LOWer[:DATA]?"
+    setter: ":ROUTe:SCAN:MONitor:LIMit:LOWer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Scan monitor lower limit"
+
+  scan_monitor_limit_high:
+    getter: ":ROUTe:SCAN:MONitor:LIMit:UPPer[:DATA]?"
+    setter: ":ROUTe:SCAN:MONitor:LIMit:UPPer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Scan monitor upper limit"
+
+  scan_alarm:
+    getter: ":ROUTe:SCAN:ALARm?"
+    setter: ":ROUTe:SCAN:ALARm {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Generate alarm on limit fail"
+
+  scan_learn_limits:
+    scpi: ":ROUTe:SCAN:LEARn:LIMits {window}, {iterations}"
+    type: write
+    params:
+      window:
+        type: float
+        min: 0
+        max: 100
+      iterations:
+        type: int
+        min: 1
+        max: 100
+    description: "Auto-learn scan limits"
+
+  scan_restart:
+    getter: ":ROUTe:SCAN:RESTart?"
+    setter: ":ROUTe:SCAN:RESTart {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto-restart scan after power loss"
+
+  scan_export:
+    scpi: ":ROUTe:SCAN:EXPort \"{path}\", {append}, {format}"
+    type: write
+    params:
+      path:
+        type: string
+      append:
+        type: enum
+        options: ["END", "START"]
+      format:
+        type: enum
+        options: ["ALL", "COMP"]
+    description: "Export scan data to USB"
+
+  scan_state:
+    scpi: ":ROUTe:SCAN:STATe?"
+    type: query
+    returns:
+      type: string
+    description: "Query scan state"
+
+  # Channel Control
+  channel_close:
+    scpi: ":ROUTe[:CHANnel]:CLOSe (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Close specified channels"
+
+  channel_close_query:
+    scpi: ":ROUTe[:CHANnel]:CLOSe?"
+    type: query
+    returns:
+      type: string
+    description: "Query closed channels"
+
+  channel_close_count:
+    scpi: ":ROUTe[:CHANnel]:CLOSe:COUNt? (@{channelList})"
+    type: query
+    params:
+      channelList:
+        type: string
+    returns:
+      type: int
+    description: "Query relay closure count"
+
+  channel_close_count_interval:
+    getter: ":ROUTe[:CHANnel]:CLOSe:COUNt:INTerval?"
+    setter: ":ROUTe[:CHANnel]:CLOSe:COUNt:INTerval {interval}"
+    type: property
+    params:
+      interval:
+        type: int
+        min: 0
+        max: 100000000
+    returns:
+      type: int
+    description: "Interval for closure count reset"
+
+  channel_delay:
+    getter: ":ROUTe[:CHANnel]:DELay? (@{channelList})"
+    setter: ":ROUTe[:CHANnel]:DELay {delay}, (@{channelList})"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 100000
+      channelList:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Channel delay time"
+
+  channel_label:
+    getter: ":ROUTe[:CHANnel]:LABel? (@{channel})"
+    setter: ":ROUTe[:CHANnel]:LABel (@{channel}), \"{label}\""
+    type: property
+    params:
+      channel:
+        type: string
+      label:
+        type: string
+    returns:
+      type: string
+    description: "Channel label"
+
+  channel_open:
+    scpi: ":ROUTe[:CHANnel]:OPEN (@{channelList})"
+    type: write
+    params:
+      channelList:
+        type: string
+    description: "Open specified channels"
+
+  channel_open_all:
+    scpi: ":ROUTe[:CHANnel]:OPEN:ALL"
+    type: write
+    description: "Open all channels"
+
+  channel_state:
+    scpi: ":ROUTe[:CHANnel]:STATe? (@{channelList})"
+    type: query
+    params:
+      channelList:
+        type: string
+    returns:
+      type: string
+    description: "Query channel state"
+
+  channel_type:
+    scpi: ":ROUTe[:CHANnel]:TYPE? (@{channelList})"
+    type: query
+    params:
+      channelList:
+        type: string
+    returns:
+      type: string
+    description: "Query channel type"
+
+  # Initiate and Abort
+  initiate:
+    scpi: ":INITiate[:IMMediate]"
+    type: write
+    description: "Initiate measurements or scan"
+
+  abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Abort measurements or scan"
+
+  # System Commands
+  system_beeper:
+    scpi: ":SYSTem:BEEPer[:IMMediate]"
+    type: write
+    description: "Generate beep"
+
+  system_clear:
+    scpi: ":SYSTem:CLEar"
+    type: write
+    description: "Clear instrument errors"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_time:
+    getter: ":SYSTem:TIME?"
+    setter: ":SYSTem:TIME {year}, {month}, {day}, {hour}, {minute}, {second}"
+    type: property
+    params:
+      year:
+        type: int
+      month:
+        type: int
+      day:
+        type: int
+      hour:
+        type: int
+      minute:
+        type: int
+      second:
+        type: int
+    returns:
+      type: string
+    description: "System date and time"
+
+  # Display Commands
+  display_screen:
+    getter: ":DISPlay:SCReen?"
+    setter: ":DISPlay:SCReen {screen}"
+    type: property
+    params:
+      screen:
+        type: enum
+        options: ["HOME", "READ", "GRAPh", "HIST", "SWIPE_SETTINGS", "SWIPE_FUNCTIONS", "SWIPE_SCAN", "SWIPE_TRIGGER", "SWIPE_STATS", "SWIPE_CHANNEL", "SWIPE_USER"]
+    returns:
+      type: string
+    description: "Active display screen"
+
+  display_clear:
+    scpi: ":DISPlay:CLEar"
+    type: write
+    description: "Clear display"
+
+  display_light_state:
+    getter: ":DISPlay:LIGHt:STATe?"
+    setter: ":DISPlay:LIGHt:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON100", "ON75", "ON50", "ON25", "OFF", "BLACkout"]
+    returns:
+      type: string
+    description: "Display backlight brightness state"

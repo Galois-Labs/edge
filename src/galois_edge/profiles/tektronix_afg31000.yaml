@@ -1,0 +1,1855 @@
+instrument:
+  manufacturer: "Tektronix"
+  model: "AFG31000"
+  class: function_generator
+  description: "Arbitrary Function Generator - 25 MHz to 250 MHz, 14-bit resolution, 16 MS/CH memory"
+
+identity:
+  query: "*IDN?"
+  pattern: "TEKTRONIX,AFG31[0-2][0-5][0-2]"
+
+interfaces:
+  - type: gpib
+    default_address: 10
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and queues"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Return identification information"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Generate trigger event"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save current settings to memory location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall settings from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set or query Event Status Enable Register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Standard Event Status Register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set or query Service Request Enable Register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read Status Byte Register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Set or query power-on status clear flag"
+
+  options:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  calibrate_query:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Perform internal calibration and return result"
+
+  # Calibration and Diagnostic
+  calibration:
+    getter: "CALibration[:ALL]?"
+    setter: "CALibration[:ALL]"
+    type: property
+    returns:
+      type: int
+    description: "Perform internal calibration"
+
+  diagnostic:
+    getter: "DIAGnostic[:ALL]?"
+    setter: "DIAGnostic[:ALL]"
+    type: property
+    returns:
+      type: int
+    description: "Perform self-test"
+
+  # Display Commands
+  display_brightness:
+    getter: "DISPlay:BRIGhtness?"
+    setter: "DISPlay:BRIGhtness {brightness}"
+    type: property
+    params:
+      brightness:
+        type: float
+        min: 0.0
+        max: 1.0
+    returns:
+      type: float
+    description: "Set or query LCD display brightness"
+
+  display_saver_immediate:
+    scpi: "DISPlay:SAVer:IMMediate"
+    type: write
+    description: "Enable screen saver immediately"
+
+  display_saver_state:
+    getter: "DISPlay:SAVer[:STATe]?"
+    setter: "DISPlay:SAVer[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable or disable screen saver function"
+
+  display_text:
+    getter: "DISPlay[:WINDow]:TEXT[:DATA]?"
+    setter: "DISPlay[:WINDow]:TEXT[:DATA] \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message on screen"
+
+  display_text_clear:
+    scpi: "DISPlay[:WINDow]:TEXT:CLEar"
+    type: write
+    description: "Clear text message from screen"
+
+  # Output Commands
+  output_state:
+    getter: "OUTPut[1|2][:STATe]?"
+    setter: "OUTPut[1|2][:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable or disable output for specified channel"
+
+  output_impedance:
+    getter: "OUTPut[1|2]:IMPedance?"
+    setter: "OUTPut[1|2]:IMPedance {impedance}"
+    type: property
+    params:
+      impedance:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 10000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set or query output load impedance"
+
+  output_polarity:
+    getter: "OUTPut[1|2]:POLarity?"
+    setter: "OUTPut[1|2]:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "Set or query output waveform polarity"
+
+  output_trigger_mode:
+    getter: "OUTPut:TRIGger:MODE?"
+    setter: "OUTPut:TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["TRIGger", "SYNC"]
+    returns:
+      type: string
+    description: "Set or query trigger output mode"
+
+  # Source Function Selection
+  source_function:
+    getter: "[SOURce[1|2]]:FUNCtion[:SHAPe]?"
+    setter: "[SOURce[1|2]]:FUNCtion[:SHAPe] {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "PULSe", "RAMP", "PRNoise", "DC", "SINC", "GAUSsian", "LORentz", "ERISe", "EDECay", "HAVersine", "EMEMory", "EMEMory2", "EFILe"]
+    returns:
+      type: string
+    description: "Select output waveform shape"
+
+  source_frequency:
+    getter: "[SOURce[1|2]]:FREQuency[:CW|:FIXed]?"
+    setter: "[SOURce[1|2]]:FREQuency[:CW|:FIXed] {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 250000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query output frequency"
+
+  source_amplitude:
+    getter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate][:AMPLitude]?"
+    setter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate][:AMPLitude] {amplitude}"
+    type: property
+    params:
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.01
+        max: 10
+    returns:
+      type: float
+      unit: Vpp
+    description: "Set or query output amplitude"
+
+  source_offset:
+    getter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:OFFSet?"
+    setter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:OFFSet {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Set or query DC offset voltage"
+
+  source_voltage_high:
+    getter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:HIGH?"
+    setter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:HIGH {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query output high level voltage"
+
+  source_voltage_low:
+    getter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:LOW?"
+    setter: "[SOURce[1|2]]:VOLTage[:LEVel][:IMMediate]:LOW {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query output low level voltage"
+
+  voltage_unit:
+    getter: "[SOURce[1|2]]:VOLTage:UNIT?"
+    setter: "[SOURce[1|2]]:VOLTage:UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["VPP", "VRMS", "DBM"]
+    returns:
+      type: string
+    description: "Set or query voltage amplitude units"
+
+  voltage_limit_high:
+    getter: "[SOURce[1|2]]:VOLTage:LIMit:HIGH?"
+    setter: "[SOURce[1|2]]:VOLTage:LIMit:HIGH {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query upper limit of output amplitude"
+
+  voltage_limit_low:
+    getter: "[SOURce[1|2]]:VOLTage:LIMit:LOW?"
+    setter: "[SOURce[1|2]]:VOLTage:LIMit:LOW {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query lower limit of output amplitude"
+
+  voltage_concurrent:
+    getter: "[SOURce[1|2]]:VOLTage:CONCurrent[:STATe]?"
+    setter: "[SOURce[1|2]]:VOLTage:CONCurrent[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable concurrent voltage level changes"
+
+  # Phase Commands
+  source_phase:
+    getter: "[SOURce[1|2]]:PHASe[:ADJust]?"
+    setter: "[SOURce[1|2]]:PHASe[:ADJust] {phase}"
+    type: property
+    params:
+      phase:
+        type: float
+        unit: deg
+        min: -180
+        max: 180
+    returns:
+      type: float
+      unit: deg
+    description: "Set or query output waveform phase"
+
+  phase_initiate:
+    scpi: "[SOURce[1|2]]:PHASe:INITiate"
+    type: write
+    description: "Synchronize phase of CH1 and CH2 output waveforms"
+
+  phase_concurrent:
+    getter: "[SOURce[1|2]]:PHASe:CONCurrent[:STATe]?"
+    setter: "[SOURce[1|2]]:PHASe:CONCurrent[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable concurrent phase changes"
+
+  frequency_concurrent:
+    getter: "[SOURce[1|2]]:FREQuency:CONCurrent[:STATe]?"
+    setter: "[SOURce[1|2]]:FREQuency:CONCurrent[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable concurrent frequency changes"
+
+  # Ramp Function
+  ramp_symmetry:
+    getter: "[SOURce[1|2]]:FUNCtion:RAMP:SYMMetry?"
+    setter: "[SOURce[1|2]]:FUNCtion:RAMP:SYMMetry {symmetry}"
+    type: property
+    params:
+      symmetry:
+        type: float
+        unit: "%"
+        min: 0.0
+        max: 100.0
+    returns:
+      type: float
+      unit: "%"
+    description: "Set or query ramp waveform symmetry"
+
+  # Pulse Configuration
+  pulse_duty_cycle:
+    getter: "[SOURce[1|2]]:PULSe:DCYCle?"
+    setter: "[SOURce[1|2]]:PULSe:DCYCle {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: "%"
+        min: 0.001
+        max: 99.999
+    returns:
+      type: float
+      unit: "%"
+    description: "Set or query pulse waveform duty cycle"
+
+  pulse_width:
+    getter: "[SOURce[1|2]]:PULSe:WIDTh?"
+    setter: "[SOURce[1|2]]:PULSe:WIDTh {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse width"
+
+  pulse_period:
+    getter: "[SOURce[1|2]]:PULSe:PERiod?"
+    setter: "[SOURce[1|2]]:PULSe:PERiod {period}"
+    type: property
+    params:
+      period:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse period"
+
+  pulse_delay:
+    getter: "[SOURce[1|2]]:PULSe:DELay?"
+    setter: "[SOURce[1|2]]:PULSe:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse lead delay"
+
+  pulse_transition_leading:
+    getter: "[SOURce[1|2]]:PULSe:TRANsition[:LEADing]?"
+    setter: "[SOURce[1|2]]:PULSe:TRANsition[:LEADing] {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse leading edge time"
+
+  pulse_transition_trailing:
+    getter: "[SOURce[1|2]]:PULSe:TRANsition:TRAiling?"
+    setter: "[SOURce[1|2]]:PULSe:TRANsition:TRAiling {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse trailing edge time"
+
+  pulse_hold:
+    getter: "[SOURce[1|2]]:PULSe:HOLD?"
+    setter: "[SOURce[1|2]]:PULSe:HOLD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["WIDTh", "DUTY"]
+    returns:
+      type: string
+    description: "Set instrument to hold either pulse width or duty"
+
+  # Amplitude Modulation
+  am_state:
+    getter: "[SOURce[1|2]]:AM:STATe?"
+    setter: "[SOURce[1|2]]:AM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable AM modulation"
+
+  am_depth:
+    getter: "[SOURce[1|2]]:AM[:DEPTh]?"
+    setter: "[SOURce[1|2]]:AM[:DEPTh] {depth}"
+    type: property
+    params:
+      depth:
+        type: float
+        unit: "%"
+        min: 0.0
+        max: 120.0
+    returns:
+      type: float
+      unit: "%"
+    description: "Set or query AM modulation depth"
+
+  am_source:
+    getter: "[SOURce[1|2]]:AM:SOURce?"
+    setter: "[SOURce[1|2]]:AM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query AM modulation source"
+
+  am_internal_frequency:
+    getter: "[SOURce[1|2]]:AM:INTernal:FREQuency?"
+    setter: "[SOURce[1|2]]:AM:INTernal:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query AM internal modulation frequency"
+
+  am_internal_function:
+    getter: "[SOURce[1|2]]:AM:INTernal:FUNCtion?"
+    setter: "[SOURce[1|2]]:AM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "PRNoise", "EMEMory", "EMEMory2", "EFILe"]
+    returns:
+      type: string
+    description: "Set or query AM internal modulation waveform"
+
+  am_internal_function_efile:
+    getter: "[SOURce[1|2]]:AM:INTernal:FUNCtion:EFILe?"
+    setter: "[SOURce[1|2]]:AM:INTernal:FUNCtion:EFILe \"{file_name}\""
+    type: property
+    params:
+      file_name:
+        type: string
+    returns:
+      type: string
+    description: "Set or query EFile for AM modulation"
+
+  # Frequency Modulation
+  fm_state:
+    getter: "[SOURce[1|2]]:FM:STATe?"
+    setter: "[SOURce[1|2]]:FM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable FM modulation"
+
+  fm_deviation:
+    getter: "[SOURce[1|2]]:FM[:DEViation]?"
+    setter: "[SOURce[1|2]]:FM[:DEViation] {deviation}"
+    type: property
+    params:
+      deviation:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query FM peak frequency deviation"
+
+  fm_source:
+    getter: "[SOURce[1|2]]:FM:SOURce?"
+    setter: "[SOURce[1|2]]:FM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query FM modulation source"
+
+  fm_internal_frequency:
+    getter: "[SOURce[1|2]]:FM:INTernal:FREQuency?"
+    setter: "[SOURce[1|2]]:FM:INTernal:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query FM internal modulation frequency"
+
+  fm_internal_function:
+    getter: "[SOURce[1|2]]:FM:INTernal:FUNCtion?"
+    setter: "[SOURce[1|2]]:FM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "PRNoise", "EMEMory", "EMEMory2", "EFILe"]
+    returns:
+      type: string
+    description: "Set or query FM internal modulation waveform"
+
+  fm_internal_function_efile:
+    getter: "[SOURce[1|2]]:FM:INTernal:FUNCtion:EFILe?"
+    setter: "[SOURce[1|2]]:FM:INTernal:FUNCtion:EFILe \"{file_name}\""
+    type: property
+    params:
+      file_name:
+        type: string
+    returns:
+      type: string
+    description: "Set or query EFile for FM modulation"
+
+  # Phase Modulation
+  pm_state:
+    getter: "[SOURce[1|2]]:PM:STATe?"
+    setter: "[SOURce[1|2]]:PM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable PM modulation"
+
+  pm_deviation:
+    getter: "[SOURce[1|2]]:PM[:DEViation]?"
+    setter: "[SOURce[1|2]]:PM[:DEViation] {deviation}"
+    type: property
+    params:
+      deviation:
+        type: float
+        unit: deg
+        min: 0
+        max: 180
+    returns:
+      type: float
+      unit: deg
+    description: "Set or query PM peak phase deviation"
+
+  pm_source:
+    getter: "[SOURce[1|2]]:PM:SOURce?"
+    setter: "[SOURce[1|2]]:PM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query PM modulation source"
+
+  pm_internal_frequency:
+    getter: "[SOURce[1|2]]:PM:INTernal:FREQuency?"
+    setter: "[SOURce[1|2]]:PM:INTernal:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query PM internal modulation frequency"
+
+  pm_internal_function:
+    getter: "[SOURce[1|2]]:PM:INTernal:FUNCtion?"
+    setter: "[SOURce[1|2]]:PM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "PRNoise", "EMEMory", "EMEMory2", "EFILe"]
+    returns:
+      type: string
+    description: "Set or query PM internal modulation waveform"
+
+  pm_internal_function_efile:
+    getter: "[SOURce[1|2]]:PM:INTernal:FUNCtion:EFILe?"
+    setter: "[SOURce[1|2]]:PM:INTernal:FUNCtion:EFILe \"{file_name}\""
+    type: property
+    params:
+      file_name:
+        type: string
+    returns:
+      type: string
+    description: "Set or query EFile for PM modulation"
+
+  # FSK Modulation
+  fsk_state:
+    getter: "[SOURce[1|2]]:FSKey:STATe?"
+    setter: "[SOURce[1|2]]:FSKey:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable FSK modulation"
+
+  fsk_frequency:
+    getter: "[SOURce[1|2]]:FSKey[:FREQuency]?"
+    setter: "[SOURce[1|2]]:FSKey[:FREQuency] {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query FSK hop frequency"
+
+  fsk_internal_rate:
+    getter: "[SOURce[1|2]]:FSKey:INTernal:RATE?"
+    setter: "[SOURce[1|2]]:FSKey:INTernal:RATE {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query FSK internal modulation rate"
+
+  fsk_source:
+    getter: "[SOURce[1|2]]:FSKey:SOURce?"
+    setter: "[SOURce[1|2]]:FSKey:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query FSK source"
+
+  # PWM Modulation
+  pwm_state:
+    getter: "[SOURce[1|2]]:PWM:STATe?"
+    setter: "[SOURce[1|2]]:PWM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable PWM modulation"
+
+  pwm_deviation_duty_cycle:
+    getter: "[SOURce[1|2]]:PWM[:DEViation]:DCYCle?"
+    setter: "[SOURce[1|2]]:PWM[:DEViation]:DCYCle {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "Set or query PWM deviation in percent"
+
+  pwm_source:
+    getter: "[SOURce[1|2]]:PWM:SOURce?"
+    setter: "[SOURce[1|2]]:PWM:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query PWM modulation source"
+
+  pwm_internal_frequency:
+    getter: "[SOURce[1|2]]:PWM:INTernal:FREQuency?"
+    setter: "[SOURce[1|2]]:PWM:INTernal:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query PWM internal modulation frequency"
+
+  pwm_internal_function:
+    getter: "[SOURce[1|2]]:PWM:INTernal:FUNCtion?"
+    setter: "[SOURce[1|2]]:PWM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "PRNoise", "EMEMory", "EMEMory2", "EFILe"]
+    returns:
+      type: string
+    description: "Set or query PWM internal modulation waveform"
+
+  pwm_internal_function_efile:
+    getter: "[SOURce[1|2]]:PWM:INTernal:FUNCtion:EFILe?"
+    setter: "[SOURce[1|2]]:PWM:INTernal:FUNCtion:EFILe \"{file_name}\""
+    type: property
+    params:
+      file_name:
+        type: string
+    returns:
+      type: string
+    description: "Set or query EFile for PWM modulation"
+
+  # Frequency Sweep
+  frequency_mode:
+    getter: "[SOURce[1|2]]:FREQuency:MODE?"
+    setter: "[SOURce[1|2]]:FREQuency:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CW", "FIXed", "SWEep"]
+    returns:
+      type: string
+    description: "Set or query frequency sweep state"
+
+  frequency_start:
+    getter: "[SOURce[1|2]]:FREQuency:STARt?"
+    setter: "[SOURce[1|2]]:FREQuency:STARt {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query sweep start frequency"
+
+  frequency_stop:
+    getter: "[SOURce[1|2]]:FREQuency:STOP?"
+    setter: "[SOURce[1|2]]:FREQuency:STOP {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query sweep stop frequency"
+
+  frequency_center:
+    getter: "[SOURce[1|2]]:FREQuency:CENTer?"
+    setter: "[SOURce[1|2]]:FREQuency:CENTer {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query sweep center frequency"
+
+  frequency_span:
+    getter: "[SOURce[1|2]]:FREQuency:SPAN?"
+    setter: "[SOURce[1|2]]:FREQuency:SPAN {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set or query sweep frequency span"
+
+  sweep_time:
+    getter: "[SOURce[1|2]]:SWEep:TIME?"
+    setter: "[SOURce[1|2]]:SWEep:TIME {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+        min: 0.001
+        max: 500
+    returns:
+      type: float
+      unit: s
+    description: "Set or query sweep time duration"
+
+  sweep_hold_time:
+    getter: "[SOURce[1|2]]:SWEep:HTIMe?"
+    setter: "[SOURce[1|2]]:SWEep:HTIMe {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query sweep hold time"
+
+  sweep_return_time:
+    getter: "[SOURce[1|2]]:SWEep:RTIMe?"
+    setter: "[SOURce[1|2]]:SWEep:RTIMe {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query sweep return time"
+
+  sweep_spacing:
+    getter: "[SOURce[1|2]]:SWEep:SPACing?"
+    setter: "[SOURce[1|2]]:SWEep:SPACing {spacing}"
+    type: property
+    params:
+      spacing:
+        type: enum
+        options: ["LINear", "LOGarithmic"]
+    returns:
+      type: string
+    description: "Set or query sweep spacing"
+
+  sweep_mode:
+    getter: "[SOURce[1|2]]:SWEep:MODE?"
+    setter: "[SOURce[1|2]]:SWEep:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MANual"]
+    returns:
+      type: string
+    description: "Set or query sweep mode"
+
+  # Burst Mode
+  burst_state:
+    getter: "[SOURce[1|2]]:BURSt[:STATe]?"
+    setter: "[SOURce[1|2]]:BURSt[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable burst mode"
+
+  burst_mode:
+    getter: "[SOURce[1|2]]:BURSt:MODE?"
+    setter: "[SOURce[1|2]]:BURSt:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["TRIGgered", "GATed"]
+    returns:
+      type: string
+    description: "Set or query burst mode"
+
+  burst_ncycles:
+    getter: "[SOURce[1|2]]:BURSt:NCYCles?"
+    setter: "[SOURce[1|2]]:BURSt:NCYCles {cycles}"
+    type: property
+    params:
+      cycles:
+        type: int
+        min: 1
+        max: 1000000
+    returns:
+      type: int
+    description: "Set or query number of cycles in burst"
+
+  burst_trigger_delay:
+    getter: "[SOURce[1|2]]:BURSt:TDELay?"
+    setter: "[SOURce[1|2]]:BURSt:TDELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 85
+    returns:
+      type: float
+      unit: s
+    description: "Set or query burst trigger delay time"
+
+  burst_idle:
+    getter: "[SOURce[1|2]]:BURSt:IDLE?"
+    setter: "[SOURce[1|2]]:BURSt:IDLE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["START", "DC", "END"]
+    returns:
+      type: string
+    description: "Set or query burst idle state"
+
+  burst_infinite_rearm:
+    scpi: "[SOURce[1|2]]:BURSt:INFInite:REARm"
+    type: write
+    description: "Stop output and set burst state to wait trigger"
+
+  # Triggering
+  trigger_source:
+    getter: "TRIGger[:SEQuence]:SOURce?"
+    setter: "TRIGger[:SEQuence]:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["TIMer", "EXTernal"]
+    returns:
+      type: string
+    description: "Set or query trigger source"
+
+  trigger_slope:
+    getter: "TRIGger[:SEQuence]:SLOPe?"
+    setter: "TRIGger[:SEQuence]:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Set or query trigger slope"
+
+  trigger_timer:
+    getter: "TRIGger[:SEQuence]:TIMer?"
+    setter: "TRIGger[:SEQuence]:TIMer {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+        min: 0.000001
+        max: 500
+    returns:
+      type: float
+      unit: s
+    description: "Set or query internal trigger period"
+
+  trigger_immediate:
+    scpi: "TRIGger[:SEQuence][:IMMediate]"
+    type: write
+    description: "Force trigger event to occur"
+
+  # Combine/Add Functions
+  combine_feed:
+    getter: "[SOURce[1|2]]:COMBine:FEED?"
+    setter: "[SOURce[1|2]]:COMBine:FEED \"{mode}\""
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NOISe", "EXTernal", "BOTH", ""]
+    returns:
+      type: string
+    description: "Set or query internal noise or external signal add"
+
+  noise_power:
+    getter: "SOURce<3|4>:POWer[:LEVel][:IMMediate][:AMPLitude]?"
+    setter: "SOURce<3|4>:POWer[:LEVel][:IMMediate][:AMPLitude] {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: "%"
+        min: 0
+        max: 50
+    returns:
+      type: float
+      unit: "%"
+    description: "Set or query internal noise level"
+
+  # Reference Oscillator
+  reference_oscillator_source:
+    getter: "[SOURce]:ROSCillator:SOURce?"
+    setter: "[SOURce]:ROSCillator:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set reference clock to internal or external"
+
+  # EFile Commands
+  function_efile:
+    getter: "[SOURce[1|2]]:FUNCtion:EFILe?"
+    setter: "[SOURce[1|2]]:FUNCtion:EFILe \"{file_name}\""
+    type: property
+    params:
+      file_name:
+        type: string
+    returns:
+      type: string
+    description: "Set or query EFile for output waveform"
+
+  # Run Mode Query
+  run_mode:
+    scpi: "[SOURce[1|2]]:RMODe?"
+    type: query
+    returns:
+      type: string
+    description: "Query run mode"
+
+  # Trace/Data Commands
+  trace_data:
+    getter: "TRACe|DATA[:DATA]? {memory}"
+    setter: "TRACe|DATA[:DATA] {memory},{data}"
+    type: property
+    params:
+      memory:
+        type: enum
+        options: ["EMEMory", "EMEMory2"]
+      data:
+        type: string
+    returns:
+      type: binary
+    description: "Transfer waveform data to/from edit memory"
+
+  # Memory Commands
+  memory_state_delete:
+    scpi: "MEMory:STATe:DELete {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Delete setup memory contents"
+
+  memory_state_lock:
+    getter: "MEMory:STATe:LOCK? {location}"
+    setter: "MEMory:STATe:LOCK {location},{state}"
+    type: property
+    params:
+      location:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Lock or unlock setup memory"
+
+  memory_state_recall_auto:
+    getter: "MEMory:STATe:RECall:AUTo?"
+    setter: "MEMory:STATe:RECall:AUTo {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable auto recall of last setup"
+
+  memory_state_valid:
+    scpi: "MEMory:STATe:VALid? {location}"
+    type: query
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: int
+    description: "Query availability of setup memory"
+
+  # Mass Memory Commands
+  mmemory_catalog:
+    scpi: "MMEMory:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query current state of mass storage"
+
+  mmemory_cdirectory:
+    getter: "MMEMory:CDIRectory?"
+    setter: "MMEMory:CDIRectory \"{directory}\""
+    type: property
+    params:
+      directory:
+        type: string
+    returns:
+      type: string
+    description: "Change or query current directory"
+
+  mmemory_delete:
+    scpi: "MMEMory:DELete \"{file_name}\""
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Delete file or directory from mass storage"
+
+  mmemory_load_state:
+    scpi: "MMEMory:LOAD:STATe {location},\"{file_name}\""
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+      file_name:
+        type: string
+    description: "Copy setup file from mass storage to internal memory"
+
+  mmemory_load_trace:
+    scpi: "MMEMory:LOAD:TRACe {memory},\"{file_name}\""
+    type: write
+    params:
+      memory:
+        type: enum
+        options: ["EMEMory", "EMEMory2"]
+      file_name:
+        type: string
+    description: "Copy waveform file from mass storage to edit memory"
+
+  mmemory_lock_state:
+    getter: "MMEMory:LOCK[:STATe]? \"{file_name}\""
+    setter: "MMEMory:LOCK[:STATe] \"{file_name}\",{state}"
+    type: property
+    params:
+      file_name:
+        type: string
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Lock or unlock file in mass storage"
+
+  mmemory_mdirectory:
+    scpi: "MMEMory:MDIRectory \"{directory}\""
+    type: write
+    params:
+      directory:
+        type: string
+    description: "Create directory in mass storage"
+
+  mmemory_store_state:
+    scpi: "MMEMory:STORe:STATe {location},\"{file_name}\""
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+      file_name:
+        type: string
+    description: "Save setup memory to mass storage"
+
+  mmemory_store_trace:
+    scpi: "MMEMory:STORe:TRACe {memory},\"{file_name}\""
+    type: write
+    params:
+      memory:
+        type: enum
+        options: ["EMEMory", "EMEMory2"]
+      file_name:
+        type: string
+    description: "Save waveform from edit memory to mass storage"
+
+  mmemory_open_sequence:
+    scpi: "MMEMory:OPEN:SEQuence \"{file_name}\""
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Load sequence from file"
+
+  mmemory_save_sequence:
+    scpi: "MMEMory:SAVE:SEQuence \"{file_name}\""
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save sequence to file"
+
+  recall_setup:
+    scpi: "RECALL:SETUp \"{file_name}\""
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Recall setup from mass memory file"
+
+  save_setup:
+    scpi: "SAVe:SETUp \"{file_name}\""
+    type: write
+    params:
+      file_name:
+        type: string
+    description: "Save setup to mass memory file"
+
+  # Status Commands
+  status_operation_condition:
+    scpi: "STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Return Operation Condition Register"
+
+  status_operation_enable:
+    getter: "STATus:OPERation:ENABle?"
+    setter: "STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+    returns:
+      type: int
+    description: "Set or query Operation Enable Register"
+
+  status_operation_event:
+    scpi: "STATus:OPERation[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Return Operation Event Register and clear"
+
+  status_preset:
+    scpi: "STATus:PRESet"
+    type: write
+    description: "Preset SCPI status registers"
+
+  status_questionable_condition:
+    scpi: "STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Return Questionable Condition Register"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+    returns:
+      type: int
+    description: "Set or query Questionable Enable Register"
+
+  status_questionable_event:
+    scpi: "STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Return Questionable Event Register and clear"
+
+  # System Commands
+  system_beeper:
+    scpi: "SYSTem:BEEPer[:IMMediate]"
+    type: write
+    description: "Generate audible tone"
+
+  system_beeper_state:
+    getter: "SYSTem:BEEPer:STATe?"
+    setter: "SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable beeper"
+
+  system_error:
+    scpi: "SYSTem:ERRor[:NEXT]?"
+    type: query
+    returns:
+      type: string
+    description: "Return error from error queue"
+
+  system_kclick_state:
+    getter: "SYSTem:KCLick[:STATe]?"
+    setter: "SYSTem:KCLick[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable click sound"
+
+  system_klock_state:
+    getter: "SYSTem:KLOCk[:STATe]?"
+    setter: "SYSTem:KLOCk[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Lock or unlock front panel controls"
+
+  system_password_cdisable:
+    scpi: "SYSTem:PASSword:CDISable \"{password}\""
+    type: write
+    params:
+      password:
+        type: string
+    description: "Disable protected commands"
+
+  system_password_cenable:
+    scpi: "SYSTem:PASSword[:CENable] \"{password}\""
+    type: write
+    params:
+      password:
+        type: string
+    description: "Enable protected commands"
+
+  system_password_cenable_state:
+    scpi: "SYSTem:PASSword[:CENable]:STATe?"
+    type: query
+    returns:
+      type: int
+    description: "Return security protection state"
+
+  system_password_new:
+    scpi: "SYSTem:PASSword:NEW \"{current}\",\"{new}\""
+    type: write
+    params:
+      current:
+        type: string
+      new:
+        type: string
+    description: "Change password"
+
+  system_restart:
+    scpi: "SYSTem:RESTart"
+    type: write
+    description: "Restart instrument"
+
+  system_security_immediate:
+    scpi: "SYSTem:SECurity:IMMediate"
+    type: write
+    description: "Reset to factory default and erase all data"
+
+  system_ulanguage:
+    getter: "SYSTem:ULANguage?"
+    setter: "SYSTem:ULANguage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["ENGLish", "FRENch", "GERMan", "JAPanese", "KORean", "SCHinese", "TCHinese", "RUSSian"]
+    returns:
+      type: string
+    description: "Set or query display language"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  # AFG Control
+  afg_control_copy:
+    scpi: "AFGControl:CSCopy {from},{to}"
+    type: write
+    params:
+      from:
+        type: enum
+        options: ["CH1", "CH2"]
+      to:
+        type: enum
+        options: ["CH1", "CH2"]
+    description: "Copy setup parameters between channels"
+
+  # Screen Copy
+  hcopy_sdump:
+    scpi: "HCOPy:SDUMp[:IMMediate]"
+    type: write
+    description: "Copy screen image to USB memory"
+
+  # Abort
+  abort:
+    scpi: "ABORt"
+    type: write
+    description: "Disconnect PI interface"
+
+  # License Commands
+  license_hid:
+    scpi: "LICense:HID?"
+    type: query
+    returns:
+      type: string
+    description: "Return instrument HostID"
+
+  license_install:
+    scpi: "LICense:INSTall {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "Install license"
+
+  license_uninstall:
+    scpi: "LICense:UNINstall? \"{id}\""
+    type: query
+    params:
+      id:
+        type: string
+    returns:
+      type: binary
+    description: "Uninstall license"
+
+  license_list:
+    scpi: "LICense:LIST?"
+    type: query
+    returns:
+      type: string
+    description: "Return active license nomenclatures"
+
+  license_error:
+    scpi: "LICense:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Return license error events"
+
+  license_gmt:
+    scpi: "LICense:GMT?"
+    type: query
+    returns:
+      type: string
+    description: "Return local system date and time"
+
+  license_idn:
+    scpi: "LICense:IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Return active host identification"
+
+  license_count:
+    scpi: "LICense:COUNT?"
+    type: query
+    returns:
+      type: int
+    description: "Return number of active licenses"
+
+  license_item:
+    scpi: "LICense:ITEM? {index}"
+    type: query
+    params:
+      index:
+        type: int
+    returns:
+      type: string
+    description: "Return license details for item"
+
+  license_validate:
+    scpi: "LICense:VALidate? \"{nomenclature}\""
+    type: query
+    params:
+      nomenclature:
+        type: string
+    returns:
+      type: string
+    description: "Validate license nomenclature"
+
+  # Sequence Commands
+  sequence_length:
+    getter: "SEQuence:LENGth?"
+    setter: "SEQuence:LENGth {length}"
+    type: property
+    params:
+      length:
+        type: int
+        min: 0
+        max: 256
+    returns:
+      type: int
+    description: "Set or query sequence length"
+
+  sequence_new:
+    scpi: "SEQuence:NEW"
+    type: write
+    description: "Create new sequence"
+
+  sequence_element_goto_index:
+    getter: "SEQuence:ELEM{n}:GOTO:INDex?"
+    setter: "SEQuence:ELEM{n}:GOTO:INDex {target}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      target:
+        type: int
+        min: 1
+        max: 256
+    returns:
+      type: int
+    description: "Set or query GOTO target index"
+
+  sequence_element_goto_state:
+    getter: "SEQuence:ELEM{n}:GOTO:STATe?"
+    setter: "SEQuence:ELEM{n}:GOTO:STATe {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Set or query GOTO state"
+
+  sequence_element_marker_state:
+    getter: "SEQuence:ELEM{n}:MARKer:STATe?"
+    setter: "SEQuence:ELEM{n}:MARKer:STATe {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Set or query marker state"
+
+  sequence_element_jtarget_index:
+    getter: "SEQuence:ELEM{n}:JTARget:INDex?"
+    setter: "SEQuence:ELEM{n}:JTARget:INDex {target}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      target:
+        type: int
+        min: 1
+        max: 256
+    returns:
+      type: int
+    description: "Set or query jump target index"
+
+  sequence_element_jtarget_type:
+    getter: "SEQuence:ELEM{n}:JTARget:TYPE?"
+    setter: "SEQuence:ELEM{n}:JTARget:TYPE {type}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      type:
+        type: enum
+        options: ["INDex", "NEXT", "OFF"]
+    returns:
+      type: string
+    description: "Set or query jump target type"
+
+  sequence_element_jump_event:
+    getter: "SEQuence:ELEM{n}:JUMP:EVENt?"
+    setter: "SEQuence:ELEM{n}:JUMP:EVENt {event}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      event:
+        type: enum
+        options: ["EXT", "BUS", "MANual", "TIMer"]
+    returns:
+      type: string
+    description: "Set or query jump trigger event type"
+
+  sequence_element_jump_slope:
+    getter: "SEQuence:ELEM{n}:JUMP:SLOpe?"
+    setter: "SEQuence:ELEM{n}:JUMP:SLOpe {slope}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Set or query external trigger slope for jump"
+
+  sequence_element_loop_count:
+    getter: "SEQuence:ELEM{n}:LOOP:COUNt?"
+    setter: "SEQuence:ELEM{n}:LOOP:COUNt {count}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      count:
+        type: int
+        min: 1
+        max: 1000000
+    returns:
+      type: int
+    description: "Set or query loop count"
+
+  sequence_element_loop_infinite:
+    getter: "SEQuence:ELEM{n}:LOOP:INFinite?"
+    setter: "SEQuence:ELEM{n}:LOOP:INFinite {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 256
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Set or query infinite loop state for sequence element"

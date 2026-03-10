@@ -1,0 +1,69 @@
+# Marconi 2026 Multisource Generator Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Marconi_2026_multisource_generator
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Marconi"
+  model: "2026 Multisource Generator"
+  class: sourcemeter
+  description: "Marconi 2026 Multisource Generator"
+
+identity:
+  query: "*IDN?"
+  pattern: "Marconi.*2026Q"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  impedance:
+    getter: "IMPEDANCE?"
+    setter: "IMPEDANCE {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["Z50R", "Z75R"]
+    returns:
+      type: string
+    description: "Impedance"
+

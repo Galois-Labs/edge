@@ -1,0 +1,828 @@
+instrument:
+  manufacturer: "Agilent"
+  model: "E5071C"
+  class: vna
+  description: "ENA Series RF Network Analyzer - 9 kHz to 20 GHz (frequency range depends on option)"
+
+identity:
+  query: "*IDN?"
+  pattern: "Agilent Technologies,E5071C"
+
+interfaces:
+  - type: gpib
+    default_address: 16
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 10000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  # Channel Control
+  channel_select:
+    getter: ":DISP:WIND:ACT?"
+    setter: ":DISP:WIND:ACT {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: "Select active channel"
+
+  # Frequency Control
+  frequency_start:
+    getter: ":SENS{channel}:FREQ:STAR?"
+    setter: ":SENS{channel}:FREQ:STAR {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 9000
+        max: 20000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Start frequency"
+
+  frequency_stop:
+    getter: ":SENS{channel}:FREQ:STOP?"
+    setter: ":SENS{channel}:FREQ:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 9000
+        max: 20000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Stop frequency"
+
+  frequency_center:
+    getter: ":SENS{channel}:FREQ:CENT?"
+    setter: ":SENS{channel}:FREQ:CENT {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency"
+
+  frequency_span:
+    getter: ":SENS{channel}:FREQ:SPAN?"
+    setter: ":SENS{channel}:FREQ:SPAN {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency span"
+
+  # Sweep Control
+  sweep_points:
+    getter: ":SENS{channel}:SWE:POIN?"
+    setter: ":SENS{channel}:SWE:POIN {points}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      points:
+        type: int
+        min: 2
+        max: 20001
+        default: 201
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_type:
+    getter: ":SENS{channel}:SWE:TYPE?"
+    setter: ":SENS{channel}:SWE:TYPE {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      type:
+        type: enum
+        options: ["LIN", "LOG", "SEGM", "POW"]
+    returns:
+      type: string
+    description: "Sweep type (linear, logarithmic, segment, power)"
+
+  # Power Control
+  power_level:
+    getter: ":SOUR{channel}:POW:LEV:IMM:AMPL?"
+    setter: ":SOUR{channel}:POW:LEV:IMM:AMPL {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: dBm
+        min: -85
+        max: 10
+    returns:
+      type: float
+      unit: dBm
+    description: "Source power level"
+
+  power_state:
+    getter: ":OUTP{channel}?"
+    setter: ":OUTP{channel} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "RF output on/off"
+
+  # Parameter Definition
+  parameter_define:
+    scpi: ":CALC{channel}:PAR:DEF {parameter}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      parameter:
+        type: string
+    description: "Define measurement parameter (S11, S21, etc.)"
+
+  parameter_select:
+    scpi: ":CALC{channel}:PAR:SEL {trace}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      trace:
+        type: int
+        min: 1
+        max: 16
+    description: "Select trace number"
+
+  parameter_count:
+    getter: ":CALC{channel}:PAR:COUN?"
+    setter: ":CALC{channel}:PAR:COUN {count}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      count:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: "Number of traces"
+
+  # Measurement Format
+  format_data:
+    getter: ":CALC{channel}:FORM?"
+    setter: ":CALC{channel}:FORM {format}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      format:
+        type: enum
+        options: ["MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"]
+    returns:
+      type: string
+    description: "Measurement format"
+
+  # Bandwidth
+  if_bandwidth:
+    getter: ":SENS{channel}:BAND?"
+    setter: ":SENS{channel}:BAND {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 10
+        max: 500000
+    returns:
+      type: float
+      unit: Hz
+    description: "IF bandwidth"
+
+  # Averaging
+  averaging_state:
+    getter: ":SENS{channel}:AVER?"
+    setter: ":SENS{channel}:AVER {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Averaging on/off"
+
+  averaging_count:
+    getter: ":SENS{channel}:AVER:COUN?"
+    setter: ":SENS{channel}:AVER:COUN {count}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      count:
+        type: int
+        min: 1
+        max: 999
+    returns:
+      type: int
+    description: "Number of averages"
+
+  averaging_clear:
+    scpi: ":SENS{channel}:AVER:CLE"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    description: "Clear averaging"
+
+  # Trigger
+  trigger_source:
+    getter: ":TRIG:SOUR?"
+    setter: ":TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT", "MAN", "BUS"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  initiate:
+    scpi: ":INIT{channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    description: "Initiate measurement"
+
+  initiate_continuous:
+    getter: ":INIT{channel}:CONT?"
+    setter: ":INIT{channel}:CONT {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous initiation on/off"
+
+  # Calibration
+  calibration_state:
+    getter: ":SENS{channel}:CORR:STAT?"
+    setter: ":SENS{channel}:CORR:STAT {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable calibration"
+
+  calibration_save:
+    scpi: ":SENS{channel}:CORR:COLL:SAVE"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    description: "Save calibration data"
+
+  calibration_method:
+    scpi: ":SENS{channel}:CORR:COLL:METH:{method}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      method:
+        type: string
+    description: "Select calibration method"
+
+  # Markers
+  marker_state:
+    getter: ":CALC{channel}:MARK{marker}?"
+    setter: ":CALC{channel}:MARK{marker} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      marker:
+        type: int
+        min: 1
+        max: 10
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Marker on/off"
+
+  marker_x:
+    getter: ":CALC{channel}:MARK{marker}:X?"
+    setter: ":CALC{channel}:MARK{marker}:X {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      marker:
+        type: int
+        min: 1
+        max: 10
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Marker X position"
+
+  marker_y:
+    scpi: ":CALC{channel}:MARK{marker}:Y?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      marker:
+        type: int
+        min: 1
+        max: 10
+    returns:
+      type: float
+    description: "Read marker Y value"
+
+  marker_search_max:
+    scpi: ":CALC{channel}:MARK{marker}:FUNC:MAX"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      marker:
+        type: int
+        min: 1
+        max: 10
+    description: "Search for maximum"
+
+  marker_search_min:
+    scpi: ":CALC{channel}:MARK{marker}:FUNC:MIN"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      marker:
+        type: int
+        min: 1
+        max: 10
+    description: "Search for minimum"
+
+  # Data Retrieval
+  fetch_formatted:
+    scpi: ":CALC{channel}:DATA? FDAT"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch formatted data"
+
+  fetch_corrected:
+    scpi: ":CALC{channel}:DATA? SDAT"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch corrected data"
+
+  # Memory Trace
+  memory_trace_store:
+    scpi: ":CALC{channel}:MATH:MEM"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+    description: "Store data to memory trace"
+
+  memory_trace_display:
+    getter: ":DISP:WIND{channel}:TRAC:MEM?"
+    setter: ":DISP:WIND{channel}:TRAC:MEM {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Display memory trace"
+
+  # Math Functions
+  math_function:
+    getter: ":CALC{channel}:MATH:FUNC?"
+    setter: ":CALC{channel}:MATH:FUNC {function}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      function:
+        type: enum
+        options: ["NORM", "DIV", "MULT", "ADD", "SUBT"]
+    returns:
+      type: string
+    description: "Math function (normal, divide, multiply, add, subtract)"
+
+  # Frequency Offset (Scalar Mixer)
+  frequency_offset_state:
+    getter: ":SENS{channel}:OFFS?"
+    setter: ":SENS{channel}:OFFS {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 16
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable frequency offset mode"
+
+  # Display Control
+  display_enable:
+    getter: ":DISP:ENAB?"
+    setter: ":DISP:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Display on/off"
+
+  display_clear:
+    scpi: ":DISP:CCL"
+    type: write
+    description: "Clear display and error messages"
+
+  # File Operations
+  file_save_state:
+    scpi: ":MMEM:STOR:STAT \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save instrument state to file"
+
+  file_load_state:
+    scpi: ":MMEM:LOAD:STAT \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load instrument state from file"
+
+  file_save_touchstone:
+    scpi: ":MMEM:STOR:TRAC \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save data in Touchstone format"
+
+  file_catalog:
+    scpi: ":MMEM:CAT? \"{directory}\""
+    type: query
+    params:
+      directory:
+        type: string
+        default: "D:\\"
+    returns:
+      type: string
+    description: "List files in directory"
+
+  # System Commands
+  system_preset:
+    scpi: ":SYST:PRES"
+    type: write
+    description: "System preset"
+
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  beeper:
+    scpi: ":SYST:BEEP"
+    type: write
+    description: "Sound beeper"
+
+  # Status Commands
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+sequences:
+  full_sweep_measurement:
+    description: "Perform full frequency sweep and retrieve data"
+    params:
+      channel:
+        type: int
+        default: 1
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 201
+    steps:
+      - command: frequency_start
+        args:
+          channel: "{channel}"
+          value: "{start_freq}"
+      - command: frequency_stop
+        args:
+          channel: "{channel}"
+          value: "{stop_freq}"
+      - command: sweep_points
+        args:
+          channel: "{channel}"
+          points: "{points}"
+      - command: initiate
+        args:
+          channel: "{channel}"
+      - scpi: "*WAI"
+      - command: fetch_formatted
+        args:
+          channel: "{channel}"
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

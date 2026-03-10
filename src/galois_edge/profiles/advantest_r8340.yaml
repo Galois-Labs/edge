@@ -1,0 +1,97 @@
+# Advantest Resistance Meter Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Advantest_R8340
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Advantest"
+  model: "Resistance Meter"
+  class: instrument
+  description: "Advantest Resistance Meter"
+
+identity:
+  query: "*IDN?"
+  pattern: "Advantest.*R8340"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 2000
+  terminator: "\r\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  function:
+    getter: "RIX?"
+    setter: "{value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["RI0", "RI1", "RI2", "RI3"]
+    returns:
+      type: string
+    description: "Function"
+  voltage:
+    getter: "PVS?"
+    setter: "PVS{value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 1000.0
+    returns:
+      type: float
+      unit: V
+    description: "Voltage"
+  current:
+    scpi: "GET"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Current"
+  resistance:
+    scpi: "GET"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance"
+

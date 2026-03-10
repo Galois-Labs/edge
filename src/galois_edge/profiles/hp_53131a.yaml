@@ -1,0 +1,1825 @@
+instrument:
+  manufacturer: "Hewlett-Packard"
+  model: "53131A"
+  class: frequency_counter
+  description: "225 MHz Universal Counter - Frequency, Period, Ratio, Time Interval, Phase, Pulse Width, Rise/Fall Time, Duty Cycle, Totalize, and Voltage Measurements"
+
+identity:
+  query: "*IDN?"
+  pattern: "(HEWLETT-PACKARD|Agilent Technologies|Agilent|HP).*(53131A|53132A)"
+
+interfaces:
+  - type: gpib
+    default_address: 3
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to known state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit when all pending operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all pending operations complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Execute bus trigger (performs action defined by *DDT)"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 20
+    description: "Save current state to non-volatile memory"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 20
+    description: "Recall state from non-volatile memory"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Query status byte register"
+
+  calibration_query:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Perform interpolator self-calibration and return status"
+
+  option_identification:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  # Abort Command
+  abort:
+    scpi: ":ABOR"
+    type: write
+    description: "Abort measurement in progress"
+
+  # Calculate Subsystems
+  calculate_data:
+    scpi: ":CALC:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Query scaled/offset measurement result"
+
+  calculate_feed:
+    getter: ":CALC:FEED?"
+    setter: ":CALC:FEED {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set data flow to CALCulate block"
+
+  calculate_immediate:
+    scpi: ":CALC:IMM"
+    type: write
+    description: "Recalculate existing data without re-acquiring"
+
+  calculate_immediate_auto:
+    getter: ":CALC:IMM:AUTO?"
+    setter: ":CALC:IMM:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable automatic post-processing"
+
+  calculate_math_state:
+    getter: ":CALC:MATH:STAT?"
+    setter: ":CALC:MATH:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable math (scale/offset) processing"
+
+  # Calculate2 - Limit Testing
+  calculate2_feed:
+    getter: ":CALC2:FEED?"
+    setter: ":CALC2:FEED {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set data flow to CALCulate2 block"
+
+  calculate2_limit_state:
+    getter: ":CALC2:LIM:STAT?"
+    setter: ":CALC2:LIM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable limit testing"
+
+  calculate2_limit_lower:
+    getter: ":CALC2:LIM:LOW?"
+    setter: ":CALC2:LIM:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+    description: "Set lower limit for limit testing"
+
+  calculate2_limit_upper:
+    getter: ":CALC2:LIM:UPP?"
+    setter: ":CALC2:LIM:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+    description: "Set upper limit for limit testing"
+
+  calculate2_limit_display:
+    getter: ":CALC2:LIM:DISP?"
+    setter: ":CALC2:LIM:DISP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["GRAP", "NUMB"]
+    returns:
+      type: string
+    description: "Set limit display mode (graph or numeric)"
+
+  calculate2_limit_fail:
+    scpi: ":CALC2:LIM:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if last measurement failed limit test"
+
+  calculate2_limit_clear:
+    scpi: ":CALC2:LIM:CLE"
+    type: write
+    description: "Clear limit test results"
+
+  calculate2_limit_clear_auto:
+    getter: ":CALC2:LIM:CLE:AUTO?"
+    setter: ":CALC2:LIM:CLE:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable automatic clearing of limit test results"
+
+  # Calculate3 - Statistics
+  calculate3_average_state:
+    getter: ":CALC3:AVER:STAT?"
+    setter: ":CALC3:AVER:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable statistics processing"
+
+  calculate3_average_count:
+    getter: ":CALC3:AVER:COUN?"
+    setter: ":CALC3:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 1000000
+    returns:
+      type: int
+    description: "Set number of measurements for statistics"
+
+  calculate3_average_current:
+    scpi: ":CALC3:AVER:COUN:CURR?"
+    type: query
+    returns:
+      type: int
+    description: "Query current count of statistics measurements"
+
+  calculate3_average_type:
+    getter: ":CALC3:AVER:TYPE?"
+    setter: ":CALC3:AVER:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MAX", "MIN", "SDEV", "MEAN"]
+    returns:
+      type: string
+    description: "Select statistic to display"
+
+  calculate3_data:
+    scpi: ":CALC3:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Query selected statistic result"
+
+  calculate3_average_all:
+    scpi: ":CALC3:AVER:ALL?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: mean
+          type: float
+        - name: std_dev
+          type: float
+        - name: minimum
+          type: float
+        - name: maximum
+          type: float
+    description: "Query all statistics (mean, std dev, min, max)"
+
+  calculate3_average_clear:
+    scpi: ":CALC3:AVER:CLE"
+    type: write
+    description: "Clear statistics results"
+
+  calculate3_filter_state:
+    getter: ":CALC3:LFIL:STAT?"
+    setter: ":CALC3:LFIL:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable statistics limit filter"
+
+  calculate3_filter_lower:
+    getter: ":CALC3:LFIL:LOW?"
+    setter: ":CALC3:LFIL:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+    description: "Set lower limit for statistics filter"
+
+  calculate3_filter_upper:
+    getter: ":CALC3:LFIL:UPP?"
+    setter: ":CALC3:LFIL:UPP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+    description: "Set upper limit for statistics filter"
+
+  # Calibration
+  calibration_count:
+    scpi: ":CAL:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of times instrument has been calibrated"
+
+  calibration_data:
+    getter: ":CAL:DATA?"
+    setter: ":CAL:DATA {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: string
+    description: "Transfer calibration data"
+
+  calibration_security_state:
+    getter: ":CAL:SEC:STAT?"
+    setter: ":CAL:SEC:STAT {state}, {code}"
+    type: property
+    params:
+      state:
+        type: bool
+      code:
+        type: int
+    returns:
+      type: bool
+    description: "Enable/disable calibration security"
+
+  calibration_security_code:
+    scpi: ":CAL:SEC:CODE {code}"
+    type: write
+    params:
+      code:
+        type: int
+        min: 0
+        max: 9999999
+    description: "Set calibration security code"
+
+  # Diagnostic/Calibration
+  diagnostic_calibration_interpolator_auto:
+    getter: ":DIAG:CAL:INT:AUTO?"
+    setter: ":DIAG:CAL:INT:AUTO {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF", "ON"]
+    returns:
+      type: string
+    description: "Interpolator calibration control"
+
+  diagnostic_calibration_status:
+    scpi: ":DIAG:CAL:STAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query calibration status (0=pass, 1=fail)"
+
+  diagnostic_calibration_input1_offset_auto:
+    scpi: ":DIAG:CAL:INP1:OFFS:AUTO {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF"]
+    description: "Calibrate channel 1 input offset"
+
+  diagnostic_calibration_input2_offset_auto:
+    scpi: ":DIAG:CAL:INP2:OFFS:AUTO {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF"]
+    description: "Calibrate channel 2 input offset"
+
+  diagnostic_calibration_input1_gain_auto:
+    scpi: ":DIAG:CAL:INP1:GAIN:AUTO {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF"]
+    description: "Calibrate channel 1 input gain"
+
+  diagnostic_calibration_input2_gain_auto:
+    scpi: ":DIAG:CAL:INP2:GAIN:AUTO {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF"]
+    description: "Calibrate channel 2 input gain"
+
+  diagnostic_calibration_rosc_auto:
+    scpi: ":DIAG:CAL:ROSC:AUTO {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONCE", "OFF"]
+    description: "Calibrate reference oscillator"
+
+  diagnostic_calibration_tinterval_quick:
+    scpi: ":DIAG:CAL:TINT:QUIC"
+    type: write
+    description: "Quick time interval calibration"
+
+  # Display
+  display_enable:
+    getter: ":DISP:ENAB?"
+    setter: ":DISP:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable front panel display"
+
+  display_menu_state:
+    scpi: ":DISP:MENU:STAT {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["OFF"]
+    description: "Disable menu display (show results)"
+
+  display_text_feed:
+    getter: ":DISP:WIND:TEXT:FEED?"
+    setter: ":DISP:WIND:TEXT:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CALC2", "CALC3"]
+    returns:
+      type: string
+    description: "Select data to display"
+
+  display_text_radix:
+    getter: ":DISP:WIND:TEXT:RAD?"
+    setter: ":DISP:WIND:TEXT:RAD {radix}"
+    type: property
+    params:
+      radix:
+        type: enum
+        options: ["COMM", "DPO"]
+    returns:
+      type: string
+    description: "Set decimal separator (comma or point)"
+
+  # Format
+  format_data:
+    getter: ":FORM:DATA?"
+    setter: ":FORM:DATA {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL"]
+    returns:
+      type: string
+    description: "Set data format (ASCII or binary)"
+
+  # HCopy/Printing
+  hcopy_continuous:
+    getter: ":HCOP:CONT?"
+    setter: ":HCOP:CONT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable continuous printing"
+
+  # Initiate
+  initiate:
+    scpi: ":INIT"
+    type: write
+    description: "Initiate measurement"
+
+  initiate_auto:
+    getter: ":INIT:AUTO?"
+    setter: ":INIT:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable auto-stop on limit failure"
+
+  initiate_continuous:
+    getter: ":INIT:CONT?"
+    setter: ":INIT:CONT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable continuous measurements"
+
+  # Input Channels 1 and 2
+  input1_coupling:
+    getter: ":INP1:COUP?"
+    setter: ":INP1:COUP {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Set channel 1 input coupling"
+
+  input2_coupling:
+    getter: ":INP2:COUP?"
+    setter: ":INP2:COUP {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Set channel 2 input coupling"
+
+  input1_impedance:
+    getter: ":INP1:IMP?"
+    setter: ":INP1:IMP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "1E6"]
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set channel 1 input impedance"
+
+  input2_impedance:
+    getter: ":INP2:IMP?"
+    setter: ":INP2:IMP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["50", "1E6"]
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set channel 2 input impedance"
+
+  input1_attenuation:
+    getter: ":INP1:ATT?"
+    setter: ":INP1:ATT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["1", "10"]
+    returns:
+      type: int
+    description: "Set channel 1 attenuation (1x or 10x)"
+
+  input2_attenuation:
+    getter: ":INP2:ATT?"
+    setter: ":INP2:ATT {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["1", "10"]
+    returns:
+      type: int
+    description: "Set channel 2 attenuation (1x or 10x)"
+
+  input1_filter_state:
+    getter: ":INP1:FILT:STAT?"
+    setter: ":INP1:FILT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 low-pass filter"
+
+  input2_filter_state:
+    getter: ":INP2:FILT:STAT?"
+    setter: ":INP2:FILT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 low-pass filter"
+
+  # Sense/Measurement Configuration
+  sense_function:
+    getter: ":SENS:FUNC?"
+    setter: ":SENS:FUNC {function}"
+    type: property
+    params:
+      function:
+        type: string
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  sense_data:
+    scpi: ":SENS:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Query raw measurement data (no scale/offset)"
+
+  # Event/Trigger Configuration
+  sense_event1_level:
+    getter: ":SENS:EVEN1:LEV?"
+    setter: ":SENS:EVEN1:LEV {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: V
+        min: -51.25
+        max: 51.25
+    returns:
+      type: float
+      unit: V
+    description: "Set channel 1 trigger level"
+
+  sense_event2_level:
+    getter: ":SENS:EVEN2:LEV?"
+    setter: ":SENS:EVEN2:LEV {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: V
+        min: -51.25
+        max: 51.25
+    returns:
+      type: float
+      unit: V
+    description: "Set channel 2 trigger level"
+
+  sense_event1_level_auto:
+    getter: ":SENS:EVEN1:LEV:AUTO?"
+    setter: ":SENS:EVEN1:LEV:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 auto-trigger"
+
+  sense_event2_level_auto:
+    getter: ":SENS:EVEN2:LEV:AUTO?"
+    setter: ":SENS:EVEN2:LEV:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 auto-trigger"
+
+  sense_event1_level_relative:
+    getter: ":SENS:EVEN1:LEV:REL?"
+    setter: ":SENS:EVEN1:LEV:REL {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: PCT
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Set channel 1 auto-trigger percentage"
+
+  sense_event2_level_relative:
+    getter: ":SENS:EVEN2:LEV:REL?"
+    setter: ":SENS:EVEN2:LEV:REL {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: PCT
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Set channel 2 auto-trigger percentage"
+
+  sense_event1_slope:
+    getter: ":SENS:EVEN1:SLO?"
+    setter: ":SENS:EVEN1:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set channel 1 trigger slope"
+
+  sense_event2_slope:
+    getter: ":SENS:EVEN2:SLO?"
+    setter: ":SENS:EVEN2:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set channel 2 trigger slope"
+
+  sense_event1_hysteresis_relative:
+    getter: ":SENS:EVEN1:HYST:REL?"
+    setter: ":SENS:EVEN1:HYST:REL {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: PCT
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Set channel 1 trigger hysteresis"
+
+  sense_event2_hysteresis_relative:
+    getter: ":SENS:EVEN2:HYST:REL?"
+    setter: ":SENS:EVEN2:HYST:REL {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: PCT
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: PCT
+    description: "Set channel 2 trigger hysteresis"
+
+  sense_event2_feed:
+    getter: ":SENS:EVEN2:FEED?"
+    setter: ":SENS:EVEN2:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INP1", "INP2"]
+    returns:
+      type: string
+    description: "Select input routing (common or separate mode)"
+
+  # Frequency/Period Arming
+  sense_frequency_expected1:
+    getter: ":SENS:FREQ:EXP1?"
+    setter: ":SENS:FREQ:EXP1 {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.1
+        max: 225e6
+    returns:
+      type: float
+      unit: Hz
+    description: "Set expected frequency for channel 1"
+
+  sense_frequency_expected1_auto:
+    scpi: ":SENS:FREQ:EXP1:AUTO {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON"]
+    description: "Enable automatic frequency detection"
+
+  sense_frequency_arm_start_source:
+    getter: ":SENS:FREQ:ARM:STAR:SOUR?"
+    setter: ":SENS:FREQ:ARM:STAR:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT"]
+    returns:
+      type: string
+    description: "Set frequency measurement start arm source"
+
+  sense_frequency_arm_start_slope:
+    getter: ":SENS:FREQ:ARM:STAR:SLO?"
+    setter: ":SENS:FREQ:ARM:STAR:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external start arm slope"
+
+  sense_frequency_arm_stop_source:
+    getter: ":SENS:FREQ:ARM:STOP:SOUR?"
+    setter: ":SENS:FREQ:ARM:STOP:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT", "TIM", "DIG"]
+    returns:
+      type: string
+    description: "Set frequency measurement stop arm source"
+
+  sense_frequency_arm_stop_timer:
+    getter: ":SENS:FREQ:ARM:STOP:TIM?"
+    setter: ":SENS:FREQ:ARM:STOP:TIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 1e-3
+        max: 1000
+    returns:
+      type: float
+      unit: s
+    description: "Set gate time for frequency measurement"
+
+  sense_frequency_arm_stop_digits:
+    getter: ":SENS:FREQ:ARM:STOP:DIG?"
+    setter: ":SENS:FREQ:ARM:STOP:DIG {digits}"
+    type: property
+    params:
+      digits:
+        type: int
+        min: 3
+        max: 15
+    returns:
+      type: int
+    description: "Set resolution in digits for frequency measurement"
+
+  sense_frequency_arm_stop_slope:
+    getter: ":SENS:FREQ:ARM:STOP:SLO?"
+    setter: ":SENS:FREQ:ARM:STOP:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external stop arm slope"
+
+  # Reference Oscillator
+  sense_rosc_source:
+    getter: ":SENS:ROSC:SOUR?"
+    setter: ":SENS:ROSC:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Select reference timebase (internal or external)"
+
+  sense_rosc_source_auto:
+    getter: ":SENS:ROSC:SOUR:AUTO?"
+    setter: ":SENS:ROSC:SOUR:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable automatic reference timebase selection"
+
+  sense_rosc_external_check:
+    getter: ":SENS:ROSC:EXT:CHEC?"
+    setter: ":SENS:ROSC:EXT:CHEC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ON", "OFF", "ONCE"]
+    returns:
+      type: string
+    description: "Enable checking of external reference validity"
+
+  sense_rosc_external_frequency:
+    scpi: ":SENS:ROSC:EXT:FREQ?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query external reference frequency"
+
+  # Time Interval Arming (53131A/132A with S/N below 3646)
+  sense_tinterval_arm_start_source:
+    getter: ":SENS:TINT:ARM:STAR:SOUR?"
+    setter: ":SENS:TINT:ARM:STAR:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT"]
+    returns:
+      type: string
+    description: "Set time interval start arm source"
+
+  sense_tinterval_arm_start_slope:
+    getter: ":SENS:TINT:ARM:STAR:SLO?"
+    setter: ":SENS:TINT:ARM:STAR:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external start arm slope for time interval"
+
+  sense_tinterval_arm_stop_source:
+    getter: ":SENS:TINT:ARM:STOP:SOUR?"
+    setter: ":SENS:TINT:ARM:STOP:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "TIM"]
+    returns:
+      type: string
+    description: "Set time interval stop arm source"
+
+  sense_tinterval_arm_stop_timer:
+    getter: ":SENS:TINT:ARM:STOP:TIM?"
+    setter: ":SENS:TINT:ARM:STOP:TIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 1e-4
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Set time interval delay"
+
+  # Totalize Arming
+  sense_totalize_arm_start_source:
+    getter: ":SENS:TOT:ARM:STAR:SOUR?"
+    setter: ":SENS:TOT:ARM:STAR:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT"]
+    returns:
+      type: string
+    description: "Set totalize start arm source"
+
+  sense_totalize_arm_start_slope:
+    getter: ":SENS:TOT:ARM:STAR:SLO?"
+    setter: ":SENS:TOT:ARM:STAR:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external start arm slope for totalize"
+
+  sense_totalize_arm_stop_source:
+    getter: ":SENS:TOT:ARM:STOP:SOUR?"
+    setter: ":SENS:TOT:ARM:STOP:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT", "TIM"]
+    returns:
+      type: string
+    description: "Set totalize stop arm source"
+
+  sense_totalize_arm_stop_slope:
+    getter: ":SENS:TOT:ARM:STOP:SLO?"
+    setter: ":SENS:TOT:ARM:STOP:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external stop arm slope for totalize"
+
+  sense_totalize_arm_stop_timer:
+    getter: ":SENS:TOT:ARM:STOP:TIM?"
+    setter: ":SENS:TOT:ARM:STOP:TIM {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 1e-3
+        max: 1000
+    returns:
+      type: float
+      unit: s
+    description: "Set totalize gate time"
+
+  # Phase Arming
+  sense_phase_arm_start_source:
+    getter: ":SENS:PHAS:ARM:STAR:SOUR?"
+    setter: ":SENS:PHAS:ARM:STAR:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "EXT"]
+    returns:
+      type: string
+    description: "Set phase measurement start arm source"
+
+  sense_phase_arm_start_slope:
+    getter: ":SENS:PHAS:ARM:STAR:SLO?"
+    setter: ":SENS:PHAS:ARM:STAR:SLO {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "Set external start arm slope for phase"
+
+  # Measurement Instructions
+  measure_frequency:
+    scpi: ":MEAS:FREQ?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency (complete measurement sequence)"
+
+  measure_period:
+    scpi: ":MEAS:PER?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure period"
+
+  measure_frequency_ratio:
+    scpi: ":MEAS:FREQ:RAT?"
+    type: query
+    returns:
+      type: float
+    description: "Measure frequency ratio"
+
+  measure_time_interval:
+    scpi: ":MEAS:TINT?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure time interval between channels 1 and 2"
+
+  measure_phase:
+    scpi: ":MEAS:PHAS?"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Measure phase between channels"
+
+  measure_pulse_width:
+    scpi: ":MEAS:PWID?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure positive pulse width"
+
+  measure_negative_width:
+    scpi: ":MEAS:NWID?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure negative pulse width"
+
+  measure_duty_cycle:
+    scpi: ":MEAS:DCYC?"
+    type: query
+    returns:
+      type: float
+      unit: PCT
+    description: "Measure duty cycle"
+
+  measure_rise_time:
+    scpi: ":MEAS:RTIM?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure rise time"
+
+  measure_fall_time:
+    scpi: ":MEAS:FTIM?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure fall time"
+
+  measure_voltage_maximum:
+    scpi: ":MEAS:VOLT:MAX?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure maximum voltage"
+
+  measure_voltage_minimum:
+    scpi: ":MEAS:VOLT:MIN?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure minimum voltage"
+
+  measure_voltage_peak_to_peak:
+    scpi: ":MEAS:VOLT:PTP?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure peak-to-peak voltage"
+
+  # Configure Commands
+  configure_frequency:
+    scpi: ":CONF:FREQ"
+    type: write
+    description: "Configure for frequency measurement"
+
+  configure_period:
+    scpi: ":CONF:PER"
+    type: write
+    description: "Configure for period measurement"
+
+  configure_query:
+    scpi: ":CONF?"
+    type: query
+    returns:
+      type: string
+    description: "Query configured measurement function"
+
+  # Fetch Commands
+  fetch:
+    scpi: ":FETC?"
+    type: query
+    returns:
+      type: float
+    description: "Fetch measurement result"
+
+  fetch_frequency:
+    scpi: ":FETC:FREQ?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Fetch frequency result"
+
+  fetch_period:
+    scpi: ":FETC:PER?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Fetch period result"
+
+  # Read Commands
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: float
+    description: "Initiate and fetch measurement"
+
+  read_frequency:
+    scpi: ":READ:FREQ?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Initiate and read frequency"
+
+  read_period:
+    scpi: ":READ:PER?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Initiate and read period"
+
+  # Status Commands
+  status_operation_condition:
+    scpi: ":STAT:OPER:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation condition status register"
+
+  status_operation_event:
+    scpi: ":STAT:OPER?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation event status register"
+
+  status_operation_enable:
+    getter: ":STAT:OPER:ENAB?"
+    setter: ":STAT:OPER:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set operation event status enable register"
+
+  status_operation_ntr:
+    getter: ":STAT:OPER:NTR?"
+    setter: ":STAT:OPER:NTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set operation negative transition filter"
+
+  status_operation_ptr:
+    getter: ":STAT:OPER:PTR?"
+    setter: ":STAT:OPER:PTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set operation positive transition filter"
+
+  status_questionable_condition:
+    scpi: ":STAT:QUES:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable condition status register"
+
+  status_questionable_event:
+    scpi: ":STAT:QUES?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable event status register"
+
+  status_questionable_enable:
+    getter: ":STAT:QUES:ENAB?"
+    setter: ":STAT:QUES:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set questionable event status enable register"
+
+  status_questionable_ntr:
+    getter: ":STAT:QUES:NTR?"
+    setter: ":STAT:QUES:NTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set questionable negative transition filter"
+
+  status_questionable_ptr:
+    getter: ":STAT:QUES:PTR?"
+    setter: ":STAT:QUES:PTR {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set questionable positive transition filter"
+
+  status_preset:
+    scpi: ":STAT:PRES"
+    type: write
+    description: "Preset status registers to default states"
+
+  # System Commands
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error from queue"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_key:
+    scpi: ":SYST:KEY {code}"
+    type: write
+    params:
+      code:
+        type: int
+        min: 1
+        max: 30
+    description: "Simulate front-panel key press"
+
+  system_key_log:
+    scpi: ":SYST:KEY:LOG?"
+    type: query
+    returns:
+      type: string
+    description: "Query key queue contents"
+
+  # Serial Communication
+  system_serial_baud:
+    getter: ":SYST:COMM:SER:TRAN:BAUD?"
+    setter: ":SYST:COMM:SER:TRAN:BAUD {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["300", "1200", "2400", "9600", "19200"]
+    returns:
+      type: int
+    description: "Set RS-232 baud rate"
+
+  system_serial_parity:
+    getter: ":SYST:COMM:SER:TRAN:PAR?"
+    setter: ":SYST:COMM:SER:TRAN:PAR {parity}"
+    type: property
+    params:
+      parity:
+        type: enum
+        options: ["EVEN", "ODD", "NONE"]
+    returns:
+      type: string
+    description: "Set RS-232 parity"
+
+  system_serial_pace:
+    getter: ":SYST:COMM:SER:TRAN:PACE?"
+    setter: ":SYST:COMM:SER:TRAN:PACE {pace}"
+    type: property
+    params:
+      pace:
+        type: enum
+        options: ["XON", "NONE"]
+    returns:
+      type: string
+    description: "Set RS-232 pacing"
+
+  system_serial_dtr:
+    getter: ":SYST:COMM:SER:CONT:DTR?"
+    setter: ":SYST:COMM:SER:CONT:DTR {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["IBF", "ON", "LIM"]
+    returns:
+      type: string
+    description: "Set RS-232 DTR line usage"
+
+  # Trace/Scale and Offset
+  trace_data_scale:
+    getter: ":TRAC SCALE?"
+    setter: ":TRAC SCALE, {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+    description: "Set scale value for math processing"
+
+  trace_data_offset:
+    getter: ":TRAC OFFSET?"
+    setter: ":TRAC OFFSET, {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.999999e12
+        max: 9.999999e12
+    returns:
+      type: float
+      unit: Hz
+    description: "Set offset value for math processing"
+
+  trace_catalog:
+    scpi: ":TRAC:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "List available scale/offset constants"
+
+  # Trigger Count
+  trigger_count_auto:
+    getter: ":TRIG:COUN:AUTO?"
+    setter: ":TRIG:COUN:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Control number of measurements per initiate"
+
+  # Memory/Macro Commands
+  memory_delete_macro:
+    scpi: ":MEM:DEL:MACR {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Delete specified macro"
+
+  memory_free_macro:
+    scpi: ":MEM:FREE:MACR?"
+    type: query
+    returns:
+      type: int
+    description: "Query available macro memory"
+
+  memory_nstates:
+    scpi: ":MEM:NST?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of available save/recall states"
+
+  # Macro Commands
+  define_device_trigger:
+    scpi: "*DDT {command}"
+    type: write
+    params:
+      command:
+        type: string
+    description: "Define command executed on trigger"
+
+  define_macro:
+    scpi: "*DMC {name}, {definition}"
+    type: write
+    params:
+      name:
+        type: string
+      definition:
+        type: string
+    description: "Define macro with specified name"
+
+  enable_macro:
+    getter: "*EMC?"
+    setter: "*EMC {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Enable/disable macro expansion"
+
+  get_macro_contents:
+    scpi: "*GMC? {name}"
+    type: query
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Query macro definition"
+
+  learn_macro:
+    scpi: "*LMC?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of defined macro labels"
+
+  purge_macro:
+    scpi: "*PMC"
+    type: write
+    description: "Delete all macros"
+
+sequences:
+  frequency_measurement:
+    description: "Perform frequency measurement with specified gate time"
+    params:
+      gate_time:
+        type: float
+        unit: s
+        default: 0.1
+      expected_frequency:
+        type: float
+        unit: Hz
+        default: 10e6
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "'FREQ 1'"
+      - command: sense_frequency_arm_start_source
+        args:
+          source: "IMM"
+      - command: sense_frequency_arm_stop_source
+        args:
+          source: "TIM"
+      - command: sense_frequency_arm_stop_timer
+        args:
+          time: "{gate_time}"
+      - command: sense_frequency_expected1
+        args:
+          frequency: "{expected_frequency}"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch_frequency
+        capture: frequency
+    returns: frequency
+
+  period_measurement:
+    description: "Perform period measurement"
+    params:
+      gate_time:
+        type: float
+        unit: s
+        default: 0.1
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "'PER 1'"
+      - command: sense_frequency_arm_start_source
+        args:
+          source: "IMM"
+      - command: sense_frequency_arm_stop_source
+        args:
+          source: "TIM"
+      - command: sense_frequency_arm_stop_timer
+        args:
+          time: "{gate_time}"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch_period
+        capture: period
+    returns: period
+
+  time_interval_measurement:
+    description: "Measure time interval between channel 1 and channel 2"
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "'TINT 1,2'"
+      - command: sense_tinterval_arm_start_source
+        args:
+          source: "IMM"
+      - command: sense_tinterval_arm_stop_source
+        args:
+          source: "IMM"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: time_interval
+    returns: time_interval
+
+  statistics_measurement:
+    description: "Perform statistics on specified number of measurements"
+    params:
+      num_measurements:
+        type: int
+        default: 100
+      function:
+        type: string
+        default: "'FREQ 1'"
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "{function}"
+      - command: calculate3_average_state
+        args:
+          state: "ON"
+      - command: calculate3_average_count
+        args:
+          count: "{num_measurements}"
+      - command: trigger_count_auto
+        args:
+          state: "ON"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: calculate3_average_all
+        capture: statistics
+    returns: statistics
+
+  frequency_ratio_measurement:
+    description: "Measure frequency ratio between two channels"
+    params:
+      gate_time:
+        type: float
+        unit: s
+        default: 0.1
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "'FREQ:RAT 1,2'"
+      - command: sense_frequency_arm_start_source
+        args:
+          source: "IMM"
+      - command: sense_frequency_arm_stop_source
+        args:
+          source: "TIM"
+      - command: sense_frequency_arm_stop_timer
+        args:
+          time: "{gate_time}"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch
+        capture: ratio
+    returns: ratio
+
+  limit_test_measurement:
+    description: "Perform measurement with limit testing"
+    params:
+      function:
+        type: string
+        default: "'FREQ 1'"
+      lower_limit:
+        type: float
+      upper_limit:
+        type: float
+    steps:
+      - command: reset
+      - command: sense_function
+        args:
+          function: "{function}"
+      - command: calculate2_limit_state
+        args:
+          state: "ON"
+      - command: calculate2_limit_lower
+        args:
+          value: "{lower_limit}"
+      - command: calculate2_limit_upper
+        args:
+          value: "{upper_limit}"
+      - command: initiate_auto
+        args:
+          state: "ON"
+      - command: initiate_continuous
+        args:
+          state: "ON"
+      - scpi: ":CALC2:LIM:FAIL?"
+        capture: limit_fail
+    returns: limit_fail
+
+status:
+  stb:
+    bit3: QSB
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

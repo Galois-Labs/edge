@@ -1,0 +1,1089 @@
+instrument:
+  manufacturer: "GW Instek"
+  model: "GPP-1000"
+  class: power_supply
+  description: "Programmable DC Power Supply - Models GPP-1323 (32V/3A/96W) and GPP-1205 (20V/5A/100W)"
+
+identity:
+  query: "*IDN?"
+  pattern: ".*GPP-(1323|1205).*"
+
+interfaces:
+  - type: gpib
+    default_address: 10
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers, error queue and cancel *OPC command"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification (manufacturer, model, serial, firmware)"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass, 1 = fail)"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return '1' to output queue when all pending operations complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Generate a trigger event for power supply"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 5
+    description: "Save instrument settings to memory slot M1-M5"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 5
+    description: "Recall instrument settings from memory slot M1-M5"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Standard Event Status Enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Standard Event Status Register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read Status Byte Register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service Request Enable register"
+
+  # Measurement Commands
+  measure_all:
+    scpi: ":MEASure:ALL?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: voltage
+          type: float
+          unit: V
+        - name: current
+          type: float
+          unit: A
+        - name: power
+          type: float
+          unit: W
+    description: "Measure and return voltage, current, and power"
+
+  measure_voltage:
+    scpi: ":MEASure:VOLTage?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure output voltage"
+    streamable: true
+
+  measure_current:
+    scpi: ":MEASure:CURRent?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure output current"
+    streamable: true
+
+  measure_power:
+    scpi: ":MEASure:POWer?"
+    type: query
+    returns:
+      type: float
+      unit: W
+    description: "Measure output power"
+    streamable: true
+
+  current_measurement_range:
+    getter: ":MEASure:CURRent:RANGe?"
+    setter: ":MEASure:CURRent:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["IH", "IM", "IL", "1", "2", "3"]
+        map:
+          "IH": 1
+          "IM": 2
+          "IL": 3
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set or query current measurement range (IH/IM/IL)"
+
+  # Output Commands
+  output_state:
+    getter: ":OUTPut[:STATe]?"
+    setter: ":OUTPut[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Turn output on or off"
+
+  output_delay_on:
+    getter: ":OUTPut:DELay:ON?"
+    setter: ":OUTPut:DELay:ON {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 359999.99
+    returns:
+      type: float
+      unit: s
+    description: "Set delay time in seconds for turning output on"
+
+  output_delay_off:
+    getter: ":OUTPut:DELay:OFF?"
+    setter: ":OUTPut:DELay:OFF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 359999.99
+    returns:
+      type: float
+      unit: s
+    description: "Set delay time in seconds for turning output off"
+
+  output_mode:
+    getter: ":OUTPut:MODE?"
+    setter: ":OUTPut:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CVHS", "CCHS", "CVLS", "CCLS", "0", "1", "2", "3"]
+        map:
+          "CVHS": 0
+          "CCHS": 1
+          "CVLS": 2
+          "CCLS": 3
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Output mode (CV high speed, CC high speed, CV slew rate, CC slew rate priority)"
+
+  output_protection_clear:
+    scpi: ":OUTPut:PROTection:CLEar"
+    type: write
+    description: "Clear OVP, OCP, and OTP protection circuits"
+
+  output_protection_tripped:
+    scpi: ":OUTPut:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if a protection circuit has been tripped (0 = no, 1 = yes)"
+
+  # Sense Commands
+  sense_average_count:
+    getter: ":SENSe:AVERage:COUNt?"
+    setter: ":SENSe:AVERage:COUNt {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["OFF", "LOW", "MIDDle", "HIGH", "0", "1", "2", "3"]
+        map:
+          "OFF": 0
+          "LOW": 1
+          "MIDDle": 2
+          "HIGH": 3
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set or query measurement averaging/smoothing level"
+
+  sense_recorder_state:
+    getter: ":SENSe:RECOrder:STATe?"
+    setter: ":SENSe:RECOrder:STATe {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Enable/disable recorder (0=off, 1=USB storage, 2=USB device, 3=LAN)"
+
+  sense_recorder_period:
+    getter: ":SENSe:RECOrder:PERiod?"
+    setter: ":SENSe:RECOrder:PERiod {value}"
+    type: property
+    params:
+      value:
+        type: int
+        unit: s
+        min: 1
+        max: 999
+    returns:
+      type: int
+      unit: s
+    description: "Set sample period in seconds for recorder"
+
+  # Status Commands
+  status_operation_event:
+    scpi: ":STATus:OPERation[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear Operation Status Event register"
+
+  status_operation_condition:
+    scpi: ":STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query Operation Status Condition register (does not clear)"
+
+  status_operation_enable:
+    getter: ":STATus:OPERation:ENABle?"
+    setter: ":STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Operation Status Enable register"
+
+  status_questionable_event:
+    scpi: ":STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear Questionable Status Event register"
+
+  status_questionable_condition:
+    scpi: ":STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query Questionable Status Condition register (does not clear)"
+
+  status_questionable_enable:
+    getter: ":STATus:QUEStionable:ENABle?"
+    setter: ":STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Questionable Status Enable register"
+
+  status_preset:
+    scpi: ":STATus:PRESet"
+    type: write
+    description: "Reset Enable and Questionable Status registers to default values"
+
+  # Source Commands - Voltage
+  source_voltage:
+    getter: "[:SOURce]:VOLTage?"
+    setter: "[:SOURce]:VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 35
+    returns:
+      type: float
+      unit: V
+    description: "Set or query voltage level (0% to 105% of rated output)"
+
+  source_voltage_protection_state:
+    getter: "[:SOURce]:VOLTage:PROTection:STATe?"
+    setter: "[:SOURce]:VOLTage:PROTection:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable over-voltage protection (OVP)"
+
+  source_voltage_protection:
+    getter: "[:SOURce]:VOLTage:PROTection?"
+    setter: "[:SOURce]:VOLTage:PROTection {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query over-voltage protection level"
+
+  source_voltage_protection_tripped:
+    scpi: "[:SOURce]:VOLTage:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if over-voltage protection has been tripped (0 = no, 1 = yes)"
+
+  source_voltage_slew_rising:
+    getter: "[:SOURce]:VOLTage:SLEWrate:RISing?"
+    setter: "[:SOURce]:VOLTage:SLEWrate:RISing {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V/ms
+        min: 0.0001
+        max: 0.04
+    returns:
+      type: float
+      unit: V/ms
+    description: "Rising voltage slew rate (CV slew rate priority mode only)"
+
+  source_voltage_slew_falling:
+    getter: "[:SOURce]:VOLTage:SLEWrate:FALLing?"
+    setter: "[:SOURce]:VOLTage:SLEWrate:FALLing {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V/ms
+        min: 0.0001
+        max: 0.04
+    returns:
+      type: float
+      unit: V/ms
+    description: "Falling voltage slew rate (CV slew rate priority mode only)"
+
+  source_voltage_sense:
+    getter: "[:SOURce]:VOLTage:SENSe?"
+    setter: "[:SOURce]:VOLTage:SENSe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["INTernal", "EXTernal", "0", "1"]
+        map:
+          "INTernal": 0
+          "EXTernal": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set remote sense mode (0 = 2-wire, 1 = 4-wire)"
+
+  # Source Commands - Current
+  source_current:
+    getter: "[:SOURce]:CURRent?"
+    setter: "[:SOURce]:CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 5.5
+    returns:
+      type: float
+      unit: A
+    description: "Set or query current level (0% to 105% of rated output)"
+
+  source_current_protection_state:
+    getter: "[:SOURce]:CURRent:PROTection:STATe?"
+    setter: "[:SOURce]:CURRent:PROTection:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable over-current protection (OCP)"
+
+  source_current_protection_delay:
+    getter: "[:SOURce]:CURRent:PROTection:DELay?"
+    setter: "[:SOURce]:CURRent:PROTection:DELay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.2
+        max: 2.5
+    returns:
+      type: float
+      unit: s
+    description: "Set delay time for over-current protection"
+
+  source_current_protection:
+    getter: "[:SOURce]:CURRent:PROTection[:LEVel]?"
+    setter: "[:SOURce]:CURRent:PROTection[:LEVel] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Set or query over-current protection level"
+
+  source_current_protection_tripped:
+    scpi: "[:SOURce]:CURRent:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if over-current protection has been tripped (0 = no, 1 = yes)"
+
+  source_current_slew_rising:
+    getter: "[:SOURce]:CURRent:SLEWrate:RISing?"
+    setter: "[:SOURce]:CURRent:SLEWrate:RISing {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/ms
+        min: 0.00001
+        max: 0.01
+    returns:
+      type: float
+      unit: A/ms
+    description: "Rising current slew rate (CC slew rate priority mode only)"
+
+  source_current_slew_falling:
+    getter: "[:SOURce]:CURRent:SLEWrate:FALLing?"
+    setter: "[:SOURce]:CURRent:SLEWrate:FALLing {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A/ms
+        min: 0.00001
+        max: 0.01
+    returns:
+      type: float
+      unit: A/ms
+    description: "Falling current slew rate (CC slew rate priority mode only)"
+
+  source_mode:
+    scpi: "[:SOURce]:MODE?"
+    type: query
+    returns:
+      type: string
+    description: "Query output mode (CC, CV, or OFF)"
+
+  # Apply Command
+  apply:
+    getter: ":APPLy?"
+    setter: ":APPLy {voltage},{current}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Set voltage and current simultaneously"
+
+  # System Commands - Configuration
+  system_beeper_state:
+    getter: ":SYSTem:CONFigure:BEEPer[:STATe]?"
+    setter: ":SYSTem:CONFigure:BEEPer[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable protection buzzer"
+
+  system_bleeder_state:
+    getter: ":SYSTem:CONFigure:BLEeder[:STATe]?"
+    setter: ":SYSTem:CONFigure:BLEeder[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable bleeder resistor"
+
+  system_power_on_state:
+    getter: ":SYSTem:CONFigure:PON[:STATe]?"
+    setter: ":SYSTem:CONFigure:PON[:STATe] {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DEFault", "SAVE", "OFF", "ON", "0", "1"]
+        map:
+          "DEFault": 0
+          "SAVE": 1
+          "OFF": 0
+          "ON": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set output state at power-on (0 = default off, 1 = saved state)"
+
+  # System Commands - Trigger
+  system_trigger_input_source:
+    getter: ":SYSTem:CONFigure:TRIGger:INPut:SOURce?"
+    setter: ":SYSTem:CONFigure:TRIGger:INPut:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["NONE", "OUTPut", "SETTing", "MEMory", "0", "1", "2", "3"]
+        map:
+          "NONE": 0
+          "OUTPut": 1
+          "SETTing": 2
+          "MEMory": 3
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set trigger input action"
+
+  system_trigger_input_level:
+    getter: ":SYSTem:CONFigure:TRIGger:INPut:LEVel?"
+    setter: ":SYSTem:CONFigure:TRIGger:INPut:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["LOW", "HIGH", "0", "1"]
+        map:
+          "LOW": 0
+          "HIGH": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set trigger input logic level"
+
+  system_trigger_output_source:
+    getter: ":SYSTem:CONFigure:TRIGger:OUTPut:SOURce?"
+    setter: ":SYSTem:CONFigure:TRIGger:OUTPut:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["NONE", "OUTPut", "SETTing", "MEMory", "0", "1", "2", "3"]
+        map:
+          "NONE": 0
+          "OUTPut": 1
+          "SETTing": 2
+          "MEMory": 3
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set trigger output source"
+
+  system_trigger_output_level:
+    getter: ":SYSTem:CONFigure:TRIGger:OUTPut:LEVel?"
+    setter: ":SYSTem:CONFigure:TRIGger:OUTPut:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: enum
+        options: ["LOW", "HIGH", "0", "1"]
+        map:
+          "LOW": 0
+          "HIGH": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set trigger output logic level"
+
+  system_trigger_input_voltage:
+    getter: ":SYSTem:CONFigure:TRIGger:INPut:VOLTage?"
+    setter: ":SYSTem:CONFigure:TRIGger:INPut:VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set voltage level when trigger is received"
+
+  system_trigger_input_current:
+    getter: ":SYSTem:CONFigure:TRIGger:INPut:CURRent?"
+    setter: ":SYSTem:CONFigure:TRIGger:INPut:CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Set current level when trigger is received"
+
+  system_trigger_input_memory:
+    getter: ":SYSTem:CONFigure:TRIGger:INPut:MEMory?"
+    setter: ":SYSTem:CONFigure:TRIGger:INPut:MEMory {slot}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+    returns:
+      type: int
+    description: "Set which memory slot to load when trigger is received"
+
+  # System Commands - Communication
+  system_gpib_address:
+    getter: ":SYSTem:COMMunicate:GPIB[:SELF]:ADDRess?"
+    setter: ":SYSTem:COMMunicate:GPIB[:SELF]:ADDRess {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 1
+        max: 30
+    returns:
+      type: int
+    description: "Set GPIB address (requires power cycle to take effect)"
+
+  system_lan_ip_address:
+    getter: ":SYSTem:COMMunicate:LAN:IPADdress?"
+    setter: ":SYSTem:COMMunicate:LAN:IPADdress {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "Set LAN IP address (requires power cycle to take effect)"
+
+  system_lan_gateway:
+    getter: ":SYSTem:COMMunicate:LAN:GATeway?"
+    setter: ":SYSTem:COMMunicate:LAN:GATeway {address}"
+    type: property
+    params:
+      address:
+        type: string
+    returns:
+      type: string
+    description: "Set LAN gateway address (requires power cycle to take effect)"
+
+  system_lan_subnet_mask:
+    getter: ":SYSTem:COMMunicate:LAN:SMASk?"
+    setter: ":SYSTem:COMMunicate:LAN:SMASk {mask}"
+    type: property
+    params:
+      mask:
+        type: string
+    returns:
+      type: string
+    description: "Set LAN subnet mask (requires power cycle to take effect)"
+
+  system_lan_mac_address:
+    scpi: ":SYSTem:COMMunicate:LAN:MAC?"
+    type: query
+    returns:
+      type: string
+    description: "Query MAC address (read-only)"
+
+  system_lan_dhcp:
+    getter: ":SYSTem:COMMunicate:LAN:DHCP?"
+    setter: ":SYSTem:COMMunicate:LAN:DHCP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable DHCP (requires power cycle to take effect)"
+
+  system_tcpip_control_port:
+    scpi: ":SYSTem:COMMunicate:TCPip:CONTrol?"
+    type: query
+    returns:
+      type: int
+    description: "Query socket port number"
+
+  # System Commands - General
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Query and clear one error from error queue"
+
+  system_error_enable:
+    scpi: ":SYSTem:ERRor:ENABle"
+    type: write
+    description: "Clear error queue and enable all error messages"
+
+  system_keylock:
+    getter: ":SYSTem:KLOCk?"
+    setter: ":SYSTem:KLOCk {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable front panel key lock"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  system_keyboard_beeper:
+    getter: ":SYSTem:KEYBoard:BEEPer?"
+    setter: ":SYSTem:KEYBoard:BEEPer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Enable or disable keyboard buzzer"
+
+  # Sequence Commands
+  sequence_enable:
+    scpi: ":SEQUence:ENABle {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    description: "Enable or disable sequence function"
+
+  sequence_save_internal:
+    scpi: ":SEQUence:SAVE:INTernal {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+    description: "Save sequence to internal storage slot (1-5)"
+
+  sequence_load_internal:
+    scpi: ":SEQUence:LOAD:INTernal {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+    description: "Load sequence from internal storage slot (1-5)"
+
+  sequence_save_udisk:
+    scpi: ":SEQUence:SAVE:UDISK SEQU_{number}.CSV"
+    type: write
+    params:
+      number:
+        type: int
+        min: 0
+        max: 255
+    description: "Save sequence to external USB storage"
+
+  sequence_load_udisk:
+    scpi: ":SEQUence:LOAD:UDISK SEQU_{number}.CSV"
+    type: write
+    params:
+      number:
+        type: int
+        min: 0
+        max: 255
+    description: "Load sequence from external USB storage"
+
+  sequence_run:
+    scpi: ":SEQUence:RUN {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    description: "Start or stop sequence execution"
+
+  sequence_state:
+    scpi: ":SEQUence:STATe?"
+    type: query
+    returns:
+      type: string
+    description: "Query sequence state (OFF, ON, Ready, Pause, TRIGIN)"
+
+  # Load Commands
+  load_cv_mode:
+    scpi: ":LOAD:CV {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    description: "Set channel as Load CV mode"
+
+  load_cc_mode:
+    scpi: ":LOAD:CC {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    description: "Set channel as Load CC mode"
+
+sequences:
+  set_voltage_current:
+    description: "Set voltage and current with output control"
+    params:
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+      output_on:
+        type: bool
+        default: true
+    steps:
+      - command: source_voltage
+        args:
+          value: "{voltage}"
+      - command: source_current
+        args:
+          value: "{current}"
+      - command: output_state
+        args:
+          state: "{output_on}"
+
+  measure_output:
+    description: "Measure all output parameters"
+    steps:
+      - command: measure_all
+        capture: result
+    returns: result
+
+  configure_protection:
+    description: "Configure OVP and OCP protection"
+    params:
+      ovp_level:
+        type: float
+        unit: V
+      ocp_level:
+        type: float
+        unit: A
+      ocp_delay:
+        type: float
+        unit: s
+        default: 0.2
+    steps:
+      - command: source_voltage_protection_state
+        args:
+          state: "ON"
+      - command: source_voltage_protection
+        args:
+          value: "{ovp_level}"
+      - command: source_current_protection_state
+        args:
+          state: "ON"
+      - command: source_current_protection
+        args:
+          value: "{ocp_level}"
+      - command: source_current_protection_delay
+        args:
+          value: "{ocp_delay}"
+
+  clear_errors:
+    description: "Clear all errors and protections"
+    steps:
+      - command: clear_status
+      - command: output_protection_clear
+      - command: system_error_enable
+
+status:
+  stb:
+    bit2: ERR
+    bit3: QUES
+    bit4: MAV
+    bit5: ESB
+    bit6: MSS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

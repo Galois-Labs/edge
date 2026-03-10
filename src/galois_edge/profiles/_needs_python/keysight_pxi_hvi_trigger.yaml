@@ -1,0 +1,24 @@
+# Keysight PXI HVI Trigger Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_PXI_HVI_Trigger
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Keysight"
+  model: "PXI HVI Trigger"
+  class: instrument
+  description: "Keysight PXI HVI Trigger"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight.*PXI\ HVI\ Trigger"
+
+interfaces:
+  - type: gpib
+
+settings:
+  timeout_ms: 1000
+  terminator: "\n"
+  opc_query: false
+
+

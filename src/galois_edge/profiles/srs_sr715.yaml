@@ -1,0 +1,924 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "SR715/SR720"
+  class: lcr_meter
+  description: "LCR Meters for measuring resistance, capacitance and inductance - multifrequency impedance measurement"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford.*SR7[12][0-9]"
+
+interfaces:
+  - type: gpib
+    default_address: 17
+  - type: serial
+    port: 1200
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default configuration"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set bit in Standard Event Status byte when measurement complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all measurements complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Run internal self-tests and return status code"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all measurements are completed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Trigger a measurement"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 9
+    description: "Save current instrument setup to memory location 1-9"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall setup from memory location (0=default, 1-9=user)"
+
+  # Measurement Setup Commands
+  settling_time:
+    getter: "$STL?"
+    setter: "$STL {time}"
+    type: property
+    params:
+      time:
+        type: int
+        unit: ms
+        min: 2
+        max: 99
+    returns:
+      type: int
+      unit: ms
+    description: "Set settling time between 2 and 99 milliseconds"
+
+  averaging_mode:
+    getter: "AVGM?"
+    setter: "AVGM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Enable (1) or disable (0) averaging"
+
+  averaging_count:
+    getter: "NAVG?"
+    setter: "NAVG {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 10
+    returns:
+      type: int
+    description: "Set number of measurements to average (2-10)"
+
+  bias_mode:
+    getter: "BIAS?"
+    setter: "BIAS {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+    returns:
+      type: int
+    description: "Set DC bias mode: 0=off, 1=internal (2.0V), 2=external"
+
+  equivalent_circuit:
+    getter: "CIRC?"
+    setter: "CIRC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set equivalent circuit: 0=series, 1=parallel"
+
+  constant_voltage:
+    getter: "CONV?"
+    setter: "CONV {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Enable (1) or disable (0) constant voltage mode"
+
+  frequency:
+    getter: "FREQ?"
+    setter: "FREQ {freq}"
+    type: property
+    params:
+      freq:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+          "4": 4
+    returns:
+      type: int
+    description: "Set drive frequency: 0=100Hz, 1=120Hz, 2=1kHz, 3=10kHz, 4=100kHz"
+
+  measurement_mode:
+    getter: "MMOD?"
+    setter: "MMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set measurement mode: 0=continuous, 1=triggered"
+
+  parameter_mode:
+    getter: "PMOD?"
+    setter: "PMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+          "4": 4
+    returns:
+      type: int
+    description: "Set parameter mode: 0=Auto, 1=R+Q, 2=L+Q, 3=C+D, 4=C+R"
+
+  measurement_rate:
+    getter: "RATE?"
+    setter: "RATE {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+    returns:
+      type: int
+    description: "Set measurement rate: 0=fast, 1=medium, 2=slow"
+
+  measurement_range:
+    getter: "RNGE?"
+    setter: "RNGE {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set measurement range: 0=100kΩ, 1=6.4kΩ, 2=400Ω, 3=25Ω"
+
+  range_hold:
+    getter: "RNGH?"
+    setter: "RNGH {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Enable (1) or disable (0) range hold"
+
+  drive_voltage:
+    getter: "VOLT?"
+    setter: "VOLT {voltage}"
+    type: property
+    params:
+      voltage:
+        type: float
+        unit: Vrms
+        min: 0.1
+        max: 1.0
+    returns:
+      type: float
+      unit: Vrms
+    description: "Set drive voltage (0.1V to 1.0V, rounded to 0.05V resolution)"
+
+  # Measurement Control Commands
+  relative_value:
+    getter: "PREL?"
+    setter: "PREL {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set nominal parameter value for deviation measurements (Ω, F, or H)"
+
+  start_measurement:
+    scpi: "STRT"
+    type: write
+    description: "Start a measurement"
+
+  stop_measurement:
+    scpi: "STOP"
+    type: write
+    description: "Stop the current measurement"
+
+  # Measurement Result Commands
+  output_format:
+    getter: "OUTF?"
+    setter: "OUTF {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set output format: 0=verbose ASCII, 1=concise ASCII, 2=verbose binary, 3=concise binary"
+
+  fetch_all:
+    scpi: "XALL?"
+    type: query
+    returns:
+      type: string
+    description: "Return major parameter, minor parameter, and bin number"
+
+  fetch_bin:
+    scpi: "XBIN?"
+    type: query
+    returns:
+      type: int
+    description: "Return bin number of current measurement"
+
+  fetch_deviation:
+    scpi: "XDLT?"
+    type: query
+    returns:
+      type: float
+    description: "Return deviation between major parameter and nominal value"
+
+  fetch_major:
+    scpi: "XMAJ?"
+    type: query
+    returns:
+      type: float
+    description: "Return value of major parameter"
+    streamable: true
+
+  fetch_minor:
+    scpi: "XMIN?"
+    type: query
+    returns:
+      type: float
+    description: "Return value of minor parameter"
+    streamable: true
+
+  fetch_percent_deviation:
+    scpi: "XPCT?"
+    type: query
+    returns:
+      type: float
+      unit: "%"
+    description: "Return percent deviation between major parameter and nominal value"
+
+  # Binning Commands
+  bin_clear:
+    scpi: "BCLR"
+    type: write
+    description: "Clear nominal values and limits for all bins"
+
+  binning_enable:
+    getter: "BING?"
+    setter: "BING {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Enable (1) or disable (0) binning"
+
+  bin_limit:
+    scpi: "BLIM {direction},{bin},{limit}"
+    type: write
+    params:
+      direction:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+      bin:
+        type: int
+        min: 0
+        max: 7
+      limit:
+        type: float
+        unit: "%"
+    description: "Set upper (0) or lower (1) limit of bin (0-7) in percent"
+
+  bin_limit_query:
+    scpi: "BLIM? {direction},{bin}"
+    type: query
+    params:
+      direction:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+      bin:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: float
+      unit: "%"
+    description: "Query upper (0) or lower (1) limit of bin"
+
+  bin_nominal:
+    getter: "BNOM? {bin}"
+    setter: "BNOM {bin},{value}"
+    type: property
+    params:
+      bin:
+        type: int
+        min: 0
+        max: 8
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query nominal value for bin (0-8, bin 8 is QDR fail)"
+
+  # Status Commands
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set/query serial poll enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Query serial poll status byte"
+
+  status_byte_bit:
+    scpi: "*STB? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Query single bit of serial poll status byte"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set/query event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear event status register"
+
+  event_status_bit:
+    scpi: "*ESR? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Query single bit of event status register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Set/query power-on status clear bit"
+
+  lcr_status_enable:
+    getter: "SENA?"
+    setter: "SENA {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set/query LCR status enable register"
+
+  lcr_status:
+    scpi: "STAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query LCR status byte"
+
+  lcr_status_bit:
+    scpi: "STAT? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Query single bit of LCR status byte"
+
+  # Calibration Commands
+  calibrate:
+    scpi: "*CAL? {type}"
+    type: query
+    params:
+      type:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+    returns:
+      type: int
+    description: "Initiate calibration: 0=short circuit, 1=open circuit, 2=standard resistor"
+
+  amplitude_calbyte:
+    getter: "$CBT? {index}"
+    setter: "$CBT {index},{value}"
+    type: property
+    params:
+      index:
+        type: int
+        min: 0
+        max: 94
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set/query amplitude calbyte (0-94)"
+
+  floating_point_calbyte:
+    getter: "$CFT? {index}"
+    setter: "$CFT {index},{value}"
+    type: property
+    params:
+      index:
+        type: int
+        min: 0
+        max: 120
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set/query floating point calbyte (0-120)"
+
+  calibration_major_parameter:
+    getter: "$CMJ?"
+    setter: "$CMJ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set/query major parameter for standard resistor calibration"
+
+  calibration_minor_parameter:
+    getter: "$CMN?"
+    setter: "$CMN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: ppm
+        min: -9999.9
+        max: 9999.9
+    returns:
+      type: float
+      unit: ppm
+    description: "Set/query minor parameter (Q) for standard resistor calibration in ppm"
+
+  calibration_range:
+    getter: "$CRN?"
+    setter: "$CRN {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set/query range to be calibrated"
+
+  frequency_correction:
+    getter: "$FRQ?"
+    setter: "$FRQ {correction}"
+    type: property
+    params:
+      correction:
+        type: float
+        unit: ppm
+        min: -10000
+        max: 10000
+    returns:
+      type: float
+      unit: ppm
+    description: "Set/query frequency correction factor in ppm"
+
+  # Diagnostic Commands
+  diagnostic_mode:
+    getter: "$DIA?"
+    setter: "$DIA {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": 0
+          "1": 1
+    returns:
+      type: int
+    description: "Enable (1) or disable (0) diagnostic mode"
+
+  diagnostic_counts:
+    scpi: "$CNT?"
+    type: query
+    returns:
+      type: int
+    description: "Read raw A/D converter counts in diagnostic mode"
+
+  measurement_counts:
+    scpi: "$CTS? {channel}"
+    type: query
+    params:
+      channel:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Query raw A/D counts: 0=V inphase, 1=V quadrature, 2=I inphase, 3=I quadrature"
+
+  diagnostic_gain:
+    getter: "$GAN?"
+    setter: "$GAN {gain}"
+    type: property
+    params:
+      gain:
+        type: int
+    returns:
+      type: int
+    description: "Set/query instrumentation amplifier gain in diagnostic mode"
+
+  diagnostic_input:
+    getter: "$INP?"
+    setter: "$INP {input}"
+    type: property
+    params:
+      input:
+        type: int
+    returns:
+      type: int
+    description: "Set/query input multiplexer in diagnostic mode"
+
+  integration_cycles:
+    getter: "$INT?"
+    setter: "$INT {cycles}"
+    type: property
+    params:
+      cycles:
+        type: int
+        min: 1
+        max: 10000
+    returns:
+      type: int
+    description: "Set/query measurement time in cycles of drive waveform"
+
+  measurement_phase:
+    getter: "$PHS?"
+    setter: "$PHS {phase}"
+    type: property
+    params:
+      phase:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": 0
+          "1": 1
+          "2": 2
+          "3": 3
+    returns:
+      type: int
+    description: "Set/query measurement phase in diagnostic mode: 0=0°, 1=180°, 2=90°, 3=270°"
+
+  result_rounding:
+    getter: "$RND?"
+    setter: "$RND {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: -1
+        max: 3
+    returns:
+      type: int
+    description: "Set/query result rounding: -1=auto, 0-3=5-i digits resolution"
+
+sequences:
+  resistance_measurement:
+    description: "Measure resistance with specified parameters"
+    params:
+      frequency:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        default: "2"
+      circuit:
+        type: enum
+        options: ["0", "1"]
+        default: "0"
+    steps:
+      - command: parameter_mode
+        args:
+          mode: "1"
+      - command: frequency
+        args:
+          freq: "{frequency}"
+      - command: equivalent_circuit
+        args:
+          mode: "{circuit}"
+      - command: start_measurement
+      - command: wait
+      - command: fetch_major
+        capture: resistance
+      - command: fetch_minor
+        capture: quality_factor
+    returns: resistance
+
+  capacitance_measurement:
+    description: "Measure capacitance with specified parameters"
+    params:
+      frequency:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        default: "2"
+      circuit:
+        type: enum
+        options: ["0", "1"]
+        default: "1"
+      bias:
+        type: enum
+        options: ["0", "1", "2"]
+        default: "0"
+    steps:
+      - command: parameter_mode
+        args:
+          mode: "3"
+      - command: frequency
+        args:
+          freq: "{frequency}"
+      - command: equivalent_circuit
+        args:
+          mode: "{circuit}"
+      - command: bias_mode
+        args:
+          mode: "{bias}"
+      - command: start_measurement
+      - command: wait
+      - command: fetch_major
+        capture: capacitance
+      - command: fetch_minor
+        capture: dissipation
+    returns: capacitance
+
+  inductance_measurement:
+    description: "Measure inductance with specified parameters"
+    params:
+      frequency:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        default: "2"
+      circuit:
+        type: enum
+        options: ["0", "1"]
+        default: "0"
+    steps:
+      - command: parameter_mode
+        args:
+          mode: "2"
+      - command: frequency
+        args:
+          freq: "{frequency}"
+      - command: equivalent_circuit
+        args:
+          mode: "{circuit}"
+      - command: start_measurement
+      - command: wait
+      - command: fetch_major
+        capture: inductance
+      - command: fetch_minor
+        capture: quality_factor
+    returns: inductance
+
+  auto_measurement:
+    description: "Automatic component measurement"
+    params:
+      frequency:
+        type: enum
+        options: ["0", "1", "2", "3", "4"]
+        default: "2"
+    steps:
+      - command: parameter_mode
+        args:
+          mode: "0"
+      - command: frequency
+        args:
+          freq: "{frequency}"
+      - command: start_measurement
+      - command: wait
+      - command: fetch_all
+        capture: result
+    returns: result
+
+  calibrate_open_short:
+    description: "Perform open and short circuit calibration"
+    steps:
+      - command: calibrate
+        args:
+          type: "0"
+      - command: calibrate
+        args:
+          type: "1"
+
+status:
+  stb:
+    bit0: Ready
+    bit3: LCR
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS/MSS
+    bit7: "No Command"
+  esr:
+    bit0: OPC
+    bit2: "Query Error"
+    bit4: "Execution Error"
+    bit5: "Command Error"
+    bit6: URQ
+    bit7: PON
+  lcr:
+    bit0: "Math Error"
+    bit1: "A/D Error"
+    bit2: Overload
+    bit3: Underrange
+    bit4: Overrange
+    bit5: "Out of Range"
+    bit7: "Memory Error"

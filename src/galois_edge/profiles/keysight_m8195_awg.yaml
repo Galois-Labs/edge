@@ -1,0 +1,450 @@
+# Keysight M8195A AWG Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_M8195_AWG
+# NOTE: Original Labber driver includes custom Python logic not captured here
+
+instrument:
+  manufacturer: "Keysight"
+  model: "M8195A AWG"
+  class: signal_generator
+  description: "Keysight M8195A AWG"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight.*M8195A"
+
+interfaces:
+  - type: gpib
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit when all pending operations complete"
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  # Instrument-Specific Commands (converted from Labber)
+  reference_clock:
+    getter: ":ROSC:SOUR?"
+    setter: ":ROSC:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "EXT", "AXI"]
+    returns:
+      type: string
+    description: "Reference clock"
+  external_ref_range:
+    getter: ":ROSC:RANG?"
+    setter: ":ROSC:RANG {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["RANG1", "RANG2"]
+    returns:
+      type: string
+    description: "External ref. range"
+  external_ref_frequency_1:
+    getter: ":ROSC:RNG1:FREQ?"
+    setter: ":ROSC:RNG1:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 10000000.0
+        max: 300000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "External ref. frequency 1"
+  external_ref_frequency_2:
+    getter: ":ROSC:RNG2:FREQ?"
+    setter: ":ROSC:RNG2:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 210000000.0
+        max: 17000000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "External ref. frequency 2"
+  sample_frequency:
+    getter: ":FREQ:RAST?"
+    setter: ":FREQ:RAST {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 53760000000.0
+        max: 65000000000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Sample frequency"
+  delay:
+    getter: ":ARM:MDEL?"
+    setter: ":ARM:MDEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 1e-08
+    returns:
+      type: float
+      unit: s
+    description: "Delay"
+  trig_event:
+    getter: ":ARM:TRIG:SOUR?"
+    setter: ":ARM:TRIG:SOUR {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "TRIG", "EVEN"]
+    returns:
+      type: string
+    description: "Trig event"
+  advance_event:
+    getter: ":TRIG:SOUR:ADV?"
+    setter: ":TRIG:SOUR:ADV {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["INT", "TRIG", "EVEN"]
+    returns:
+      type: string
+    description: "Advance event"
+  internal_trig_rate:
+    getter: ":ARM:TRIG:FREQ?"
+    setter: ":ARM:TRIG:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.1
+        max: 18136160.7
+    returns:
+      type: float
+      unit: s
+    description: "Internal trig rate"
+  trig_event_mode:
+    getter: ":ARM:TRIG:OPER?"
+    setter: ":ARM:TRIG:OPER {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["SYNC", "ASYN"]
+    returns:
+      type: string
+    description: "Trig/event mode"
+  trig_level:
+    getter: ":ARM:TRIG:LEV?"
+    setter: ":ARM:TRIG:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Trig level"
+  trig_slope:
+    getter: ":ARM:TRIG:SLOP?"
+    setter: ":ARM:TRIG:SLOP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["POS", "NEG", "EITH"]
+    returns:
+      type: string
+    description: "Trig slope"
+  event_level:
+    getter: ":ARM:EVEN:LEV?"
+    setter: ":ARM:EVEN:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Event level"
+  event_slope:
+    getter: ":ARM:EVEN:SLOP?"
+    setter: ":ARM:EVEN:SLOP {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["POS", "NEG", "EITH"]
+    returns:
+      type: string
+    description: "Event slope"
+  send_trig_event:
+    scpi: ":TRIG:BEG"
+    type: write
+    description: "Send trig event"
+  send_advance_event:
+    scpi: ":TRIG:ADV"
+    type: write
+    description: "Send advance event"
+  channel_mode:
+    getter: ":INST:DACM?"
+    setter: ":INST:DACM {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["SING", "MARK", "DUAL", "DCD", "DCM", "FOUR"]
+    returns:
+      type: string
+    description: "Channel mode"
+  sample_rate_divider_1:
+    getter: ":INST:MEM:EXT:RDIV?"
+    setter: ":INST:MEM:EXT:RDIV {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DIV1", "DIV2", "DIV4"]
+    returns:
+      type: string
+    description: "Sample rate divider 1"
+  sample_rate_divider_2:
+    getter: ":INST:MEM:EXT:RDIV?"
+    setter: ":INST:MEM:EXT:RDIV {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DIV2", "DIV4"]
+    returns:
+      type: string
+    description: "Sample rate divider 2"
+  sample_rate_divider_3:
+    getter: ":INST:MEM:EXT:RDIV?"
+    setter: ":INST:MEM:EXT:RDIV {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DIV2"]
+    returns:
+      type: string
+    description: "Sample rate divider 3"
+  sample_rate_divider_4:
+    getter: ":INST:MEM:EXT:RDIV?"
+    setter: ":INST:MEM:EXT:RDIV {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["DIV4"]
+    returns:
+      type: string
+    description: "Sample rate divider 4"
+  ch1_output:
+    getter: ":OUTP1?"
+    setter: ":OUTP1 {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch1 - Output"
+  ch1_range:
+    getter: ":VOLT1?"
+    setter: ":VOLT1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.075
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Range"
+  ch1_offset:
+    getter: ":VOLT1:OFFS?"
+    setter: ":VOLT1:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -0.5
+        max: 0.5
+    returns:
+      type: float
+      unit: V
+    description: "Ch1 - Offset"
+  ch2_output:
+    getter: ":OUTP2?"
+    setter: ":OUTP2 {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch2 - Output"
+  ch2_range:
+    getter: ":VOLT2?"
+    setter: ":VOLT2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.075
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Range"
+  ch2_offset:
+    getter: ":VOLT2:OFFS?"
+    setter: ":VOLT2:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -0.5
+        max: 0.5
+    returns:
+      type: float
+      unit: V
+    description: "Ch2 - Offset"
+  ch3_output:
+    getter: ":OUTP3?"
+    setter: ":OUTP3 {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch3 - Output"
+  ch3_range:
+    getter: ":VOLT3?"
+    setter: ":VOLT3 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.075
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch3 - Range"
+  ch3_offset:
+    getter: ":VOLT3:OFFS?"
+    setter: ":VOLT3:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -0.5
+        max: 0.5
+    returns:
+      type: float
+      unit: V
+    description: "Ch3 - Offset"
+  ch4_output:
+    getter: ":OUTP4?"
+    setter: ":OUTP4 {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Ch4 - Output"
+  ch4_range:
+    getter: ":VOLT4?"
+    setter: ":VOLT4 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.075
+        max: 1.0
+    returns:
+      type: float
+      unit: V
+    description: "Ch4 - Range"
+  ch4_offset:
+    getter: ":VOLT4:OFFS?"
+    setter: ":VOLT4:OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -0.5
+        max: 0.5
+    returns:
+      type: float
+      unit: V
+    description: "Ch4 - Offset"
+

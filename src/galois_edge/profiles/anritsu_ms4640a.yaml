@@ -1,0 +1,1404 @@
+instrument:
+  manufacturer: "Anritsu"
+  model: "MS4640A"
+  class: vna
+  description: "Vector Network Analyzer - 70 kHz to 70 GHz, 4-Port"
+
+identity:
+  query: "*IDN?"
+  pattern: "ANRITSU.*MS464[0-9]A"
+
+interfaces:
+  - type: gpib
+    default_address: 6
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location (0-4)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location (0-4)"
+
+  options_query:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event Status Enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Event Status Register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service Request Enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read Status Byte register"
+
+  # Calculate Subsystem Commands
+  application_measurement_type:
+    getter: ":CALCulate{1-16}:APPLication:MEASurement:TYPe?"
+    setter: ":CALCulate{1-16}:APPLication:MEASurement:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["TRANrefl", "NFIGure"]
+    returns:
+      type: string
+    description: "Set instrument mode (Transmission/Reflection or Noise Figure)"
+
+  adapter_removal_cal_x:
+    getter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:CALibration:X?"
+    setter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:CALibration:X {filename}"
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Set adapter removal calibration X filename (adapter on Port 2)"
+
+  adapter_removal_cal_y:
+    getter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:CALibration:Y?"
+    setter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:CALibration:Y {filename}"
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Set adapter removal calibration Y filename (adapter on Port 1)"
+
+  adapter_removal_length:
+    getter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:LENGth?"
+    setter: ":CALCulate{1-16}:CORRection:ADAPter:REMoval:LENGth {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set adapter length for adapter removal"
+
+  merge_calibration_1:
+    getter: ":CALCulate{1-16}:CORRection:MERGe:CALibration{1-2}?"
+    setter: ":CALCulate{1-16}:CORRection:MERGe:CALibration{1-2} {filename}"
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Set merge calibration filename"
+
+  display_marker_all:
+    getter: ":CALCulate{1-16}:DISPlay:MARKer:ALL[:STATe]?"
+    setter: ":CALCulate{1-16}:DISPlay:MARKer:ALL[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display of all markers"
+
+  extraction_cal_a_file:
+    getter: ":CALCulate{1-16}:EXTRaction:CALibration[:CALa]:FILe?"
+    setter: ":CALCulate{1-16}:EXTRaction:CALibration[:CALa]:FILe {filename}"
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Set Network Extraction Calibration A filename"
+
+  extraction_cal_a_port:
+    getter: ":CALCulate{1-16}:EXTRaction:CALibration[:CALa]:PORT?"
+    setter: ":CALCulate{1-16}:EXTRaction:CALibration[:CALa]:PORT {port}"
+    type: property
+    params:
+      port:
+        type: enum
+        options: ["PORT1", "PORT2", "PORT3", "PORT4"]
+    returns:
+      type: string
+    description: "Set Network Extraction Calibration A port"
+
+  extraction_method_a:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:A"
+    type: write
+    description: "Perform Network Extraction Method A"
+
+  extraction_method_b:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:B"
+    type: write
+    description: "Perform Network Extraction Method B"
+
+  extraction_method_c:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:C"
+    type: write
+    description: "Perform Network Extraction Method C"
+
+  extraction_method_d:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:D"
+    type: write
+    description: "Perform Network Extraction Method D"
+
+  extraction_method_e:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:E"
+    type: write
+    description: "Perform Network Extraction Method E"
+
+  extraction_method_f:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:F"
+    type: write
+    description: "Perform Network Extraction Method F (4-Port)"
+
+  extraction_method_g:
+    scpi: ":CALCulate{1-16}:EXTRaction[:METHod]:G"
+    type: write
+    description: "Perform Network Extraction Method G (4-Port)"
+
+  s1p_port_select:
+    getter: ":CALCulate{1-16}:FORMat:S1P:PORT?"
+    setter: ":CALCulate{1-16}:FORMat:S1P:PORT {port}"
+    type: property
+    params:
+      port:
+        type: enum
+        options: ["PORT1", "PORT2", "PORT3", "PORT4"]
+    returns:
+      type: string
+    description: "Select port for S1P file export"
+
+  impedance_transformation:
+    getter: ":CALCulate{1-16}:IMPedance:TRANsformation[:STATe]?"
+    setter: ":CALCulate{1-16}:IMPedance:TRANsformation[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable impedance transformation"
+
+  impedance_transformation_r0:
+    getter: ":CALCulate{1-16}:IMPedance:TRANsformation:PORT{1-4}:R0?"
+    setter: ":CALCulate{1-16}:IMPedance:TRANsformation:PORT{1-4}:R0 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set resistive component of impedance transformation"
+
+  impedance_transformation_x0:
+    getter: ":CALCulate{1-16}:IMPedance:TRANsformation:PORT{1-4}:X0?"
+    setter: ":CALCulate{1-16}:IMPedance:TRANsformation:PORT{1-4}:X0 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set reactive component of impedance transformation"
+
+  marker_couple:
+    getter: ":CALCulate{1-16}:MARKer:COUPle?"
+    setter: ":CALCulate{1-16}:MARKer:COUPle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker coupling"
+
+  marker_table:
+    getter: ":CALCulate{1-16}:MARKer:TABle[:STATe]?"
+    setter: ":CALCulate{1-16}:MARKer:TABle[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker table display"
+
+  parameter_count:
+    getter: ":CALCulate{1-16}:PARameter:COUNt?"
+    setter: ":CALCulate{1-16}:PARameter:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: "Set number of parameters (traces) on channel"
+
+  parameter_select:
+    scpi: ":CALCulate{1-16}:PARameter{1-16}:SELect"
+    type: write
+    description: "Select trace as active on channel"
+
+  parameter_define:
+    getter: ":CALCulate{1-16}:PARameter{1-16}:DEFine?"
+    setter: ":CALCulate{1-16}:PARameter{1-16}:DEFine {param}"
+    type: property
+    params:
+      param:
+        type: string
+    returns:
+      type: string
+    description: "Define S-parameter measurement for trace"
+
+  parameter_format:
+    getter: ":CALCulate{1-16}:PARameter{1-16}:FORMat?"
+    setter: ":CALCulate{1-16}:PARameter{1-16}:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"]
+    returns:
+      type: string
+    description: "Set trace display format"
+
+  marker_state:
+    getter: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}[:STATe]?"
+    setter: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker on trace"
+
+  marker_x:
+    getter: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}:X?"
+    setter: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}:X {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set marker X position (frequency/time/distance)"
+
+  marker_y:
+    scpi: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}:Y?"
+    type: query
+    returns:
+      type: float
+    description: "Query marker Y value (measurement result)"
+
+  marker_activate:
+    scpi: ":CALCulate{1-16}:PARameter{1-16}:MARKer{1-13}:ACTivate"
+    type: write
+    description: "Set marker as active marker on trace"
+
+  polar_angle_start:
+    getter: ":CALCulate{1-16}:POLar:ANGLe:STARt?"
+    setter: ":CALCulate{1-16}:POLar:ANGLe:STARt {angle}"
+    type: property
+    params:
+      angle:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set polar display start angle"
+
+  polar_angle_stop:
+    getter: ":CALCulate{1-16}:POLar:ANGLe:STOP?"
+    setter: ":CALCulate{1-16}:POLar:ANGLe:STOP {angle}"
+    type: property
+    params:
+      angle:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set polar display stop angle"
+
+  polar_chart_type:
+    getter: ":CALCulate{1-16}:POLar:CHARt?"
+    setter: ":CALCulate{1-16}:POLar:CHARt {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LINear", "LOG"]
+    returns:
+      type: string
+    description: "Set polar chart type (linear or log)"
+
+  reference_extension_line:
+    getter: ":CALCulate{1-16}:REFerence:EXTension:LINE?"
+    setter: ":CALCulate{1-16}:REFerence:EXTension:LINE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["COAXial", "MICrostrip", "WAVeguide"]
+    returns:
+      type: string
+    description: "Set reference plane extension transmission line type"
+
+  reference_extension_port_distance:
+    getter: ":CALCulate{1-16}:REFerence:EXTension:PORT{1-4}:DISTance?"
+    setter: ":CALCulate{1-16}:REFerence:EXTension:PORT{1-4}:DISTance {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: "Set reference plane extension distance for port"
+
+  conversion_function:
+    getter: ":CALCulate{1-16}[:SELected]:CONVersion:FUNCtion?"
+    setter: ":CALCulate{1-16}[:SELected]:CONVersion:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["S2Y", "S2Z", "S2T"]
+    returns:
+      type: string
+    description: "Set S-parameter conversion function"
+
+  conversion_state:
+    getter: ":CALCulate{1-16}[:SELected]:CONVersion[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:CONVersion[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable S-parameter conversion"
+
+  data_formatted:
+    getter: ":CALCulate{1-16}[:SELected]:DATA:FDATa?"
+    setter: ":CALCulate{1-16}[:SELected]:DATA:FDATa {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read/write formatted trace data"
+
+  data_formatted_memory:
+    getter: ":CALCulate{1-16}[:SELected]:DATA:FMEMory?"
+    setter: ":CALCulate{1-16}[:SELected]:DATA:FMEMory {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read/write formatted memory trace data"
+
+  data_s_parameter:
+    getter: ":CALCulate{1-16}[:SELected]:DATA:SDATa?"
+    setter: ":CALCulate{1-16}[:SELected]:DATA:SDATa {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read/write S-parameter trace data"
+
+  format:
+    getter: ":CALCulate{1-16}[:SELected]:FORMat?"
+    setter: ":CALCulate{1-16}[:SELected]:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MLOG", "PHAS", "GDEL", "SLIN", "SLOG", "SCOM", "SMIT", "SADM", "PLIN", "PLOG", "POL", "MLIN", "SWR", "REAL", "IMAG", "UPH", "PPH"]
+    returns:
+      type: string
+    description: "Set active trace display format"
+
+  gain_compression_indicator:
+    getter: ":CALCulate{1-16}[:SELected]:GCOMpression:INDicator[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:GCOMpression:INDicator[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable gain compression indicator"
+
+  group_delay_aperture:
+    getter: ":CALCulate{1-16}[:SELected]:GDELay:APERture?"
+    setter: ":CALCulate{1-16}[:SELected]:GDELay:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "Set group delay aperture percentage"
+
+  limit_state:
+    getter: ":CALCulate{1-16}[:SELected]:LIMit[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:LIMit[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit testing"
+
+  limit_display:
+    getter: ":CALCulate{1-16}[:SELected]:LIMit:DISPlay[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:LIMit:DISPlay[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit line display"
+
+  limit_fail:
+    scpi: ":CALCulate{1-16}[:SELected]:LIMit:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if trace data failed limit test"
+
+  limit_segment_clear:
+    scpi: ":CALCulate{1-16}[:SELected]:LIMit:SEGMent:CLEar"
+    type: write
+    description: "Clear all limit line segments"
+
+  limit_segment_add:
+    scpi: ":CALCulate{1-16}[:SELected]:LIMit:SEGMent:ADD {type},{x1},{x2}"
+    type: write
+    params:
+      type:
+        type: enum
+        options: ["UPPer", "LOWer", "NONE"]
+      x1:
+        type: float
+      x2:
+        type: float
+    description: "Add limit line segment"
+
+  marker_search:
+    getter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch?"
+    setter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MAXimum", "MINimum", "PEAK", "LPEak", "RPEak", "TARGet", "LTARget", "RTARget"]
+    returns:
+      type: string
+    description: "Set marker search type"
+
+  marker_search_bandwidth:
+    getter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch:BANDwidth[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch:BANDwidth[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker bandwidth search"
+
+  marker_search_range:
+    getter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch:RANGe[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:MARKer:SEArch:RANGe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable marker search range limiting"
+
+  marker_move_center:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:MOVe:CENTer"
+    type: write
+    description: "Move active marker to center frequency"
+
+  marker_move_start:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:MOVe:STARt"
+    type: write
+    description: "Move active marker to start frequency"
+
+  marker_move_stop:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:MOVe:STOP"
+    type: write
+    description: "Move active marker to stop frequency"
+
+  marker_set_center:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:SET:CENTer"
+    type: write
+    description: "Set center frequency to active marker position"
+
+  marker_set_start:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:SET:STARt"
+    type: write
+    description: "Set start frequency to active marker position"
+
+  marker_set_stop:
+    scpi: ":CALCulate{1-16}[:SELected]:MARKer:SET:STOP"
+    type: write
+    description: "Set stop frequency to active marker position"
+
+  math_function:
+    getter: ":CALCulate{1-16}[:SELected]:MATH:FUNCtion?"
+    setter: ":CALCulate{1-16}[:SELected]:MATH:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["ADD", "SUBTract", "MULTiply", "DIVide", "NORMal"]
+    returns:
+      type: string
+    description: "Set trace math function"
+
+  math_display:
+    getter: ":CALCulate{1-16}[:SELected]:MATH:DISPlay?"
+    setter: ":CALCulate{1-16}[:SELected]:MATH:DISPlay {display}"
+    type: property
+    params:
+      display:
+        type: enum
+        options: ["DATA", "MEM", "DIV"]
+    returns:
+      type: string
+    description: "Set trace math display mode"
+
+  math_memorize:
+    scpi: ":CALCulate{1-16}[:SELected]:MATH:MEMorize"
+    type: write
+    description: "Store current trace data to memory"
+
+  smith_impedance:
+    getter: ":CALCulate{1-16}[:SELected]:SMITh:IMPedance?"
+    setter: ":CALCulate{1-16}[:SELected]:SMITh:IMPedance {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+        min: 0.01
+        max: 1000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set Smith chart reference impedance"
+
+  smoothing_state:
+    getter: ":CALCulate{1-16}[:SELected]:SMOothing[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:SMOothing[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable trace smoothing"
+
+  smoothing_aperture:
+    getter: ":CALCulate{1-16}[:SELected]:SMOothing:APERture?"
+    setter: ":CALCulate{1-16}[:SELected]:SMOothing:APERture {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0.05
+        max: 25
+    returns:
+      type: float
+      unit: "%"
+    description: "Set smoothing aperture percentage"
+
+  transform_time_state:
+    getter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable time domain transform"
+
+  transform_time_start:
+    getter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:STARt?"
+    setter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:STARt {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set time domain start time"
+
+  transform_time_stop:
+    getter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:STOP?"
+    setter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set time domain stop time"
+
+  transform_time_gate:
+    getter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:GATE[:STATe]?"
+    setter: ":CALCulate{1-16}[:SELected]:TRANsform:TIME:GATE[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable time domain gating"
+
+  # Control Subsystem
+  aux_io_limit_state:
+    getter: ":CONTrol:AUXio:LIMit[:STATe]?"
+    setter: ":CONTrol:AUXio:LIMit[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auxiliary limit output"
+
+  analog_output_state:
+    getter: ":CONTrol{1-16}:AOUT[:STATe]?"
+    setter: ":CONTrol{1-16}:AOUT[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable rear panel analog output"
+
+  analog_output_mode:
+    getter: ":CONTrol{1-16}:AOUT:MODE?"
+    setter: ":CONTrol{1-16}:AOUT:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["HORizontal", "DRIVen", "TTL"]
+    returns:
+      type: string
+    description: "Set rear panel analog output mode"
+
+  analog_output_voltage_start:
+    getter: ":CONTrol{1-16}:AOUT:VOLTage:STARt?"
+    setter: ":CONTrol{1-16}:AOUT:VOLTage:STARt {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Set horizontal mode start voltage"
+
+  analog_output_voltage_stop:
+    getter: ":CONTrol{1-16}:AOUT:VOLTage:STOP?"
+    setter: ":CONTrol{1-16}:AOUT:VOLTage:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Set horizontal mode stop voltage"
+
+  # Display Subsystem
+  display_annotation_frequency:
+    getter: ":DISPlay:ANNotation:FREQuency[:STATe]?"
+    setter: ":DISPlay:ANNotation:FREQuency[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable frequency annotation on display"
+
+  display_color_invert:
+    getter: ":DISPlay:COLor:INVert[:STATe]?"
+    setter: ":DISPlay:COLor:INVert[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable inverted display colors"
+
+  display_channel_count:
+    getter: ":DISPlay:COUNt?"
+    setter: ":DISPlay:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: "Set number of displayed channels"
+
+  display_window_split:
+    getter: ":DISPlay:WINDow{1-16}:SPLit?"
+    setter: ":DISPlay:WINDow{1-16}:SPLit {layout}"
+    type: property
+    params:
+      layout:
+        type: enum
+        options: ["R1C1", "R1C2", "R2C1", "R1C3", "R3C1", "R2C2", "R3C3", "R4C4"]
+    returns:
+      type: string
+    description: "Set trace window split layout"
+
+  display_window_title:
+    getter: ":DISPlay:WINDow{1-16}:TITLe?"
+    setter: ":DISPlay:WINDow{1-16}:TITLe {title}"
+    type: property
+    params:
+      title:
+        type: string
+    returns:
+      type: string
+    description: "Set window title text"
+
+  # Format Subsystem
+  format_data:
+    getter: ":FORMat:DATA?"
+    setter: ":FORMat:DATA {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "REAL", "REAL32"]
+    returns:
+      type: string
+    description: "Set numeric data format for transfers"
+
+  format_border:
+    getter: ":FORMat:BORDer?"
+    setter: ":FORMat:BORDer {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORMal", "SWAPped"]
+    returns:
+      type: string
+    description: "Set byte order for binary data"
+
+  format_snp_frequency:
+    getter: ":FORMat:SNP:FREQuency?"
+    setter: ":FORMat:SNP:FREQuency {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["HZ", "KHZ", "MHZ", "GHZ"]
+    returns:
+      type: string
+    description: "Set frequency unit for SNP file export"
+
+  format_snp_parameter:
+    getter: ":FORMat:SNP:PARameter?"
+    setter: ":FORMat:SNP:PARameter {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MA", "DB", "RI"]
+    returns:
+      type: string
+    description: "Set parameter format for SNP file export"
+
+  # Memory Subsystem
+  memory_catalog:
+    scpi: ":MMEMory:CATalog? {path}"
+    type: query
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "Query directory listing"
+
+  memory_change_directory:
+    scpi: ":MMEMory:CDIRectory {path}"
+    type: write
+    params:
+      path:
+        type: string
+    description: "Change current directory"
+
+  memory_delete:
+    scpi: ":MMEMory:DELete {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete file from disk"
+
+  memory_load:
+    scpi: ":MMEMory:LOAD {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load file (state, calibration, etc.)"
+
+  memory_store:
+    scpi: ":MMEMory:STORe {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save current state/data to file"
+
+  memory_store_image:
+    scpi: ":MMEMory:STORe:IMAGe {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save screen image to file"
+
+  # Sense Subsystem
+  hold_function:
+    getter: ":SENSe:HOLD:FUNCtion?"
+    setter: ":SENSe:HOLD:FUNCtion {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "HOLD", "SINGle"]
+    returns:
+      type: string
+    description: "Set sweep hold function (all channels)"
+
+  average_state:
+    getter: ":SENSe{1-16}:AVERage[:STATe]?"
+    setter: ":SENSe{1-16}:AVERage[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable averaging"
+
+  average_count:
+    getter: ":SENSe{1-16}:AVERage:COUNt?"
+    setter: ":SENSe{1-16}:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 999
+    returns:
+      type: int
+    description: "Set averaging count"
+
+  average_clear:
+    scpi: ":SENSe{1-16}:AVERage:CLEar"
+    type: write
+    description: "Clear averaging buffer and restart"
+
+  bandwidth:
+    getter: ":SENSe{1-16}:BANDwidth?"
+    setter: ":SENSe{1-16}:BANDwidth {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 1
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set IF bandwidth"
+
+  correction_state:
+    getter: ":SENSe{1-16}:CORRection[:STATe]?"
+    setter: ":SENSe{1-16}:CORRection[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable error correction"
+
+  correction_collect_acquire:
+    scpi: ":SENSe{1-16}:CORRection:COLLect:ACQuire"
+    type: write
+    description: "Acquire calibration measurement"
+
+  correction_collect_save:
+    scpi: ":SENSe{1-16}:CORRection:COLLect:SAVe"
+    type: write
+    description: "Calculate and save calibration coefficients"
+
+  correction_load:
+    scpi: ":SENSe{1-16}:CORRection:LOAD {filename}"
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load calibration from file"
+
+  frequency_start:
+    getter: ":SENSe{1-16}:FREQuency:STARt?"
+    setter: ":SENSe{1-16}:FREQuency:STARt {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep start frequency"
+
+  frequency_stop:
+    getter: ":SENSe{1-16}:FREQuency:STOP?"
+    setter: ":SENSe{1-16}:FREQuency:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep stop frequency"
+
+  frequency_center:
+    getter: ":SENSe{1-16}:FREQuency:CENTer?"
+    setter: ":SENSe{1-16}:FREQuency:CENTer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep center frequency"
+
+  frequency_span:
+    getter: ":SENSe{1-16}:FREQuency:SPAN?"
+    setter: ":SENSe{1-16}:FREQuency:SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep frequency span"
+
+  sweep_points:
+    getter: ":SENSe{1-16}:SWEep:POINts?"
+    setter: ":SENSe{1-16}:SWEep:POINts {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 100000
+    returns:
+      type: int
+    description: "Set number of sweep points"
+
+  sweep_type:
+    getter: ":SENSe{1-16}:SWEep:TYPE?"
+    setter: ":SENSe{1-16}:SWEep:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LINear", "LOGarithmic", "SEGMent", "POWer"]
+    returns:
+      type: string
+    description: "Set sweep type"
+
+  # Source Subsystem
+  power_level:
+    getter: ":SOURce{1-16}:POWer[:LEVel]?"
+    setter: ":SOURce{1-16}:POWer[:LEVel] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -30
+        max: 30
+    returns:
+      type: float
+      unit: dBm
+    description: "Set source power level"
+
+  power_port:
+    getter: ":SOURce{1-16}:POWer:PORT{1-4}?"
+    setter: ":SOURce{1-16}:POWer:PORT{1-4} {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -30
+        max: 30
+    returns:
+      type: float
+      unit: dBm
+    description: "Set power level for specific port"
+
+  power_slope:
+    getter: ":SOURce{1-16}:POWer:PORT{1-4}:SLOP?"
+    setter: ":SOURce{1-16}:POWer:PORT{1-4}:SLOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1000
+        max: 1000
+    returns:
+      type: float
+    description: "Set power slope across frequency"
+
+  # Status Subsystem
+  status_operation_condition:
+    scpi: ":STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read Operation Condition register"
+
+  status_operation_event:
+    scpi: ":STATus:OPERation[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Operation Event register"
+
+  status_operation_enable:
+    getter: ":STATus:OPERation:ENABle?"
+    setter: ":STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set Operation Event Enable register"
+
+  status_questionable_condition:
+    scpi: ":STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Condition register"
+
+  status_questionable_event:
+    scpi: ":STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Questionable Event register"
+
+  status_questionable_enable:
+    getter: ":STATus:QUEStionable:ENABle?"
+    setter: ":STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set Questionable Event Enable register"
+
+  # System Subsystem
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read oldest error from error queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Preset instrument to default state"
+
+  system_gpib_address:
+    getter: ":SYSTem:COMMunicate:GPIB:ADDRess?"
+    setter: ":SYSTem:COMMunicate:GPIB:ADDRess {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 0
+        max: 30
+    returns:
+      type: int
+    description: "Set/query GPIB address"
+
+  system_tcpip_address:
+    scpi: ":SYSTem:COMMunicate:TCPIP:ADDRess?"
+    type: query
+    returns:
+      type: string
+    description: "Query TCP/IP address"
+
+  system_tcpip_port:
+    getter: ":SYSTem:COMMunicate:TCPIP:PORT?"
+    setter: ":SYSTem:COMMunicate:TCPIP:PORT {port}"
+    type: property
+    params:
+      port:
+        type: int
+        min: 1024
+        max: 65535
+    returns:
+      type: int
+    description: "Set/query TCP/IP port"
+
+  # Trigger Subsystem
+  trigger_source:
+    getter: ":TRIGger[:SEQuence]:SOURce?"
+    setter: ":TRIGger[:SEQuence]:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["AUTO", "MANual", "EXTTogpib", "EXTernal", "REMote"]
+    returns:
+      type: string
+    description: "Set trigger source"
+
+  trigger_immediate:
+    scpi: ":TRIGger[:SEQuence][:IMMediate][:REMote]"
+    type: write
+    description: "Trigger continuous sweep"
+
+  trigger_single:
+    scpi: ":TRIGger[:SEQuence][:REMote]:SINGle"
+    type: write
+    description: "Trigger single sweep with synchronization"
+
+status:
+  stb:
+    bit2: ERRQ
+    bit3: QUEST
+    bit4: MAV
+    bit5: ESB
+    bit6: MSS
+    bit7: OPER
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

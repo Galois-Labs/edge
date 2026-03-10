@@ -1,0 +1,1158 @@
+instrument:
+  manufacturer: "Lake Shore"
+  model: "336"
+  class: temperature_controller
+  description: Temperature Controller - 4 inputs, 4 outputs, 150W total heater power
+
+identity:
+  query: "*IDN?"
+  pattern: "(?i)lake\\s*shore.*336|lsci.*336"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: Reset instrument to power-up settings
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: Clear status registers and error queue
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: Identification query
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: Set Operation Complete bit after pending operations
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: Query operation complete status
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: Self-test query (0=pass, 1=errors)
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: Wait for pending operations to complete
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Event status enable register
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: Read and clear event status register
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Service request enable register
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: Status byte query
+
+  # Input Configuration Commands
+  input_type:
+    getter: "INTYPE? {input}"
+    setter: "INTYPE {input},{sensor_type},{autorange},{range},{compensation},{units}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      sensor_type:
+        type: int
+        min: 0
+        max: 5
+        map:
+          "0": "Disabled"
+          "1": "Diode"
+          "2": "Platinum RTD"
+          "3": "NTC RTD"
+          "4": "Thermocouple"
+          "5": "Capacitance"
+      autorange:
+        type: int
+        options: ["0", "1"]
+      range:
+        type: int
+        min: 0
+        max: 8
+      compensation:
+        type: int
+        options: ["0", "1"]
+      units:
+        type: int
+        options: ["1", "2", "3"]
+        map:
+          "1": "Kelvin"
+          "2": "Celsius"
+          "3": "Sensor"
+    returns:
+      type: string
+    description: Configure input sensor type and parameters
+
+  input_curve:
+    getter: "INCRV? {input}"
+    setter: "INCRV {input},{curve_number}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      curve_number:
+        type: int
+        min: 0
+        max: 59
+    returns:
+      type: int
+    description: Input curve number (0=none, 1-20=standard, 21-59=user)
+
+  input_name:
+    getter: "INNAME? {input}"
+    setter: "INNAME {input},\"{name}\""
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      name:
+        type: string
+    returns:
+      type: string
+    description: Sensor input name
+
+  temperature_limit:
+    getter: "TLIMIT? {input}"
+    setter: "TLIMIT {input},{limit}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      limit:
+        type: float
+        unit: K
+        min: 0
+        max: 9999.99
+    returns:
+      type: float
+      unit: K
+    description: Temperature limit for input
+
+  diode_excitation:
+    getter: "DIOCUR? {input}"
+    setter: "DIOCUR {input},{excitation}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      excitation:
+        type: int
+        options: ["0", "1"]
+        map:
+          "0": "10 µA"
+          "1": "1 mA"
+    returns:
+      type: int
+    description: Diode excitation current
+
+  input_filter:
+    getter: "FILTER? {input}"
+    setter: "FILTER {input},{state},{points},{window}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      state:
+        type: int
+        options: ["0", "1"]
+      points:
+        type: int
+        min: 2
+        max: 64
+      window:
+        type: int
+        min: 1
+        max: 10
+    returns:
+      type: string
+    description: Input filter parameters
+
+  # Reading Commands
+  kelvin_reading:
+    scpi: "KRDG? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D", "0"]
+    returns:
+      type: float
+      unit: K
+    description: Kelvin reading for input (0=all inputs)
+    streamable: true
+
+  celsius_reading:
+    scpi: "CRDG? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D", "0"]
+    returns:
+      type: float
+      unit: C
+    description: Celsius reading for input (0=all inputs)
+    streamable: true
+
+  sensor_reading:
+    scpi: "SRDG? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D", "0"]
+    returns:
+      type: float
+    description: Sensor units reading for input (0=all inputs)
+    streamable: true
+
+  reading_status:
+    scpi: "RDGST? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+    returns:
+      type: int
+    description: Input reading status flags
+
+  min_max_data:
+    scpi: "MDAT? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+    returns:
+      type: string
+    description: Minimum and maximum input data
+
+  reset_min_max:
+    scpi: "MNMXRST"
+    type: write
+    description: Reset minimum and maximum data for all inputs
+
+  # Output Mode and Control
+  output_mode:
+    getter: "OUTMODE? {output}"
+    setter: "OUTMODE {output},{mode},{input},{powerup}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: int
+        options: ["0", "1", "2", "3", "4", "5"]
+        map:
+          "0": "Off"
+          "1": "Closed Loop PID"
+          "2": "Zone"
+          "3": "Open Loop"
+          "4": "Monitor Out"
+          "5": "Warm Up"
+      input:
+        type: int
+        options: ["0", "1", "2", "3", "4"]
+      powerup:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: string
+    description: Output mode configuration
+
+  control_setpoint:
+    getter: "SETP? {output}"
+    setter: "SETP {output},{value}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: K
+    returns:
+      type: float
+      unit: K
+    description: Control setpoint
+
+  pid_values:
+    getter: "PID? {output}"
+    setter: "PID {output},{p},{i},{d}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+      p:
+        type: float
+        min: 0.1
+        max: 1000
+      i:
+        type: float
+        min: 0.1
+        max: 1000
+      d:
+        type: float
+        min: 0
+        max: 200
+    returns:
+      type: string
+    description: PID control parameters
+
+  manual_output:
+    getter: "MOUT? {output}"
+    setter: "MOUT {output},{value}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: Manual heater output
+
+  heater_range:
+    getter: "RANGE? {output}"
+    setter: "RANGE {output},{range}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      range:
+        type: int
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "Off"
+          "1": "Low"
+          "2": "Med"
+          "3": "High"
+    returns:
+      type: int
+    description: Heater range setting
+
+  heater_output:
+    scpi: "HTR? {output}"
+    type: query
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: float
+      unit: "%"
+    description: Heater output percentage
+    streamable: true
+
+  heater_setup:
+    getter: "HTRSET? {output}"
+    setter: "HTRSET {output},{resistance},{max_current},{user_current},{display}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+      resistance:
+        type: int
+        options: ["1", "2"]
+        map:
+          "1": "25 Ohm"
+          "2": "50 Ohm"
+      max_current:
+        type: int
+        options: ["0", "1", "2", "3", "4"]
+      user_current:
+        type: float
+        unit: A
+        min: 0
+        max: 2
+      display:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: string
+    description: Heater setup parameters
+
+  heater_status:
+    scpi: "HTRST? {output}"
+    type: query
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: int
+    description: Heater error status (0=no error, 1=open, 2=short)
+
+  # Setpoint Ramping
+  ramp_parameter:
+    getter: "RAMP? {output}"
+    setter: "RAMP {output},{state},{rate}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: int
+        options: ["0", "1"]
+      rate:
+        type: float
+        unit: K/min
+        min: 0.1
+        max: 100
+    returns:
+      type: string
+    description: Setpoint ramp parameters
+
+  ramp_status:
+    scpi: "RAMPST? {output}"
+    type: query
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: int
+    description: Ramp status (0=not ramping, 1=ramping)
+
+  # Analog Outputs
+  analog_output:
+    getter: "ANALOG? {output}"
+    setter: "ANALOG {output},{input},{units},{high},{low},{polarity}"
+    type: property
+    params:
+      output:
+        type: int
+        options: ["3", "4"]
+      input:
+        type: int
+        min: 0
+        max: 4
+      units:
+        type: int
+        options: ["1", "2", "3"]
+      high:
+        type: float
+      low:
+        type: float
+      polarity:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: string
+    description: Analog output monitor configuration
+
+  analog_output_data:
+    scpi: "AOUT? {output}"
+    type: query
+    params:
+      output:
+        type: int
+        options: ["3", "4"]
+    returns:
+      type: float
+      unit: "%"
+    description: Analog output percentage
+
+  warmup_supply:
+    getter: "WARMUP? {output}"
+    setter: "WARMUP {output},{control},{percentage}"
+    type: property
+    params:
+      output:
+        type: int
+        options: ["3", "4"]
+      control:
+        type: int
+        options: ["0", "1"]
+        map:
+          "0": "Auto Off"
+          "1": "Continuous"
+      percentage:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: string
+    description: Warm up supply parameters
+
+  # Alarm Commands
+  alarm_parameters:
+    getter: "ALARM? {input}"
+    setter: "ALARM {input},{state},{high},{low},{deadband},{latch},{audible},{visible}"
+    type: property
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      state:
+        type: int
+        options: ["0", "1"]
+      high:
+        type: float
+      low:
+        type: float
+      deadband:
+        type: float
+      latch:
+        type: int
+        options: ["0", "1"]
+      audible:
+        type: int
+        options: ["0", "1"]
+      visible:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: string
+    description: Input alarm parameters
+
+  alarm_status:
+    scpi: "ALARMST? {input}"
+    type: query
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+    returns:
+      type: string
+    description: Input alarm status
+
+  reset_alarm:
+    scpi: "ALMRST"
+    type: write
+    description: Reset alarm status
+
+  # Relay Commands
+  relay_control:
+    getter: "RELAY? {relay}"
+    setter: "RELAY {relay},{mode},{input},{alarm_type}"
+    type: property
+    params:
+      relay:
+        type: int
+        options: ["1", "2"]
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+        map:
+          "0": "Off"
+          "1": "On"
+          "2": "Alarm"
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      alarm_type:
+        type: int
+        options: ["0", "1", "2"]
+        map:
+          "0": "Low"
+          "1": "High"
+          "2": "Both"
+    returns:
+      type: string
+    description: Relay control parameters
+
+  relay_status:
+    scpi: "RELAYST? {relay}"
+    type: query
+    params:
+      relay:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: int
+    description: Relay status (0=off, 1=on)
+
+  # Zone Control
+  zone_parameters:
+    getter: "ZONE? {output},{zone}"
+    setter: "ZONE {output},{zone},{upper},{p},{i},{d},{mout},{range},{input},{rate}"
+    type: property
+    params:
+      output:
+        type: int
+        options: ["1", "2"]
+      zone:
+        type: int
+        min: 1
+        max: 10
+      upper:
+        type: float
+        unit: K
+      p:
+        type: float
+        min: 0.1
+        max: 1000
+      i:
+        type: float
+        min: 0.1
+        max: 1000
+      d:
+        type: float
+        min: 0
+        max: 200
+      mout:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+      range:
+        type: int
+        options: ["0", "1", "2", "3"]
+      input:
+        type: int
+        min: 0
+        max: 4
+      rate:
+        type: float
+        unit: K/min
+        min: 0.1
+        max: 100
+    returns:
+      type: string
+    description: Zone table parameters
+
+  # Autotune
+  autotune:
+    scpi: "ATUNE {output},{mode}"
+    type: write
+    params:
+      output:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+        map:
+          "0": "P Only"
+          "1": "P and I"
+          "2": "P, I, and D"
+    description: Initiate autotune process
+
+  tuning_status:
+    scpi: "TUNEST?"
+    type: query
+    returns:
+      type: string
+    description: Control tuning status
+
+  # Curve Management
+  curve_header:
+    getter: "CRVHDR? {curve}"
+    setter: "CRVHDR {curve},\"{name}\",\"{serial}\",{format},{limit},{coefficient}"
+    type: property
+    params:
+      curve:
+        type: int
+        min: 21
+        max: 59
+      name:
+        type: string
+      serial:
+        type: string
+      format:
+        type: int
+        options: ["1", "2", "3", "4"]
+      limit:
+        type: float
+        unit: K
+      coefficient:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: string
+    description: User curve header
+
+  curve_point:
+    getter: "CRVPT? {curve},{index}"
+    setter: "CRVPT {curve},{index},{sensor},{temp}"
+    type: property
+    params:
+      curve:
+        type: int
+        min: 1
+        max: 59
+      index:
+        type: int
+        min: 1
+        max: 200
+      sensor:
+        type: float
+      temp:
+        type: float
+        unit: K
+    returns:
+      type: string
+    description: Curve data point
+
+  curve_delete:
+    scpi: "CRVDEL {curve}"
+    type: write
+    params:
+      curve:
+        type: int
+        min: 21
+        max: 59
+    description: Delete user curve
+
+  softcal_generate:
+    scpi: "SCAL {std},{dest},\"{serial}\",{t1},{u1},{t2},{u2},{t3},{u3}"
+    type: write
+    params:
+      std:
+        type: int
+        options: ["1", "6", "7"]
+      dest:
+        type: int
+        min: 21
+        max: 59
+      serial:
+        type: string
+      t1:
+        type: float
+        unit: K
+      u1:
+        type: float
+      t2:
+        type: float
+        unit: K
+      u2:
+        type: float
+      t3:
+        type: float
+        unit: K
+      u3:
+        type: float
+    description: Generate SoftCal curve
+
+  # Display Commands
+  display_setup:
+    getter: "DISPLAY?"
+    setter: "DISPLAY {mode},{num_fields},{displayed_output}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2", "3", "4", "5", "6"]
+      num_fields:
+        type: int
+        options: ["0", "1", "2"]
+      displayed_output:
+        type: int
+        options: ["1", "2", "3", "4"]
+    returns:
+      type: string
+    description: Display mode configuration
+
+  display_field:
+    getter: "DISPFLD? {field}"
+    setter: "DISPFLD {field},{input},{units}"
+    type: property
+    params:
+      field:
+        type: int
+        min: 1
+        max: 8
+      input:
+        type: int
+        min: 0
+        max: 4
+      units:
+        type: int
+        options: ["1", "2", "3", "4", "5"]
+    returns:
+      type: string
+    description: Custom display field configuration
+
+  display_contrast:
+    getter: "BRIGT?"
+    setter: "BRIGT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 32
+    returns:
+      type: int
+    description: Display contrast
+
+  # Interface Commands
+  interface_select:
+    getter: "INTSEL?"
+    setter: "INTSEL {interface}"
+    type: property
+    params:
+      interface:
+        type: int
+        options: ["0", "1", "2"]
+        map:
+          "0": "USB"
+          "1": "Ethernet"
+          "2": "IEEE-488"
+    returns:
+      type: int
+    description: Remote interface selection
+
+  ieee_address:
+    getter: "IEEE?"
+    setter: "IEEE {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 1
+        max: 30
+    returns:
+      type: int
+    description: IEEE-488 address
+
+  interface_mode:
+    getter: "MODE?"
+    setter: "MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+        map:
+          "0": "Local"
+          "1": "Remote"
+          "2": "Remote with lockout"
+    returns:
+      type: int
+    description: Remote interface mode
+
+  # Network Commands
+  network_settings:
+    getter: "NET?"
+    setter: "NET {dhcp},{auto_ip},{ip},{subnet},{gateway},{pri_dns},{sec_dns},\"{hostname}\",\"{domain}\",\"{description}\""
+    type: property
+    params:
+      dhcp:
+        type: int
+        options: ["0", "1"]
+      auto_ip:
+        type: int
+        options: ["0", "1"]
+      ip:
+        type: string
+      subnet:
+        type: string
+      gateway:
+        type: string
+      pri_dns:
+        type: string
+      sec_dns:
+        type: string
+      hostname:
+        type: string
+      domain:
+        type: string
+      description:
+        type: string
+    returns:
+      type: string
+    description: Network configuration settings
+
+  network_id:
+    scpi: "NETID?"
+    type: query
+    returns:
+      type: string
+    description: Network configuration status
+
+  web_login:
+    getter: "WEBLOG?"
+    setter: "WEBLOG \"{username}\",\"{password}\""
+    type: property
+    params:
+      username:
+        type: string
+      password:
+        type: string
+    returns:
+      type: string
+    description: Website login credentials
+
+  # Status Commands
+  operational_status:
+    scpi: "OPST?"
+    type: query
+    returns:
+      type: int
+    description: Operational status register
+
+  operational_status_enable:
+    getter: "OPSTE?"
+    setter: "OPSTE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Operational status enable
+
+  operational_status_register:
+    scpi: "OPSTR?"
+    type: query
+    returns:
+      type: int
+    description: Operational status event register (cleared on read)
+
+  # System Commands
+  factory_defaults:
+    scpi: "DFLT 99"
+    type: write
+    description: Reset to factory defaults
+
+  keyboard_lock:
+    getter: "LOCK?"
+    setter: "LOCK {state},{code}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+      code:
+        type: int
+        min: 0
+        max: 999
+    returns:
+      type: string
+    description: Keyboard lock state and code
+
+  front_panel_leds:
+    getter: "LEDS?"
+    setter: "LEDS {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: Front panel LED state
+
+  thermocouple_temperature:
+    scpi: "TEMP?"
+    type: query
+    returns:
+      type: float
+      unit: K
+    description: Thermocouple junction temperature
+
+sequences:
+  measure_temperature:
+    description: Read temperature from specified input
+    params:
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      units:
+        type: enum
+        options: ["kelvin", "celsius", "sensor"]
+        default: "kelvin"
+    steps:
+      - command: kelvin_reading
+        args:
+          input: "{input}"
+        capture: kelvin_temp
+      - command: celsius_reading
+        args:
+          input: "{input}"
+        capture: celsius_temp
+      - command: sensor_reading
+        args:
+          input: "{input}"
+        capture: sensor_value
+    returns: kelvin_temp
+
+  setup_pid_control:
+    description: Configure PID control loop
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+      input:
+        type: enum
+        options: ["A", "B", "C", "D"]
+      setpoint:
+        type: float
+        unit: K
+      p:
+        type: float
+        default: 50
+      i:
+        type: float
+        default: 20
+      d:
+        type: float
+        default: 0
+      range:
+        type: int
+        options: ["1", "2", "3"]
+        default: 1
+    steps:
+      - command: output_mode
+        args:
+          output: "{output}"
+          mode: "1"
+          input: "{input}"
+          powerup: "0"
+      - command: pid_values
+        args:
+          output: "{output}"
+          p: "{p}"
+          i: "{i}"
+          d: "{d}"
+      - command: control_setpoint
+        args:
+          output: "{output}"
+          value: "{setpoint}"
+      - command: heater_range
+        args:
+          output: "{output}"
+          range: "{range}"
+
+  temperature_sweep:
+    description: Sweep temperature with ramping
+    params:
+      output:
+        type: int
+        min: 1
+        max: 2
+      start_temp:
+        type: float
+        unit: K
+      end_temp:
+        type: float
+        unit: K
+      rate:
+        type: float
+        unit: K/min
+        default: 1.0
+    steps:
+      - command: control_setpoint
+        args:
+          output: "{output}"
+          value: "{start_temp}"
+      - command: wait
+      - command: ramp_parameter
+        args:
+          output: "{output}"
+          state: "1"
+          rate: "{rate}"
+      - command: control_setpoint
+        args:
+          output: "{output}"
+          value: "{end_temp}"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

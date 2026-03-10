@@ -1,0 +1,1544 @@
+instrument:
+  manufacturer: "BK Precision"
+  model: "8600"
+  class: electronic_load
+  description: "Programmable DC Electronic Load - Models 8600, 8601, 8602, 8610, 8612, 8614, 8616"
+
+identity:
+  query: "*IDN?"
+  pattern: "B&K PRECISION.*86[0-1][0-6]"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: usb
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Return manufacturer, model, serial number, and firmware revision"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=error code)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all previous commands to execute"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 100
+    description: "Save current state to memory location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall state from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  # Trigger Commands
+  trigger_source:
+    getter: "TRIGger:SOURce?"
+    setter: "TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "EXTernal", "HOLD", "MANUal", "TIMer"]
+    returns:
+      type: string
+    description: "Select trigger source"
+
+  trigger_timer:
+    getter: "TRIGger:TIMer?"
+    setter: "TRIGger:TIMer {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 1
+        max: 999.99
+        default: 0.001
+    returns:
+      type: float
+      unit: s
+    description: "Timer trigger interval"
+
+  # System Commands
+  system_preset:
+    scpi: "SYSTem:PRESet"
+    type: write
+    description: "Return to optimized front panel operation states"
+
+  system_power_on_setup:
+    getter: "SYSTem:POSetup?"
+    setter: "SYSTem:POSetup {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["RST", "SAV0"]
+    returns:
+      type: string
+    description: "Select power-on defaults (RST or SAV0)"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read and remove oldest error from queue"
+
+  system_clear:
+    scpi: "SYSTem:CLEar"
+    type: write
+    description: "Clear error queue"
+
+  system_local:
+    scpi: "SYSTem:LOCal"
+    type: write
+    description: "Return to local mode (RS-232)"
+
+  system_remote:
+    scpi: "SYSTem:REMote"
+    type: write
+    description: "Enter remote mode (RS-232)"
+
+  system_rwlock:
+    scpi: "SYSTem:RWLock"
+    type: write
+    description: "Remote with lockout (RS-232)"
+
+  # Status Commands
+  status_operation_event:
+    scpi: "STATus:OPERation[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation event register (clears register)"
+
+  status_operation_condition:
+    scpi: "STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation condition register (real-time)"
+
+  status_operation_enable:
+    getter: "STATus:OPERation:ENABle?"
+    setter: "STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+        default: 0
+    returns:
+      type: int
+    description: "Operation status enable register"
+
+  status_questionable_event:
+    scpi: "STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable event register (clears register)"
+
+  status_questionable_condition:
+    scpi: "STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable condition register (real-time)"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+        default: 0
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_preset:
+    scpi: "STATus:PRESet"
+    type: write
+    description: "Reset status registers to default states"
+
+  # Trace/Buffer Commands
+  trace_clear:
+    scpi: "TRACe:CLEar"
+    type: write
+    description: "Clear buffer of readings"
+
+  trace_free:
+    scpi: "TRACe:FREE?"
+    type: query
+    returns:
+      type: string
+    description: "Query available and reserved memory (bytes available, bytes reserved)"
+
+  trace_points:
+    getter: "TRACe:POINts?"
+    setter: "TRACe:POINts {size}"
+    type: property
+    params:
+      size:
+        type: int
+        min: 2
+        max: 2000
+        default: 2000
+    returns:
+      type: int
+    description: "Buffer size"
+
+  trace_feed:
+    getter: "TRACe:FEED?"
+    setter: "TRACe:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["VOLTage", "CURRent", "TWO"]
+    returns:
+      type: string
+    description: "Source of readings for buffer"
+
+  trace_control:
+    getter: "TRACe:FEED:CONTrol?"
+    setter: "TRACe:FEED:CONTrol {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NEVer", "NEXT"]
+    returns:
+      type: string
+    description: "Buffer control mode"
+
+  trace_data:
+    scpi: "TRACe:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read all data from buffer"
+
+  trace_filter_state:
+    getter: "TRACe:FILTer[:STATe]?"
+    setter: "TRACe:FILTer[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable filtering of buffer data"
+
+  trace_delay:
+    getter: "TRACe:DELay?"
+    setter: "TRACe:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay time for buffer"
+
+  trace_timer:
+    getter: "TRACe:TIMer?"
+    setter: "TRACe:TIMer {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0.0002
+        max: 3600
+        default: 1
+    returns:
+      type: float
+      unit: s
+    description: "Timer interval"
+
+  # Input Control Commands
+  input_state:
+    getter: "INPut[:STATe]?"
+    setter: "INPut[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Turn load input on or off"
+
+  input_short:
+    getter: "INPut:SHORt[:STATe]?"
+    setter: "INPut:SHORt[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable input short"
+
+  input_timer_state:
+    getter: "INPut:TIMer[:STATe]?"
+    setter: "INPut:TIMer[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable load on timer"
+
+  input_timer_delay:
+    getter: "INPut:TIMer:DELay?"
+    setter: "INPut:TIMer:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 1
+        max: 60000
+        default: 10
+    returns:
+      type: float
+      unit: s
+    description: "Timer delay setting"
+
+  remote_sense:
+    getter: "REMote:SENSe[:STATe]?"
+    setter: "REMote:SENSe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable remote sense"
+
+  function:
+    getter: "FUNCtion?"
+    setter: "FUNCtion {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CURRent", "RESistance", "VOLTage", "POWer"]
+    returns:
+      type: string
+    description: "Select load regulation mode"
+
+  function_mode:
+    getter: "FUNCtion:MODE?"
+    setter: "FUNCtion:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIXed", "LIST"]
+    returns:
+      type: string
+    description: "Select fixed or list mode"
+
+  transient_state:
+    getter: "TRANsient[:STATe]?"
+    setter: "TRANsient[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable transient generator"
+
+  protection_clear:
+    scpi: "PROTection:CLEar"
+    type: write
+    description: "Clear protection latch"
+
+  # Current Commands
+  current_level:
+    getter: "CURRent[:LEVel][:IMMediate]?"
+    setter: "CURRent[:LEVel][:IMMediate] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Set load current level"
+
+  current_range:
+    getter: "CURRent:RANGe?"
+    setter: "CURRent:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Set current range"
+
+  current_slew:
+    getter: "CURRent:SLEW[:BOTH]?"
+    setter: "CURRent:SLEW[:BOTH] {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "Set current slew rate (both positive and negative)"
+
+  current_slew_positive:
+    getter: "CURRent:SLEW:POSitive?"
+    setter: "CURRent:SLEW:POSitive {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "Set positive current slew rate"
+
+  current_slew_negative:
+    getter: "CURRent:SLEW:NEGative?"
+    setter: "CURRent:SLEW:NEGative {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: A/us
+    returns:
+      type: float
+      unit: A/us
+    description: "Set negative current slew rate"
+
+  current_protection_state:
+    getter: "CURRent:PROTection:STATe?"
+    setter: "CURRent:PROTection:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable overcurrent protection"
+
+  current_protection_level:
+    getter: "CURRent:PROTection:LEVel?"
+    setter: "CURRent:PROTection:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Overcurrent protection level"
+
+  current_protection_delay:
+    getter: "CURRent:PROTection:DELay?"
+    setter: "CURRent:PROTection:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 60
+        default: 3
+    returns:
+      type: float
+      unit: s
+    description: "Overcurrent protection delay"
+
+  current_transient_mode:
+    getter: "CURRent:TRANsient:MODE?"
+    setter: "CURRent:TRANsient:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "PULSe", "TOGGle"]
+    returns:
+      type: string
+    description: "Current transient mode"
+
+  current_transient_alevel:
+    getter: "CURRent:TRANsient:ALEVel?"
+    setter: "CURRent:TRANsient:ALEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current transient level A"
+
+  current_transient_blevel:
+    getter: "CURRent:TRANsient:BLEVel?"
+    setter: "CURRent:TRANsient:BLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current transient level B"
+
+  current_transient_awidth:
+    getter: "CURRent:TRANsient:AWIDth?"
+    setter: "CURRent:TRANsient:AWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Current transient width A (20us to 3600s)"
+
+  current_transient_bwidth:
+    getter: "CURRent:TRANsient:BWIDth?"
+    setter: "CURRent:TRANsient:BWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Current transient width B (20us to 3600s)"
+
+  current_high:
+    getter: "CURRent:HIGH?"
+    setter: "CURRent:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "High voltage limit in constant current mode"
+
+  current_low:
+    getter: "CURRent:LOW?"
+    setter: "CURRent:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Low voltage limit in constant current mode"
+
+  # Voltage Commands
+  voltage_level:
+    getter: "VOLTage[:LEVel][:IMMediate]?"
+    setter: "VOLTage[:LEVel][:IMMediate] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set load voltage level"
+
+  voltage_range:
+    getter: "VOLTage:RANGe?"
+    setter: "VOLTage:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set voltage range"
+
+  voltage_range_auto:
+    getter: "VOLTage:RANGe:AUTO?"
+    setter: "VOLTage:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable voltage auto-ranging"
+
+  voltage_on:
+    getter: "VOLTage[:LEVel]:ON?"
+    setter: "VOLTage[:LEVel]:ON {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage of sink current on"
+
+  voltage_latch:
+    getter: "VOLTage:LATCh[:STATe]?"
+    setter: "VOLTage:LATCh[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Von latch mode"
+
+  voltage_high:
+    getter: "VOLTage:HIGH?"
+    setter: "VOLTage:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "High current limit in constant voltage mode"
+
+  voltage_low:
+    getter: "VOLTage:LOW?"
+    setter: "VOLTage:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Low current limit in constant voltage mode"
+
+  voltage_transient_mode:
+    getter: "VOLTage:TRANsient:MODE?"
+    setter: "VOLTage:TRANsient:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "PULSe", "TOGGle"]
+    returns:
+      type: string
+    description: "Voltage transient mode"
+
+  voltage_transient_alevel:
+    getter: "VOLTage:TRANsient:ALEVel?"
+    setter: "VOLTage:TRANsient:ALEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage transient level A"
+
+  voltage_transient_blevel:
+    getter: "VOLTage:TRANsient:BLEVel?"
+    setter: "VOLTage:TRANsient:BLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Voltage transient level B"
+
+  voltage_transient_awidth:
+    getter: "VOLTage:TRANsient:AWIDth?"
+    setter: "VOLTage:TRANsient:AWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Voltage transient width A (100us to 3600s)"
+
+  voltage_transient_bwidth:
+    getter: "VOLTage:TRANsient:BWIDth?"
+    setter: "VOLTage:TRANsient:BWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Voltage transient width B (100us to 3600s)"
+
+  # Resistance Commands
+  resistance_level:
+    getter: "RESistance[:LEVel][:IMMediate]?"
+    setter: "RESistance[:LEVel][:IMMediate] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set load resistance level"
+
+  resistance_range:
+    getter: "RESistance:RANGe?"
+    setter: "RESistance:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set resistance range"
+
+  resistance_high:
+    getter: "RESistance:HIGH?"
+    setter: "RESistance:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "High voltage limit in constant resistance mode"
+
+  resistance_low:
+    getter: "RESistance:LOW?"
+    setter: "RESistance:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Low voltage limit in constant resistance mode"
+
+  resistance_transient_mode:
+    getter: "RESistance:TRANsient:MODE?"
+    setter: "RESistance:TRANsient:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "PULSe", "TOGGle"]
+    returns:
+      type: string
+    description: "Resistance transient mode"
+
+  resistance_transient_alevel:
+    getter: "RESistance:TRANsient:ALEVel?"
+    setter: "RESistance:TRANsient:ALEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance transient level A"
+
+  resistance_transient_blevel:
+    getter: "RESistance:TRANsient:BLEVel?"
+    setter: "RESistance:TRANsient:BLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Resistance transient level B"
+
+  resistance_transient_awidth:
+    getter: "RESistance:TRANsient:AWIDth?"
+    setter: "RESistance:TRANsient:AWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Resistance transient width A (100us to 3600s)"
+
+  resistance_transient_bwidth:
+    getter: "RESistance:TRANsient:BWIDth?"
+    setter: "RESistance:TRANsient:BWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Resistance transient width B (100us to 3600s)"
+
+  resistance_vdrop:
+    getter: "RESistance:VDRop?"
+    setter: "RESistance:VDRop {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "LED cut-off voltage for LED test function"
+
+  resistance_led_state:
+    getter: "RESistance:LED[:STATe]?"
+    setter: "RESistance:LED[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable LED test in constant resistance mode"
+
+  # Power Commands
+  power_level:
+    getter: "POWer[:LEVel][:IMMediate]?"
+    setter: "POWer[:LEVel][:IMMediate] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Set load power level"
+
+  power_range:
+    getter: "POWer:RANGe?"
+    setter: "POWer:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Set power range"
+
+  power_high:
+    getter: "POWer:HIGH?"
+    setter: "POWer:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "High voltage limit in constant power mode"
+
+  power_low:
+    getter: "POWer:LOW?"
+    setter: "POWer:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Low voltage limit in constant power mode"
+
+  power_transient_mode:
+    getter: "POWer:TRANsient:MODE?"
+    setter: "POWer:TRANsient:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "PULSe", "TOGGle"]
+    returns:
+      type: string
+    description: "Power transient mode"
+
+  power_transient_alevel:
+    getter: "POWer:TRANsient:ALEVel?"
+    setter: "POWer:TRANsient:ALEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Power transient level A"
+
+  power_transient_blevel:
+    getter: "POWer:TRANsient:BLEVel?"
+    setter: "POWer:TRANsient:BLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Power transient level B"
+
+  power_transient_awidth:
+    getter: "POWer:TRANsient:AWIDth?"
+    setter: "POWer:TRANsient:AWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Power transient width A (100us to 3600s)"
+
+  power_transient_bwidth:
+    getter: "POWer:TRANsient:BWIDth?"
+    setter: "POWer:TRANsient:BWIDth {value} {unit}"
+    type: property
+    params:
+      value:
+        type: float
+      unit:
+        type: enum
+        options: ["uS", "mS", "S"]
+    returns:
+      type: float
+    description: "Power transient width B (100us to 3600s)"
+
+  power_protection_level:
+    getter: "POWer:PROTection[:LEVel]?"
+    setter: "POWer:PROTection[:LEVel] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Soft power protection level"
+
+  power_protection_delay:
+    getter: "POWer:PROTection:DELay?"
+    setter: "POWer:PROTection:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 60
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Power protection delay"
+
+  power_config_level:
+    getter: "POWer:CONFig[:LEVel]?"
+    setter: "POWer:CONFig[:LEVel] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: W
+    returns:
+      type: float
+      unit: W
+    description: "Hard power protection level"
+
+  # List Commands
+  list_range:
+    getter: "LIST:RANGe?"
+    setter: "LIST:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Current range for list mode"
+
+  list_slowrate_state:
+    getter: "LIST:SLOWrate[:STATe]?"
+    setter: "LIST:SLOWrate[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Slew rate mode (0=high-rate A/us, 1=low-rate A/ms)"
+
+  list_count:
+    getter: "LIST:COUNt?"
+    setter: "LIST:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 65536
+    returns:
+      type: int
+    description: "Number of list execution cycles"
+
+  list_step:
+    getter: "LIST:STEP?"
+    setter: "LIST:STEP {steps}"
+    type: property
+    params:
+      steps:
+        type: int
+        min: 2
+        max: 84
+    returns:
+      type: int
+    description: "Total number of steps in list"
+
+  list_level:
+    getter: "LIST:LEVel? {step}"
+    setter: "LIST:LEVel {step},{value}"
+    type: property
+    params:
+      step:
+        type: int
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set level for specified list step"
+
+  list_slew:
+    getter: "LIST:SLEW? {step}"
+    setter: "LIST:SLEW {step},{rate}"
+    type: property
+    params:
+      step:
+        type: int
+      rate:
+        type: float
+    returns:
+      type: float
+    description: "Set slew rate for specified list step"
+
+  list_width:
+    getter: "LIST:WIDth? {step}"
+    setter: "LIST:WIDth {step},{width}"
+    type: property
+    params:
+      step:
+        type: int
+      width:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set width for specified list step (20us to 3600s)"
+
+  list_save:
+    scpi: "LIST:SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 5
+    description: "Save list to memory location"
+
+  list_recall:
+    scpi: "LIST:RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 5
+    description: "Recall list from memory location"
+
+  # Measurement Commands
+  measure_voltage:
+    scpi: "MEASure:VOLTage[:DC]?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Perform one-shot voltage measurement"
+    streamable: true
+
+  measure_current:
+    scpi: "MEASure:CURRent[:DC]?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Perform one-shot current measurement"
+    streamable: true
+
+  fetch_voltage:
+    scpi: "FETCh:VOLTage?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Fetch last voltage measurement"
+    streamable: true
+
+  fetch_current:
+    scpi: "FETCh:CURRent?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Fetch last current measurement"
+    streamable: true
+
+  fetch_power:
+    scpi: "FETCh:POWer[:DC]?"
+    type: query
+    returns:
+      type: float
+      unit: W
+    description: "Fetch last power measurement"
+    streamable: true
+
+  # Sense Commands
+  sense_average_count:
+    getter: "SENSe:AVERage:COUNt?"
+    setter: "SENSe:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 16
+        default: 8
+    returns:
+      type: int
+    description: "Filter count for averaging"
+
+sequences:
+  constant_current_load:
+    description: "Set constant current load with protection"
+    params:
+      current:
+        type: float
+        unit: A
+      protection:
+        type: float
+        unit: A
+        default: 0
+    steps:
+      - command: reset
+      - command: function
+        args:
+          mode: "CURRent"
+      - command: current_level
+        args:
+          value: "{current}"
+      - command: current_protection_level
+        args:
+          value: "{protection}"
+      - command: current_protection_state
+        args:
+          state: "ON"
+      - command: input_state
+        args:
+          state: "ON"
+
+  constant_voltage_load:
+    description: "Set constant voltage load"
+    params:
+      voltage:
+        type: float
+        unit: V
+      current_high:
+        type: float
+        unit: A
+      current_low:
+        type: float
+        unit: A
+        default: 0
+    steps:
+      - command: reset
+      - command: function
+        args:
+          mode: "VOLTage"
+      - command: voltage_level
+        args:
+          value: "{voltage}"
+      - command: voltage_high
+        args:
+          value: "{current_high}"
+      - command: voltage_low
+        args:
+          value: "{current_low}"
+      - command: input_state
+        args:
+          state: "ON"
+
+  constant_resistance_load:
+    description: "Set constant resistance load"
+    params:
+      resistance:
+        type: float
+        unit: Ohm
+      voltage_high:
+        type: float
+        unit: V
+      voltage_low:
+        type: float
+        unit: V
+        default: 0
+    steps:
+      - command: reset
+      - command: function
+        args:
+          mode: "RESistance"
+      - command: resistance_level
+        args:
+          value: "{resistance}"
+      - command: resistance_high
+        args:
+          value: "{voltage_high}"
+      - command: resistance_low
+        args:
+          value: "{voltage_low}"
+      - command: input_state
+        args:
+          state: "ON"
+
+  constant_power_load:
+    description: "Set constant power load with protection"
+    params:
+      power:
+        type: float
+        unit: W
+      protection:
+        type: float
+        unit: W
+    steps:
+      - command: reset
+      - command: function
+        args:
+          mode: "POWer"
+      - command: power_level
+        args:
+          value: "{power}"
+      - command: power_protection_level
+        args:
+          value: "{protection}"
+      - command: input_state
+        args:
+          state: "ON"
+
+  pulse_transient:
+    description: "Configure pulsed transient operation"
+    params:
+      level_a:
+        type: float
+        unit: A
+      level_b:
+        type: float
+        unit: A
+      width_b:
+        type: float
+        unit: s
+    steps:
+      - command: function
+        args:
+          mode: "CURRent"
+      - command: current_transient_mode
+        args:
+          mode: "PULSe"
+      - command: current_transient_alevel
+        args:
+          value: "{level_a}"
+      - command: current_transient_blevel
+        args:
+          value: "{level_b}"
+      - scpi: "CURRent:TRANsient:BWIDth {width_b} S"
+      - command: transient_state
+        args:
+          state: "ON"
+      - command: input_state
+        args:
+          state: "ON"
+
+  continuous_transient:
+    description: "Configure continuous transient operation"
+    params:
+      level_a:
+        type: float
+        unit: A
+      level_b:
+        type: float
+        unit: A
+      width_a:
+        type: float
+        unit: s
+      width_b:
+        type: float
+        unit: s
+    steps:
+      - command: function
+        args:
+          mode: "CURRent"
+      - command: current_transient_mode
+        args:
+          mode: "CONTinuous"
+      - command: current_transient_alevel
+        args:
+          value: "{level_a}"
+      - command: current_transient_blevel
+        args:
+          value: "{level_b}"
+      - scpi: "CURRent:TRANsient:AWIDth {width_a} S"
+      - scpi: "CURRent:TRANsient:BWIDth {width_b} S"
+      - command: transient_state
+        args:
+          state: "ON"
+      - command: input_state
+        args:
+          state: "ON"
+      - command: trigger
+
+  measure_vi:
+    description: "Measure voltage and current"
+    steps:
+      - command: measure_voltage
+        capture: voltage
+      - command: measure_current
+        capture: current
+    returns: voltage
+
+  disable_load:
+    description: "Disable load and clear protections"
+    steps:
+      - command: input_state
+        args:
+          state: "OFF"
+      - command: transient_state
+        args:
+          state: "OFF"
+      - command: protection_clear
+
+status:
+  stb:
+    bit2: EAV
+    bit3: QUES
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OPER
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

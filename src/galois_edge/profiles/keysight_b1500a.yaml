@@ -1,0 +1,2090 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "B1500A"
+  class: parameter_analyzer
+  description: "Semiconductor Device Analyzer with integrated SMU, HRSMU, HCSMU, MCSMU, HVSMU, MFCMU, and SPGU modules"
+
+identity:
+  query: "*IDN?"
+  pattern: "(Keysight|Agilent) Technologies,B15[0-9][0-9]A"
+
+interfaces:
+  - type: gpib
+    default_address: 17
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to initial settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST? {slot}"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 11
+        default: 0
+    returns:
+      type: int
+    description: "Perform self-test and return result (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  calibrate:
+    scpi: "CA {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 11
+    description: "Perform self-calibration for specified slot"
+
+  calibrate_query:
+    scpi: "*CAL? {slot}"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 11
+        default: 0
+    returns:
+      type: int
+    description: "Perform self-calibration and return result"
+
+  calibration_mode:
+    getter: "CM?"
+    setter: "CM {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set SMU auto-calibration ON/OFF"
+
+  diagnostics:
+    scpi: "DIAG? {item}"
+    type: query
+    params:
+      item:
+        type: int
+        min: 1
+        max: 7
+    returns:
+      type: int
+    description: "Perform diagnostics and return result"
+
+  recover_channels:
+    scpi: "RCV {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 11
+        default: 0
+    description: "Enable modules that failed self-test or calibration"
+
+  abort:
+    scpi: "AB"
+    type: write
+    description: "Abort present operation and subsequent command execution"
+
+  channel_enable:
+    scpi: "CN {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    description: "Enable specified channels"
+
+  channel_disable:
+    scpi: "CL {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    description: "Disable specified channels"
+
+  channel_zero:
+    scpi: "IN {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    description: "Set specified channels to 0V"
+
+  channel_store_zero:
+    scpi: "DZ {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    description: "Store channel setup and set output to 0V"
+
+  channel_restore:
+    scpi: "RZ {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    description: "Return channel to settings stored by DZ"
+
+  channel_translate:
+    scpi: "ACH {actual},{program}"
+    type: write
+    params:
+      actual:
+        type: int
+        min: 1
+        max: 1002
+      program:
+        type: int
+        min: 1
+        max: 1002
+    description: "Translate channel number for compatibility"
+
+  filter_enable:
+    getter: "FL?"
+    setter: "FL {mode},{chnum}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    returns:
+      type: int
+    description: "Enable/disable internal filter"
+
+  series_resistor:
+    getter: "SSR?"
+    setter: "SSR {chnum},{mode}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set internal series resistor ON/OFF"
+
+  format:
+    getter: "FMT?"
+    setter: "FMT {format},{mode}"
+    type: property
+    params:
+      format:
+        type: int
+        min: 1
+        max: 25
+      mode:
+        type: int
+        options: ["0", "1"]
+        default: 0
+    returns:
+      type: int
+    description: "Set measurement data output format"
+
+  buffer_clear:
+    scpi: "BC"
+    type: write
+    description: "Clear B1500 output data buffer"
+
+  adc_type:
+    getter: "AAD?"
+    setter: "AAD {chnum},{type}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      type:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "Select type of A/D converter"
+
+  integration_time:
+    getter: "AIT?"
+    setter: "AIT {type},{mode},{N}"
+    type: property
+    params:
+      type:
+        type: int
+        options: ["0", "1", "2"]
+      mode:
+        type: int
+        options: ["0", "1", "2", "3"]
+      N:
+        type: float
+        min: 0
+        max: 100
+    returns:
+      type: string
+    description: "Set operation mode and parameter of ADC"
+
+  averaging:
+    getter: "AV?"
+    setter: "AV {number},{mode}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 1
+        max: 1023
+        default: 1
+      mode:
+        type: int
+        options: ["0", "1"]
+        default: 0
+    returns:
+      type: string
+    description: "Set number of samples for averaging"
+
+  auto_zero:
+    getter: "AZ?"
+    setter: "AZ {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable/disable ADC zero function"
+
+  source_voltage:
+    scpi: "DV {chnum},{range},{output},{comp},{polarity},{crange}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      output:
+        type: float
+        unit: V
+      comp:
+        type: float
+        unit: A
+      polarity:
+        type: int
+        options: ["0", "1"]
+      crange:
+        type: int
+    description: "Apply DC voltage from SMU"
+
+  source_voltage_timed:
+    scpi: "TDV {chnum},{range},{output},{comp},{polarity},{crange}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      output:
+        type: float
+        unit: V
+      comp:
+        type: float
+        unit: A
+      polarity:
+        type: int
+        options: ["0", "1"]
+      crange:
+        type: int
+    returns:
+      type: float
+      unit: s
+    description: "Apply voltage and return time from timer reset"
+
+  source_current:
+    scpi: "DI {chnum},{range},{output},{comp},{polarity},{vrange}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      output:
+        type: float
+        unit: A
+      comp:
+        type: float
+        unit: V
+      polarity:
+        type: int
+        options: ["0", "1"]
+      vrange:
+        type: int
+    description: "Apply DC current from SMU"
+
+  source_current_timed:
+    scpi: "TDI {chnum},{range},{output},{comp},{polarity},{vrange}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      output:
+        type: float
+        unit: A
+      comp:
+        type: float
+        unit: V
+      polarity:
+        type: int
+        options: ["0", "1"]
+      vrange:
+        type: int
+    returns:
+      type: float
+      unit: s
+    description: "Apply current and return time from timer reset"
+
+  mfcmu_frequency:
+    getter: "FC?"
+    setter: "FC {chnum},{freq}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      freq:
+        type: float
+        unit: Hz
+        min: 1000
+        max: 5000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set output signal frequency of MFCMU"
+
+  mfcmu_ac_voltage:
+    getter: "ACV?"
+    setter: "ACV {chnum},{level}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      level:
+        type: float
+        unit: V
+        min: 0
+        max: 0.25
+    returns:
+      type: float
+      unit: V
+    description: "Set AC signal level and start output"
+
+  mfcmu_dc_voltage:
+    getter: "DCV?"
+    setter: "DCV {chnum},{voltage}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Apply DC voltage from MFCMU"
+
+  mfcmu_dc_voltage_timed:
+    scpi: "TDCV {chnum},{voltage}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      voltage:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: s
+    description: "Apply DC voltage and return time from timer reset"
+
+  voltage_range:
+    getter: "RV?"
+    setter: "RV {chnum},{range}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: int
+    description: "Set voltage measurement range"
+
+  current_range:
+    getter: "RI?"
+    setter: "RI {chnum},{range}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: int
+    description: "Set current measurement range"
+
+  current_range_mode:
+    getter: "RM?"
+    setter: "RM {chnum},{mode},{rate}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      rate:
+        type: int
+        min: 11
+        max: 100
+        default: 50
+    returns:
+      type: string
+    description: "Set auto range operation for current measurement"
+
+  impedance_range:
+    getter: "RC?"
+    setter: "RC {chnum},{mode},{range}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "2"]
+      range:
+        type: int
+    returns:
+      type: string
+    description: "Set MFCMU measurement range or ranging type"
+
+  measurement_mode:
+    getter: "MM?"
+    setter: "MM {mode},{chnum}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 1
+        max: 28
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+    returns:
+      type: string
+    description: "Set measurement mode and measurement channels"
+
+  channel_measurement_mode:
+    getter: "CMM?"
+    setter: "CMM {chnum},{mode}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "1", "2", "3"]
+    returns:
+      type: int
+    description: "Set SMU measurement operation mode"
+
+  impedance_mode:
+    getter: "IMP?"
+    setter: "IMP {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+    returns:
+      type: int
+    description: "Set impedance measurement parameters"
+
+  monitor_enable:
+    getter: "LMN?"
+    setter: "LMN {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable/disable OSC level/DC bias monitor output"
+
+  wait_time:
+    getter: "WAT?"
+    setter: "WAT {type},{time}"
+    type: property
+    params:
+      type:
+        type: int
+        options: ["0", "1"]
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+    returns:
+      type: string
+    description: "Set source/measurement wait time"
+
+  sweep_timing:
+    getter: "WT?"
+    setter: "WT {hold},{delay},{sdelay},{tdelay},{mdelay}"
+    type: property
+    params:
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+      sdelay:
+        type: float
+        unit: s
+        min: 0
+        max: 1
+      tdelay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+      mdelay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+    returns:
+      type: string
+    description: "Set sweep timing parameters"
+
+  pulse_timing:
+    getter: "PT?"
+    setter: "PT {hold},{width},{period},{tdelay}"
+    type: property
+    params:
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      width:
+        type: float
+        unit: s
+        min: 0.00005
+        max: 2
+      period:
+        type: float
+        unit: s
+        min: 0.001
+        max: 10
+      tdelay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+    returns:
+      type: string
+    description: "Set pulse timing parameters"
+
+  voltage_sweep:
+    scpi: "WV {chnum},{mode},{range},{start},{stop},{step},{comp},{pcomp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      range:
+        type: int
+      start:
+        type: float
+        unit: V
+      stop:
+        type: float
+        unit: V
+      step:
+        type: int
+        min: 1
+        max: 1001
+      comp:
+        type: float
+        unit: A
+      pcomp:
+        type: float
+    description: "Set staircase voltage sweep source"
+
+  current_sweep:
+    scpi: "WI {chnum},{mode},{range},{start},{stop},{step},{comp},{pcomp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      range:
+        type: int
+      start:
+        type: float
+        unit: A
+      stop:
+        type: float
+        unit: A
+      step:
+        type: int
+        min: 1
+        max: 1001
+      comp:
+        type: float
+        unit: V
+      pcomp:
+        type: float
+    description: "Set staircase current sweep source"
+
+  voltage_sweep_sync:
+    scpi: "WSV {chnum},{range},{start},{stop},{comp},{pcomp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      start:
+        type: float
+        unit: V
+      stop:
+        type: float
+        unit: V
+      comp:
+        type: float
+        unit: A
+      pcomp:
+        type: float
+    description: "Set synchronous voltage sweep source"
+
+  current_sweep_sync:
+    scpi: "WSI {chnum},{range},{start},{stop},{comp},{pcomp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      start:
+        type: float
+        unit: A
+      stop:
+        type: float
+        unit: A
+      comp:
+        type: float
+        unit: V
+      pcomp:
+        type: float
+    description: "Set synchronous current sweep source"
+
+  pulse_voltage:
+    scpi: "PV {chnum},{range},{base},{pulse},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      base:
+        type: float
+        unit: V
+      pulse:
+        type: float
+        unit: V
+      comp:
+        type: float
+        unit: A
+    description: "Set pulsed voltage source"
+
+  pulse_current:
+    scpi: "PI {chnum},{range},{base},{pulse},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      base:
+        type: float
+        unit: A
+      pulse:
+        type: float
+        unit: A
+      comp:
+        type: float
+        unit: V
+    description: "Set pulsed current source"
+
+  pulse_voltage_sweep:
+    scpi: "PWV {chnum},{mode},{range},{base},{start},{stop},{step},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      range:
+        type: int
+      base:
+        type: float
+        unit: V
+      start:
+        type: float
+        unit: V
+      stop:
+        type: float
+        unit: V
+      step:
+        type: int
+        min: 1
+        max: 1001
+      comp:
+        type: float
+        unit: A
+    description: "Set pulsed voltage sweep source"
+
+  pulse_current_sweep:
+    scpi: "PWI {chnum},{mode},{range},{base},{start},{stop},{step},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      range:
+        type: int
+      base:
+        type: float
+        unit: A
+      start:
+        type: float
+        unit: A
+      stop:
+        type: float
+        unit: A
+      step:
+        type: int
+        min: 1
+        max: 1001
+      comp:
+        type: float
+        unit: V
+    description: "Set pulsed current sweep source"
+
+  sweep_abort:
+    getter: "WM?"
+    setter: "WM {abort},{post}"
+    type: property
+    params:
+      abort:
+        type: int
+        options: ["1", "2"]
+      post:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: string
+    description: "Set automatic abort function for sweep"
+
+  measure_current_fast:
+    scpi: "TI {chnum},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: float
+      unit: A
+    description: "Measure current (high speed)"
+    streamable: true
+
+  measure_voltage_fast:
+    scpi: "TV {chnum},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: float
+      unit: V
+    description: "Measure voltage (high speed)"
+    streamable: true
+
+  measure_current_voltage_fast:
+    scpi: "TIV {chnum},{irange},{vrange}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      irange:
+        type: int
+      vrange:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure current and voltage (high speed)"
+    streamable: true
+
+  measure_impedance_fast:
+    scpi: "TC {chnum},{mode},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+      range:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure impedance (high speed)"
+    streamable: true
+
+  measure_current_timed_fast:
+    scpi: "TTI {chnum},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure current with time stamp (high speed)"
+
+  measure_voltage_timed_fast:
+    scpi: "TTV {chnum},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure voltage with time stamp (high speed)"
+
+  measure_current_voltage_timed_fast:
+    scpi: "TTIV {chnum},{irange},{vrange}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      irange:
+        type: int
+      vrange:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure current and voltage with time stamp (high speed)"
+
+  measure_impedance_timed_fast:
+    scpi: "TTC {chnum},{mode},{range}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+      range:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Measure impedance with time stamp (high speed)"
+
+  execute:
+    scpi: "XE"
+    type: write
+    description: "Execute measurement and return data"
+
+  number_of_data:
+    scpi: "NUB?"
+    type: query
+    returns:
+      type: int
+    description: "Return number of measurement data items in buffer"
+
+  sweep_points:
+    scpi: "WNU?"
+    type: query
+    returns:
+      type: int
+    description: "Return number of sweep steps"
+
+  output_zero_check:
+    scpi: "WZ?"
+    type: query
+    returns:
+      type: int
+    description: "Return 0 if all output <=2V, 1 if any >2V"
+
+  time_stamp_enable:
+    getter: "TSC?"
+    setter: "TSC {enable}"
+    type: property
+    params:
+      enable:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable time stamp function"
+
+  time_stamp_reset:
+    scpi: "TSR {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 10
+    description: "Clear timer count"
+
+  time_stamp_query:
+    scpi: "TSQ"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Return time data from timer reset"
+
+  trigger_mode:
+    getter: "TM?"
+    setter: "TM {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2", "3", "4"]
+    returns:
+      type: int
+    description: "Set event to start measurement"
+
+  trigger_port:
+    scpi: "TGP {port},{terminal},{polarity},{type}"
+    type: write
+    params:
+      port:
+        type: int
+        min: -2
+        max: 16
+      terminal:
+        type: int
+        options: ["1", "2"]
+      polarity:
+        type: int
+        options: ["1", "2"]
+      type:
+        type: int
+        options: ["0", "1", "2", "3"]
+    description: "Set trigger port for specified terminal"
+
+  trigger_clear:
+    scpi: "TGPC {port}"
+    type: write
+    params:
+      port:
+        type: int
+        min: -2
+        max: 16
+    description: "Clear trigger setting of specified ports"
+
+  trigger_output:
+    scpi: "OS"
+    type: write
+    description: "Send trigger signal from Ext Trig Out"
+
+  trigger_output_port:
+    scpi: "OSX {port},{level}"
+    type: write
+    params:
+      port:
+        type: int
+        min: -2
+        max: 16
+      level:
+        type: int
+        options: ["1", "2"]
+    description: "Send trigger signal from specified port"
+
+  trigger_wait:
+    scpi: "WS {mode}"
+    type: write
+    params:
+      mode:
+        type: int
+        options: ["1", "2"]
+        default: 1
+    description: "Wait for external trigger on Ext Trig In"
+
+  trigger_wait_port:
+    scpi: "WSX {port},{mode}"
+    type: write
+    params:
+      port:
+        type: int
+        min: -1
+        max: 16
+      mode:
+        type: int
+        options: ["1", "2"]
+        default: 1
+    description: "Wait for external trigger on specified port"
+
+  pause:
+    scpi: "PA {wait}"
+    type: write
+    params:
+      wait:
+        type: float
+        unit: s
+        min: -99.9999
+        max: 99.9999
+    description: "Pause execution until wait time or event"
+
+  pause_port:
+    scpi: "PAX {port},{wait}"
+    type: write
+    params:
+      port:
+        type: int
+        min: -1
+        max: 16
+      wait:
+        type: float
+        unit: s
+        min: -99.9999
+        max: 99.9999
+    description: "Pause execution until wait time or trigger on port"
+
+  phase_compensation:
+    getter: "ADJ?"
+    setter: "ADJ {chnum},{mode}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "Set MFCMU phase compensation mode"
+
+  correction_clear:
+    scpi: "CLCORR {chnum},{mode}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+    description: "Clear correction data"
+
+  correction_frequency:
+    getter: "CORRL?"
+    setter: "CORRL {chnum},{freq}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      freq:
+        type: float
+        unit: Hz
+        min: 1000
+        max: 5000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Add frequency for correction data measurement"
+
+  correction_reference:
+    getter: "DCORR?"
+    setter: "DCORR {chnum},{corr},{mode},{primary},{secondary}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      corr:
+        type: int
+        options: ["1", "2", "3"]
+      mode:
+        type: int
+        options: ["100", "400"]
+      primary:
+        type: float
+      secondary:
+        type: float
+    returns:
+      type: string
+    description: "Set calibration/reference value of standard"
+
+  correction_measure:
+    scpi: "CORR? {chnum},{corr}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      corr:
+        type: int
+        options: ["1", "2", "3"]
+    returns:
+      type: int
+    description: "Perform correction data measurement"
+
+  correction_enable:
+    getter: "CORRST?"
+    setter: "CORRST {chnum},{corr},{state}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      corr:
+        type: int
+        options: ["1", "2", "3"]
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable/disable correction function"
+
+  qscv_mode:
+    getter: "QSC?"
+    setter: "QSC {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set QSCV measurement operation mode"
+
+  qscv_smart:
+    getter: "QSO?"
+    setter: "QSO {mode},{chnum},{vcomp}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      vcomp:
+        type: float
+        unit: V
+    returns:
+      type: string
+    description: "Enable/disable QSCV smart operation"
+
+  qscv_leakage:
+    getter: "QSL?"
+    setter: "QSL {data},{compen}"
+    type: property
+    params:
+      data:
+        type: int
+        options: ["0", "1"]
+      compen:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: string
+    description: "Set leak current data output and compensation"
+
+  qscv_offset:
+    getter: "QSZ?"
+    setter: "QSZ {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "Enable offset cancel or perform offset measurement"
+
+  qscv_timing:
+    getter: "QST?"
+    setter: "QST {cinteg},{linteg},{hold},{delay1},{delay2}"
+    type: property
+    params:
+      cinteg:
+        type: float
+        unit: s
+        min: 0.002
+        max: 10
+      linteg:
+        type: float
+        unit: s
+        min: 0.002
+        max: 10
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      delay1:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+      delay2:
+        type: float
+        unit: s
+        min: 0
+        max: 1
+    returns:
+      type: string
+    description: "Set QSCV timing parameters"
+
+  qscv_range:
+    getter: "QSR?"
+    setter: "QSR {range}"
+    type: property
+    params:
+      range:
+        type: int
+    returns:
+      type: int
+    description: "Set QSCV measurement range"
+
+  qscv_source:
+    scpi: "QSV {chnum},{mode},{vrange},{start},{stop},{cvoltage},{step},{icomp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3", "4"]
+      vrange:
+        type: int
+      start:
+        type: float
+        unit: V
+      stop:
+        type: float
+        unit: V
+      cvoltage:
+        type: float
+        unit: V
+      step:
+        type: int
+        min: 1
+        max: 1001
+      icomp:
+        type: float
+        unit: A
+    description: "Set QSCV voltage sweep source"
+
+  qscv_abort:
+    getter: "QSM?"
+    setter: "QSM {abort},{post}"
+    type: property
+    params:
+      abort:
+        type: int
+        options: ["1", "2"]
+      post:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: string
+    description: "Set QSCV automatic abort function"
+
+  sampling_clear:
+    scpi: "MCC"
+    type: write
+    description: "Clear sampling source settings"
+
+  sampling_current:
+    scpi: "MI {chnum},{range},{base},{bias},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      base:
+        type: float
+        unit: A
+      bias:
+        type: float
+        unit: A
+      comp:
+        type: float
+        unit: V
+    description: "Set current source for sampling"
+
+  sampling_voltage:
+    scpi: "MV {chnum},{range},{base},{bias},{comp}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      range:
+        type: int
+      base:
+        type: float
+        unit: V
+      bias:
+        type: float
+        unit: V
+      comp:
+        type: float
+        unit: A
+    description: "Set voltage source for sampling"
+
+  sampling_mode:
+    getter: "ML?"
+    setter: "ML {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2", "3", "4", "5", "6", "7"]
+    returns:
+      type: int
+    description: "Set sampling mode (linear/logarithmic)"
+
+  sampling_timing:
+    getter: "MT?"
+    setter: "MT {h_bias},{interval},{number},{h_base}"
+    type: property
+    params:
+      h_bias:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      interval:
+        type: float
+        unit: s
+        min: 0.00002
+        max: 65.535
+      number:
+        type: int
+        min: 1
+        max: 100001
+      h_base:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+    returns:
+      type: string
+    description: "Set sampling timing parameters"
+
+  sampling_abort:
+    getter: "MSC?"
+    setter: "MSC {abort},{post}"
+    type: property
+    params:
+      abort:
+        type: int
+        options: ["1", "2"]
+      post:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: string
+    description: "Set automatic abort function for sampling"
+
+  binary_search_mode:
+    getter: "BSM?"
+    setter: "BSM {mode},{post}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2"]
+      post:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: string
+    description: "Set binary search source output control and abort"
+
+  binary_search_timing:
+    getter: "BST?"
+    setter: "BST {hold},{delay}"
+    type: property
+    params:
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+    returns:
+      type: string
+    description: "Set binary search timing parameters"
+
+  binary_search_output:
+    getter: "BSVM?"
+    setter: "BSVM {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: int
+    description: "Select binary search data output mode"
+
+  linear_search_mode:
+    getter: "LSM?"
+    setter: "LSM {abort},{post}"
+    type: property
+    params:
+      abort:
+        type: int
+        options: ["1", "2"]
+      post:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: string
+    description: "Set linear search abort function"
+
+  linear_search_timing:
+    getter: "LSTM?"
+    setter: "LSTM {hold},{delay}"
+    type: property
+    params:
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+    returns:
+      type: string
+    description: "Set linear search timing parameters"
+
+  linear_search_output:
+    getter: "LSVM?"
+    setter: "LSVM {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: int
+    description: "Select linear search data output mode"
+
+  multichannel_clear:
+    scpi: "WNCC"
+    type: write
+    description: "Clear multi channel measurement setup"
+
+  multichannel_source:
+    scpi: "WNX {n},{chnum},{mode},{range},{start},{stop},{comp},{pcomp}"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 10
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2", "3"]
+      range:
+        type: int
+      start:
+        type: float
+      stop:
+        type: float
+      comp:
+        type: float
+      pcomp:
+        type: float
+    description: "Set synchronous sweep source for multi channel"
+
+  multichannel_pulse_timing:
+    getter: "MCPT?"
+    setter: "MCPT {hold},{period},{mdelay},{average}"
+    type: property
+    params:
+      hold:
+        type: float
+        unit: s
+        min: 0
+        max: 655.35
+      period:
+        type: float
+        unit: s
+        min: 0.0002
+        max: 5
+      mdelay:
+        type: float
+        unit: s
+        min: 0
+        max: 65.535
+      average:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: string
+    description: "Set multi channel pulse common parameters"
+
+  multichannel_pulse_setup:
+    scpi: "MCPNT {chnum},{delay},{width}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      delay:
+        type: float
+        unit: s
+      width:
+        type: float
+        unit: s
+        min: 0.00005
+        max: 0.1
+    description: "Set multi channel pulse timing"
+
+  multichannel_pulse_source:
+    scpi: "MCPNX {n},{chnum},{mode},{range},{base},{pulse},{comp}"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 10
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2"]
+      range:
+        type: int
+      base:
+        type: float
+      pulse:
+        type: float
+      comp:
+        type: float
+    description: "Set multi channel pulse output"
+
+  multichannel_sweep_mode:
+    getter: "MCPWS?"
+    setter: "MCPWS {mode},{steps}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["1", "2", "3", "4"]
+      steps:
+        type: int
+        min: 1
+        max: 1001
+    returns:
+      type: string
+    description: "Set multi channel sweep mode and steps"
+
+  multichannel_pulse_sweep:
+    scpi: "MCPWNX {n},{chnum},{mode},{range},{base},{start},{stop},{comp},{pcomp}"
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 10
+      chnum:
+        type: int
+        min: 1
+        max: 1002
+      mode:
+        type: int
+        options: ["1", "2"]
+      range:
+        type: int
+      base:
+        type: float
+      start:
+        type: float
+      stop:
+        type: float
+      comp:
+        type: float
+      pcomp:
+        type: float
+    description: "Set multi channel pulsed sweep source"
+
+  spgu_mode:
+    getter: "SIM?"
+    setter: "SIM {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set SPGU operation mode (PG/ALWG)"
+
+  spgu_output_mode:
+    getter: "SPRM?"
+    setter: "SPRM {mode},{condition}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+      condition:
+        type: float
+    returns:
+      type: string
+    description: "Set SPGU output operation mode"
+
+  spgu_period:
+    getter: "SPPER?"
+    setter: "SPPER {period}"
+    type: property
+    params:
+      period:
+        type: float
+        unit: s
+        min: 0.000001
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse period for all SPGU channels"
+
+  spgu_channel_mode:
+    getter: "SPM?"
+    setter: "SPM {chnum},{mode}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "1", "2", "3"]
+    returns:
+      type: int
+    description: "Set SPGU channel output mode"
+
+  spgu_timing:
+    getter: "SPT?"
+    setter: "SPT {chnum},{src},{delay},{width},{leading},{trailing}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+      src:
+        type: int
+        options: ["1", "2"]
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 10
+      width:
+        type: float
+        unit: s
+        min: 0.0000001
+        max: 10
+      leading:
+        type: float
+        unit: s
+        min: 0.00000002
+        max: 0.001
+      trailing:
+        type: float
+        unit: s
+        min: 0.00000002
+        max: 0.001
+    returns:
+      type: string
+    description: "Set SPGU pulse timing parameters"
+
+  spgu_voltage:
+    getter: "SPV?"
+    setter: "SPV {chnum},{src},{base},{peak}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+      src:
+        type: int
+        options: ["0", "1", "2"]
+      base:
+        type: float
+        unit: V
+        min: -40
+        max: 40
+      peak:
+        type: float
+        unit: V
+        min: -40
+        max: 40
+    returns:
+      type: string
+    description: "Set SPGU voltage parameters"
+
+  spgu_load_impedance:
+    getter: "SER?"
+    setter: "SER {chnum},{loadz}"
+    type: property
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+      loadz:
+        type: float
+        unit: Ohm
+        min: 40
+        max: 10000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set load impedance for SPGU channel"
+
+  spgu_measure_impedance:
+    scpi: "CORRSER? {chnum},{mode},{delay},{interval},{count}"
+    type: query
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+      mode:
+        type: int
+        options: ["0", "1"]
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 10
+      interval:
+        type: float
+        unit: s
+        min: 0.000005
+        max: 0.001
+      count:
+        type: int
+        min: 1
+        max: 65535
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: impedance
+          type: float
+          unit: Ohm
+        - name: voltage
+          type: float
+          unit: V
+    description: "Measure terminal voltage and calculate impedance"
+
+  spgu_update:
+    scpi: "SPUPD {chnum}"
+    type: write
+    params:
+      chnum:
+        type: int
+        min: 101
+        max: 1002
+    description: "Apply SPGU channel setup"
+
+  spgu_start:
+    scpi: "SRP"
+    type: write
+    description: "Start SPGU output"
+
+  spgu_stop:
+    scpi: "SPP"
+    type: write
+    description: "Stop SPGU output"
+
+  spgu_status:
+    scpi: "SPST?"
+    type: query
+    returns:
+      type: int
+    description: "Query SPGU output status"
+
+  digital_io_mode:
+    getter: "ERMOD?"
+    setter: "ERMOD {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "Set digital I/O control mode"
+
+  digital_io_assign:
+    scpi: "ERM {iport}"
+    type: write
+    params:
+      iport:
+        type: int
+        min: 0
+        max: 65535
+    description: "Change digital I/O port assignments"
+
+  digital_io_status:
+    scpi: "ERS?"
+    type: query
+    returns:
+      type: int
+    description: "Return digital I/O port status"

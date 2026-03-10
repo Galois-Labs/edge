@@ -1,0 +1,966 @@
+instrument:
+  manufacturer: "Yokogawa"
+  model: "WT5000"
+  class: power_analyzer
+  description: "Precision Power Analyzer - 7 elements, 1 MHz bandwidth, high accuracy power measurement"
+
+identity:
+  query: "*IDN?"
+  pattern: "YOKOGAWA.*WT5000"
+
+interfaces:
+  - type: gpib
+    default_address: 1
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass, 1 = fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Execute single measurement"
+
+  save_state:
+    scpi: "*SAV {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory"
+
+  recall_state:
+    scpi: "*RCL {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  calibrate:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Execute zero calibration and return result"
+
+  # System Commands
+  system_date:
+    getter: ":SYSTem:DATE?"
+    setter: ":SYSTem:DATE {date}"
+    type: property
+    params:
+      date:
+        type: string
+    returns:
+      type: string
+    description: "Set/query system date (YY/MM/DD format)"
+
+  system_time:
+    getter: ":SYSTem:TIME?"
+    setter: ":SYSTem:TIME {time}"
+    type: property
+    params:
+      time:
+        type: string
+    returns:
+      type: string
+    description: "Set/query system time (HH:MM:SS format)"
+
+  key_lock:
+    getter: ":SYSTem:KLOCk?"
+    setter: ":SYSTem:KLOCk {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable front panel key lock"
+
+  touch_lock:
+    getter: ":SYSTem:TLOCk?"
+    setter: ":SYSTem:TLOCk {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable touch screen lock"
+
+  beeper_state:
+    getter: ":SYSTem:BEEP:STATe?"
+    setter: ":SYSTem:BEEP:STATe {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable beeper"
+
+  lcd_brightness:
+    getter: ":SYSTem:LCD:BRIGhtness?"
+    setter: ":SYSTem:LCD:BRIGhtness {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: 1
+        max: 10
+    returns:
+      type: int
+    description: "LCD brightness level"
+
+  system_error:
+    scpi: ":SYSTem:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read one error from error queue"
+
+  # Input Configuration
+  crest_factor:
+    getter: ":INPut:CFACtor?"
+    setter: ":INPut:CFACtor {factor}"
+    type: property
+    params:
+      factor:
+        type: enum
+        options: ["3", "6", "A6"]
+    returns:
+      type: string
+    description: "Set crest factor (3, 6, or 6A for extended range)"
+
+  wiring_system:
+    getter: ":INPut:WIRing?"
+    setter: ":INPut:WIRing {wiring}"
+    type: property
+    params:
+      wiring:
+        type: string
+    returns:
+      type: string
+    description: "Configure wiring system (e.g., P1W2, P1W3, P3W3, P3W4)"
+
+  voltage_range:
+    getter: ":INPut:VOLTage:RANGe:ELEMent{element}?"
+    setter: ":INPut:VOLTage:RANGe:ELEMent{element} {range}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      range:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Voltage measurement range for element"
+
+  voltage_auto_range:
+    getter: ":INPut:VOLTage:AUTO:ELEMent{element}?"
+    setter: ":INPut:VOLTage:AUTO:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Voltage auto-ranging for element"
+
+  current_range:
+    getter: ":INPut:CURRent:RANGe:ELEMent{element}?"
+    setter: ":INPut:CURRent:RANGe:ELEMent{element} {range}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      range:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Current measurement range for element"
+
+  current_auto_range:
+    getter: ":INPut:CURRent:AUTO:ELEMent{element}?"
+    setter: ":INPut:CURRent:AUTO:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Current auto-ranging for element"
+
+  # Scaling
+  scaling_state:
+    getter: ":INPut:SCALing:STATe:ELEMent{element}?"
+    setter: ":INPut:SCALing:STATe:ELEMent{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable scaling for element"
+
+  vt_ratio:
+    getter: ":INPut:SCALing:VT:ELEMent{element}?"
+    setter: ":INPut:SCALing:VT:ELEMent{element} {ratio}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      ratio:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "Voltage transformer ratio"
+
+  ct_ratio:
+    getter: ":INPut:SCALing:CT:ELEMent{element}?"
+    setter: ":INPut:SCALing:CT:ELEMent{element} {ratio}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      ratio:
+        type: float
+        min: 0.0001
+        max: 99999.9999
+    returns:
+      type: float
+    description: "Current transformer ratio"
+
+  # Filters
+  line_filter:
+    getter: ":INPut:FILTer:LINE:ELEMent{element}?"
+    setter: ":INPut:FILTer:LINE:ELEMent{element} {freq}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      freq:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "Line filter cutoff frequency (OFF or 100-300000 Hz)"
+
+  frequency_filter:
+    getter: ":INPut:FILTer:FREQuency:ELEMent{element}?"
+    setter: ":INPut:FILTer:FREQuency:ELEMent{element} {freq}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      freq:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency filter (OFF or 100-300000 Hz)"
+
+  # Synchronization
+  sync_source:
+    getter: ":INPut:SYNChronize:ELEMent{element}?"
+    setter: ":INPut:SYNChronize:ELEMent{element} {source}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Synchronization source (U1-U7, I1-I7, EXTernal, NONE)"
+
+  # NULL Function
+  null_state:
+    getter: ":INPut:NULL:STATe?"
+    setter: ":INPut:NULL:STATe {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable NULL feature"
+
+  null_voltage:
+    getter: ":INPut:NULL:CTRL:U{element}?"
+    setter: ":INPut:NULL:CTRL:U{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "NULL voltage measurement for element"
+
+  null_current:
+    getter: ":INPut:NULL:CTRL:I{element}?"
+    setter: ":INPut:NULL:CTRL:I{element} {state}"
+    type: property
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "NULL current measurement for element"
+
+  # Update Rate
+  update_mode:
+    getter: ":UPDate:MODE?"
+    setter: ":UPDate:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONSTant", "TRIGger", "AUTO"]
+    returns:
+      type: string
+    description: "Data update mode"
+
+  update_rate:
+    getter: ":UPDate:RATE?"
+    setter: ":UPDate:RATE {rate}"
+    type: property
+    params:
+      rate:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Data update interval (10ms to 20s)"
+
+  update_method:
+    getter: ":UPDate:METHod?"
+    setter: ":UPDate:METHod {method}"
+    type: property
+    params:
+      method:
+        type: enum
+        options: ["SSPeriod", "DFilter"]
+    returns:
+      type: string
+    description: "Computing method (Sync Source Period or Digital Filter)"
+
+  # Measurement Functions
+  measurement_mode:
+    getter: ":MEASure:MODE?"
+    setter: ":MEASure:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "IECHarm", "FLICker"]
+    returns:
+      type: string
+    description: "Measurement mode"
+
+  averaging_state:
+    getter: ":MEASure:AVERaging:STATe?"
+    setter: ":MEASure:AVERaging:STATe {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable averaging"
+
+  averaging_count:
+    getter: ":MEASure:AVERaging:COUNt?"
+    setter: ":MEASure:AVERaging:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 64
+    returns:
+      type: int
+    description: "Averaging count"
+
+  averaging_type:
+    getter: ":MEASure:AVERaging:TYPE?"
+    setter: ":MEASure:AVERaging:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EXPonent", "LINear"]
+    returns:
+      type: string
+    description: "Averaging type"
+
+  # Hold
+  hold_state:
+    getter: ":HOLD?"
+    setter: ":HOLD {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Hold measurement data"
+
+  # Integration
+  integrate_mode:
+    getter: ":INTEGrate:MODE?"
+    setter: ":INTEGrate:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "CONTinuous", "RNORmal", "RCONtinuous", "PULSe"]
+    returns:
+      type: string
+    description: "Integration mode"
+
+  integrate_start:
+    scpi: ":INTEGrate:STARt"
+    type: write
+    description: "Start integration"
+
+  integrate_stop:
+    scpi: ":INTEGrate:STOP"
+    type: write
+    description: "Stop integration"
+
+  integrate_reset:
+    scpi: ":INTEGrate:RESet"
+    type: write
+    description: "Reset integrated values"
+
+  integrate_state:
+    scpi: ":INTEGrate:STATe?"
+    type: query
+    returns:
+      type: string
+    description: "Query integration status"
+
+  integrate_timer:
+    getter: ":INTEGrate:TIMer1?"
+    setter: ":INTEGrate:TIMer1 {hours},{minutes},{seconds}"
+    type: property
+    params:
+      hours:
+        type: int
+        min: 0
+        max: 10000
+      minutes:
+        type: int
+        min: 0
+        max: 59
+      seconds:
+        type: int
+        min: 0
+        max: 59
+    returns:
+      type: string
+    description: "Integration timer value"
+
+  # Numeric Data Retrieval
+  numeric_format:
+    getter: ":NUMeric:FORMat?"
+    setter: ":NUMeric:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "FLOat"]
+    returns:
+      type: string
+    description: "Numeric data output format"
+
+  numeric_item:
+    getter: ":NUMeric:NORMal:ITEM{num}?"
+    setter: ":NUMeric:NORMal:ITEM{num} {function},{element},{order}"
+    type: property
+    params:
+      num:
+        type: int
+        min: 1
+        max: 1000
+      function:
+        type: string
+      element:
+        type: int
+        min: 1
+        max: 7
+      order:
+        type: string
+    returns:
+      type: string
+    description: "Configure numeric data output item"
+
+  numeric_value:
+    scpi: ":NUMeric:NORMal:VALue?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read configured numeric data values"
+    streamable: true
+
+  # Harmonics
+  harmonics_order:
+    getter: ":HARMonics:ORDer?"
+    setter: ":HARMonics:ORDer {min},{max}"
+    type: property
+    params:
+      min:
+        type: int
+        min: 0
+        max: 1
+      max:
+        type: int
+        min: 1
+        max: 500
+    returns:
+      type: string
+    description: "Harmonic measurement order range"
+
+  harmonics_pll_source:
+    getter: ":HARMonics:PLLSource?"
+    setter: ":HARMonics:PLLSource {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "PLL source for harmonics (U1-U7, I1-I7, EXTernal)"
+
+  # Waveform
+  waveform_trace:
+    getter: ":WAVeform:TRACe?"
+    setter: ":WAVeform:TRACe {trace}"
+    type: property
+    params:
+      trace:
+        type: string
+    returns:
+      type: string
+    description: "Select waveform trace (U1-U7, I1-I7)"
+
+  waveform_format:
+    getter: ":WAVeform:FORMat?"
+    setter: ":WAVeform:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "FLOat"]
+    returns:
+      type: string
+    description: "Waveform data format"
+
+  waveform_send:
+    scpi: ":WAVeform:SEND?"
+    type: query
+    returns:
+      type: binary
+    description: "Retrieve waveform data"
+
+  waveform_sample_rate:
+    scpi: ":WAVeform:SRATe?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query waveform sample rate"
+
+  # Storage
+  storage_mode:
+    getter: ":STORe:SMODe?"
+    setter: ":STORe:SMODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MANual", "RTIMe", "INTEGrate", "EVENt", "SINGle"]
+    returns:
+      type: string
+    description: "Data storage mode"
+
+  storage_record:
+    scpi: ":STORe:RECord"
+    type: write
+    description: "Start storing data"
+
+  storage_pause:
+    scpi: ":STORe:PAUSe"
+    type: write
+    description: "Pause data storage"
+
+  storage_end:
+    scpi: ":STORe:END"
+    type: write
+    description: "Stop data storage"
+
+  storage_count:
+    getter: ":STORe:COUNt?"
+    setter: ":STORe:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 9999999
+    returns:
+      type: int
+    description: "Storage count limit"
+
+  storage_interval:
+    getter: ":STORe:INTerval?"
+    setter: ":STORe:INTerval {hours},{minutes},{seconds}"
+    type: property
+    params:
+      hours:
+        type: int
+        min: 0
+        max: 99
+      minutes:
+        type: int
+        min: 0
+        max: 59
+      seconds:
+        type: int
+        min: 1
+        max: 59
+    returns:
+      type: string
+    description: "Storage interval time"
+
+  # Display
+  display_config:
+    getter: ":DISPlay:CONFig?"
+    setter: ":DISPlay:CONFig {config}"
+    type: property
+    params:
+      config:
+        type: string
+    returns:
+      type: string
+    description: "Display configuration (NUMeric, WAVE, TRENd, BAR, VECTor)"
+
+  # File Operations
+  file_save_setup:
+    scpi: ":FILE:SAVE:SETup {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Save setup to file"
+
+  file_load_setup:
+    scpi: ":FILE:LOAD:SETup {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Load setup from file"
+
+  file_save_numeric:
+    scpi: ":FILE:SAVE:NUMeric:EXECute {name}"
+    type: write
+    params:
+      name:
+        type: string
+    description: "Save numeric data to file"
+
+  # Communication
+  comm_header:
+    getter: ":COMMunicate:HEADer?"
+    setter: ":COMMunicate:HEADer {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable/disable response headers"
+
+  comm_verbose:
+    getter: ":COMMunicate:VERBose?"
+    setter: ":COMMunicate:VERBose {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Verbose response format"
+
+  comm_remote:
+    getter: ":COMMunicate:REMote?"
+    setter: ":COMMunicate:REMote {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Set remote/local mode"
+
+  # Status
+  status_error:
+    scpi: ":STATus:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  status_condition:
+    scpi: ":STATus:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query condition register"
+
+sequences:
+  measure_power_basic:
+    description: "Basic power measurement on element 1"
+    steps:
+      - command: voltage_auto_range
+        args:
+          element: "1"
+          state: "1"
+      - command: current_auto_range
+        args:
+          element: "1"
+          state: "1"
+      - command: update_mode
+        args:
+          mode: "CONSTant"
+      - command: update_rate
+        args:
+          rate: "200MS"
+      - command: numeric_item
+        args:
+          num: "1"
+          function: "URMS"
+          element: "1"
+          order: "TOTal"
+      - command: numeric_item
+        args:
+          num: "2"
+          function: "IRMS"
+          element: "1"
+          order: "TOTal"
+      - command: numeric_item
+        args:
+          num: "3"
+          function: "P"
+          element: "1"
+          order: "TOTal"
+      - command: numeric_value
+        capture: result
+    returns: result
+
+  integrate_power:
+    description: "Integrate power measurement"
+    params:
+      hours:
+        type: int
+        min: 0
+        max: 10000
+      minutes:
+        type: int
+        min: 0
+        max: 59
+      seconds:
+        type: int
+        min: 0
+        max: 59
+    steps:
+      - command: integrate_mode
+        args:
+          mode: "NORMal"
+      - command: integrate_timer
+        args:
+          hours: "{hours}"
+          minutes: "{minutes}"
+          seconds: "{seconds}"
+      - command: integrate_reset
+      - command: integrate_start
+      - command: wait
+
+  harmonic_analysis:
+    description: "Configure and perform harmonic analysis"
+    params:
+      element:
+        type: int
+        min: 1
+        max: 7
+      max_order:
+        type: int
+        min: 1
+        max: 500
+        default: 100
+    steps:
+      - command: measurement_mode
+        args:
+          mode: "NORMal"
+      - command: harmonics_order
+        args:
+          min: "1"
+          max: "{max_order}"
+      - command: harmonics_pll_source
+        args:
+          source: "U{element}"
+      - command: wait
+
+status:
+  stb:
+    bit0: MSB
+    bit2: EAV
+    bit3: QSB
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

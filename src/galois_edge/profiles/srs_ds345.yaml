@@ -1,0 +1,795 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "DS345"
+  class: function_generator
+  description: "30 MHz Synthesized Function Generator with DDS, arbitrary waveform capability"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford.*DS345"
+
+interfaces:
+  - type: gpib
+    default_address: 19
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # Standard IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return status (0=pass)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Trigger burst or single sweep"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save current settings to memory location (0-9)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall settings from memory location (0-9)"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  # Function Output Control
+  function:
+    getter: "FUNC?"
+    setter: "FUNC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 5
+        options: ["0", "1", "2", "3", "4", "5"]
+        map:
+          "0": "SINE"
+          "1": "SQUARE"
+          "2": "TRIANGLE"
+          "3": "RAMP"
+          "4": "NOISE"
+          "5": "ARBITRARY"
+    returns:
+      type: int
+    description: "Set output function (0=sine, 1=square, 2=triangle, 3=ramp, 4=noise, 5=arbitrary)"
+
+  frequency:
+    getter: "FREQ?"
+    setter: "FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 30200000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set output frequency (range depends on selected function)"
+
+  amplitude:
+    getter: "AMPL?"
+    setter: "AMPL {value}"
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: string
+    description: "Set output amplitude (format: value+units, e.g., '1.00VP', '0.707VR', '+10DB')"
+
+  offset:
+    getter: "OFFS?"
+    setter: "OFFS {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -5.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Set DC offset voltage (constraint: |Vac peak| + |Vdc| ≤ 5V)"
+
+  phase:
+    getter: "PHSE?"
+    setter: "PHSE {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0.001
+        max: 7199.999
+    returns:
+      type: float
+      unit: deg
+    description: "Set waveform output phase (0.001° resolution)"
+
+  phase_clear:
+    scpi: "PCLR"
+    type: write
+    description: "Set current waveform phase to zero"
+
+  output_inversion:
+    getter: "INVT?"
+    setter: "INVT {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+        map:
+          "0": "OFF"
+          "1": "ON"
+    returns:
+      type: int
+    description: "Enable/disable output inversion (for ramp and arbitrary waveforms)"
+
+  set_ttl_levels:
+    scpi: "ATTL"
+    type: write
+    description: "Set output to TTL levels (5 Vpp, 2.5V offset)"
+
+  set_ecl_levels:
+    scpi: "AECL"
+    type: write
+    description: "Set output to ECL levels (1 Vpp, -1.3V offset)"
+
+  arb_sampling_frequency:
+    getter: "FSMP?"
+    setter: "FSMP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.002329
+        max: 40000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set arbitrary waveform sampling frequency (must be 40MHz/N where N is integer)"
+
+  # Modulation Control
+  modulation_enable:
+    getter: "MENA?"
+    setter: "MENA {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+        map:
+          "0": "OFF"
+          "1": "ON"
+    returns:
+      type: int
+    description: "Enable/disable modulation"
+
+  modulation_type:
+    getter: "MTYP?"
+    setter: "MTYP {type}"
+    type: property
+    params:
+      type:
+        type: int
+        options: ["0", "1", "2", "3", "4", "5"]
+        map:
+          "0": "LINEAR_SWEEP"
+          "1": "LOG_SWEEP"
+          "2": "AM"
+          "3": "FM"
+          "4": "PM"
+          "5": "BURST"
+    returns:
+      type: int
+    description: "Set modulation type"
+
+  modulation_waveform:
+    getter: "MDWF?"
+    setter: "MDWF {waveform}"
+    type: property
+    params:
+      waveform:
+        type: int
+        options: ["0", "1", "2", "3", "4", "5", "6"]
+        map:
+          "0": "SINGLE"
+          "1": "RAMP"
+          "2": "TRIANGLE"
+          "3": "SINE"
+          "4": "SQUARE"
+          "5": "ARBITRARY"
+          "6": "NONE"
+    returns:
+      type: int
+    description: "Set modulation waveform"
+
+  modulation_rate:
+    getter: "RATE?"
+    setter: "RATE {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 10000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set modulation rate (2 digit resolution)"
+
+  am_depth:
+    getter: "DPTH?"
+    setter: "DPTH {value}"
+    type: property
+    params:
+      value:
+        type: int
+        unit: "%"
+        min: -100
+        max: 100
+    returns:
+      type: int
+      unit: "%"
+    description: "Set AM modulation depth (negative values = DSBSC)"
+
+  fm_deviation:
+    getter: "FDEV?"
+    setter: "FDEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set FM span (peak deviation = span/2)"
+
+  pm_deviation:
+    getter: "PDEV?"
+    setter: "PDEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: 0
+        max: 7199.999
+    returns:
+      type: float
+      unit: deg
+    description: "Set PM span (peak deviation = span/2)"
+
+  burst_count:
+    getter: "BCNT?"
+    setter: "BCNT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 30000
+    returns:
+      type: int
+    description: "Set burst count (number of cycles per burst)"
+
+  # Sweep Control
+  sweep_start_frequency:
+    getter: "STFR?"
+    setter: "STFR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep start frequency"
+
+  sweep_stop_frequency:
+    getter: "SPFR?"
+    setter: "SPFR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep stop frequency"
+
+  sweep_center_frequency:
+    getter: "SPCF?"
+    setter: "SPCF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep center frequency"
+
+  sweep_span:
+    getter: "SPAN?"
+    setter: "SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep span (negative = downward sweep)"
+
+  marker_frequency:
+    scpi: "MRKF {marker},{value}"
+    type: write
+    params:
+      marker:
+        type: int
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "START"
+          "1": "STOP"
+          "2": "CENTER"
+          "3": "SPAN"
+      value:
+        type: float
+        unit: Hz
+    description: "Set marker frequency (0=start, 1=stop, 2=center, 3=span)"
+
+  marker_frequency_query:
+    scpi: "MRKF? {marker}"
+    type: query
+    params:
+      marker:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: float
+      unit: Hz
+    description: "Query marker frequency"
+
+  marker_to_span:
+    scpi: "MKSP"
+    type: write
+    description: "Set markers to sweep span extremes"
+
+  span_to_marker:
+    scpi: "SPMK"
+    type: write
+    description: "Set sweep span to marker positions"
+
+  # Trigger Control
+  trigger_source:
+    getter: "TSRC?"
+    setter: "TSRC {source}"
+    type: property
+    params:
+      source:
+        type: int
+        options: ["0", "1", "2", "3", "4"]
+        map:
+          "0": "SINGLE"
+          "1": "INTERNAL"
+          "2": "POSITIVE_EDGE"
+          "3": "NEGATIVE_EDGE"
+          "4": "LINE"
+    returns:
+      type: int
+    description: "Set trigger source for bursts and sweeps"
+
+  trigger_rate:
+    getter: "TRAT?"
+    setter: "TRAT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 10000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set internal trigger rate (2 digit resolution)"
+
+  arb_modulation_rate_divider:
+    getter: "AMRT?"
+    setter: "AMRT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 8388607
+    returns:
+      type: int
+    description: "Set arbitrary modulation rate divider"
+
+  # Status Reporting
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  status_byte_bit:
+    scpi: "*STB? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Read specific bit of status byte"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  event_status_register_bit:
+    scpi: "*ESR? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Read specific bit of event status register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set power-on status clear bit"
+
+  dds_status_enable:
+    getter: "DENA?"
+    setter: "DENA {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "DDS status enable register"
+
+  dds_status:
+    scpi: "STAT?"
+    type: query
+    returns:
+      type: int
+    description: "Read DDS status byte"
+
+  dds_status_bit:
+    scpi: "STAT? {bit}"
+    type: query
+    params:
+      bit:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Read specific bit of DDS status byte"
+
+  # Calibration
+  autocal:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Initiate self-calibration and return status"
+
+sequences:
+  output_sine:
+    description: "Configure and output a sine wave"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      amplitude:
+        type: float
+        unit: Vpp
+    steps:
+      - command: function
+        args:
+          value: "0"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          value: "{amplitude}VP"
+
+  output_square:
+    description: "Configure and output a square wave"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      amplitude:
+        type: float
+        unit: Vpp
+    steps:
+      - command: function
+        args:
+          value: "1"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          value: "{amplitude}VP"
+
+  linear_sweep:
+    description: "Perform linear frequency sweep"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      sweep_time:
+        type: float
+        unit: s
+    steps:
+      - command: modulation_enable
+        args:
+          state: "0"
+      - command: modulation_type
+        args:
+          type: "0"
+      - command: modulation_waveform
+        args:
+          waveform: "1"
+      - command: sweep_start_frequency
+        args:
+          value: "{start_freq}"
+      - command: sweep_stop_frequency
+        args:
+          value: "{stop_freq}"
+      - command: modulation_rate
+        args:
+          value: "{1.0/sweep_time}"
+      - command: modulation_enable
+        args:
+          state: "1"
+
+  triggered_burst:
+    description: "Configure triggered burst output"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      amplitude:
+        type: float
+        unit: Vpp
+      ncycles:
+        type: int
+    steps:
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          value: "{amplitude}VP"
+      - command: modulation_type
+        args:
+          type: "5"
+      - command: burst_count
+        args:
+          value: "{ncycles}"
+      - command: trigger_source
+        args:
+          source: "0"
+      - command: modulation_enable
+        args:
+          state: "1"
+
+  am_modulation:
+    description: "Configure amplitude modulation"
+    params:
+      carrier_freq:
+        type: float
+        unit: Hz
+      carrier_amp:
+        type: float
+        unit: Vpp
+      mod_freq:
+        type: float
+        unit: Hz
+      mod_depth:
+        type: int
+        unit: "%"
+    steps:
+      - command: function
+        args:
+          value: "0"
+      - command: frequency
+        args:
+          value: "{carrier_freq}"
+      - command: amplitude
+        args:
+          value: "{carrier_amp}VP"
+      - command: modulation_type
+        args:
+          type: "2"
+      - command: modulation_waveform
+        args:
+          waveform: "3"
+      - command: modulation_rate
+        args:
+          value: "{mod_freq}"
+      - command: am_depth
+        args:
+          value: "{mod_depth}"
+      - command: modulation_enable
+        args:
+          state: "1"
+
+  fm_modulation:
+    description: "Configure frequency modulation"
+    params:
+      carrier_freq:
+        type: float
+        unit: Hz
+      carrier_amp:
+        type: float
+        unit: Vpp
+      mod_freq:
+        type: float
+        unit: Hz
+      deviation:
+        type: float
+        unit: Hz
+    steps:
+      - command: function
+        args:
+          value: "0"
+      - command: frequency
+        args:
+          value: "{carrier_freq}"
+      - command: amplitude
+        args:
+          value: "{carrier_amp}VP"
+      - command: modulation_type
+        args:
+          type: "3"
+      - command: modulation_waveform
+        args:
+          waveform: "3"
+      - command: modulation_rate
+        args:
+          value: "{mod_freq}"
+      - command: fm_deviation
+        args:
+          value: "{deviation}"
+      - command: modulation_enable
+        args:
+          state: "1"
+
+status:
+  stb:
+    bit0: "Sweep Done"
+    bit1: "Mod Enable"
+    bit2: "User SRQ"
+    bit3: "DDS"
+    bit4: "MAV"
+    bit5: "ESB"
+    bit6: "RQS"
+    bit7: "No Command"
+  esr:
+    bit2: "Query Error"
+    bit4: "Execution Error"
+    bit5: "Command Error"
+    bit6: "URQ"
+    bit7: "PON"

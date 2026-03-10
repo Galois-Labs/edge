@@ -1,0 +1,995 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "DG645"
+  class: function_generator
+  description: "8-channel Digital Delay Generator with 5 ps resolution, 0 to 2000 s range"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford Research Systems,DG645"
+
+interfaces:
+  - type: gpib
+    default_address: 15
+  - type: serial
+    port: 9600
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit when all commands finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 9
+    description: "Save instrument settings to location (1-9)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall settings from location (0=default, 1-9=user)"
+
+  auto_calibrate:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Run auto calibration routine (0=success)"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Power-on status clear flag"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  # Status and Display Commands
+  display:
+    getter: "DISP?"
+    setter: "DISP {display},{channel}"
+    type: property
+    params:
+      display:
+        type: int
+        min: 0
+        max: 13
+      channel:
+        type: int
+        min: 0
+        max: 9
+    returns:
+      type: string
+    description: "Set/query current display (0=rate, 1=threshold, 11=delay, 12=levels, 13=polarity)"
+
+  instrument_status_enable:
+    getter: "INSE?"
+    setter: "INSE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Instrument status enable register"
+
+  instrument_status_register:
+    scpi: "INSR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear instrument status register"
+
+  last_error:
+    scpi: "LERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error from error buffer"
+
+  show_display:
+    getter: "SHDP?"
+    setter: "SHDP {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Front panel display on/off (0=off, 1=on)"
+
+  timebase:
+    scpi: "TIMB?"
+    type: query
+    returns:
+      type: int
+    description: "Query current timebase (0=standard, 1=OCXO, 2=Rb, 3=external)"
+
+  # Trigger Commands
+  trigger_source:
+    getter: "TSRC?"
+    setter: "TSRC {source}"
+    type: property
+    params:
+      source:
+        type: int
+        min: 0
+        max: 6
+    returns:
+      type: int
+    description: "Trigger source (0=internal, 1=ext rising, 2=ext falling, 3=ss ext rising, 4=ss ext falling, 5=single shot, 6=line)"
+
+  trigger_rate:
+    getter: "TRAT?"
+    setter: "TRAT {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: Hz
+        min: 0.0000001
+        max: 10000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Internal trigger rate (100 µHz to 10 MHz)"
+
+  trigger_level:
+    getter: "TLVL?"
+    setter: "TLVL {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: V
+        min: -3.5
+        max: 3.5
+    returns:
+      type: float
+      unit: V
+    description: "External trigger threshold voltage"
+
+  trigger_holdoff:
+    getter: "HOLD?"
+    setter: "HOLD {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 2000
+    returns:
+      type: float
+      unit: s
+    description: "Trigger holdoff time"
+
+  advanced_triggering:
+    getter: "ADVT?"
+    setter: "ADVT {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Advanced triggering enable (0=off, 1=on)"
+
+  inhibit_mode:
+    getter: "INHB?"
+    setter: "INHB {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 5
+    returns:
+      type: int
+    description: "Inhibit mode (0=off, 1=triggers, 2=AB, 3=AB+CD, 4=AB+CD+EF, 5=all)"
+
+  prescale_factor:
+    getter: "PRES {channel}?"
+    setter: "PRES {channel},{factor}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 4
+      factor:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Prescale factor for channel (0=trigger, 1=AB, 2=CD, 3=EF, 4=GH)"
+
+  prescale_phase:
+    getter: "PHAS {channel}?"
+    setter: "PHAS {channel},{phase}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      phase:
+        type: int
+        min: 0
+    returns:
+      type: int
+    description: "Prescale phase for output (1=AB, 2=CD, 3=EF, 4=GH)"
+
+  step_trigger_rate:
+    scpi: "SPTR {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step trigger rate by current step size (0=down, 1=up)"
+
+  step_trigger_level:
+    scpi: "SPTL {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step trigger level by current step size (0=down, 1=up)"
+
+  step_holdoff:
+    scpi: "SPHD {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step trigger holdoff by current step size (0=down, 1=up)"
+
+  step_prescale_factor:
+    scpi: "SPPS {channel},{direction}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 4
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step prescale factor (0=down, 1=up)"
+
+  step_prescale_phase:
+    scpi: "SPPH {channel},{direction}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step prescale phase (0=down, 1=up)"
+
+  step_size_trigger_rate:
+    getter: "SSTR?"
+    setter: "SSTR {size}"
+    type: property
+    params:
+      size:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Step size for trigger rate"
+
+  step_size_trigger_level:
+    getter: "SSTL?"
+    setter: "SSTL {size}"
+    type: property
+    params:
+      size:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Step size for trigger level"
+
+  step_size_holdoff:
+    getter: "SSHD?"
+    setter: "SSHD {size}"
+    type: property
+    params:
+      size:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Step size for trigger holdoff"
+
+  step_size_prescale_factor:
+    getter: "SSPS {channel}?"
+    setter: "SSPS {channel},{size}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 4
+      size:
+        type: int
+    returns:
+      type: int
+    description: "Step size for prescale factor"
+
+  step_size_prescale_phase:
+    getter: "SSPH {channel}?"
+    setter: "SSPH {channel},{size}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      size:
+        type: int
+    returns:
+      type: int
+    description: "Step size for prescale phase"
+
+  # Burst Commands
+  burst_mode:
+    getter: "BURM?"
+    setter: "BURM {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Burst mode enable (0=off, 1=on)"
+
+  burst_count:
+    getter: "BURC?"
+    setter: "BURC {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Number of delay cycles per burst"
+
+  burst_period:
+    getter: "BURP?"
+    setter: "BURP {period}"
+    type: property
+    params:
+      period:
+        type: float
+        unit: s
+        min: 0.0000001
+        max: 42.9
+    returns:
+      type: float
+      unit: s
+    description: "Time between delay cycles in burst (100 ns to 42.9 s)"
+
+  burst_delay:
+    getter: "BURD?"
+    setter: "BURD {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 2000
+    returns:
+      type: float
+      unit: s
+    description: "Delay from trigger to first burst pulse"
+
+  burst_t0_mode:
+    getter: "BURT?"
+    setter: "BURT {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "T0 output in burst (0=all cycles, 1=first cycle only)"
+
+  step_burst_count:
+    scpi: "SPBC {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step burst count (0=down, 1=up)"
+
+  step_burst_period:
+    scpi: "SPBP {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step burst period (0=down, 1=up)"
+
+  step_burst_delay:
+    scpi: "SPBD {direction}"
+    type: write
+    params:
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step burst delay (0=down, 1=up)"
+
+  step_size_burst_count:
+    getter: "SSBC?"
+    setter: "SSBC {size}"
+    type: property
+    params:
+      size:
+        type: int
+    returns:
+      type: int
+    description: "Step size for burst count"
+
+  step_size_burst_period:
+    getter: "SSBP?"
+    setter: "SSBP {size}"
+    type: property
+    params:
+      size:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Step size for burst period"
+
+  step_size_burst_delay:
+    getter: "SSBD?"
+    setter: "SSBD {size}"
+    type: property
+    params:
+      size:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Step size for burst delay"
+
+  # Delay and Output Commands
+  delay:
+    getter: "DLAY? {channel}"
+    setter: "DLAY {channel},{ref},{time}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 9
+      ref:
+        type: int
+        min: 0
+        max: 9
+      time:
+        type: float
+        unit: s
+    returns:
+      type: string
+    description: "Set delay for channel relative to reference (0=T0, 1=T1, 2=A, 3=B, 4=C, 5=D, 6=E, 7=F, 8=G, 9=H)"
+
+  link_delay:
+    getter: "LINK? {channel}"
+    setter: "LINK {channel},{ref}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 2
+        max: 9
+      ref:
+        type: int
+        min: 0
+        max: 9
+    returns:
+      type: int
+    description: "Link channel delay to reference channel"
+
+  output_amplitude:
+    getter: "LAMP? {output}"
+    setter: "LAMP {output},{amplitude}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      amplitude:
+        type: float
+        unit: V
+        min: 0.5
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Output amplitude (0=T0, 1=AB, 2=CD, 3=EF, 4=GH)"
+
+  output_offset:
+    getter: "LOFF? {output}"
+    setter: "LOFF {output},{offset}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      offset:
+        type: float
+        unit: V
+        min: -2.0
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Output DC offset voltage"
+
+  output_polarity:
+    getter: "LPOL? {output}"
+    setter: "LPOL {output},{polarity}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      polarity:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Output polarity (0=negative, 1=positive)"
+
+  step_delay:
+    scpi: "SPDL {channel},{direction}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 9
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step delay (0=down, 1=up)"
+
+  step_amplitude:
+    scpi: "SPLA {output},{direction}"
+    type: write
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step amplitude (0=down, 1=up)"
+
+  step_offset:
+    scpi: "SPLO {output},{direction}"
+    type: write
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      direction:
+        type: int
+        options: ["0", "1"]
+    description: "Step offset (0=down, 1=up)"
+
+  step_size_delay:
+    getter: "SSDL? {channel}"
+    setter: "SSDL {channel},{size}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 9
+      size:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Step size for delay"
+
+  step_size_amplitude:
+    getter: "SSLA? {output}"
+    setter: "SSLA {output},{size}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      size:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Step size for amplitude"
+
+  step_size_offset:
+    getter: "SSLO? {output}"
+    setter: "SSLO {output},{size}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 4
+      size:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Step size for offset"
+
+  # Interface Commands
+  ethernet_mac:
+    scpi: "EMAC?"
+    type: query
+    returns:
+      type: string
+    description: "Query Ethernet MAC address"
+
+  ethernet_phy_config:
+    getter: "EPHY? {param}"
+    setter: "EPHY {param},{value}"
+    type: property
+    params:
+      param:
+        type: int
+        options: ["0", "1"]
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Ethernet physical layer configuration (0=auto-negotiation, 1=link speed)"
+
+  interface_config:
+    getter: "IFCF? {param}"
+    setter: "IFCF {param},{value}"
+    type: property
+    params:
+      param:
+        type: int
+        min: 0
+        max: 13
+      value:
+        type: string
+    returns:
+      type: string
+    description: "Interface configuration (0=RS232 enable, 1=baud, 2=GPIB enable, 3=GPIB addr, 4=TCP enable, 5=DHCP, 6=Auto-IP, 7=Static IP, 11=IP addr, 12=subnet, 13=gateway)"
+
+  interface_reset:
+    scpi: "IFRS {interface}"
+    type: write
+    params:
+      interface:
+        type: int
+        options: ["0", "1", "2"]
+    description: "Reset interface (0=RS-232, 1=GPIB, 2=LAN)"
+
+  go_to_local:
+    scpi: "LCAL"
+    type: write
+    description: "Return to local control (enable front panel)"
+
+  go_to_remote:
+    scpi: "REMT"
+    type: write
+    description: "Enable remote control (disable front panel)"
+
+  request_lock:
+    scpi: "LOCK?"
+    type: query
+    returns:
+      type: int
+    description: "Request instrument lock (1=granted, 0=denied)"
+
+  release_lock:
+    scpi: "UNLK?"
+    type: query
+    returns:
+      type: int
+    description: "Release instrument lock (1=released, 0=error)"
+
+  interface_terminator:
+    scpi: "XTRM {char1},{char2},{char3}"
+    type: write
+    params:
+      char1:
+        type: int
+        min: 0
+        max: 255
+      char2:
+        type: int
+        min: 0
+        max: 255
+      char3:
+        type: int
+        min: 0
+        max: 255
+    description: "Set interface response terminator characters"
+
+  # Calibration Commands
+  calibrate_level:
+    getter: "CALL? {param}"
+    setter: "CALL {param},{value}"
+    type: property
+    params:
+      param:
+        type: int
+        min: 0
+        max: 23
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Calibration bytes for output levels (0-3=T0, 4-7=AB, 8-11=CD, 12-15=EF, 16-19=GH, 20-23=trigger)"
+
+  calibrate_timebase:
+    getter: "CALT? 0"
+    setter: "CALT 0,{value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Timebase calibration byte"
+
+sequences:
+  configure_iv_sweep:
+    description: "Configure DG645 for I-V sweep timing"
+    params:
+      start_delay:
+        type: float
+        unit: s
+      pulse_width:
+        type: float
+        unit: s
+      rate:
+        type: float
+        unit: Hz
+    steps:
+      - command: reset
+      - command: trigger_source
+        args:
+          source: "0"
+      - command: trigger_rate
+        args:
+          rate: "{rate}"
+      - command: delay
+        args:
+          channel: "2"
+          ref: "0"
+          time: "{start_delay}"
+      - command: delay
+        args:
+          channel: "3"
+          ref: "2"
+          time: "{pulse_width}"
+      - command: output_amplitude
+        args:
+          output: "1"
+          amplitude: "4.0"
+      - command: output_offset
+        args:
+          output: "1"
+          offset: "0.0"
+
+  single_pulse:
+    description: "Generate a single pulse with specified delay and width"
+    params:
+      delay:
+        type: float
+        unit: s
+      width:
+        type: float
+        unit: s
+      amplitude:
+        type: float
+        unit: V
+        default: 4.0
+    steps:
+      - command: trigger_source
+        args:
+          source: "5"
+      - command: delay
+        args:
+          channel: "2"
+          ref: "0"
+          time: "{delay}"
+      - command: delay
+        args:
+          channel: "3"
+          ref: "2"
+          time: "{width}"
+      - command: output_amplitude
+        args:
+          output: "1"
+          amplitude: "{amplitude}"
+      - command: trigger
+
+  burst_timing:
+    description: "Configure burst mode with multiple pulses per trigger"
+    params:
+      count:
+        type: int
+      period:
+        type: float
+        unit: s
+      delay_to_first:
+        type: float
+        unit: s
+        default: 0
+    steps:
+      - command: burst_mode
+        args:
+          state: "1"
+      - command: burst_count
+        args:
+          count: "{count}"
+      - command: burst_period
+        args:
+          period: "{period}"
+      - command: burst_delay
+        args:
+          delay: "{delay_to_first}"
+
+status:
+  stb:
+    bit0: INSB
+    bit1: BUSY
+    bit2: BURST
+    bit4: MAV
+    bit5: ESB
+    bit6: MSS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

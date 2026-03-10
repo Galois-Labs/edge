@@ -1,0 +1,1685 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "E36300"
+  class: power_supply
+  description: "E36300 Series Programmable DC Power Supply - 3 independent outputs (6V/5A, 25V/1A, -25V/1A)"
+
+identity:
+  query: "*IDN?"
+  pattern: "Keysight Technologies,E363[0-9][0-9]A"
+
+interfaces:
+  - type: gpib
+    default_address: 5
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to power-on default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and Status Byte register"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set Operation Complete bit after command execution"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when command execution is complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Generate bus trigger event"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save instrument state to memory location (0-9)"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall instrument state from memory location (0-9)"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Clear status registers on power-on (1=clear, 0=preserve)"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event Status Enable register mask"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear Event Status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service Request Enable register mask"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read Status Byte register"
+
+  # ABORt Subsystem
+  abort:
+    scpi: "ABORt (@{chanlist})"
+    type: write
+    params:
+      chanlist:
+        type: string
+    description: "Abort pending triggered actions"
+
+  abort_datalog:
+    scpi: "ABORt:DLOG"
+    type: write
+    description: "Stop current data logging session"
+    enabled: false
+
+  # APPLy Subsystem
+  apply:
+    scpi: "APPLy {output},{voltage},{current}"
+    type: write
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V", "CH1", "CH2", "CH3"]
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    description: "Configure output voltage and current in one command"
+
+  apply_query:
+    scpi: "APPLy? {output}"
+    type: query
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V", "CH1", "CH2", "CH3"]
+    returns:
+      type: string
+    description: "Query current output configuration"
+
+  # CURRent Subsystem
+  current:
+    getter: "CURRent? (@{chanlist})"
+    setter: "CURRent {value},(@{chanlist})"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 10.3
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Output current level (immediate)"
+
+  current_triggered:
+    getter: "CURRent:TRIGgered? (@{chanlist})"
+    setter: "CURRent:TRIGgered {value},(@{chanlist})"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Triggered current level"
+
+  current_mode:
+    getter: "CURRent:MODE? (@{chanlist})"
+    setter: "CURRent:MODE {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIXed", "STEP", "LIST"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Current transient mode"
+
+  current_protection_clear:
+    scpi: "CURRent:PROTection:CLEar,(@{chanlist})"
+    type: write
+    params:
+      chanlist:
+        type: string
+    description: "Clear overcurrent protection event"
+
+  current_protection_delay:
+    getter: "CURRent:PROTection:DELay? (@{chanlist})"
+    setter: "CURRent:PROTection:DELay {time},(@{chanlist})"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Overcurrent protection delay time"
+
+  current_protection_delay_start:
+    getter: "CURRent:PROTection:DELay:STARt? (@{chanlist})"
+    setter: "CURRent:PROTection:DELay:STARt {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SCHange", "CCTRans"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Overcurrent protection delay start condition"
+
+  current_protection_state:
+    getter: "CURRent:PROTection:STATe? (@{chanlist})"
+    setter: "CURRent:PROTection:STATe {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable overcurrent protection"
+
+  current_protection_tripped:
+    scpi: "CURRent:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if overcurrent protection has tripped"
+
+  # DIGital Subsystem
+  digital_input_data:
+    scpi: "DIGital:INPut:DATA?"
+    type: query
+    returns:
+      type: int
+    description: "Read digital control port input state"
+    enabled: false
+
+  digital_output_data:
+    getter: "DIGital:OUTPut:DATA?"
+    setter: "DIGital:OUTPut:DATA {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Digital control port output data"
+    enabled: false
+
+  digital_pin1_function:
+    getter: "DIGital:PIN1:FUNCtion?"
+    setter: "DIGital:PIN1:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["DIO", "DINPut", "TOUTput", "TINPut", "FAULt"]
+    returns:
+      type: string
+    description: "Digital pin 1 function"
+    enabled: false
+
+  digital_pin2_function:
+    getter: "DIGital:PIN2:FUNCtion?"
+    setter: "DIGital:PIN2:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["DIO", "DINPut", "TOUTput", "TINPut"]
+    returns:
+      type: string
+    description: "Digital pin 2 function"
+    enabled: false
+
+  digital_pin3_function:
+    getter: "DIGital:PIN3:FUNCtion?"
+    setter: "DIGital:PIN3:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["DIO", "DINPut", "TOUTput", "TINPut", "INHibit", "ONCouple", "OFFCouple"]
+    returns:
+      type: string
+    description: "Digital pin 3 function"
+    enabled: false
+
+  digital_pin1_polarity:
+    getter: "DIGital:PIN1:POLarity?"
+    setter: "DIGital:PIN1:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Digital pin 1 polarity"
+    enabled: false
+
+  digital_pin2_polarity:
+    getter: "DIGital:PIN2:POLarity?"
+    setter: "DIGital:PIN2:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Digital pin 2 polarity"
+    enabled: false
+
+  digital_pin3_polarity:
+    getter: "DIGital:PIN3:POLarity?"
+    setter: "DIGital:PIN3:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Digital pin 3 polarity"
+    enabled: false
+
+  digital_trigger_output_bus:
+    getter: "DIGital:TOUTput:BUS?"
+    setter: "DIGital:TOUTput:BUS {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable BUS trigger output on digital pins"
+    enabled: false
+
+  # DISPlay Subsystem
+  display_state:
+    getter: "DISPlay:STATe?"
+    setter: "DISPlay:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable front panel display"
+
+  display_text:
+    getter: "DISPlay:TEXT?"
+    setter: "DISPlay:TEXT \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message on front panel (max 30 characters)"
+
+  display_view:
+    getter: "DISPlay:VIEW?"
+    setter: "DISPlay:VIEW {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["METER1", "METER3"]
+    returns:
+      type: string
+    description: "Select 1-channel or 3-channel meter view"
+
+  # FETCh Subsystem
+  fetch_datalog:
+    scpi: "FETCh:DLOG? {count},(@{chanlist})"
+    type: query
+    params:
+      count:
+        type: int
+        min: 0
+        max: 65536
+      chanlist:
+        type: string
+    returns:
+      type: binary
+    description: "Fetch logged data from channels"
+    enabled: false
+
+  # INITiate Subsystem
+  initiate:
+    scpi: "INITiate (@{chanlist})"
+    type: write
+    params:
+      chanlist:
+        type: string
+    description: "Enable output trigger system"
+
+  initiate_continuous:
+    getter: "INITiate:CONTinuous? (@{chanlist})"
+    setter: "INITiate:CONTinuous {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Continuously initiate output trigger system"
+
+  initiate_datalog:
+    scpi: "INITiate:DLOG \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Start data logging session"
+    enabled: false
+
+  # INSTrument Subsystem
+  instrument_select:
+    getter: "INSTrument:SELect?"
+    setter: "INSTrument:SELect {output}"
+    type: property
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V", "CH1", "CH2", "CH3"]
+    returns:
+      type: string
+    description: "Select output for programming"
+
+  instrument_nselect:
+    getter: "INSTrument:NSELect?"
+    setter: "INSTrument:NSELect {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 3
+    returns:
+      type: int
+    description: "Select output by number (1=P6V, 2=P25V, 3=N25V)"
+
+  instrument_couple_trigger:
+    getter: "INSTrument:COUPle:TRIGger?"
+    setter: "INSTrument:COUPle:TRIGger {mode}"
+    type: property
+    params:
+      mode:
+        type: string
+    returns:
+      type: string
+    description: "Define trigger coupling between outputs (E3631A mode only)"
+
+  # LIST Subsystem
+  list_count:
+    getter: "LIST:COUNt? (@{chanlist})"
+    setter: "LIST:COUNt {count},(@{chanlist})"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 256
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of times list executes"
+    enabled: false
+
+  list_current:
+    getter: "LIST:CURRent? (@{chanlist})"
+    setter: "LIST:CURRent {values},(@{chanlist})"
+    type: property
+    params:
+      values:
+        type: string
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Current settings for each list step (comma-separated, up to 100 steps)"
+    enabled: false
+
+  list_current_points:
+    scpi: "LIST:CURRent:POINts? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of points in current list"
+    enabled: false
+
+  list_dwell:
+    getter: "LIST:DWELl? (@{chanlist})"
+    setter: "LIST:DWELl {values},(@{chanlist})"
+    type: property
+    params:
+      values:
+        type: string
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Dwell time for each list step (0.01-3600s, comma-separated)"
+    enabled: false
+
+  list_dwell_points:
+    scpi: "LIST:DWELl:POINts? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of points in dwell list"
+    enabled: false
+
+  list_step:
+    getter: "LIST:STEP? (@{chanlist})"
+    setter: "LIST:STEP {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "ONCE"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "List step mode (AUTO=dwell-paced, ONCE=trigger-paced)"
+    enabled: false
+
+  list_terminate_last:
+    getter: "LIST:TERMinate:LAST? (@{chanlist})"
+    setter: "LIST:TERMinate:LAST {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Remain at last step value when list terminates"
+    enabled: false
+
+  list_trigger_output_bostep:
+    getter: "LIST:TOUTput:BOSTep? (@{chanlist})"
+    setter: "LIST:TOUTput:BOSTep {values},(@{chanlist})"
+    type: property
+    params:
+      values:
+        type: string
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Generate trigger at beginning of specified steps"
+    enabled: false
+
+  list_trigger_output_bostep_points:
+    scpi: "LIST:TOUTput:BOSTep:POINts? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of points in BOSTep trigger list"
+    enabled: false
+
+  list_trigger_output_eostep:
+    getter: "LIST:TOUTput:EOSTep? (@{chanlist})"
+    setter: "LIST:TOUTput:EOSTep {values},(@{chanlist})"
+    type: property
+    params:
+      values:
+        type: string
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Generate trigger at end of specified steps"
+    enabled: false
+
+  list_trigger_output_eostep_points:
+    scpi: "LIST:TOUTput:EOSTep:POINts? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of points in EOSTep trigger list"
+    enabled: false
+
+  list_voltage:
+    getter: "LIST:VOLTage? (@{chanlist})"
+    setter: "LIST:VOLTage {values},(@{chanlist})"
+    type: property
+    params:
+      values:
+        type: string
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Voltage settings for each list step (comma-separated, up to 100 steps)"
+    enabled: false
+
+  list_voltage_points:
+    scpi: "LIST:VOLTage:POINts? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: int
+    description: "Number of points in voltage list"
+    enabled: false
+
+  # LXI Subsystem
+  lxi_identify_state:
+    getter: "LXI:IDENtify:STATe?"
+    setter: "LXI:IDENtify:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LXI status indicator identify state"
+    enabled: false
+
+  lxi_mdns_state:
+    getter: "LXI:MDNS:STATe?"
+    setter: "LXI:MDNS:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "mDNS service control"
+    enabled: false
+
+  # MEASure Subsystem
+  measure_current:
+    scpi: "MEASure:CURRent? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: A
+    description: "Measure output current"
+    streamable: true
+
+  measure_voltage:
+    scpi: "MEASure:VOLTage? (@{chanlist})"
+    type: query
+    params:
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Measure output voltage"
+    streamable: true
+
+  # MMEMory Subsystem
+  memory_export_datalog:
+    scpi: "MMEMory:EXPort:DLOG \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Export logged data to CSV file"
+    enabled: false
+
+  # OUTPut Subsystem
+  output_state:
+    getter: "OUTPut:STATe? (@{chanlist})"
+    setter: "OUTPut:STATe {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Enable/disable output channels"
+
+  output_couple_channel:
+    getter: "OUTPut:COUPle:CHANnel?"
+    setter: "OUTPut:COUPle:CHANnel {mode}"
+    type: property
+    params:
+      mode:
+        type: string
+    returns:
+      type: string
+    description: "Output synchronization coupling"
+    enabled: false
+
+  output_delay_fall:
+    getter: "OUTPut:DELay:FALL? (@{chanlist})"
+    setter: "OUTPut:DELay:FALL {delay},(@{chanlist})"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Delay before disabling output (0-3600s)"
+
+  output_delay_rise:
+    getter: "OUTPut:DELay:RISE? (@{chanlist})"
+    setter: "OUTPut:DELay:RISE {delay},(@{chanlist})"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Delay before enabling output (0-3600s)"
+
+  output_pmode:
+    getter: "OUTPut:PMODe? (@{chanlist})"
+    setter: "OUTPut:PMODe {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLTage", "CURRent"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Preferred mode for output state transitions"
+
+  output_inhibit_mode:
+    getter: "OUTPut:INHibit:MODE?"
+    setter: "OUTPut:INHibit:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LATChing", "LIVE", "OFF"]
+    returns:
+      type: string
+    description: "Inhibit input operation mode"
+    enabled: false
+
+  output_pair:
+    getter: "OUTPut:PAIR?"
+    setter: "OUTPut:PAIR {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "PARallel", "SERies"]
+    returns:
+      type: string
+    description: "Power supply operation mode (parallel/series)"
+    enabled: false
+
+  output_pon_state:
+    getter: "OUTPut:PON:STATe?"
+    setter: "OUTPut:PON:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["RST", "RCL0", "RCL1", "RCL2", "RCL3", "RCL4", "RCL5", "RCL6", "RCL7", "RCL8", "RCL9"]
+    returns:
+      type: string
+    description: "Power-on state (*RST or recalled state)"
+
+  output_protection_clear:
+    scpi: "OUTPut:PROTection:CLEar (@{chanlist})"
+    type: write
+    params:
+      chanlist:
+        type: string
+    description: "Clear overvoltage/overcurrent protection latch"
+
+  output_track_state:
+    getter: "OUTPut:TRACk:STATe?"
+    setter: "OUTPut:TRACk:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable track mode (±25V supplies)"
+
+  # SENSe Subsystem
+  sense_datalog_function_current:
+    getter: "SENSe:DLOG:FUNCtion:CURRent?"
+    setter: "SENSe:DLOG:FUNCtion:CURRent {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Enable current data logging"
+    enabled: false
+
+  sense_datalog_function_minmax:
+    getter: "SENSe:DLOG:FUNCtion:MINM?"
+    setter: "SENSe:DLOG:FUNCtion:MINM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Log minimum and maximum values"
+    enabled: false
+
+  sense_datalog_function_voltage:
+    getter: "SENSe:DLOG:FUNCtion:VOLTage?"
+    setter: "SENSe:DLOG:FUNCtion:VOLTage {state},(@{chanlist})"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      chanlist:
+        type: string
+    returns:
+      type: bool
+    description: "Enable voltage data logging"
+    enabled: false
+
+  sense_datalog_period:
+    getter: "SENSe:DLOG:PER?"
+    setter: "SENSe:DLOG:PER {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.2
+        max: 60
+    returns:
+      type: float
+      unit: s
+    description: "Data logging sample period"
+    enabled: false
+
+  sense_datalog_time:
+    getter: "SENSe:DLOG:TIME?"
+    setter: "SENSe:DLOG:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 1
+        max: 108000000
+    returns:
+      type: float
+      unit: s
+    description: "Data logging duration"
+    enabled: false
+
+  sense_datalog_tinterval:
+    getter: "SENSe:DLOG:TINTerval?"
+    setter: "SENSe:DLOG:TINTerval {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.2
+        max: 60
+    returns:
+      type: float
+      unit: s
+    description: "Data logging sample interval"
+    enabled: false
+
+  # STATus Subsystem
+  status_preset:
+    scpi: "STATus:PRESet"
+    type: write
+    description: "Set questionable enable registers to power-on values"
+
+  status_questionable_event:
+    scpi: "STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Status event register"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable Status enable register"
+
+  status_questionable_instrument_event:
+    scpi: "STATus:QUEStionable:INSTrument:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Instrument event register"
+
+  status_questionable_instrument_enable:
+    getter: "STATus:QUEStionable:INSTrument:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Questionable Instrument enable register"
+
+  status_questionable_isummary1_event:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary1:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Instrument Summary event register for output 1"
+
+  status_questionable_isummary1_condition:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary1:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read CV/CC condition for output 1 (0=off, 1=CC, 2=CV, 3=fault)"
+
+  status_questionable_isummary1_enable:
+    getter: "STATus:QUEStionable:INSTrument:ISUMmary1:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ISUMmary1:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Questionable Instrument Summary enable register for output 1"
+
+  status_questionable_isummary2_event:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary2:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Instrument Summary event register for output 2"
+
+  status_questionable_isummary2_condition:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary2:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read CV/CC condition for output 2"
+
+  status_questionable_isummary2_enable:
+    getter: "STATus:QUEStionable:INSTrument:ISUMmary2:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ISUMmary2:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Questionable Instrument Summary enable register for output 2"
+
+  status_questionable_isummary3_event:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary3:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read Questionable Instrument Summary event register for output 3"
+
+  status_questionable_isummary3_condition:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary3:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read CV/CC condition for output 3"
+
+  status_questionable_isummary3_enable:
+    getter: "STATus:QUEStionable:INSTrument:ISUMmary3:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ISUMmary3:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Questionable Instrument Summary enable register for output 3"
+
+  # SYSTem Subsystem
+  system_beeper:
+    scpi: "SYSTem:BEEPer"
+    type: write
+    description: "Issue a single beep immediately"
+
+  system_beeper_state:
+    getter: "SYSTem:BEEPer:STATe?"
+    setter: "SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable beeper"
+
+  system_communicate_rlstate:
+    getter: "SYSTem:COMMunicate:RLSTate?"
+    setter: "SYSTem:COMMunicate:RLSTate {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LOCal", "REMote", "RWLock"]
+    returns:
+      type: string
+    description: "Set remote/local mode"
+
+  system_date:
+    getter: "SYSTem:DATE?"
+    setter: "SYSTem:DATE {year},{month},{day}"
+    type: property
+    params:
+      year:
+        type: int
+        min: 2000
+        max: 2099
+      month:
+        type: int
+        min: 1
+        max: 12
+      day:
+        type: int
+        min: 1
+        max: 31
+    returns:
+      type: string
+    description: "Set real-time clock date"
+    enabled: false
+
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error from queue"
+
+  system_local:
+    scpi: "SYSTem:LOCal"
+    type: write
+    description: "Place instrument in local mode"
+
+  system_persona_manufacturer:
+    getter: "SYSTem:PERSona:MANufacturer?"
+    setter: "SYSTem:PERSona:MANufacturer \"{string}\""
+    type: property
+    params:
+      string:
+        type: string
+    returns:
+      type: string
+    description: "Change manufacturer identity string"
+
+  system_persona_model:
+    getter: "SYSTem:PERSona:MODel?"
+    setter: "SYSTem:PERSona:MODel {model}"
+    type: property
+    params:
+      model:
+        type: enum
+        options: ["E3631XA", "E3631A", "DEFault"]
+    returns:
+      type: string
+    description: "Change model number for backward compatibility"
+
+  system_remote:
+    scpi: "SYSTem:REMote"
+    type: write
+    description: "Place instrument in remote mode"
+
+  system_rwlock:
+    scpi: "SYSTem:RWLock"
+    type: write
+    description: "Place instrument in remote mode with all keys locked"
+
+  system_security_immediate:
+    scpi: "SYSTem:SECurity:IMMediate"
+    type: write
+    description: "Clear all user memory and reboot (sanitize instrument)"
+
+  system_set:
+    getter: "SYSTem:SET?"
+    setter: "SYSTem:SET {location}"
+    type: property
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    returns:
+      type: int
+    description: "Save/recall instrument state to/from location"
+
+  system_time:
+    getter: "SYSTem:TIME?"
+    setter: "SYSTem:TIME {hour},{minute},{second}"
+    type: property
+    params:
+      hour:
+        type: int
+        min: 0
+        max: 23
+      minute:
+        type: int
+        min: 0
+        max: 59
+      second:
+        type: int
+        min: 0
+        max: 59
+    returns:
+      type: string
+    description: "Set real-time clock time"
+    enabled: false
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  # TRIGger Subsystem
+  trigger_datalog:
+    scpi: "TRIGger:DLOG"
+    type: write
+    description: "Send immediate trigger to data logger"
+    enabled: false
+
+  trigger_datalog_source:
+    getter: "TRIGger:DLOG:SOURce?"
+    setter: "TRIGger:DLOG:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "EXTernal", "IMMediate"]
+    returns:
+      type: string
+    description: "Select data logger trigger source"
+    enabled: false
+
+  trigger_delay:
+    getter: "TRIGger:DELay? (@{chanlist})"
+    setter: "TRIGger:DELay {delay},(@{chanlist})"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: s
+    description: "Delay between trigger event and output action"
+
+  trigger_source:
+    getter: "TRIGger:SOURce? (@{chanlist})"
+    setter: "TRIGger:SOURce {source},(@{chanlist})"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "EXTernal", "IMMediate", "PIN1", "PIN2", "PIN3"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Select output trigger source"
+
+  # VOLTage Subsystem
+  voltage:
+    getter: "VOLTage? (@{chanlist})"
+    setter: "VOLTage {value},(@{chanlist})"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 25.75
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Output voltage level (immediate)"
+
+  voltage_triggered:
+    getter: "VOLTage:TRIGgered? (@{chanlist})"
+    setter: "VOLTage:TRIGgered {value},(@{chanlist})"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Triggered voltage level"
+
+  voltage_mode:
+    getter: "VOLTage:MODE? (@{chanlist})"
+    setter: "VOLTage:MODE {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FIXed", "STEP", "LIST"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Voltage transient mode"
+
+  voltage_protection:
+    getter: "VOLTage:PROTection? (@{chanlist})"
+    setter: "VOLTage:PROTection {value},(@{chanlist})"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+      chanlist:
+        type: string
+    returns:
+      type: float
+      unit: V
+    description: "Overvoltage protection level"
+
+  voltage_protection_clear:
+    scpi: "VOLTage:PROTection:CLEar (@{chanlist})"
+    type: write
+    params:
+      chanlist:
+        type: string
+    description: "Clear overvoltage protection event"
+
+  voltage_protection_tripped:
+    scpi: "VOLTage:PROTection:TRIPped?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if overvoltage protection has tripped"
+
+  voltage_range:
+    getter: "VOLTage:RANGe? (@{chanlist})"
+    setter: "VOLTage:RANGe {range},(@{chanlist})"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["P6V", "P25V", "LOW", "HIGH"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Output voltage range"
+
+  voltage_sense_source:
+    getter: "VOLTage:SENSe:SOURce? (@{chanlist})"
+    setter: "VOLTage:SENSe:SOURce {mode},(@{chanlist})"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+      chanlist:
+        type: string
+    returns:
+      type: string
+    description: "Remote/local voltage sensing (2-wire/4-wire)"
+    enabled: false
+
+  # CALibration Subsystem
+  calibration_asave:
+    getter: "CALibration:ASAVE?"
+    setter: "CALibration:ASAVE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable automatic saving of calibration constants"
+
+  calibration_count:
+    scpi: "CALibration:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of times instrument has been calibrated"
+
+  calibration_current_data:
+    scpi: "CALibration:CURRent:DATA {current},(@{chanlist})"
+    type: write
+    params:
+      current:
+        type: float
+        unit: A
+      chanlist:
+        type: string
+    description: "Enter current calibration value from DMM"
+
+  calibration_current_data_low:
+    scpi: "CALibration:CURRent:DATA:LOW {current},(@{chanlist})"
+    type: write
+    params:
+      current:
+        type: float
+        unit: A
+      chanlist:
+        type: string
+    description: "Enter low-range current calibration value"
+    enabled: false
+
+  calibration_current_level:
+    scpi: "CALibration:CURRent:LEVel {level},(@{chanlist})"
+    type: write
+    params:
+      level:
+        type: enum
+        options: ["MINimum", "MAXimum"]
+      chanlist:
+        type: string
+    description: "Set current calibration point"
+
+  calibration_date:
+    getter: "CALibration:DATE?"
+    setter: "CALibration:DATE \"{date}\""
+    type: property
+    params:
+      date:
+        type: string
+    returns:
+      type: string
+    description: "Store calibration date"
+
+  calibration_save:
+    scpi: "CALibration:SAVE"
+    type: write
+    description: "Save calibration constants to non-volatile memory"
+
+  calibration_secure_code:
+    scpi: "CALibration:SECure:CODE {code}"
+    type: write
+    params:
+      code:
+        type: int
+    description: "Set calibration security passcode"
+
+  calibration_secure_state:
+    getter: "CALibration:SECure:STATe?"
+    setter: "CALibration:SECure:STATe {state},{code}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      code:
+        type: int
+    returns:
+      type: bool
+    description: "Secure/unsecure calibration"
+
+  calibration_string:
+    getter: "CALibration:STRing?"
+    setter: "CALibration:STRing \"{string}\""
+    type: property
+    params:
+      string:
+        type: string
+    returns:
+      type: string
+    description: "Store calibration information string (max 40 characters)"
+
+  calibration_voltage_data:
+    scpi: "CALibration:VOLTage:DATA {voltage},(@{chanlist})"
+    type: write
+    params:
+      voltage:
+        type: float
+        unit: V
+      chanlist:
+        type: string
+    description: "Enter voltage calibration value from DMM"
+
+  calibration_voltage_level:
+    scpi: "CALibration:VOLTage:LEVel {level},(@{chanlist})"
+    type: write
+    params:
+      level:
+        type: enum
+        options: ["MINimum", "MAXimum"]
+      chanlist:
+        type: string
+    description: "Set voltage calibration point"
+
+  # DIAGnostic Subsystem
+  diagnostic_dislowrange:
+    scpi: "DIAGnostic:DISLowrange {state}"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    description: "Enable/disable current low range"
+    enabled: false
+
+sequences:
+  voltage_step:
+    description: "Step voltage output to triggered level"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 3
+      voltage:
+        type: float
+        unit: V
+      trigger_source:
+        type: string
+        default: "BUS"
+    steps:
+      - command: instrument_nselect
+        args:
+          channel: "{channel}"
+      - command: voltage_mode
+        args:
+          mode: "STEP"
+          chanlist: "{channel}"
+      - command: voltage_triggered
+        args:
+          value: "{voltage}"
+          chanlist: "{channel}"
+      - command: trigger_source
+        args:
+          source: "{trigger_source}"
+          chanlist: "{channel}"
+      - command: initiate
+        args:
+          chanlist: "{channel}"
+      - scpi: "*TRG"
+    returns: null
+
+  current_step:
+    description: "Step current output to triggered level"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 3
+      current:
+        type: float
+        unit: A
+      trigger_source:
+        type: string
+        default: "BUS"
+    steps:
+      - command: instrument_nselect
+        args:
+          channel: "{channel}"
+      - command: current_mode
+        args:
+          mode: "STEP"
+          chanlist: "{channel}"
+      - command: current_triggered
+        args:
+          value: "{current}"
+          chanlist: "{channel}"
+      - command: trigger_source
+        args:
+          source: "{trigger_source}"
+          chanlist: "{channel}"
+      - command: initiate
+        args:
+          chanlist: "{channel}"
+      - scpi: "*TRG"
+    returns: null
+
+  set_output:
+    description: "Configure and enable output channel"
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 3
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    steps:
+      - command: instrument_nselect
+        args:
+          channel: "{channel}"
+      - command: voltage
+        args:
+          value: "{voltage}"
+          chanlist: "{channel}"
+      - command: current
+        args:
+          value: "{current}"
+          chanlist: "{channel}"
+      - command: output_state
+        args:
+          state: "ON"
+          chanlist: "{channel}"
+    returns: null
+
+  measure_all:
+    description: "Measure voltage and current on all channels"
+    steps:
+      - command: measure_voltage
+        args:
+          chanlist: "1:3"
+        capture: voltages
+      - command: measure_current
+        args:
+          chanlist: "1:3"
+        capture: currents
+    returns: voltages
+
+  disable_all_outputs:
+    description: "Turn off all output channels"
+    steps:
+      - command: output_state
+        args:
+          state: "OFF"
+          chanlist: "1:3"
+    returns: null
+
+status:
+  stb:
+    bit3: QUES
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

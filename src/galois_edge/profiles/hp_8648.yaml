@@ -1,0 +1,418 @@
+instrument:
+  manufacturer: "Hewlett-Packard"
+  model: "8648"
+  class: rf_source
+  description: "RF signal generator, 100 kHz to 1 GHz, AM/FM/Phase modulation"
+
+identity:
+  query: "*IDN?"
+  pattern: "(HEWLETT-PACKARD|AGILENT).*8648[ABCD]"
+
+interfaces:
+  - type: gpib
+    default_address: 19
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  frequency:
+    getter: ":FREQ?"
+    setter: ":FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 100000
+        max: 1000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "RF output frequency"
+
+  amplitude:
+    getter: ":POW?"
+    setter: ":POW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: dBm
+        min: -136
+        max: 10
+    returns:
+      type: float
+      unit: dBm
+    description: "RF output power level"
+
+  output_state:
+    getter: ":OUTP?"
+    setter: ":OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "RF output on/off state"
+
+  fm_state:
+    getter: ":FM:STAT?"
+    setter: ":FM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "FM modulation on/off"
+
+  fm_deviation:
+    getter: ":FM:DEV?"
+    setter: ":FM:DEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0
+        max: 100000
+    returns:
+      type: float
+      unit: Hz
+    description: "FM peak deviation"
+
+  fm_source:
+    getter: ":FM:SOUR?"
+    setter: ":FM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT", "INT1", "INT2"]
+    returns:
+      type: string
+    description: "FM modulation source"
+
+  am_state:
+    getter: ":AM:STAT?"
+    setter: ":AM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "AM modulation on/off"
+
+  am_depth:
+    getter: ":AM:DEPT?"
+    setter: ":AM:DEPT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "AM modulation depth"
+
+  am_source:
+    getter: ":AM:SOUR?"
+    setter: ":AM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT", "INT1", "INT2"]
+    returns:
+      type: string
+    description: "AM modulation source"
+
+  pm_state:
+    getter: ":PM:STAT?"
+    setter: ":PM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Phase modulation on/off"
+
+  pm_deviation:
+    getter: ":PM:DEV?"
+    setter: ":PM:DEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: rad
+        min: 0
+        max: 10
+    returns:
+      type: float
+      unit: rad
+    description: "Phase modulation peak deviation"
+
+  pm_source:
+    getter: ":PM:SOUR?"
+    setter: ":PM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Phase modulation source"
+
+  reference_oscillator:
+    getter: ":ROSC:SOUR?"
+    setter: ":ROSC:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT"]
+    returns:
+      type: string
+    description: "Reference oscillator source (internal or external 10 MHz)"
+
+  error_query:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error message"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+sequences:
+  basic_cw_output:
+    description: "Configure basic CW output signal"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+    steps:
+      - command: reset
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          value: "{power}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  fm_modulated_signal:
+    description: "Generate FM modulated signal"
+    params:
+      carrier_freq:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+      deviation:
+        type: float
+        unit: Hz
+    steps:
+      - command: reset
+      - command: frequency
+        args:
+          value: "{carrier_freq}"
+      - command: amplitude
+        args:
+          value: "{power}"
+      - command: fm_deviation
+        args:
+          value: "{deviation}"
+      - command: fm_source
+        args:
+          source: "INT"
+      - command: fm_state
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+  am_modulated_signal:
+    description: "Generate AM modulated signal"
+    params:
+      carrier_freq:
+        type: float
+        unit: Hz
+      power:
+        type: float
+        unit: dBm
+      depth:
+        type: float
+        unit: "%"
+    steps:
+      - command: reset
+      - command: frequency
+        args:
+          value: "{carrier_freq}"
+      - command: amplitude
+        args:
+          value: "{power}"
+      - command: am_depth
+        args:
+          value: "{depth}"
+      - command: am_source
+        args:
+          source: "INT"
+      - command: am_state
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

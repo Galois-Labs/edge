@@ -1,0 +1,1853 @@
+instrument:
+  manufacturer: "Stanford Research Systems"
+  model: "SR860"
+  class: lockin
+  description: "500 kHz DSP Lock-in Amplifier with 1 MHz sampling"
+
+identity:
+  query: "*IDN?"
+  pattern: "Stanford.*SR860"
+
+interfaces:
+  - type: gpib
+    default_address: 24
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # Standard IEEE-488.2 Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default configuration"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in standard event register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location (0-4)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location (0-4)"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Power-on status clear bit"
+
+  # Reference and Timebase Commands
+  timebase_mode:
+    getter: "TBMODE?"
+    setter: "TBMODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "INternal"]
+    returns:
+      type: string
+    description: "Set 10 MHz timebase mode (auto or internal)"
+
+  timebase_status:
+    scpi: "TBSTAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query current 10 MHz timebase source (0=external, 1=internal)"
+
+  reference_phase:
+    getter: "PHAS?"
+    setter: "PHAS {phase}"
+    type: property
+    params:
+      phase:
+        type: float
+        unit: deg
+        min: -360000
+        max: 360000
+    returns:
+      type: float
+      unit: deg
+    description: "Reference phase shift in degrees"
+
+  auto_phase:
+    scpi: "APHS"
+    type: write
+    description: "Perform auto phase adjustment"
+
+  frequency:
+    getter: "FREQ?"
+    setter: "FREQ {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 500000
+    returns:
+      type: float
+      unit: Hz
+    description: "Internal or external reference frequency"
+
+  internal_frequency:
+    getter: "FREQINT?"
+    setter: "FREQINT {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 500000
+    returns:
+      type: float
+      unit: Hz
+    description: "Internal reference frequency"
+
+  external_frequency:
+    scpi: "FREQEXT?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "External reference frequency"
+
+  detection_frequency:
+    scpi: "FREQDET?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Actual detection frequency"
+
+  harmonic:
+    getter: "HARM?"
+    setter: "HARM {harmonic}"
+    type: property
+    params:
+      harmonic:
+        type: int
+        min: 1
+        max: 99
+    returns:
+      type: int
+    description: "Harmonic detection number"
+
+  dual_harmonic:
+    getter: "HARMDUAL?"
+    setter: "HARMDUAL {harmonic}"
+    type: property
+    params:
+      harmonic:
+        type: int
+        min: 1
+        max: 99
+    returns:
+      type: int
+    description: "Dual reference mode external harmonic number"
+
+  chopper_blade_slots:
+    getter: "BLADESLOTS?"
+    setter: "BLADESLOTS {slots}"
+    type: property
+    params:
+      slots:
+        type: enum
+        options: ["SLT6", "SLT30"]
+    returns:
+      type: string
+    description: "SR540 chopper blade slot count (6 or 30)"
+
+  chopper_blade_phase:
+    getter: "BLADEPHASE?"
+    setter: "BLADEPHASE {phase}"
+    type: property
+    params:
+      phase:
+        type: float
+        unit: deg
+    returns:
+      type: float
+      unit: deg
+    description: "SR540 chopper blade phase"
+
+  sine_amplitude:
+    getter: "SLVL?"
+    setter: "SLVL {amplitude}"
+    type: property
+    params:
+      amplitude:
+        type: float
+        unit: V
+        min: 0.000000001
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Sine output amplitude (1 nVrms to 2 Vrms)"
+
+  sine_offset:
+    getter: "SOFF?"
+    setter: "SOFF {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: V
+        min: -5.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Sine output DC offset"
+
+  sine_offset_mode:
+    getter: "REFM?"
+    setter: "REFM {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["COMmon", "DIFference"]
+    returns:
+      type: string
+    description: "Sine output DC mode (common or differential)"
+
+  reference_source:
+    getter: "RSRC?"
+    setter: "RSRC {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INT", "EXT", "DUAL", "CHOP"]
+    returns:
+      type: string
+    description: "Reference source (internal, external, dual, or chop)"
+
+  reference_trigger:
+    getter: "RTRG?"
+    setter: "RTRG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SIN", "POSttl", "NEGttl"]
+    returns:
+      type: string
+    description: "External reference trigger mode"
+
+  reference_impedance:
+    getter: "REFZ?"
+    setter: "REFZ {impedance}"
+    type: property
+    params:
+      impedance:
+        type: enum
+        options: ["50ohms", "1Meg"]
+    returns:
+      type: string
+    description: "External reference input impedance"
+
+  frequency_preset:
+    getter: "PSTF? {preset}"
+    setter: "PSTF {preset}, {freq}"
+    type: property
+    params:
+      preset:
+        type: int
+        min: 0
+        max: 3
+      freq:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 500000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency preset F1-F4"
+
+  amplitude_preset:
+    getter: "PSTA? {preset}"
+    setter: "PSTA {preset}, {amplitude}"
+    type: property
+    params:
+      preset:
+        type: int
+        min: 0
+        max: 3
+      amplitude:
+        type: float
+        unit: V
+        min: 0.000000001
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Amplitude preset A1-A4"
+
+  level_preset:
+    getter: "PSTL? {preset}"
+    setter: "PSTL {preset}, {level}"
+    type: property
+    params:
+      preset:
+        type: int
+        min: 0
+        max: 3
+      level:
+        type: float
+        unit: V
+        min: -5.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "DC level preset L1-L4"
+
+  # Signal Input Commands
+  input_mode:
+    getter: "IVMD?"
+    setter: "IVMD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLTage", "CURRent"]
+    returns:
+      type: string
+    description: "Input mode (voltage or current)"
+
+  input_source:
+    getter: "ISRC?"
+    setter: "ISRC {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["A", "A-B"]
+    returns:
+      type: string
+    description: "Voltage input configuration (A or A-B)"
+
+  input_coupling:
+    getter: "ICPL?"
+    setter: "ICPL {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Voltage input coupling"
+
+  input_ground:
+    getter: "IGND?"
+    setter: "IGND {ground}"
+    type: property
+    params:
+      ground:
+        type: enum
+        options: ["FLOat", "GROund"]
+    returns:
+      type: string
+    description: "Voltage input shield grounding"
+
+  input_range:
+    getter: "IRNG?"
+    setter: "IRNG {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["1Volt", "300Mvolt", "100Mvolt", "30Mvolt", "10Mvolt"]
+    returns:
+      type: string
+    description: "Voltage input range"
+
+  current_gain:
+    getter: "ICUR?"
+    setter: "ICUR {gain}"
+    type: property
+    params:
+      gain:
+        type: enum
+        options: ["1MEG", "100MEG"]
+    returns:
+      type: string
+    description: "Current input gain (1 MΩ = 1 μA or 100 MΩ = 10 nA)"
+
+  input_level:
+    scpi: "ILVL?"
+    type: query
+    returns:
+      type: int
+    description: "Signal strength indicator (0=lowest to 4=overload)"
+
+  sensitivity:
+    getter: "SCAL?"
+    setter: "SCAL {sensitivity}"
+    type: property
+    params:
+      sensitivity:
+        type: int
+        min: 0
+        max: 27
+    returns:
+      type: int
+    description: "Sensitivity (0=1V to 27=1nV)"
+
+  dual_ref_sync_mode:
+    getter: "DUALREFSYNC?"
+    setter: "DUALREFSYNC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DIFF", "INT"]
+    returns:
+      type: string
+    description: "Sync filter mode for dual reference (difference or internal freq)"
+
+  time_constant:
+    getter: "OFLT?"
+    setter: "OFLT {tc}"
+    type: property
+    params:
+      tc:
+        type: int
+        min: 0
+        max: 21
+    returns:
+      type: int
+    description: "Time constant (0=1μs to 21=30ks)"
+
+  filter_slope:
+    getter: "OFSL?"
+    setter: "OFSL {slope}"
+    type: property
+    params:
+      slope:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Filter slope (0=6dB/oct to 3=24dB/oct)"
+
+  sync_filter:
+    getter: "SYNC?"
+    setter: "SYNC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Synchronous filter on/off"
+
+  advanced_filter:
+    getter: "ADVFILT?"
+    setter: "ADVFILT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Advanced filter on/off"
+
+  equivalent_noise_bandwidth:
+    scpi: "ENBW?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Equivalent noise bandwidth of output filter"
+
+  # Output Commands
+  channel_output_mode:
+    getter: "COUT? {channel}"
+    setter: "COUT {channel}, {mode}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["OCH1", "OCH2"]
+      mode:
+        type: enum
+        options: ["XY", "RTHeta"]
+    returns:
+      type: string
+    description: "Set CH1/CH2 to X/Y or R/θ"
+
+  channel_expand:
+    getter: "CEXP? {param}"
+    setter: "CEXP {param}, {expand}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["X", "Y", "R"]
+      expand:
+        type: enum
+        options: ["OFF", "X10", "X100"]
+    returns:
+      type: string
+    description: "Channel expand (×1, ×10, or ×100)"
+
+  channel_offset_enable:
+    getter: "COFA? {param}"
+    setter: "COFA {param}, {state}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["X", "Y", "R"]
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Channel offset on/off"
+
+  channel_offset_percent:
+    getter: "COFP? {param}"
+    setter: "COFP {param}, {percent}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["X", "Y", "R"]
+      percent:
+        type: float
+        min: -999.99
+        max: 999.99
+    returns:
+      type: float
+    description: "Channel offset percentage"
+
+  output_auto_offset:
+    scpi: "OAUT {param}"
+    type: write
+    params:
+      param:
+        type: enum
+        options: ["X", "Y", "R"]
+    description: "Auto offset for X, Y, or R"
+
+  channel_ratio:
+    getter: "CRAT? {param}"
+    setter: "CRAT {param}, {state}"
+    type: property
+    params:
+      param:
+        type: enum
+        options: ["X", "Y", "R"]
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Channel ratio on/off (normalize by Aux In 3 or 4)"
+
+  aux_input:
+    scpi: "OAUX? {input}"
+    type: query
+    params:
+      input:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: float
+      unit: V
+    description: "Query aux input voltage (0-3 = Aux In 1-4)"
+
+  aux_output:
+    getter: "AUXV? {output}"
+    setter: "AUXV {output}, {voltage}"
+    type: property
+    params:
+      output:
+        type: int
+        min: 0
+        max: 3
+      voltage:
+        type: float
+        unit: V
+        min: -10.5
+        max: 10.5
+    returns:
+      type: float
+      unit: V
+    description: "Set aux output voltage (0-3 = Aux Out 1-4)"
+
+  # Auto Function Commands
+  auto_range:
+    scpi: "ARNG"
+    type: write
+    description: "Auto range input"
+
+  auto_scale:
+    scpi: "ASCL"
+    type: write
+    description: "Auto scale sensitivity"
+
+  # Display Commands
+  display_blank:
+    getter: "DBLK?"
+    setter: "DBLK {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Display blanking on/off"
+
+  display_layout:
+    getter: "DLAY?"
+    setter: "DLAY {layout}"
+    type: property
+    params:
+      layout:
+        type: enum
+        options: ["TREnd", "HISTory", "BARHist", "FFT", "BARFft", "BAREight"]
+    returns:
+      type: string
+    description: "Screen layout"
+
+  display_capture:
+    scpi: "DCAP"
+    type: write
+    description: "Save screenshot to USB memory stick"
+
+  channel_display_parameter:
+    getter: "CDSP? {channel}"
+    setter: "CDSP {channel}, {parameter}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+      parameter:
+        type: enum
+        options: ["X", "Y", "R", "THeta", "IN1", "IN2", "IN3", "IN4", "XNOise", "YNOise", "OUT1", "OUT2", "PHAse", "SAMp", "LEVel", "FInt", "FExt"]
+    returns:
+      type: string
+    description: "Assign parameter to data channel"
+
+  channel_graph:
+    getter: "CGRF? {channel}"
+    setter: "CGRF {channel}, {state}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Turn data channel graph on/off"
+
+  get_screenshot:
+    scpi: "GETSCREEN?"
+    type: query
+    returns:
+      type: binary
+      format: BMP
+    description: "Get screen capture as binary BMP file"
+
+  graph_speed:
+    getter: "GSPD?"
+    setter: "GSPD {speed}"
+    type: property
+    params:
+      speed:
+        type: int
+        min: 0
+        max: 16
+    returns:
+      type: int
+    description: "Horizontal time scale (0=0.5s to 16=2days)"
+
+  graph_scale:
+    getter: "GSCL? {channel}"
+    setter: "GSCL {channel}, {scale}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+      scale:
+        type: float
+    returns:
+      type: float
+    description: "Vertical scale per division for data channel"
+
+  graph_offset:
+    getter: "GOFF? {channel}"
+    setter: "GOFF {channel}, {offset}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+      offset:
+        type: float
+    returns:
+      type: float
+    description: "Vertical offset for data channel"
+
+  graph_auto_scale:
+    scpi: "GAUT {channel}"
+    type: write
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+    description: "Auto scale data channel"
+
+  graph_auto_center:
+    scpi: "GACT {channel}"
+    type: write
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+    description: "Auto scale data channel with zero center"
+
+  graph_auto_find:
+    scpi: "GAUF {channel}"
+    type: write
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+    description: "Auto find data channel"
+
+  graph_live:
+    getter: "GLIV?"
+    setter: "GLIV {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Strip chart pause/run"
+
+  cursor_position:
+    getter: "PCUR?"
+    setter: "PCUR {position}"
+    type: property
+    params:
+      position:
+        type: int
+        min: 0
+        max: 639
+    returns:
+      type: int
+    description: "Cursor position (0=right, 639=left)"
+
+  cursor_relative:
+    getter: "CURREL?"
+    setter: "CURREL {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Cursor relative or absolute mode"
+
+  cursor_display_mode:
+    getter: "CURDISP?"
+    setter: "CURDISP {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Cursor horizontal display mode (0=date/time, 1=interval)"
+
+  cursor_readout:
+    getter: "CURBUG?"
+    setter: "CURBUG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AVG", "MAX", "MIN"]
+    returns:
+      type: string
+    description: "Cursor readout mode (mean, max, or min)"
+
+  cursor_width:
+    getter: "FCRW?"
+    setter: "FCRW {width}"
+    type: property
+    params:
+      width:
+        type: enum
+        options: ["LIne", "NARrow", "WIde"]
+    returns:
+      type: string
+    description: "Cursor width"
+
+  screen_cursor_y:
+    scpi: "SCRY? {channel}"
+    type: query
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4", "STATus"]
+    returns:
+      type: float
+    description: "Strip chart cursor value of data channel or status"
+
+  cursor_datetime:
+    scpi: "CURDATTIM?"
+    type: query
+    returns:
+      type: string
+    description: "Strip chart cursor horizontal date and time"
+
+  cursor_interval:
+    scpi: "CURINTERVAL?"
+    type: query
+    returns:
+      type: string
+    description: "Strip chart cursor horizontal interval"
+
+  # FFT Commands
+  fft_source:
+    getter: "FFTR?"
+    setter: "FFTR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["ADC", "MIXer", "FILTer"]
+    returns:
+      type: string
+    description: "FFT data source (ADC, post-mixer, or post-filter)"
+
+  fft_scale:
+    getter: "FFTS?"
+    setter: "FFTS {scale}"
+    type: property
+    params:
+      scale:
+        type: int
+        min: -8
+        max: 7
+    returns:
+      type: int
+    description: "FFT vertical scale (dB/div)"
+
+  fft_offset:
+    getter: "FFTO?"
+    setter: "FFTO {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: "FFT vertical offset (top edge amplitude in dB)"
+
+  fft_auto:
+    scpi: "FAUT"
+    type: write
+    description: "FFT auto scale"
+
+  fft_max_span:
+    scpi: "FFTMAXSPAN?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Maximum allowed FFT span"
+
+  fft_span:
+    getter: "FFTSPAN?"
+    setter: "FFTSPAN {span}"
+    type: property
+    params:
+      span:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT frequency span (Hz/div)"
+
+  fft_averaging:
+    getter: "FFTA?"
+    setter: "FFTA {averages}"
+    type: property
+    params:
+      averages:
+        type: enum
+        options: ["AVG1", "AVG3", "AVG10", "AVG30", "AVG100"]
+    returns:
+      type: string
+    description: "FFT averaging"
+
+  fft_live:
+    getter: "FFTL?"
+    setter: "FFTL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "FFT pause/live"
+
+  fft_cursor_x:
+    scpi: "FCRX?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT cursor frequency value"
+
+  fft_cursor_y:
+    scpi: "FCRY?"
+    type: query
+    returns:
+      type: float
+      unit: dB
+    description: "FFT cursor amplitude value"
+
+  # Scan Commands
+  scan_parameter:
+    getter: "SCNPAR?"
+    setter: "SCNPAR {parameter}"
+    type: property
+    params:
+      parameter:
+        type: enum
+        options: ["Fint", "REFAmp", "REFDc", "OUT1", "OUT2"]
+    returns:
+      type: string
+    description: "Scan parameter selection"
+
+  scan_type:
+    getter: "SCNLOG?"
+    setter: "SCNLOG {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LIN", "LOG"]
+    returns:
+      type: string
+    description: "Scan type (linear or logarithmic)"
+
+  scan_end_mode:
+    getter: "SCNEND?"
+    setter: "SCNEND {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ONce", "REpeat", "UPdown"]
+    returns:
+      type: string
+    description: "Scan end mode"
+
+  scan_time:
+    getter: "SCNSEC?"
+    setter: "SCNSEC {seconds}"
+    type: property
+    params:
+      seconds:
+        type: float
+        unit: s
+        max: 1728000
+    returns:
+      type: float
+      unit: s
+    description: "Scan time duration"
+
+  scan_amplitude_attenuator:
+    getter: "SCNAMPATTN?"
+    setter: "SCNAMPATTN {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Scan amplitude attenuator mode (0=auto, 1=fixed)"
+
+  scan_dc_attenuator:
+    getter: "SCNDCATTN?"
+    setter: "SCNDCATTN {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Scan DC attenuator mode (0=auto, 1=fixed)"
+
+  scan_interval:
+    getter: "SCNINRVL?"
+    setter: "SCNINRVL {interval}"
+    type: property
+    params:
+      interval:
+        type: int
+        min: 0
+        max: 16
+    returns:
+      type: int
+    description: "Scan parameter update interval"
+
+  scan_enable:
+    getter: "SCNENBL?"
+    setter: "SCNENBL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Scan enable on/off"
+
+  scan_run:
+    scpi: "SCNRUN"
+    type: write
+    description: "Start or resume scan"
+
+  scan_pause:
+    scpi: "SCNPAUSE"
+    type: write
+    description: "Pause scan"
+
+  scan_reset:
+    scpi: "SCNRST"
+    type: write
+    description: "Reset scan to begin value"
+
+  scan_state:
+    scpi: "SCNSTATE?"
+    type: query
+    returns:
+      type: int
+    description: "Query scan state (0=off, 1=reset, 2=running, 3=paused, 4=done)"
+
+  scan_frequency:
+    getter: "SCNFREQ? {point}"
+    setter: "SCNFREQ {point}, {freq}"
+    type: property
+    params:
+      point:
+        type: enum
+        options: ["BEGin", "END"]
+      freq:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 500000
+    returns:
+      type: float
+      unit: Hz
+    description: "Scan begin/end frequency"
+
+  scan_amplitude:
+    getter: "SCNAMP? {point}"
+    setter: "SCNAMP {point}, {amplitude}"
+    type: property
+    params:
+      point:
+        type: enum
+        options: ["BEGin", "END"]
+      amplitude:
+        type: float
+        unit: V
+        min: 0.000000001
+        max: 2.0
+    returns:
+      type: float
+      unit: V
+    description: "Scan begin/end reference amplitude"
+
+  scan_dc:
+    getter: "SCNDC? {point}"
+    setter: "SCNDC {point}, {level}"
+    type: property
+    params:
+      point:
+        type: enum
+        options: ["BEGin", "END"]
+      level:
+        type: float
+        unit: V
+        min: -5.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Scan begin/end reference DC level"
+
+  scan_aux1:
+    getter: "SCNAUX1? {point}"
+    setter: "SCNAUX1 {point}, {voltage}"
+    type: property
+    params:
+      point:
+        type: enum
+        options: ["BEGin", "END"]
+      voltage:
+        type: float
+        unit: V
+        min: -10.5
+        max: 10.5
+    returns:
+      type: float
+      unit: V
+    description: "Scan begin/end Aux Out 1 value"
+
+  scan_aux2:
+    getter: "SCNAUX2? {point}"
+    setter: "SCNAUX2 {point}, {voltage}"
+    type: property
+    params:
+      point:
+        type: enum
+        options: ["BEGin", "END"]
+      voltage:
+        type: float
+        unit: V
+        min: -10.5
+        max: 10.5
+    returns:
+      type: float
+      unit: V
+    description: "Scan begin/end Aux Out 2 value"
+
+  # Data Transfer Commands
+  output_channel:
+    scpi: "OUTR? {channel}"
+    type: query
+    params:
+      channel:
+        type: enum
+        options: ["DAT1", "DAT2", "DAT3", "DAT4"]
+    returns:
+      type: float
+    description: "Query value of data channel"
+    streamable: true
+
+  output_parameter:
+    scpi: "OUTP? {parameter}"
+    type: query
+    params:
+      parameter:
+        type: enum
+        options: ["X", "Y", "R", "THeta", "IN1", "IN2", "IN3", "IN4", "XNOise", "YNOise", "OUT1", "OUT2", "PHAse", "SAMp", "LEVel", "FInt", "FExt"]
+    returns:
+      type: float
+    description: "Query lock-in parameter value"
+    streamable: true
+
+  snapshot:
+    scpi: "SNAP? {param1}, {param2}"
+    type: query
+    params:
+      param1:
+        type: enum
+        options: ["X", "Y", "R", "THeta", "IN1", "IN2", "IN3", "IN4", "XNOise", "YNOise", "OUT1", "OUT2", "PHAse", "SAMp", "LEVel", "FInt", "FExt"]
+      param2:
+        type: enum
+        options: ["X", "Y", "R", "THeta", "IN1", "IN2", "IN3", "IN4", "XNOise", "YNOise", "OUT1", "OUT2", "PHAse", "SAMp", "LEVel", "FInt", "FExt"]
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query 2-3 parameters at single instant"
+
+  snapshot_display:
+    scpi: "SNAPD?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query all 4 displayed data channel values at single instant"
+
+  # Data Capture Commands
+  capture_length:
+    getter: "CAPTURELEN?"
+    setter: "CAPTURELEN {length}"
+    type: property
+    params:
+      length:
+        type: int
+        min: 1
+        max: 4096
+    returns:
+      type: int
+    description: "Capture buffer length in kilobytes"
+
+  capture_config:
+    getter: "CAPTURECFG?"
+    setter: "CAPTURECFG {config}"
+    type: property
+    params:
+      config:
+        type: enum
+        options: ["X", "XY", "RT", "XYRT"]
+    returns:
+      type: string
+    description: "Capture configuration (X, XY, Rθ, or XYRθ)"
+
+  capture_rate_max:
+    scpi: "CAPTURERATEMAX?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Maximum allowed capture rate"
+
+  capture_rate:
+    getter: "CAPTURERATE?"
+    setter: "CAPTURERATE {rate}"
+    type: property
+    params:
+      rate:
+        type: int
+        min: 0
+        max: 20
+    returns:
+      type: float
+      unit: Hz
+    description: "Capture rate (max_rate / 2^n)"
+
+  capture_start:
+    scpi: "CAPTURESTART {mode}, {trigger}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ONEshot", "CONTinuous"]
+      trigger:
+        type: enum
+        options: ["IMMediate", "TRIGstart", "SAMPpertrig"]
+    description: "Start data capture"
+
+  capture_stop:
+    scpi: "CAPTURESTOP"
+    type: write
+    description: "Stop data capture"
+
+  capture_status:
+    scpi: "CAPTURESTAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query capture buffer state"
+
+  capture_bytes:
+    scpi: "CAPTUREBYTES?"
+    type: query
+    returns:
+      type: int
+    description: "Query bytes of captured data"
+
+  capture_progress:
+    scpi: "CAPTUREPROG?"
+    type: query
+    returns:
+      type: int
+    description: "Query kilobytes of captured data"
+
+  capture_value:
+    scpi: "CAPTUREVAL? {index}"
+    type: query
+    params:
+      index:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query capture buffer data at index"
+
+  capture_get:
+    scpi: "CAPTUREGET? {offset}, {length}"
+    type: query
+    params:
+      offset:
+        type: int
+      length:
+        type: int
+        max: 64
+    returns:
+      type: binary
+      format: float32
+    description: "Download binary capture buffer data"
+
+  # Data Streaming Commands
+  stream_channel:
+    getter: "STREAMCH?"
+    setter: "STREAMCH {config}"
+    type: property
+    params:
+      config:
+        type: enum
+        options: ["X", "XY", "RT", "XYRT"]
+    returns:
+      type: string
+    description: "Stream configuration (X, XY, Rθ, or XYRθ)"
+
+  stream_rate_max:
+    scpi: "STREAMRATEMAX?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Maximum allowed streaming rate"
+
+  stream_rate:
+    getter: "STREAMRATE?"
+    setter: "STREAMRATE {rate}"
+    type: property
+    params:
+      rate:
+        type: int
+        min: 0
+        max: 20
+    returns:
+      type: int
+    description: "Streaming rate (max_rate / 2^n)"
+
+  stream_format:
+    getter: "STREAMFMT?"
+    setter: "STREAMFMT {format}"
+    type: property
+    params:
+      format:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Streaming format (0=float32, 1=int16)"
+
+  stream_packet_size:
+    getter: "STREAMPCKT?"
+    setter: "STREAMPCKT {size}"
+    type: property
+    params:
+      size:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Ethernet packet size (0=1024, 1=512, 2=256, 3=128 bytes)"
+
+  stream_port:
+    getter: "STREAMPORT?"
+    setter: "STREAMPORT {port}"
+    type: property
+    params:
+      port:
+        type: int
+        min: 1024
+        max: 65535
+    returns:
+      type: int
+    description: "Ethernet streaming port"
+
+  stream_option:
+    getter: "STREAMOPTION?"
+    setter: "STREAMOPTION {option}"
+    type: property
+    params:
+      option:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Stream options (bit0=little-endian, bit1=integrity check)"
+
+  stream_enable:
+    getter: "STREAM?"
+    setter: "STREAM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Enable/disable ethernet streaming"
+
+  # System Commands
+  system_time:
+    getter: "TIME? {field}"
+    setter: "TIME {field}, {value}"
+    type: property
+    params:
+      field:
+        type: enum
+        options: ["SEConds", "MINutes", "HOUrs"]
+      value:
+        type: int
+    returns:
+      type: int
+    description: "System clock time (seconds, minutes, or hours)"
+
+  system_date:
+    getter: "DATE? {field}"
+    setter: "DATE {field}, {value}"
+    type: property
+    params:
+      field:
+        type: enum
+        options: ["DAY", "MONth", "YEAr"]
+      value:
+        type: int
+        min: 0
+        max: 99
+    returns:
+      type: int
+    description: "System clock date (day, month, or year)"
+
+  blazex_output:
+    getter: "BLAZEX?"
+    setter: "BLAZEX {output}"
+    type: property
+    params:
+      output:
+        type: enum
+        options: ["BLazex", "BIsync", "UNIsync"]
+    returns:
+      type: string
+    description: "BlazeX output selection (blazex, bipolar sync, or unipolar sync)"
+
+  key_click:
+    getter: "KEYC?"
+    setter: "KEYC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "MUte"]
+    returns:
+      type: string
+    description: "System sounds on/off"
+
+  print_mode:
+    getter: "PRMD?"
+    setter: "PRMD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SCReen", "PRNt", "MONOchrome"]
+    returns:
+      type: string
+    description: "Screen shot mode"
+
+  data_file_format:
+    getter: "SDFM?"
+    setter: "SDFM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["CSV", "MATfile"]
+    returns:
+      type: string
+    description: "Data file format"
+
+  file_basename:
+    getter: "FBAS?"
+    setter: "FBAS \"{prefix}\""
+    type: property
+    params:
+      prefix:
+        type: string
+    returns:
+      type: string
+    description: "File name prefix (up to 7 characters)"
+
+  file_number:
+    getter: "FNUM?"
+    setter: "FNUM {number}"
+    type: property
+    params:
+      number:
+        type: int
+    returns:
+      type: int
+    description: "File name suffix number"
+
+  file_next_name:
+    scpi: "FNXT?"
+    type: query
+    returns:
+      type: string
+    description: "Query next file name"
+
+  save_data:
+    scpi: "SVDT"
+    type: write
+    description: "Save data to USB memory stick"
+
+  # Interface Commands
+  local_remote:
+    getter: "LOCL?"
+    setter: "LOCL {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: int
+    description: "Local/remote state (0=local, 1=remote, 2=lockout)"
+
+  override_remote:
+    getter: "OVRM?"
+    setter: "OVRM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "GPIB override remote on/off"
+
+  # Status Commands
+  error_status_enable:
+    getter: "ERRE?"
+    setter: "ERRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Error status enable register"
+
+  error_status:
+    scpi: "ERRS?"
+    type: query
+    returns:
+      type: int
+    description: "Query error status byte"
+
+  lia_status_enable:
+    getter: "LIAE?"
+    setter: "LIAE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 4095
+    returns:
+      type: int
+    description: "LIA status enable register"
+
+  lia_status:
+    scpi: "LIAS?"
+    type: query
+    returns:
+      type: int
+    description: "Query LIA status word"
+
+  current_overload_status:
+    scpi: "CUROVLDSTAT?"
+    type: query
+    returns:
+      type: int
+    description: "Query present overload states"
+
+sequences:
+  measure_xy:
+    description: "Measure X and Y simultaneously"
+    steps:
+      - command: snapshot
+        args:
+          param1: "X"
+          param2: "Y"
+        capture: result
+    returns: result
+
+  measure_rt:
+    description: "Measure R and θ simultaneously"
+    steps:
+      - command: snapshot
+        args:
+          param1: "R"
+          param2: "THeta"
+        capture: result
+    returns: result
+
+  measure_all:
+    description: "Measure X, Y, R, and θ simultaneously"
+    steps:
+      - command: snapshot_display
+        capture: result
+    returns: result
+
+  frequency_sweep:
+    description: "Perform frequency sweep scan"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      scan_time:
+        type: float
+        unit: s
+    steps:
+      - command: scan_parameter
+        args:
+          parameter: "Fint"
+      - command: scan_type
+        args:
+          type: "LIN"
+      - command: scan_frequency
+        args:
+          point: "BEGin"
+          freq: "{start_freq}"
+      - command: scan_frequency
+        args:
+          point: "END"
+          freq: "{stop_freq}"
+      - command: scan_time
+        args:
+          seconds: "{scan_time}"
+      - command: scan_enable
+        args:
+          state: "ON"
+      - command: scan_run
+
+  amplitude_sweep:
+    description: "Perform amplitude sweep scan"
+    params:
+      start_amp:
+        type: float
+        unit: V
+      stop_amp:
+        type: float
+        unit: V
+      scan_time:
+        type: float
+        unit: s
+    steps:
+      - command: scan_parameter
+        args:
+          parameter: "REFAmp"
+      - command: scan_type
+        args:
+          type: "LIN"
+      - command: scan_amplitude
+        args:
+          point: "BEGin"
+          amplitude: "{start_amp}"
+      - command: scan_amplitude
+        args:
+          point: "END"
+          amplitude: "{stop_amp}"
+      - command: scan_time
+        args:
+          seconds: "{scan_time}"
+      - command: scan_enable
+        args:
+          state: "ON"
+      - command: scan_run
+
+  quick_measurement:
+    description: "Quick measurement with auto setup"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000.0
+      amplitude:
+        type: float
+        unit: V
+        default: 0.1
+    steps:
+      - command: reset
+      - command: reference_source
+        args:
+          source: "INT"
+      - command: internal_frequency
+        args:
+          freq: "{frequency}"
+      - command: sine_amplitude
+        args:
+          amplitude: "{amplitude}"
+      - command: auto_range
+      - command: auto_phase
+      - command: snapshot
+        args:
+          param1: "R"
+          param2: "THeta"
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit2: ERR
+    bit3: LIA
+    bit4: MAV
+    bit5: ESB
+    bit6: SRQ
+  esr:
+    bit0: OPC
+    bit1: INP
+    bit3: QRY
+    bit4: EXE
+    bit5: CMD
+    bit6: URQ
+    bit7: PON
