@@ -1,0 +1,26 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/galois-labs/edge/proto/gen/go
+plugins:
+  # Go protobuf messages
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  # Go gRPC service stubs
+  - remote: buf.build/grpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+
+  # Python protobuf messages
+  - remote: buf.build/protocolbuffers/python
+    out: gen/python
+
+  # Python gRPC service stubs
+  - remote: buf.build/grpc/python
+    out: gen/python

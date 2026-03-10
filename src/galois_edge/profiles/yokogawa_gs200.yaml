@@ -1,0 +1,941 @@
+instrument:
+  manufacturer: "Yokogawa"
+  model: "GS200"
+  class: smu
+  description: "DC Voltage/Current Source - 200V, 200mA"
+
+identity:
+  query: "*IDN?"
+  pattern: "YOKOGAWA.*,.*GS2[01][01]"
+
+interfaces:
+  - type: gpib
+    default_address: 1
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear event register, extended event register, and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Generate standard event OPC when all previous commands complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all previous commands complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and query result (0=pass)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Generate measurement trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 4
+    description: "Save setup data to memory location (1-4)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 4
+    description: "Recall setup data from memory location (1-4)"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Query status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  option_query:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  # Output Commands
+  output_state:
+    getter: ":OUTPut[:STATe]?"
+    setter: ":OUTPut[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Turn output on or off"
+
+  # Source Commands
+  source_function:
+    getter: ":SOURce:FUNCtion?"
+    setter: ":SOURce:FUNCtion {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLTage", "CURRent"]
+    returns:
+      type: string
+    description: "Select source function (voltage or current)"
+
+  source_range:
+    getter: ":SOURce:RANGe?"
+    setter: ":SOURce:RANGe {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query source range"
+
+  source_level:
+    getter: ":SOURce:LEVel[:FIX]?"
+    setter: ":SOURce:LEVel[:FIX] {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query source level in current range"
+
+  source_level_auto:
+    getter: ":SOURce:LEVel:AUTO?"
+    setter: ":SOURce:LEVel:AUTO {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set source level with auto range selection"
+
+  voltage_protection:
+    getter: ":SOURce:PROTection:VOLTage?"
+    setter: ":SOURce:PROTection:VOLTage {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 1
+        max: 30
+    returns:
+      type: float
+      unit: V
+    description: "Voltage limiter level for current source mode"
+
+  current_protection:
+    getter: ":SOURce:PROTection:CURRent?"
+    setter: ":SOURce:PROTection:CURRent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0.001
+        max: 0.2
+    returns:
+      type: float
+      unit: A
+    description: "Current limiter level for voltage source mode"
+
+  # Program Commands
+  program_repeat:
+    getter: ":PROGram:REPeat[:STATe]?"
+    setter: ":PROGram:REPeat[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable program repetition mode"
+
+  program_interval:
+    getter: ":PROGram:INTerval?"
+    setter: ":PROGram:INTerval {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.1
+        max: 3600.0
+    returns:
+      type: float
+      unit: s
+    description: "Program execution timer period"
+
+  program_slope:
+    getter: ":PROGram:SLOPe?"
+    setter: ":PROGram:SLOPe {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.0
+        max: 3600.0
+    returns:
+      type: float
+      unit: s
+    description: "Program slope time"
+
+  program_trigger:
+    getter: ":PROGram:TRIGger?"
+    setter: ":PROGram:TRIGger {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["NORMal", "MEND"]
+    returns:
+      type: string
+    description: "Set program trigger source"
+    enabled: false
+
+  program_edit_start:
+    scpi: ":PROGram:EDIT:STARt"
+    type: write
+    description: "Start program memory editing"
+
+  program_edit_end:
+    scpi: ":PROGram:EDIT:END"
+    type: write
+    description: "End program memory editing"
+
+  program_save:
+    scpi: ":PROGram:SAVE \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save program memory as program file"
+
+  program_load:
+    getter: ":PROGram:LOAD?"
+    setter: ":PROGram:LOAD \"{filename}\""
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Load program file into program memory"
+
+  program_delete:
+    scpi: ":PROGram:DELete \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete program file"
+
+  program_define:
+    scpi: ":PROGram:DEFine \"{filename}\",\"{content}\""
+    type: write
+    params:
+      filename:
+        type: string
+      content:
+        type: string
+    description: "Create program file"
+
+  program_memory:
+    scpi: ":PROGram:MEMory \"{content}\""
+    type: write
+    params:
+      content:
+        type: string
+    description: "Write program file to program memory"
+
+  program_catalog:
+    scpi: ":PROGram:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of program files"
+
+  program_run:
+    scpi: ":PROGram:RUN"
+    type: write
+    description: "Execute program (RUN execution)"
+
+  program_step:
+    scpi: ":PROGram:STEP"
+    type: write
+    description: "Execute program (STEP execution)"
+
+  program_hold:
+    scpi: ":PROGram:HOLD"
+    type: write
+    description: "Pause and resume program execution"
+
+  program_pause:
+    scpi: ":PROGram:PAUSe"
+    type: write
+    description: "Pause program execution"
+
+  program_continue:
+    scpi: ":PROGram:CONTinue"
+    type: write
+    description: "Resume program execution"
+
+  program_count:
+    getter: ":PROGram:COUNt?"
+    setter: ":PROGram:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 10000
+    returns:
+      type: int
+    description: "Set or query program step to begin execution at"
+
+  # Measurement Commands
+  sense_state:
+    getter: ":SENSe[:STATe]?"
+    setter: ":SENSe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable measurement feature"
+    enabled: false
+
+  sense_nplc:
+    getter: ":SENSe:NPLC?"
+    setter: ":SENSe:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 25
+    returns:
+      type: int
+    description: "Measurement integration time in power line cycles"
+    enabled: false
+
+  sense_delay:
+    getter: ":SENSe:DELay?"
+    setter: ":SENSe:DELay {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0
+        max: 999.999
+    returns:
+      type: float
+      unit: s
+    description: "Measurement delay time"
+    enabled: false
+
+  sense_trigger:
+    getter: ":SENSe:TRIGger?"
+    setter: ":SENSe:TRIGger {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["READy", "TIMer", "COMMunicate", "IMMediate"]
+    returns:
+      type: string
+    description: "Set measurement trigger source"
+    enabled: false
+
+  sense_interval:
+    getter: ":SENSe:INTerval?"
+    setter: ":SENSe:INTerval {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.1
+        max: 3600.0
+    returns:
+      type: float
+      unit: s
+    description: "Measurement timer period"
+    enabled: false
+
+  sense_null:
+    getter: ":SENSe:NULL[:STATe]?"
+    setter: ":SENSe:NULL[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable NULL computation"
+    enabled: false
+
+  sense_zero_execute:
+    scpi: ":SENSe:ZERO:EXECute"
+    type: write
+    description: "Execute measurement zero calibration"
+    enabled: false
+
+  sense_remote:
+    getter: ":SENSe:REMote?"
+    setter: ":SENSe:REMote {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Set wiring system (ON=4W/OFF=2W)"
+
+  sense_guard:
+    getter: ":SENSe:GUARd?"
+    setter: ":SENSe:GUARd {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Set guard state (on/off)"
+
+  # Measured Value Read Commands
+  initiate:
+    scpi: ":INITiate"
+    type: write
+    description: "Clear measured value and prepare for next measurement"
+    enabled: false
+
+  fetch:
+    scpi: ":FETCh?"
+    type: query
+    returns:
+      type: float
+    description: "Query measured result"
+    enabled: false
+
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: float
+    description: "Clear measured value, prepare, and query measured result"
+    enabled: false
+
+  measure:
+    scpi: ":MEASure?"
+    type: query
+    returns:
+      type: float
+    description: "Clear, prepare, trigger, and query measured result"
+    enabled: false
+
+  # Store/Recall Commands
+  trace_state:
+    getter: ":TRACe[:STATe]?"
+    setter: ":TRACe[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Start/stop storage operation"
+    enabled: false
+
+  trace_file_create:
+    getter: ":TRACe:FILE:CREate?"
+    setter: ":TRACe:FILE:CREate {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable result file generation"
+    enabled: false
+
+  trace_points:
+    getter: ":TRACe:POINts?"
+    setter: ":TRACe:POINts {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 10000
+    returns:
+      type: int
+    description: "Set or query storage count"
+    enabled: false
+
+  trace_actual:
+    scpi: ":TRACe:ACTual?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of stored results"
+    enabled: false
+
+  trace_data_format:
+    getter: ":TRACe:DATA:FORMat?"
+    setter: ":TRACe:DATA:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "BINary"]
+    returns:
+      type: string
+    description: "Set load format for stored data"
+    enabled: false
+
+  trace_data_endian:
+    getter: ":TRACe:DATA:ENDian?"
+    setter: ":TRACe:DATA:ENDian {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["LITTle", "BIG"]
+    returns:
+      type: string
+    description: "Set byte order for binary stored data"
+    enabled: false
+
+  trace_data_read:
+    scpi: ":TRACe:DATA:READ?"
+    type: query
+    returns:
+      type: string
+    description: "Load stored data"
+    enabled: false
+
+  trace_data_statistics:
+    scpi: ":TRACe:DATA:STATistics?"
+    type: query
+    returns:
+      type: string
+    description: "Load statistical values for stored data"
+    enabled: false
+
+  # External I/O Commands
+  route_bnc_out:
+    getter: ":ROUTe:BNCO?"
+    setter: ":ROUTe:BNCO {signal}"
+    type: property
+    params:
+      signal:
+        type: enum
+        options: ["TRIGger", "OUTPut", "READy"]
+    returns:
+      type: string
+    description: "Set output BNC signal"
+
+  route_bnc_in:
+    getter: ":ROUTe:BNCI?"
+    setter: ":ROUTe:BNCI {signal}"
+    type: property
+    params:
+      signal:
+        type: enum
+        options: ["TRIGger", "OUTPut"]
+    returns:
+      type: string
+    description: "Set input BNC signal"
+
+  # System Commands
+  system_setup_save:
+    scpi: ":SYSTem:SETup:SAVE \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save setup data"
+
+  system_setup_load:
+    scpi: ":SYSTem:SETup:LOAD \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Restore setup data"
+
+  system_setup_delete:
+    scpi: ":SYSTem:SETup:DELete \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete setup file"
+
+  system_setup_catalog:
+    scpi: ":SYSTem:SETup:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query list of setup files"
+
+  system_setup_pon:
+    getter: ":SYSTem:SETup:PON?"
+    setter: ":SYSTem:SETup:PON \"{filename}\""
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Set or query setup data at power-on"
+
+  system_display_state:
+    getter: ":SYSTem:DISPlay[:STATe]?"
+    setter: ":SYSTem:DISPlay[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display"
+
+  system_display_brightness:
+    getter: ":SYSTem:DISPlay:BRIGht?"
+    setter: ":SYSTem:DISPlay:BRIGht {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Set display brightness (1=brightest, 4=darkest)"
+
+  system_display_text:
+    getter: ":SYSTem:DISPlay:TEXT?"
+    setter: ":SYSTem:DISPlay:TEXT \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display or query user message"
+
+  system_display_text_clear:
+    scpi: ":SYSTem:DISPlay:TEXT:CLEar"
+    type: write
+    description: "Clear user message display"
+
+  system_display_normal:
+    scpi: ":SYSTem:DISPlay:NORMal"
+    type: write
+    description: "Display main screen"
+
+  system_beeper:
+    getter: ":SYSTem:BEEPer?"
+    setter: ":SYSTem:BEEPer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable beep sound"
+
+  system_clock_timezone:
+    getter: ":SYSTem:CLOCk:TZONe?"
+    setter: ":SYSTem:CLOCk:TZONe \"{zone}\""
+    type: property
+    params:
+      zone:
+        type: string
+    returns:
+      type: string
+    description: "Set or query time zone"
+
+  system_clock_date:
+    getter: ":SYSTem:CLOCk:DATE?"
+    setter: ":SYSTem:CLOCk:DATE \"{date}\""
+    type: property
+    params:
+      date:
+        type: string
+    returns:
+      type: string
+    description: "Set or query date (y/m/d format)"
+
+  system_clock_time:
+    getter: ":SYSTem:CLOCk:TIME?"
+    setter: ":SYSTem:CLOCk:TIME \"{time}\""
+    type: property
+    params:
+      time:
+        type: string
+    returns:
+      type: string
+    description: "Set or query time (h:m:s format)"
+
+  system_clock_adjust:
+    scpi: ":SYSTem:CLOCk:ADJust"
+    type: write
+    description: "Correct time by ±30 seconds"
+
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Query and clear most recent error information"
+
+  system_local:
+    scpi: ":SYSTem:LOCal"
+    type: write
+    description: "Switch to local mode"
+
+  system_remote:
+    scpi: ":SYSTem:REMote"
+    type: write
+    description: "Switch to remote mode"
+
+  system_line_frequency:
+    scpi: ":SYSTem:LFRequency?"
+    type: query
+    returns:
+      type: int
+    description: "Query line frequency"
+
+  # Status Commands
+  status_condition:
+    scpi: ":STATus:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query condition register"
+
+  status_event:
+    scpi: ":STATus:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear extended event register"
+
+  status_enable:
+    getter: ":STATus:ENABle?"
+    setter: ":STATus:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set or query extended event enable register"
+
+  status_error:
+    scpi: ":STATus:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Query and clear most recent error information"
+
+sequences:
+  source_voltage:
+    description: "Configure and enable voltage source"
+    params:
+      voltage:
+        type: float
+        unit: V
+      current_limit:
+        type: float
+        unit: A
+        default: 0.2
+    steps:
+      - command: reset
+      - command: source_function
+        args:
+          mode: "VOLTage"
+      - command: current_protection
+        args:
+          value: "{current_limit}"
+      - command: source_level_auto
+        args:
+          value: "{voltage}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  source_current:
+    description: "Configure and enable current source"
+    params:
+      current:
+        type: float
+        unit: A
+      voltage_limit:
+        type: float
+        unit: V
+        default: 30
+    steps:
+      - command: reset
+      - command: source_function
+        args:
+          mode: "CURRent"
+      - command: voltage_protection
+        args:
+          value: "{voltage_limit}"
+      - command: source_level_auto
+        args:
+          value: "{current}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  measure_voltage:
+    description: "Measure voltage in current source mode"
+    steps:
+      - command: sense_state
+        args:
+          state: "ON"
+      - command: sense_trigger
+        args:
+          source: "IMMediate"
+      - command: measure
+        capture: voltage
+    returns: voltage
+    enabled: false
+
+  measure_current:
+    description: "Measure current in voltage source mode"
+    steps:
+      - command: sense_state
+        args:
+          state: "ON"
+      - command: sense_trigger
+        args:
+          source: "IMMediate"
+      - command: measure
+        capture: current
+    returns: current
+    enabled: false
+
+status:
+  stb:
+    bit1: EES
+    bit2: EAV
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

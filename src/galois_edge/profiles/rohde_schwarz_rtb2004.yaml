@@ -1,0 +1,3059 @@
+# Rohde & Schwarz RTB2004 Digital Oscilloscope Instrument Profile
+# Reference: RTB2_UserManual_en_02 (1333.1611.02 - 14)
+# Interfaces: USB TMC, LAN (HiSLIP/VXI-11)
+# SCPI commands extracted from Chapter 16
+
+instrument:
+  manufacturer: "Rohde&Schwarz"
+  model: "RTB2004"
+  class: oscilloscope
+  capabilities: ["oscilloscope", "function_generator", "pattern_generator"]
+  description: "4-channel Digital Oscilloscope with built-in function generator and pattern generator, 70/200/300 MHz, 10-bit ADC, 10 Msa record length"
+
+identity:
+  query: "*IDN?"
+  pattern: "Rohde.Schwarz,RTB200[0-9]"
+
+interfaces:
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 10000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # ============================================================
+  # IEEE-488.2 Common Commands (Section 16.3)
+  # ============================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory defaults"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and output buffer"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete (returns 1 when done)"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  self_alignment:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-alignment (0 = OK)"
+
+  options:
+    scpi: "*OPT?"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  trigger_manual:
+    scpi: "*TRG"
+    type: write
+    description: "Manual trigger event"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all preceding commands finished"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register (clears after read)"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  # ============================================================
+  # Acquisition Control (Section 16.4.1 - 16.4.2)
+  # ============================================================
+  autoset:
+    scpi: "AUToscale"
+    type: write
+    description: "Autoset: analyze signals and adjust vertical/horizontal/trigger"
+
+  run:
+    scpi: "RUN"
+    type: write
+    description: "Start continuous acquisition"
+
+  single:
+    scpi: "SINGle"
+    type: write
+    description: "Start single acquisition"
+
+  stop:
+    scpi: "STOP"
+    type: write
+    description: "Stop acquisition"
+
+  acquisition_state:
+    getter: "ACQuire:STATe?"
+    setter: "ACQuire:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["RUN", "STOP"]
+    returns:
+      type: string
+    description: "Get/set acquisition state (returns RUN|STOPping|COMPlete|BREak)"
+
+  single_count:
+    getter: "ACQuire:NSINgle:COUNt?"
+    setter: "ACQuire:NSINgle:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Number of waveforms for single acquisition"
+
+  # ============================================================
+  # Vertical / Channel Settings (Section 16.4.3)
+  # ============================================================
+  channel_state:
+    getter: "CHANnel{channel}:STATe?"
+    setter: "CHANnel{channel}:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable analog channel"
+
+  channel_all_on:
+    scpi: "CHANnel1:AON"
+    type: write
+    description: "Switch all analog channels on"
+
+  channel_all_off:
+    scpi: "CHANnel1:AOFF"
+    type: write
+    description: "Switch all analog channels off"
+
+  channel_scale:
+    getter: "CHANnel{channel}:SCALe?"
+    setter: "CHANnel{channel}:SCALe {scale}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      scale:
+        type: float
+        unit: V/div
+        min: 0.001
+        max: 10
+    returns:
+      type: float
+      unit: V/div
+    description: "Vertical scale per division"
+
+  channel_range:
+    getter: "CHANnel{channel}:RANGe?"
+    setter: "CHANnel{channel}:RANGe {range}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      range:
+        type: float
+        unit: V
+        min: 0.008
+        max: 80
+    returns:
+      type: float
+      unit: V
+    description: "Total voltage range (all 8 divisions)"
+
+  channel_position:
+    getter: "CHANnel{channel}:POSition?"
+    setter: "CHANnel{channel}:POSition {position}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      position:
+        type: float
+        unit: div
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: div
+    description: "Vertical graphical position of waveform"
+
+  channel_offset:
+    getter: "CHANnel{channel}:OFFSet?"
+    setter: "CHANnel{channel}:OFFSet {offset}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      offset:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Offset voltage subtracted from signal"
+
+  channel_coupling:
+    getter: "CHANnel{channel}:COUPling?"
+    setter: "CHANnel{channel}:COUPling {coupling}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      coupling:
+        type: enum
+        options: ["DCLimit", "ACLimit", "GND"]
+    returns:
+      type: string
+    description: "Input coupling (DC, AC, or Ground)"
+
+  channel_bandwidth:
+    getter: "CHANnel{channel}:BANDwidth?"
+    setter: "CHANnel{channel}:BANDwidth {bw}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      bw:
+        type: enum
+        options: ["FULL", "B20"]
+    returns:
+      type: string
+    description: "Bandwidth limit (FULL or 20 MHz)"
+
+  channel_polarity:
+    getter: "CHANnel{channel}:POLarity?"
+    setter: "CHANnel{channel}:POLarity {polarity}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "Invert signal polarity (display only)"
+
+  channel_skew:
+    getter: "CHANnel{channel}:SKEW?"
+    setter: "CHANnel{channel}:SKEW {skew}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      skew:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Deskew delay for probe/cable compensation"
+
+  channel_label:
+    getter: "CHANnel{channel}:LABel?"
+    setter: "CHANnel{channel}:LABel \"{label}\""
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      label:
+        type: string
+    returns:
+      type: string
+    description: "Channel label text (max 8 ASCII chars)"
+
+  channel_label_state:
+    getter: "CHANnel{channel}:LABel:STATe?"
+    setter: "CHANnel{channel}:LABel:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Show/hide channel label"
+
+  # ============================================================
+  # Probe Settings (Section 16.4.4)
+  # ============================================================
+  probe_attenuation:
+    getter: "PROBe{channel}:SETup:ATTenuation:MANual?"
+    setter: "PROBe{channel}:SETup:ATTenuation:MANual {atten}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      atten:
+        type: float
+        min: 0.0001
+        max: 10000000
+    returns:
+      type: float
+    description: "Manual probe attenuation factor"
+
+  probe_unit:
+    getter: "PROBe{channel}:SETup:ATTenuation:UNIT?"
+    setter: "PROBe{channel}:SETup:ATTenuation:UNIT {unit}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      unit:
+        type: enum
+        options: ["V", "A"]
+    returns:
+      type: string
+    description: "Probe measurement unit (Volts or Amps)"
+
+  # ============================================================
+  # Horizontal / Timebase Settings (Section 16.4.5)
+  # ============================================================
+  timebase_scale:
+    getter: "TIMebase:SCALe?"
+    setter: "TIMebase:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: float
+        unit: s/div
+        min: 1.0e-9
+        max: 50
+    returns:
+      type: float
+      unit: s/div
+    description: "Horizontal time scale per division"
+
+  timebase_position:
+    getter: "TIMebase:POSition?"
+    setter: "TIMebase:POSition {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Trigger position (time distance to reference point)"
+
+  timebase_reference:
+    getter: "TIMebase:REFerence?"
+    setter: "TIMebase:REFerence {ref}"
+    type: property
+    params:
+      ref:
+        type: float
+        unit: "%"
+        min: 8.33
+        max: 91.67
+    returns:
+      type: float
+      unit: "%"
+    description: "Time reference point (8.33=left, 50=center, 91.67=right)"
+
+  timebase_range:
+    getter: "TIMebase:RANGe?"
+    setter: "TIMebase:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: s
+        min: 2.5e-10
+        max: 500
+    returns:
+      type: float
+      unit: s
+    description: "Total acquisition time (= scale x 12 divisions)"
+
+  timebase_divisions:
+    scpi: "TIMebase:DIVisions?"
+    type: query
+    returns:
+      type: int
+    description: "Number of horizontal divisions (always 12)"
+
+  # ============================================================
+  # Acquisition Settings (Section 16.4.6)
+  # ============================================================
+  record_length_auto:
+    getter: "ACQuire:POINts:AUTomatic?"
+    setter: "ACQuire:POINts:AUTomatic {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic record length selection"
+
+  record_length:
+    getter: "ACQuire:POINts?"
+    setter: "ACQuire:POINts {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 10000
+        max: 20000000
+    returns:
+      type: int
+      unit: Sa
+    description: "Record length in samples"
+
+  decimation_mode:
+    getter: "CHANnel1:TYPE?"
+    setter: "CHANnel1:TYPE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SAMPle", "PDETect", "HRESolution"]
+    returns:
+      type: string
+    description: "ADC decimation mode (sample, peak detect, high resolution)"
+
+  acquisition_type:
+    getter: "ACQuire:TYPE?"
+    setter: "ACQuire:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["REFresh", "AVERage", "ENVelope"]
+    returns:
+      type: string
+    description: "Acquisition display mode"
+
+  average_count:
+    getter: "ACQuire:AVERage:COUNt?"
+    setter: "ACQuire:AVERage:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 100000
+    returns:
+      type: int
+    description: "Number of waveforms for averaging"
+
+  average_reset:
+    scpi: "ACQuire:AVERage:RESet"
+    type: write
+    description: "Reset average calculation"
+
+  average_complete:
+    scpi: "ACQuire:AVERage:COMPlete?"
+    type: query
+    returns:
+      type: bool
+    description: "Whether averaging is complete"
+
+  interpolation:
+    getter: "ACQuire:INTerpolate?"
+    setter: "ACQuire:INTerpolate {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SINX", "LINear", "SMHD"]
+    returns:
+      type: string
+    description: "Interpolation mode (sin(x)/x, linear, sample-and-hold)"
+
+  sample_rate:
+    scpi: "ACQuire:SRATe?"
+    type: query
+    returns:
+      type: float
+      unit: Sa/s
+    description: "Current waveform sample rate"
+
+  adc_sample_rate:
+    scpi: "ACQuire:POINts:ARATe?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "ADC hardware sample rate"
+
+  roll_mode:
+    getter: "TIMebase:ROLL:AUTomatic?"
+    setter: "TIMebase:ROLL:AUTomatic {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable automatic roll mode"
+
+  # ============================================================
+  # Trigger Settings (Section 16.5)
+  # ============================================================
+  trigger_mode:
+    getter: "TRIGger:A:MODE?"
+    setter: "TRIGger:A:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "NORMal"]
+    returns:
+      type: string
+    description: "Trigger mode (AUTO=free-run, NORMal=wait for trigger)"
+
+  trigger_source:
+    getter: "TRIGger:A:SOURce?"
+    setter: "TRIGger:A:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "EXTernanalog", "LINE"]
+    returns:
+      type: string
+    description: "Trigger source selection"
+
+  trigger_type:
+    getter: "TRIGger:A:TYPE?"
+    setter: "TRIGger:A:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EDGE", "WIDTh", "TV", "RISetime", "RUNT", "TIM", "LOGic", "LINE"]
+    returns:
+      type: string
+    description: "Trigger type"
+
+  trigger_edge_slope:
+    getter: "TRIGger:A:EDGE:SLOPe?"
+    setter: "TRIGger:A:EDGE:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative", "EITHer"]
+    returns:
+      type: string
+    description: "Edge trigger slope (rising, falling, either)"
+
+  trigger_level:
+    getter: "TRIGger:A:LEVel{channel}?"
+    setter: "TRIGger:A:LEVel{channel} {level}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 5
+      level:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Trigger threshold voltage (ch 1-4, 5=ext)"
+
+  trigger_find_level:
+    scpi: "TRIGger:A:FINDlevel"
+    type: write
+    description: "Auto-set trigger level to 50% of signal amplitude"
+
+  trigger_coupling:
+    getter: "TRIGger:A:EDGE:COUPling?"
+    setter: "TRIGger:A:EDGE:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["DC", "AC", "LFReject"]
+    returns:
+      type: string
+    description: "Trigger coupling (DC, AC, or LF reject 15kHz HP)"
+
+  trigger_hf_reject:
+    getter: "TRIGger:A:EDGE:FILTer:HFReject?"
+    setter: "TRIGger:A:EDGE:FILTer:HFReject {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "5 kHz lowpass filter in trigger path"
+
+  trigger_noise_reject:
+    getter: "TRIGger:A:EDGE:FILTer:NREJect?"
+    setter: "TRIGger:A:EDGE:FILTer:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "100 MHz lowpass filter in trigger path (noise reject)"
+
+  trigger_holdoff_mode:
+    getter: "TRIGger:A:HOLDoff:MODE?"
+    setter: "TRIGger:A:HOLDoff:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["TIME", "OFF"]
+    returns:
+      type: string
+    description: "Enable/disable trigger holdoff"
+
+  trigger_holdoff_time:
+    getter: "TRIGger:A:HOLDoff:TIME?"
+    setter: "TRIGger:A:HOLDoff:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Trigger holdoff time"
+
+  # ============================================================
+  # Automatic Measurements (Section 16.7.2)
+  # ============================================================
+  measurement_enable:
+    getter: "MEASurement{slot}?"
+    setter: "MEASurement{slot} {state}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable measurement slot"
+
+  measurement_type:
+    getter: "MEASurement{slot}:MAIN?"
+    setter: "MEASurement{slot}:MAIN {type}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+      type:
+        type: enum
+        options: ["FREQuency", "PERiod", "PEAK", "UPEakvalue", "LPEakvalue",
+                  "HIGH", "LOW", "AMPLitude", "MEAN", "RMS",
+                  "RTIMe", "FTIMe", "PDCYcle", "NDCYcle",
+                  "PPWidth", "NPWidth", "CYCMean", "CYCRms",
+                  "STDDev", "DELay", "PHASe", "POVershoot", "NOVershoot"]
+    returns:
+      type: string
+    description: "Measurement type (frequency, amplitude, rise time, etc.)"
+
+  measurement_source:
+    getter: "MEASurement{slot}:SOURce?"
+    setter: "MEASurement{slot}:SOURce {source}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "MA1", "RE1", "RE2", "RE3", "RE4"]
+    returns:
+      type: string
+    description: "Measurement source channel"
+
+  measurement_result:
+    scpi: "MEASurement{slot}:RESult?"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: float
+    description: "Get current measurement result"
+    streamable: true
+
+  measurement_result_avg:
+    scpi: "MEASurement{slot}:RESult:AVG?"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: float
+    description: "Average measurement result (statistics)"
+    streamable: true
+
+  measurement_result_min:
+    scpi: "MEASurement{slot}:RESult:NPEak?"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: float
+    description: "Minimum measurement result (statistics)"
+    streamable: true
+
+  measurement_result_max:
+    scpi: "MEASurement{slot}:RESult:PPEak?"
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: float
+    description: "Maximum measurement result (statistics)"
+    streamable: true
+
+  measurement_statistics:
+    getter: "MEASurement1:STATistics?"
+    setter: "MEASurement1:STATistics {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable measurement statistics"
+
+  quick_measure_on:
+    scpi: "MEASurement1:AON"
+    type: write
+    description: "Start quick measurement (all basic measurements)"
+
+  quick_measure_off:
+    scpi: "MEASurement1:AOFF"
+    type: write
+    description: "Stop quick measurement"
+
+  quick_measure_results:
+    scpi: "MEASurement1:ARESult?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: vpp
+          type: float
+          unit: V
+        - name: vp_pos
+          type: float
+          unit: V
+        - name: vp_neg
+          type: float
+          unit: V
+        - name: vrms
+          type: float
+          unit: V
+        - name: vmean
+          type: float
+          unit: V
+        - name: period
+          type: float
+          unit: s
+        - name: frequency
+          type: float
+          unit: Hz
+        - name: rise_time
+          type: float
+          unit: s
+        - name: fall_time
+          type: float
+          unit: s
+    description: "All quick measurement results (Vpp, Vp+, Vp-, RMS, Mean, Period, Freq, tr, tf)"
+    streamable: true
+
+  # ============================================================
+  # Cursor Measurements (Section 16.7.3)
+  # ============================================================
+  cursor_state:
+    getter: "CURSor1:STATe?"
+    setter: "CURSor1:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable cursor measurement"
+
+  cursor_type:
+    getter: "CURSor1:FUNCtion?"
+    setter: "CURSor1:FUNCtion {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["HORizontal", "VERTical", "HVERtical"]
+    returns:
+      type: string
+    description: "Cursor type (horizontal=voltage, vertical=time, both)"
+
+  cursor_source:
+    getter: "CURSor1:SOURce?"
+    setter: "CURSor1:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "MA1", "RE1", "RE2", "RE3", "RE4", "SPECtrum"]
+    returns:
+      type: string
+    description: "Cursor measurement source"
+
+  cursor_x1:
+    getter: "CURSor1:X1Position?"
+    setter: "CURSor1:X1Position {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Position of first vertical cursor line"
+
+  cursor_x2:
+    getter: "CURSor1:X2Position?"
+    setter: "CURSor1:X2Position {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Position of second vertical cursor line"
+
+  cursor_y1:
+    getter: "CURSor1:Y1Position?"
+    setter: "CURSor1:Y1Position {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Position of first horizontal cursor line"
+
+  cursor_y2:
+    getter: "CURSor1:Y2Position?"
+    setter: "CURSor1:Y2Position {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Position of second horizontal cursor line"
+
+  cursor_delta_t:
+    scpi: "CURSor1:XDELta?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Time difference between vertical cursors (delta-t)"
+
+  cursor_delta_t_inverse:
+    scpi: "CURSor1:XDELta:INVerse?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Inverse time difference (1/delta-t = frequency)"
+
+  cursor_delta_v:
+    scpi: "CURSor1:YDELta?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Voltage difference between horizontal cursors (delta-V)"
+
+  cursor_autoset:
+    scpi: "CURSor1:SWAVe"
+    type: write
+    description: "Auto-set cursor lines to typical waveform points"
+
+  # ============================================================
+  # Waveform Data Transfer (Section 16.4.7 / 16.9.1)
+  # ============================================================
+  data_format:
+    getter: "FORMat?"
+    setter: "FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "REAL", "UINT,8", "UINT,16"]
+    returns:
+      type: string
+    description: "Data transfer format"
+
+  data_byte_order:
+    getter: "FORMat:BORDer?"
+    setter: "FORMat:BORDer {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["LSBF", "MSBF"]
+    returns:
+      type: string
+    description: "Byte order for binary data (LSBF=little-endian, MSBF=big-endian)"
+
+  channel_data:
+    scpi: "CHANnel{channel}:DATA?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: binary
+      format: "IEEE 488.2 block"
+    description: "Read channel waveform data"
+
+  channel_data_header:
+    scpi: "CHANnel{channel}:DATA:HEADer?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: string
+    description: "Read waveform header (Xstart, Xstop, record_length, values_per_sample)"
+
+  channel_data_points:
+    getter: "CHANnel{channel}:DATA:POINts?"
+    setter: "CHANnel{channel}:DATA:POINts {points}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      points:
+        type: enum
+        options: ["DEFault", "MAXimum", "DMAX"]
+    returns:
+      type: string
+    description: "Number of data points to transfer (DEFault=display, DMAX=memory in displayed range)"
+
+  channel_data_xincrement:
+    scpi: "CHANnel{channel}:DATA:XINCrement?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: s
+    description: "Time increment between adjacent samples"
+
+  channel_data_xorigin:
+    scpi: "CHANnel{channel}:DATA:XORigin?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: s
+    description: "Time of first sample"
+
+  channel_data_yincrement:
+    scpi: "CHANnel{channel}:DATA:YINCrement?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Voltage per bit (for binary format conversion)"
+
+  channel_data_yorigin:
+    scpi: "CHANnel{channel}:DATA:YORigin?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Voltage offset origin"
+
+  channel_data_yresolution:
+    scpi: "CHANnel{channel}:DATA:YRESolution?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+    description: "Y-axis resolution in bits"
+
+  # ============================================================
+  # Math Waveforms (Section 16.6.2)
+  # ============================================================
+  math_state:
+    getter: "CALCulate:MATH{slot}:STATe?"
+    setter: "CALCulate:MATH{slot}:STATe {state}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable math waveform"
+
+  math_expression:
+    getter: "CALCulate:MATH{slot}:EXPRession?"
+    setter: "CALCulate:MATH{slot}:EXPRession \"{expr}\""
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+      expr:
+        type: string
+    returns:
+      type: string
+    description: "Math expression (e.g. 'CH1+CH2', 'FFTMAG(CH1)', 'DERI(CH1,1E3)')"
+
+  math_scale:
+    getter: "CALCulate:MATH{slot}:SCALe?"
+    setter: "CALCulate:MATH{slot}:SCALe {scale}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+      scale:
+        type: float
+    returns:
+      type: float
+    description: "Vertical scale of math waveform"
+
+  math_position:
+    getter: "CALCulate:MATH{slot}:POSition?"
+    setter: "CALCulate:MATH{slot}:POSition {position}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 5
+      position:
+        type: float
+        unit: div
+    returns:
+      type: float
+      unit: div
+    description: "Vertical position of math waveform"
+
+  # ============================================================
+  # FFT / Spectrum Analysis (Section 16.6.3)
+  # ============================================================
+  spectrum_state:
+    getter: "SPECtrum?"
+    setter: "SPECtrum {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable spectrum analysis (FFT)"
+
+  spectrum_source:
+    getter: "SPECtrum:SOURce?"
+    setter: "SPECtrum:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4"]
+    returns:
+      type: string
+    description: "FFT source channel"
+
+  spectrum_window:
+    getter: "SPECtrum:FREQuency:WINDow:TYPE?"
+    setter: "SPECtrum:FREQuency:WINDow:TYPE {window}"
+    type: property
+    params:
+      window:
+        type: enum
+        options: ["RECTangular", "HAMMing", "HANNing", "BLACkmanharris", "FLATtop"]
+    returns:
+      type: string
+    description: "FFT window function"
+
+  spectrum_scale:
+    getter: "SPECtrum:FREQuency:MAGNitude:SCALe?"
+    setter: "SPECtrum:FREQuency:MAGNitude:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: enum
+        options: ["LINear", "DBM", "DBV", "DBUV"]
+    returns:
+      type: string
+    description: "FFT Y-axis unit (linear V, dBm, dBV, dBuV)"
+
+  spectrum_center:
+    getter: "SPECtrum:FREQuency:CENTer?"
+    setter: "SPECtrum:FREQuency:CENTer {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT center frequency"
+
+  spectrum_span:
+    getter: "SPECtrum:FREQuency:SPAN?"
+    setter: "SPECtrum:FREQuency:SPAN {span}"
+    type: property
+    params:
+      span:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT frequency span"
+
+  spectrum_start:
+    getter: "SPECtrum:FREQuency:STARt?"
+    setter: "SPECtrum:FREQuency:STARt {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT start frequency"
+
+  spectrum_stop:
+    getter: "SPECtrum:FREQuency:STOP?"
+    setter: "SPECtrum:FREQuency:STOP {freq}"
+    type: property
+    params:
+      freq:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT stop frequency"
+
+  spectrum_rbw:
+    getter: "SPECtrum:FREQuency:BANDwidth?"
+    setter: "SPECtrum:FREQuency:BANDwidth {rbw}"
+    type: property
+    params:
+      rbw:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT resolution bandwidth"
+
+  spectrum_fullspan:
+    scpi: "SPECtrum:FREQuency:FULLspan"
+    type: write
+    description: "Set FFT to full frequency span"
+
+  spectrum_reset:
+    scpi: "SPECtrum:FREQuency:RESet"
+    type: write
+    description: "Reset Min/Max Hold, Average, and Spectrum waveforms"
+
+  spectrum_data:
+    scpi: "SPECtrum:WAVeform:SPECtrum:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read FFT spectrum data"
+
+  spectrum_data_header:
+    scpi: "SPECtrum:WAVeform:SPECtrum:DATA:HEADer?"
+    type: query
+    returns:
+      type: string
+    description: "Read FFT spectrum data header"
+
+  # ============================================================
+  # Reference Waveforms (Section 16.6.1)
+  # ============================================================
+  reference_state:
+    getter: "REFCurve{slot}:STATe?"
+    setter: "REFCurve{slot}:STATe {state}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable reference waveform display"
+
+  reference_source:
+    getter: "REFCurve{slot}:SOURce?"
+    setter: "REFCurve{slot}:SOURce {source}"
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 4
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "MA1", "MA2", "MA3", "MA4", "MA5"]
+    returns:
+      type: string
+    description: "Reference waveform source"
+
+  reference_update:
+    scpi: "REFCurve{slot}:UPDate"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 4
+    description: "Copy current source waveform to reference"
+
+  reference_save:
+    scpi: "REFCurve{slot}:SAVE \"{filename}\""
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 4
+      filename:
+        type: string
+    description: "Save reference waveform to file"
+
+  reference_load:
+    scpi: "REFCurve{slot}:LOAD \"{filename}\""
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 4
+      filename:
+        type: string
+    description: "Load reference waveform from file"
+
+  # ============================================================
+  # Screenshots / Hardcopy (Section 16.9.3)
+  # ============================================================
+  screenshot_format:
+    getter: "HCOPy:LANGuage?"
+    setter: "HCOPy:LANGuage {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["BMP", "PNG", "GIF"]
+    returns:
+      type: string
+    description: "Screenshot image format"
+
+  screenshot_color:
+    getter: "HCOPy:COLor:SCHeme?"
+    setter: "HCOPy:COLor:SCHeme {scheme}"
+    type: property
+    params:
+      scheme:
+        type: enum
+        options: ["COLor", "GRAYscale", "INVerted"]
+    returns:
+      type: string
+    description: "Screenshot color mode"
+
+  screenshot_save:
+    scpi: "HCOPy:IMMediate"
+    type: write
+    description: "Save screenshot to current directory with current filename"
+
+  screenshot_data:
+    scpi: "HCOPy:DATA?"
+    type: query
+    returns:
+      type: binary
+      format: "IEEE 488.2 block"
+    description: "Read screenshot image data directly"
+
+  screenshot_destination:
+    getter: "EXPort:SCRSave:DESTination?"
+    setter: "EXPort:SCRSave:DESTination \"{path}\""
+    type: property
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "Screenshot save directory"
+
+  screenshot_filename:
+    getter: "MMEMory:NAME?"
+    setter: "MMEMory:NAME \"{name}\""
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Screenshot file name"
+
+  # ============================================================
+  # Waveform Export (Section 16.9.2)
+  # ============================================================
+  export_waveform_source:
+    getter: "EXPort:WAVeform:SOURce?"
+    setter: "EXPort:WAVeform:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "MA1", "RE1", "RE2", "RE3", "RE4",
+                  "SPECtrum", "MINHold", "MAXHold", "AVERage",
+                  "D70", "D158", "SBUS1", "SBUS2"]
+    returns:
+      type: string
+    description: "Waveform export source"
+
+  export_waveform_name:
+    getter: "EXPort:WAVeform:NAME?"
+    setter: "EXPort:WAVeform:NAME \"{filename}\""
+    type: property
+    params:
+      filename:
+        type: string
+    returns:
+      type: string
+    description: "Waveform export file name"
+
+  export_waveform_save:
+    scpi: "EXPort:WAVeform:SAVE"
+    type: write
+    description: "Save waveform data to file"
+
+  # ============================================================
+  # Memory Management (Section 16.9.4)
+  # ============================================================
+  memory_drives:
+    scpi: "MMEMory:DRIVes?"
+    type: query
+    returns:
+      type: string
+    description: "List available storage devices (/INT, /USB_FRONT)"
+
+  memory_current_dir:
+    getter: "MMEMory:CDIRectory?"
+    setter: "MMEMory:CDIRectory \"{path}\""
+    type: property
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "Current directory for file operations"
+
+  memory_catalog:
+    scpi: "MMEMory:CATalog? \"{path}\""
+    type: query
+    params:
+      path:
+        type: string
+    returns:
+      type: string
+    description: "List files in directory"
+
+  memory_save_state:
+    scpi: "MMEMory:STORe:STATe 1,\"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Save instrument settings to file"
+
+  memory_load_state:
+    scpi: "MMEMory:LOAD:STATe 1,\"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Load instrument settings from file"
+
+  memory_delete:
+    scpi: "MMEMory:DELete \"{filename}\""
+    type: write
+    params:
+      filename:
+        type: string
+    description: "Delete file"
+
+  memory_copy:
+    scpi: "MMEMory:COPY \"{source}\",\"{dest}\""
+    type: write
+    params:
+      source:
+        type: string
+      dest:
+        type: string
+    description: "Copy file"
+
+  # ============================================================
+  # Display Settings (Section 16.10.1)
+  # ============================================================
+  display_clear:
+    scpi: "DISPlay:CLEar"
+    type: write
+    description: "Clear all waveforms and measurement results from display"
+
+  display_persistence:
+    getter: "DISPlay:PERSistence:TYPE?"
+    setter: "DISPlay:PERSistence:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["OFF", "TIME", "INFinite"]
+    returns:
+      type: string
+    description: "Waveform persistence mode"
+
+  display_persistence_time:
+    getter: "DISPlay:PERSistence:TIME?"
+    setter: "DISPlay:PERSistence:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Persistence duration"
+
+  display_intensity_waveform:
+    getter: "DISPlay:INTensity:WAVeform?"
+    setter: "DISPlay:INTensity:WAVeform {intensity}"
+    type: property
+    params:
+      intensity:
+        type: int
+        min: 0
+        max: 100
+    returns:
+      type: int
+    description: "Waveform display intensity (0-100%)"
+
+  display_intensity_grid:
+    getter: "DISPlay:INTensity:GRID?"
+    setter: "DISPlay:INTensity:GRID {intensity}"
+    type: property
+    params:
+      intensity:
+        type: int
+        min: 0
+        max: 100
+    returns:
+      type: int
+    description: "Grid display intensity (0-100%)"
+
+  display_style:
+    getter: "DISPlay:STYLe?"
+    setter: "DISPlay:STYLe {style}"
+    type: property
+    params:
+      style:
+        type: enum
+        options: ["VECTors", "DOTS"]
+    returns:
+      type: string
+    description: "Waveform display style (vectors or dots)"
+
+  # ============================================================
+  # System Settings (Section 16.10.2)
+  # ============================================================
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read next error from error queue"
+
+  system_error_all:
+    scpi: "SYSTem:ERRor:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Read all errors from error queue"
+
+  system_error_count:
+    scpi: "SYSTem:ERRor:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Number of errors in queue"
+
+  system_preset:
+    scpi: "SYSTem:PRESet"
+    type: write
+    description: "Preset instrument (similar to *RST)"
+
+  device_mode:
+    getter: "DEVice:MODE?"
+    setter: "DEVice:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["YT", "ZOOM", "XY", "QMEas", "FFT"]
+    returns:
+      type: string
+    description: "Instrument operation mode"
+
+  # ============================================================
+  # Mask Testing (Section 16.8.2) - requires active waveform
+  # ============================================================
+  mask_state:
+    getter: "MASK:STATe?"
+    setter: "MASK:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable mask test"
+
+  mask_source:
+    getter: "MASK:SOURce?"
+    setter: "MASK:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4"]
+    returns:
+      type: string
+    description: "Mask test source channel"
+
+  mask_create:
+    scpi: "MASK:CHCopy"
+    type: write
+    description: "Create mask from current channel envelope"
+
+  mask_test_count:
+    scpi: "MASK:TRESult:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Total number of tested acquisitions"
+
+  mask_violation_count:
+    scpi: "MASK:TRESult:VCOunt?"
+    type: query
+    returns:
+      type: int
+    description: "Number of acquisitions with mask violations"
+
+  # ============================================================
+  # Trigger Out (Section 16.10.5)
+  # ============================================================
+  trigger_out_mode:
+    getter: "TRIGger:OUT:MODE?"
+    setter: "TRIGger:OUT:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "TRIGger", "REFerence", "MASK", "GENerator"]
+    returns:
+      type: string
+    description: "Aux Out signal (OFF, trigger pulse, 10MHz ref, mask violation, function gen)"
+
+  trigger_out_polarity:
+    getter: "TRIGger:OUT:POLarity?"
+    setter: "TRIGger:OUT:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Aux Out pulse polarity"
+
+  # ============================================================
+  # Function Generator - Basic Settings (Section 16.13.1.1)
+  # Option R&S RTB-B6 required
+  # ============================================================
+  wgen_function:
+    getter: "WGENerator:FUNCtion?"
+    setter: "WGENerator:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["DC", "SINusoid", "SQUare", "PULSe", "TRIangle", "RAMP", "SINC", "ARBitrary", "EXPonential"]
+    returns:
+      type: string
+    description: "Select function generator waveform shape"
+
+  wgen_voltage:
+    getter: "WGENerator:VOLTage?"
+    setter: "WGENerator:VOLTage {amplitude}"
+    type: property
+    params:
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.06
+        max: 6.0
+        default: 0.5
+    returns:
+      type: float
+      unit: Vpp
+    description: "Peak-to-peak amplitude of generated waveform"
+
+  wgen_voltage_offset:
+    getter: "WGENerator:VOLTage:OFFSet?"
+    setter: "WGENerator:VOLTage:OFFSet {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: V
+        min: -3.0
+        max: 3.0
+        default: 0.0
+    returns:
+      type: float
+      unit: V
+    description: "DC offset of generated waveform"
+
+  wgen_frequency:
+    getter: "WGENerator:FREQuency?"
+    setter: "WGENerator:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 10000
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency of generated waveform (range depends on selected function, see datasheet)"
+
+  wgen_pulse_duty_cycle:
+    getter: "WGENerator:FUNCtion:PULSe:DCYCle?"
+    setter: "WGENerator:FUNCtion:PULSe:DCYCle {duty_cycle}"
+    type: property
+    params:
+      duty_cycle:
+        type: float
+        unit: "%"
+        min: 10.0
+        max: 90.0
+        default: 25.0
+    returns:
+      type: float
+      unit: "%"
+    description: "Duty cycle of pulse waveform"
+
+  wgen_triangle_symmetry:
+    getter: "WGENerator:TRIangle:SYMMetry?"
+    setter: "WGENerator:TRIangle:SYMMetry {symmetry}"
+    type: property
+    params:
+      symmetry:
+        type: int
+        unit: "%"
+        min: 1
+        max: 99
+        increment: 1
+        default: 50
+    returns:
+      type: int
+      unit: "%"
+    description: "Triangle symmetry (50%=symmetric, <50%=steeper rise, >50%=steeper fall)"
+
+  wgen_pulse_edge_time:
+    getter: "WGENerator:FUNCtion:PULSe:ETIMe?"
+    setter: "WGENerator:FUNCtion:PULSe:ETIMe {edge_time}"
+    type: property
+    params:
+      edge_time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Pulse edge time (rise/fall)"
+
+  wgen_exponential_polarity:
+    getter: "WGENerator:FUNCtion:EXPonential:POLarity?"
+    setter: "WGENerator:FUNCtion:EXPonential:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Polarity of exponential waveform"
+
+  wgen_ramp_polarity:
+    getter: "WGENerator:FUNCtion:RAMP:POLarity?"
+    setter: "WGENerator:FUNCtion:RAMP:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+        default: "NEGative"
+    returns:
+      type: string
+    description: "Polarity of ramp waveform"
+
+  wgen_noise_absolute:
+    getter: "WGENerator:NOISe:ABSolute?"
+    setter: "WGENerator:NOISe:ABSolute {noise}"
+    type: property
+    params:
+      noise:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Additive noise level in volts"
+
+  wgen_noise_relative:
+    getter: "WGENerator:NOISe:RELative?"
+    setter: "WGENerator:NOISe:RELative {noise}"
+    type: property
+    params:
+      noise:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "Additive noise level as percentage of amplitude"
+
+  wgen_output_load:
+    getter: "WGENerator:OUTPut:LOAD?"
+    setter: "WGENerator:OUTPut:LOAD {load}"
+    type: property
+    params:
+      load:
+        type: enum
+        options: ["HIGHz", "R50"]
+    returns:
+      type: string
+    description: "Output load impedance (High-Z or 50 Ohm)"
+
+  wgen_output_enable:
+    getter: "WGENerator:OUTPut:ENABle?"
+    setter: "WGENerator:OUTPut:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable function generator output"
+
+  # ============================================================
+  # Function Generator - Arbitrary Waveform (Section 16.13.1.2)
+  # ============================================================
+  wgen_arb_source:
+    getter: "WGENerator:ARBitrary:SOURce?"
+    setter: "WGENerator:ARBitrary:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4"]
+        default: "CH1"
+    returns:
+      type: string
+    description: "Input channel source for arbitrary waveform capture"
+
+  wgen_arb_range_start:
+    getter: "WGENerator:ARBitrary:RANGe:START?"
+    setter: "WGENerator:ARBitrary:RANGe:START {start_time}"
+    type: property
+    params:
+      start_time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Start time of copied waveform portion"
+
+  wgen_arb_range_stop:
+    getter: "WGENerator:ARBitrary:RANGe:STOP?"
+    setter: "WGENerator:ARBitrary:RANGe:STOP {stop_time}"
+    type: property
+    params:
+      stop_time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Stop time of copied waveform portion"
+
+  wgen_arb_update:
+    scpi: "WGENerator:ARBitrary:UPDate"
+    type: write
+    description: "Copy waveform from selected source channel into arbitrary buffer"
+
+  wgen_arb_file_name:
+    getter: "WGENerator:ARBitrary:FILE:NAME?"
+    setter: "WGENerator:ARBitrary:FILE:NAME \"{file_path}\""
+    type: property
+    params:
+      file_path:
+        type: string
+    returns:
+      type: string
+    description: "File path for arbitrary waveform to load"
+
+  wgen_arb_file_open:
+    scpi: "WGENerator:ARBitrary:FILE:OPEN"
+    type: write
+    description: "Load arbitrary waveform from file set by wgen_arb_file_name"
+
+  wgen_arb_visible:
+    getter: "WGENerator:ARBitrary:VISible?"
+    setter: "WGENerator:ARBitrary:VISible {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Show/hide arbitrary waveform on display"
+
+  # ============================================================
+  # Function Generator - Burst Settings (Section 16.13.1.3)
+  # NOTE: All WGENerator:BURSt commands hang on firmware 01.203
+  #       (timeout / no response). Commented out to prevent LLM
+  #       from calling them and locking up the VXI-11 session.
+  # ============================================================
+  # wgen_burst_state:
+  #   getter: "WGENerator:BURSt:STATe?"
+  #   setter: "WGENerator:BURSt:STATe {state}"
+  #   type: property
+  #   params:
+  #     state:
+  #       type: enum
+  #       options: ["ON", "OFF"]
+  #       default: "OFF"
+  #   returns:
+  #     type: bool
+  #   description: "Enable/disable burst mode"
+
+  # wgen_burst_idle_time:
+  #   getter: "WGENerator:BURSt:ITIMe?"
+  #   setter: "WGENerator:BURSt:ITIMe {idle_time}"
+  #   type: property
+  #   params:
+  #     idle_time:
+  #       type: float
+  #       unit: s
+  #       min: 28.0e-9
+  #       max: 17.0
+  #       default: 100.0e-6
+  #   returns:
+  #     type: float
+  #     unit: s
+  #   description: "Idle time between burst cycles"
+
+  # wgen_burst_ncycle:
+  #   getter: "WGENerator:BURSt:NCYCle?"
+  #   setter: "WGENerator:BURSt:NCYCle {cycles}"
+  #   type: property
+  #   params:
+  #     cycles:
+  #       type: int
+  #       min: 1
+  #       max: 1023
+  #       increment: 1
+  #       default: 1
+  #   returns:
+  #     type: int
+  #   description: "Number of waveform cycles per burst"
+
+  # wgen_burst_trigger_mode:
+  #   getter: "WGENerator:BURSt:TRIGger:MODE?"
+  #   setter: "WGENerator:BURSt:TRIGger:MODE {mode}"
+  #   type: property
+  #   params:
+  #     mode:
+  #       type: enum
+  #       options: ["CONTinuous", "SINGle"]
+  #       default: "CONTinuous"
+  #   returns:
+  #     type: string
+  #   description: "Burst trigger mode (continuous or single-shot)"
+
+  # wgen_burst_trigger_single:
+  #   scpi: "WGENerator:BURSt:TRIGger:SINGle"
+  #   type: write
+  #   description: "Fire single burst (requires trigger mode = SINGle)"
+
+  # wgen_burst_phase:
+  #   getter: "WGENerator:BURSt:PHASe?"
+  #   setter: "WGENerator:BURSt:PHASe {phase}"
+  #   type: property
+  #   params:
+  #     phase:
+  #       type: float
+  #       unit: deg
+  #       min: 0.0
+  #       max: 360.0
+  #       increment: 0.1
+  #       default: 0.0
+  #   returns:
+  #     type: float
+  #     unit: deg
+  #   description: "Start phase of burst"
+
+  # ============================================================
+  # Function Generator - Modulation Settings (Section 16.13.1.4)
+  # ============================================================
+  wgen_modulation_enable:
+    getter: "WGENerator:MODulation:ENABLE?"
+    setter: "WGENerator:MODulation:ENABLE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable modulation of function generator output"
+
+  wgen_modulation_type:
+    getter: "WGENerator:MODulation:TYPE?"
+    setter: "WGENerator:MODulation:TYPE {mod_type}"
+    type: property
+    params:
+      mod_type:
+        type: enum
+        options: ["AM", "FM", "ASK", "FSK"]
+    returns:
+      type: string
+    description: "Modulation type (AM, FM, amplitude shift keying, frequency shift keying)"
+
+  wgen_modulation_function:
+    getter: "WGENerator:MODulation:FUNCtion?"
+    setter: "WGENerator:MODulation:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["SINusiod", "SQUare", "TRIangle", "RAMP"]
+    returns:
+      type: string
+    description: "Shape of the modulating waveform"
+
+  wgen_mod_am_frequency:
+    getter: "WGENerator:MODulation:AM:FREQuency?"
+    setter: "WGENerator:MODulation:AM:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Modulating waveform frequency for AM"
+
+  wgen_mod_am_depth:
+    getter: "WGENerator:MODulation:AM:DEPTh?"
+    setter: "WGENerator:MODulation:AM:DEPTh {depth}"
+    type: property
+    params:
+      depth:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "AM modulation depth (percentage of amplitude range)"
+
+  wgen_mod_fm_frequency:
+    getter: "WGENerator:MODulation:FM:FREQuency?"
+    setter: "WGENerator:MODulation:FM:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Modulating waveform frequency for FM"
+
+  wgen_mod_fm_deviation:
+    getter: "WGENerator:MODulation:FM:DEViation?"
+    setter: "WGENerator:MODulation:FM:DEViation {deviation}"
+    type: property
+    params:
+      deviation:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FM frequency deviation (max difference from carrier)"
+
+  wgen_mod_ask_frequency:
+    getter: "WGENerator:MODulation:ASK:FREQuency?"
+    setter: "WGENerator:MODulation:ASK:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Modulating waveform frequency for ASK"
+
+  wgen_mod_ask_depth:
+    getter: "WGENerator:MODulation:ASK:DEPTh?"
+    setter: "WGENerator:MODulation:ASK:DEPTh {depth}"
+    type: property
+    params:
+      depth:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "ASK modulation depth (percentage of amplitude range)"
+
+  wgen_mod_fsk_hop_frequency:
+    getter: "WGENerator:MODulation:FSK:HFREquency?"
+    setter: "WGENerator:MODulation:FSK:HFREquency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FSK hopping frequency (sin 100mHz-25MHz, sinc/tri/ramp/exp 100mHz-1MHz, rect/pulse/arb 100mHz-10MHz)"
+
+  wgen_mod_fsk_rate:
+    getter: "WGENerator:MODulation:FSK:RATE?"
+    setter: "WGENerator:MODulation:FSK:RATE {rate}"
+    type: property
+    params:
+      rate:
+        type: float
+        unit: Hz
+        min: 0.1
+        max: 1.0e6
+    returns:
+      type: float
+      unit: Hz
+    description: "FSK switching rate between carrier and hopping frequency"
+
+  wgen_modulation_ramp_polarity:
+    getter: "WGENerator:MODulation:RAMP:POLarity?"
+    setter: "WGENerator:MODulation:RAMP:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Polarity of ramp modulation waveform"
+
+  # ============================================================
+  # Function Generator - Sweep Settings (Section 16.13.1.5)
+  # ============================================================
+  wgen_sweep_enable:
+    getter: "WGENerator:SWEep:ENABle?"
+    setter: "WGENerator:SWEep:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable frequency sweep"
+
+  wgen_sweep_start:
+    getter: "WGENerator:SWEep:FSTart?"
+    setter: "WGENerator:SWEep:FSTart {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep start frequency"
+
+  wgen_sweep_stop:
+    getter: "WGENerator:SWEep:FEND?"
+    setter: "WGENerator:SWEep:FEND {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Sweep stop frequency"
+
+  wgen_sweep_time:
+    getter: "WGENerator:SWEep:TIME?"
+    setter: "WGENerator:SWEep:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sweep duration"
+
+  wgen_sweep_type:
+    getter: "WGENerator:SWEep:TYPE?"
+    setter: "WGENerator:SWEep:TYPE {sweep_type}"
+    type: property
+    params:
+      sweep_type:
+        type: enum
+        options: ["LINear", "LOGarithmic", "TRIangle"]
+    returns:
+      type: string
+    description: "Sweep shape (linear, logarithmic, or triangle)"
+
+  # ============================================================
+  # Pattern Generator - General Settings (Section 16.13.2.1)
+  # ============================================================
+  pgen_function:
+    getter: "PGENerator:FUNCtion?"
+    setter: "PGENerator:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["SQUarewave", "COUNter", "ARBitrary", "SPI", "I2C", "UART", "CAN", "LIN", "MANual", "I2S", "TDM"]
+        default: "SQUarewave"
+    returns:
+      type: string
+    description: "Pattern generator function/protocol selection"
+
+  pgen_state:
+    getter: "PGENerator:PATTern:STATe?"
+    setter: "PGENerator:PATTern:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        default: "ON"
+    returns:
+      type: bool
+    description: "Enable/disable pattern generator output"
+
+  pgen_trigger_extern_slope:
+    getter: "PGENerator:PATTern:TRIGger:EXTern:SLOPe?"
+    setter: "PGENerator:PATTern:TRIGger:EXTern:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative", "EITHer"]
+        default: "POSitive"
+    returns:
+      type: string
+    description: "External trigger slope for arbitrary pattern (rising, falling, both)"
+
+  # ============================================================
+  # Pattern Generator - Square Wave (Section 16.13.2.2)
+  # ============================================================
+  pgen_squarewave_polarity:
+    getter: "PGENerator:PATTern:SQUarewave:POLarity?"
+    setter: "PGENerator:PATTern:SQUarewave:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+        default: "NORMal"
+    returns:
+      type: string
+    description: "Square wave polarity"
+
+  pgen_squarewave_duty_cycle:
+    getter: "PGENerator:PATTern:SQUarewave:DCYCle?"
+    setter: "PGENerator:PATTern:SQUarewave:DCYCle {duty_cycle}"
+    type: property
+    params:
+      duty_cycle:
+        type: float
+        unit: "%"
+        min: 1.0
+        max: 99.0
+        default: 50.0
+    returns:
+      type: float
+      unit: "%"
+    description: "Square wave duty cycle"
+
+  pgen_pattern_period:
+    getter: "PGENerator:PATTern:PERiod?"
+    setter: "PGENerator:PATTern:PERiod {period}"
+    type: property
+    params:
+      period:
+        type: float
+        unit: s
+        min: 20.0e-9
+        max: 10416.0
+        default: 2.0e-6
+    returns:
+      type: float
+      unit: s
+    description: "Pattern period (= pattern_length * bit_time, range 20ns to ~2.89h)"
+
+  pgen_pattern_frequency:
+    getter: "PGENerator:PATTern:FREQuency?"
+    setter: "PGENerator:PATTern:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Pattern frequency (reciprocal of period)"
+
+  # ============================================================
+  # Pattern Generator - Counter (Section 16.13.2.3)
+  # ============================================================
+  pgen_counter_frequency:
+    getter: "PGENerator:PATTern:COUNter:FREQuency?"
+    setter: "PGENerator:PATTern:COUNter:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.0238
+        max: 25000000.0
+        default: 100000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Counter switching frequency (pin frequencies: S0=f/2, S1=f/4, S2=f/8, S3=f/16)"
+
+  pgen_counter_direction:
+    getter: "PGENerator:PATTern:COUNter:DIRection?"
+    setter: "PGENerator:PATTern:COUNter:DIRection {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["UPWard", "DOWNward"]
+        default: "UPWard"
+    returns:
+      type: string
+    description: "Counter direction (up or down)"
+
+  # ============================================================
+  # Pattern Generator - Arbitrary Pattern (Section 16.13.2.4)
+  # ============================================================
+  pgen_arb_trigger_mode:
+    getter: "PGENerator:PATTern:TRIGger:MODE?"
+    setter: "PGENerator:PATTern:TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CONTinuous", "SINGle"]
+        default: "CONTinuous"
+    returns:
+      type: string
+    description: "Arbitrary pattern trigger mode"
+
+  pgen_arb_data:
+    scpi: "PGENerator:PATTern:ARBitrary:DATA:SET {data}"
+    type: write
+    params:
+      data:
+        type: string
+        description: "Comma-separated index,value pairs (e.g. 0,1,1,1,2,0,3,1,4,0)"
+    description: "Define arbitrary pattern data"
+
+  pgen_arb_data_length:
+    getter: "PGENerator:PATTern:ARBitrary:DATA:LENGth?"
+    setter: "PGENerator:PATTern:ARBitrary:DATA:LENGth {length}"
+    type: property
+    params:
+      length:
+        type: int
+        min: 1
+        max: 2048
+        default: 1
+    returns:
+      type: int
+    description: "Arbitrary pattern length in samples"
+
+  pgen_arb_data_append:
+    scpi: "PGENerator:PATTern:ARBitrary:DATA:APPend {data}"
+    type: write
+    params:
+      data:
+        type: string
+        description: "Hex value to append at current index"
+    description: "Append data to arbitrary pattern from current index"
+
+  pgen_arb_data_append_or:
+    scpi: "PGENerator:PATTern:ARBitrary:DATA:APPend:BOR {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "OR-combine data into existing pattern from current index"
+
+  pgen_arb_data_append_and:
+    scpi: "PGENerator:PATTern:ARBitrary:DATA:APPend:BAND {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "AND-combine data into existing pattern from current index"
+
+  pgen_arb_data_append_index:
+    getter: "PGENerator:PATTern:ARBitrary:DATA:APPend:INDex?"
+    setter: "PGENerator:PATTern:ARBitrary:DATA:APPend:INDex {index}"
+    type: property
+    params:
+      index:
+        type: int
+    returns:
+      type: int
+    description: "Set append index for arbitrary pattern data"
+
+  pgen_arb_trigger_single:
+    scpi: "PGENerator:PATTern:TRIGger:SINGle"
+    type: write
+    description: "Fire single pattern output (requires trigger mode = SINGle)"
+
+  pgen_sample_time:
+    getter: "PGENerator:PATTern:STIMe?"
+    setter: "PGENerator:PATTern:STIMe {sample_time}"
+    type: property
+    params:
+      sample_time:
+        type: float
+        unit: s
+        min: 20.0e-9
+        max: 42.0
+        default: 20.0e-9
+    returns:
+      type: float
+      unit: s
+    description: "Time per sample (bit time) for pattern generator"
+
+  pgen_idle_time:
+    getter: "PGENerator:PATTern:ITIMe?"
+    setter: "PGENerator:PATTern:ITIMe {idle_time}"
+    type: property
+    params:
+      idle_time:
+        type: float
+        unit: s
+        min: 20.0e-9
+        max: 42.0
+        default: 0.25
+    returns:
+      type: float
+      unit: s
+    description: "Idle time for pattern generator (requires burst enabled)"
+
+  pgen_burst_state:
+    getter: "PGENerator:PATTern:BURSt:STATe?"
+    setter: "PGENerator:PATTern:BURSt:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Enable/disable pattern burst mode"
+
+  pgen_burst_ncycle:
+    getter: "PGENerator:PATTern:BURSt:NCYCle?"
+    setter: "PGENerator:PATTern:BURSt:NCYCle {cycles}"
+    type: property
+    params:
+      cycles:
+        type: int
+        min: 1
+        max: 4096
+        default: 1
+    returns:
+      type: int
+    description: "Number of pattern cycles per burst"
+
+  # ============================================================
+  # Pattern Generator - Manual Pattern (Section 16.13.2.5)
+  # ============================================================
+  pgen_manual_pin_state:
+    getter: "PGENerator:MANual:STATe{pin}?"
+    setter: "PGENerator:MANual:STATe{pin} {state}"
+    type: property
+    params:
+      pin:
+        type: int
+        min: 0
+        max: 3
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        default: "OFF"
+    returns:
+      type: bool
+    description: "Manual pin state for S0-S3 (ON=High, OFF=Low)"
+
+# ============================================================
+# Measurement Sequences
+# ============================================================
+sequences:
+  capture_screenshot:
+    description: "Capture and retrieve a PNG screenshot"
+    steps:
+      - command: screenshot_format
+        args:
+          format: "PNG"
+      - command: screenshot_color
+        args:
+          scheme: "COLor"
+      - command: screenshot_data
+        capture: image
+    returns: image
+
+  acquire_single:
+    description: "Single acquisition with OPC synchronization"
+    params:
+      channel:
+        type: int
+        default: 1
+    steps:
+      - command: channel_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: single
+      - scpi: "*OPC?"
+        capture: done
+      - command: channel_data
+        args:
+          channel: "{channel}"
+        capture: waveform
+    returns: waveform
+
+  quick_measurement:
+    description: "Run quick measurement on a channel and return all results"
+    params:
+      channel:
+        type: int
+        default: 1
+    steps:
+      - command: channel_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: trigger_find_level
+      - command: quick_measure_on
+      - scpi: "*OPC?"
+        capture: done
+      - command: quick_measure_results
+        capture: results
+    returns: results
+
+  measure_frequency:
+    description: "Measure frequency on a channel"
+    params:
+      channel:
+        type: int
+        default: 1
+    steps:
+      - command: channel_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: measurement_enable
+        args:
+          slot: "1"
+          state: "ON"
+      - command: measurement_type
+        args:
+          slot: "1"
+          type: "FREQuency"
+      - command: measurement_source
+        args:
+          slot: "1"
+          source: "CH{channel}"
+      - command: trigger_find_level
+      - command: single
+      - scpi: "*OPC?"
+        capture: done
+      - command: measurement_result
+        args:
+          slot: "1"
+        capture: frequency
+    returns: frequency
+
+  read_waveform_real:
+    description: "Read waveform data in REAL (float32) format with header"
+    params:
+      channel:
+        type: int
+        default: 1
+    steps:
+      - command: channel_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: data_format
+        args:
+          format: "REAL"
+      - command: data_byte_order
+        args:
+          order: "LSBF"
+      - command: channel_data_points
+        args:
+          channel: "{channel}"
+          points: "DMAX"
+      - command: single
+      - scpi: "*OPC?"
+        capture: done
+      - command: channel_data_header
+        args:
+          channel: "{channel}"
+        capture: header
+      - command: channel_data
+        args:
+          channel: "{channel}"
+        capture: waveform
+    returns: waveform
+
+  setup_edge_trigger:
+    description: "Configure edge trigger on a channel"
+    params:
+      channel:
+        type: int
+        default: 1
+      slope:
+        type: string
+        default: "POSitive"
+      level:
+        type: float
+        default: 0.5
+    steps:
+      - command: trigger_type
+        args:
+          type: "EDGE"
+      - command: trigger_source
+        args:
+          source: "CH{channel}"
+      - command: trigger_edge_slope
+        args:
+          slope: "{slope}"
+      - command: trigger_level
+        args:
+          channel: "{channel}"
+          level: "{level}"
+      - command: trigger_mode
+        args:
+          mode: "NORMal"
+    returns: null
+
+  autoset_and_measure:
+    description: "Autoset display then run quick measurements"
+    steps:
+      - command: autoset
+      - scpi: "*OPC?"
+        capture: done
+      - command: quick_measure_on
+      - scpi: "*OPC?"
+        capture: done2
+      - command: quick_measure_results
+        capture: results
+    returns: results
+
+  fft_analysis:
+    description: "Enable FFT spectrum analysis on a channel"
+    params:
+      channel:
+        type: int
+        default: 1
+      window:
+        type: string
+        default: "HANNing"
+      scale:
+        type: string
+        default: "DBM"
+    steps:
+      - command: channel_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: spectrum_state
+        args:
+          state: "ON"
+      - command: spectrum_source
+        args:
+          source: "CH{channel}"
+      - command: spectrum_window
+        args:
+          window: "{window}"
+      - command: spectrum_scale
+        args:
+          scale: "{scale}"
+      - command: spectrum_fullspan
+      - command: single
+      - scpi: "*OPC?"
+        capture: done
+      - command: spectrum_data
+        capture: fft_data
+    returns: fft_data
+
+  setup_function_generator:
+    description: "Configure and enable the function generator with basic settings"
+    params:
+      function:
+        type: string
+        default: "SINusoid"
+      frequency:
+        type: float
+        unit: Hz
+        default: 10000
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1.0
+      offset:
+        type: float
+        unit: V
+        default: 0.0
+      load:
+        type: string
+        default: "HIGHz"
+    steps:
+      - command: wgen_function
+        args:
+          function: "{function}"
+      - command: wgen_frequency
+        args:
+          frequency: "{frequency}"
+      - command: wgen_voltage
+        args:
+          amplitude: "{amplitude}"
+      - command: wgen_voltage_offset
+        args:
+          offset: "{offset}"
+      - command: wgen_output_load
+        args:
+          load: "{load}"
+      - command: wgen_output_enable
+        args:
+          state: "ON"
+
+  read_function_generator:
+    description: "Read current function generator settings"
+    steps:
+      - command: wgen_function
+        capture: function
+      - command: wgen_frequency
+        capture: frequency
+      - command: wgen_voltage
+        capture: amplitude
+      - command: wgen_voltage_offset
+        capture: offset
+      - command: wgen_output_load
+        capture: load
+      - command: wgen_output_enable
+        capture: output_enabled
+      - command: wgen_modulation_enable
+        capture: modulation_enabled
+      # wgen_burst_state hangs on firmware 01.203
+      # - command: wgen_burst_state
+      #   capture: burst_enabled
+      - command: wgen_sweep_enable
+        capture: sweep_enabled
+
+  generate_am_signal:
+    description: "Generate a sinusoidal carrier with AM modulation"
+    params:
+      carrier_freq:
+        type: float
+        unit: Hz
+        default: 100000
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1.0
+      mod_freq:
+        type: float
+        unit: Hz
+        default: 1000
+      mod_depth:
+        type: float
+        unit: "%"
+        default: 50
+    steps:
+      - command: wgen_function
+        args:
+          function: "SINusoid"
+      - command: wgen_frequency
+        args:
+          frequency: "{carrier_freq}"
+      - command: wgen_voltage
+        args:
+          amplitude: "{amplitude}"
+      - command: wgen_voltage_offset
+        args:
+          offset: "0"
+      - command: wgen_modulation_type
+        args:
+          mod_type: "AM"
+      - command: wgen_modulation_function
+        args:
+          function: "SINusiod"
+      - command: wgen_mod_am_frequency
+        args:
+          frequency: "{mod_freq}"
+      - command: wgen_mod_am_depth
+        args:
+          depth: "{mod_depth}"
+      - command: wgen_modulation_enable
+        args:
+          state: "ON"
+      - command: wgen_output_load
+        args:
+          load: "HIGHz"
+      - command: wgen_output_enable
+        args:
+          state: "ON"
+
+  # generate_burst_sine: DISABLED — all WGENerator:BURSt commands hang on firmware 01.203
+  # generate_burst_sine:
+  #   description: "Generate burst sine wave"
+  #   params:
+  #     frequency:
+  #       type: float
+  #       unit: Hz
+  #       default: 10000
+  #     amplitude:
+  #       type: float
+  #       unit: Vpp
+  #       default: 1.0
+  #     cycles:
+  #       type: int
+  #       default: 5
+  #     idle_time:
+  #       type: float
+  #       unit: s
+  #       default: 0.001
+  #   steps:
+  #     - command: wgen_function
+  #       args:
+  #         function: "SINusoid"
+  #     - command: wgen_frequency
+  #       args:
+  #         frequency: "{frequency}"
+  #     - command: wgen_voltage
+  #       args:
+  #         amplitude: "{amplitude}"
+  #     - command: wgen_burst_ncycle
+  #       args:
+  #         cycles: "{cycles}"
+  #     - command: wgen_burst_idle_time
+  #       args:
+  #         idle_time: "{idle_time}"
+  #     - command: wgen_burst_trigger_mode
+  #       args:
+  #         mode: "CONTinuous"
+  #     - command: wgen_burst_state
+  #       args:
+  #         state: "ON"
+  #     - command: wgen_output_enable
+  #       args:
+  #         state: "ON"
+
+  generate_frequency_sweep:
+    description: "Generate a linear frequency sweep"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+        default: 1000
+      stop_freq:
+        type: float
+        unit: Hz
+        default: 100000
+      sweep_time:
+        type: float
+        unit: s
+        default: 1.0
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1.0
+    steps:
+      - command: wgen_function
+        args:
+          function: "SINusoid"
+      - command: wgen_voltage
+        args:
+          amplitude: "{amplitude}"
+      - command: wgen_sweep_start
+        args:
+          frequency: "{start_freq}"
+      - command: wgen_sweep_stop
+        args:
+          frequency: "{stop_freq}"
+      - command: wgen_sweep_time
+        args:
+          time: "{sweep_time}"
+      - command: wgen_sweep_type
+        args:
+          sweep_type: "LINear"
+      - command: wgen_sweep_enable
+        args:
+          state: "ON"
+      - command: wgen_output_enable
+        args:
+          state: "ON"
+
+status:
+  stb:
+    bit0: unused
+    bit2: EAV    # Error Available (error queue entry)
+    bit3: QUESt  # Questionable Status
+    bit4: MAV    # Message Available
+    bit5: ESB    # Event Status Bit
+    bit6: RQS    # Request Service / MSS
+    bit7: OPER   # Operation Status
+  esr:
+    bit0: OPC    # Operation Complete
+    bit1: RQL    # Request Control
+    bit2: QYE    # Query Error
+    bit3: DDE    # Device Dependent Error
+    bit4: EXE    # Execution Error
+    bit5: CME    # Command Error
+    bit6: URQ    # User Request
+    bit7: PON    # Power On

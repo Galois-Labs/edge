@@ -1,0 +1,595 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "E4980A"
+  class: lcr_meter
+  description: "Precision LCR Meter - 20Hz to 2MHz, 0.05% basic accuracy"
+
+identity:
+  query: "*IDN?"
+  pattern: "Agilent Technologies,E4980A(L)?"
+
+interfaces:
+  - type: gpib
+    default_address: 17
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after commands complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Save instrument state to memory"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Recall instrument state from memory"
+
+  frequency:
+    getter: ":FREQ?"
+    setter: ":FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 20
+        max: 2000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Test signal frequency"
+
+  voltage:
+    getter: ":VOLT:LEV?"
+    setter: ":VOLT:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 20
+    returns:
+      type: float
+      unit: V
+    description: "AC test signal voltage level"
+
+  current:
+    getter: ":CURR:LEV?"
+    setter: ":CURR:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 0.1
+    returns:
+      type: float
+      unit: A
+    description: "AC test signal current level"
+
+  measurement_function:
+    getter: ":FUNC:IMP?"
+    setter: ":FUNC:IMP {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["CPD", "CPQ", "CPG", "CPRP", "CSD", "CSQ", "CSRS", "LPD", "LPQ", "LPG", "LPRP", "LSD", "LSQ", "LSRS", "RX", "ZTD", "ZTR", "GB", "YTD", "YTR"]
+    returns:
+      type: string
+    description: "Impedance measurement function"
+
+  aperture:
+    getter: ":APER?"
+    setter: ":APER {time},{averaging}"
+    type: property
+    params:
+      time:
+        type: enum
+        options: ["SHOR", "MED", "LONG"]
+      averaging:
+        type: int
+        min: 1
+        max: 256
+        default: 1
+    returns:
+      type: string
+    description: "Measurement aperture time and averaging"
+
+  trigger_mode:
+    getter: ":TRIG:SOUR?"
+    setter: ":TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "INT", "EXT", "HOLD"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_delay:
+    getter: ":TRIG:DEL?"
+    setter: ":TRIG:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 60
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay time"
+
+  initiate:
+    scpi: ":INIT"
+    type: write
+    description: "Initiate measurement"
+
+  abort:
+    scpi: ":ABOR"
+    type: write
+    description: "Abort measurement"
+
+  fetch:
+    scpi: ":FETC?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+      fields:
+        - name: primary
+          type: float
+        - name: secondary
+          type: float
+        - name: status
+          type: int
+    description: "Fetch measurement results"
+    streamable: true
+
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+      fields:
+        - name: primary
+          type: float
+        - name: secondary
+          type: float
+        - name: status
+          type: int
+    description: "Initiate and fetch measurement"
+    streamable: true
+
+  bias_voltage:
+    getter: ":BIAS:VOLT?"
+    setter: ":BIAS:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -40
+        max: 40
+    returns:
+      type: float
+      unit: V
+    description: "DC bias voltage"
+
+  bias_voltage_state:
+    getter: ":BIAS:STAT?"
+    setter: ":BIAS:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "DC bias output state"
+
+  bias_current:
+    getter: ":BIAS:CURR?"
+    setter: ":BIAS:CURR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.1
+        max: 0.1
+    returns:
+      type: float
+      unit: A
+    description: "DC bias current"
+
+  correction_open:
+    scpi: ":CORR:OPEN"
+    type: write
+    description: "Perform open correction"
+
+  correction_short:
+    scpi: ":CORR:SHORT"
+    type: write
+    description: "Perform short correction"
+
+  correction_load:
+    scpi: ":CORR:LOAD {value}"
+    type: write
+    params:
+      value:
+        type: float
+        unit: Ohm
+    description: "Perform load correction"
+
+  correction_state:
+    getter: ":CORR:STAT?"
+    setter: ":CORR:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Correction on/off state"
+
+  display_enable:
+    getter: ":DISP?"
+    setter: ":DISP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Display on/off"
+
+  list_frequency_points:
+    getter: ":LIST:FREQ:POIN?"
+    setter: ":LIST:FREQ:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 201
+    returns:
+      type: int
+    description: "Number of frequency list points"
+
+  list_frequency_data:
+    getter: ":LIST:FREQ?"
+    setter: ":LIST:FREQ {frequencies}"
+    type: property
+    params:
+      frequencies:
+        type: string
+    returns:
+      type: string
+    description: "Frequency list data"
+
+  list_mode:
+    getter: ":LIST:MODE?"
+    setter: ":LIST:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SEQ", "STEP"]
+    returns:
+      type: string
+    description: "List sweep mode"
+
+  format_data:
+    getter: ":FORM?"
+    setter: ":FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL"]
+    returns:
+      type: string
+    description: "Data format (ASCII or binary)"
+
+  averaging_count:
+    getter: ":AVER:COUN?"
+    setter: ":AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 256
+    returns:
+      type: int
+    description: "Averaging count"
+
+  averaging_state:
+    getter: ":AVER?"
+    setter: ":AVER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Averaging on/off"
+
+  speed:
+    getter: ":APER?"
+    setter: ":APER {speed}"
+    type: property
+    params:
+      speed:
+        type: enum
+        options: ["SHOR", "MED", "LONG"]
+    returns:
+      type: string
+    description: "Measurement speed"
+
+  range_mode:
+    getter: ":AMPL:ALC?"
+    setter: ":AMPL:ALC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Automatic level control"
+
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  beeper:
+    scpi: ":SYST:BEEP"
+    type: write
+    description: "Emit beep sound"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+sequences:
+  quick_capacitance:
+    description: "Quick capacitance measurement at 1kHz"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "CPD"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: voltage
+        args:
+          value: "1.0"
+      - command: trigger_mode
+        args:
+          source: "INT"
+      - command: read
+        capture: result
+    returns: result
+
+  quick_inductance:
+    description: "Quick inductance measurement at 1kHz"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "LPQ"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: voltage
+        args:
+          value: "1.0"
+      - command: trigger_mode
+        args:
+          source: "INT"
+      - command: read
+        capture: result
+    returns: result
+
+  quick_resistance:
+    description: "Quick resistance measurement"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "RX"
+      - command: frequency
+        args:
+          value: "{frequency}"
+      - command: voltage
+        args:
+          value: "1.0"
+      - command: trigger_mode
+        args:
+          source: "INT"
+      - command: read
+        capture: result
+    returns: result
+
+  frequency_sweep:
+    description: "Perform frequency sweep measurement"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+      function:
+        type: string
+        default: "CPD"
+    steps:
+      - command: reset
+      - command: measurement_function
+        args:
+          function: "{function}"
+      - command: list_mode
+        args:
+          mode: "SEQ"
+      - command: list_frequency_points
+        args:
+          points: "{points}"
+      - command: trigger_mode
+        args:
+          source: "INT"
+      - command: initiate
+      - command: wait
+      - command: fetch
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

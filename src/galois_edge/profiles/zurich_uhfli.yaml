@@ -1,0 +1,1552 @@
+instrument:
+  manufacturer: "Zurich Instruments"
+  model: "UHF"
+  class: smu
+  description: "UHF Series Lock-in Amplifier and Arbitrary Waveform Generator - 600 MHz, dual-channel"
+
+identity:
+  query: "*IDN?"
+  pattern: "Zurich Instruments,UHF"
+
+interfaces:
+  - type: usb
+  - type: ethernet
+    port: 8004
+  - type: gpib
+    default_address: 1
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register mask"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register mask"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save current settings to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall settings from memory location"
+
+  # ============================================================================
+  # System Commands
+  # ============================================================================
+  system_calibrate:
+    scpi: "/dev/system/calib/calibrate {value}"
+    type: write
+    params:
+      value:
+        type: int
+        options: ["0", "1"]
+    description: "Initiate self calibration to improve digitizer linearity"
+
+  system_auto_calibrate:
+    getter: "/dev/system/calib/auto"
+    setter: "/dev/system/calib/auto {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable automatic calibration 16 minutes after startup"
+
+  system_external_clock:
+    getter: "/dev/system/extclk"
+    setter: "/dev/system/extclk {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Select clock source (0=internal, 1=external 10MHz)"
+
+  system_identify:
+    scpi: "/dev/system/identify {state}"
+    type: write
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    description: "Blink power LED (1=blink)"
+
+  system_jumbo_frames:
+    getter: "/dev/system/jumbo"
+    setter: "/dev/system/jumbo {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable jumbo frames on TCP/IP interface"
+
+  system_fpga_revision:
+    scpi: "/dev/system/fpgarevision"
+    type: query
+    returns:
+      type: int
+    description: "Query FPGA firmware revision"
+
+  system_firmware_revision:
+    scpi: "/dev/system/fwrevision"
+    type: query
+    returns:
+      type: int
+    description: "Query firmware revision"
+
+  # ============================================================================
+  # Oscillator Commands (8 oscillators)
+  # ============================================================================
+  oscillator_frequency:
+    getter: "/dev/oscs/{n}/freq"
+    setter: "/dev/oscs/{n}/freq {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 600000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency (0.001 Hz to 600 MHz)"
+
+  # ============================================================================
+  # Signal Input Commands (2 inputs)
+  # ============================================================================
+  signal_input_range:
+    getter: "/dev/sigins/{n}/range"
+    setter: "/dev/sigins/{n}/range {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        unit: V
+        min: 0.01
+        max: 1.5
+    returns:
+      type: float
+      unit: V
+    description: "Signal input range (10mV to 1.5V)"
+
+  signal_input_ac_coupling:
+    getter: "/dev/sigins/{n}/ac"
+    setter: "/dev/sigins/{n}/ac {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "AC coupling (0=DC, 1=AC)"
+
+  signal_input_impedance:
+    getter: "/dev/sigins/{n}/imp50"
+    setter: "/dev/sigins/{n}/imp50 {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Input impedance (0=1MOhm, 1=50Ohm)"
+
+  signal_input_scaling:
+    getter: "/dev/sigins/{n}/scaling"
+    setter: "/dev/sigins/{n}/scaling {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        min: 0.001
+        max: 1000
+    returns:
+      type: float
+    description: "Input signal scaling factor"
+
+  signal_input_autorange:
+    getter: "/dev/sigins/{n}/autorange"
+    setter: "/dev/sigins/{n}/autorange {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable input autoranging"
+
+  # ============================================================================
+  # Signal Output Commands (2 outputs)
+  # ============================================================================
+  signal_output_on:
+    getter: "/dev/sigouts/{n}/on"
+    setter: "/dev/sigouts/{n}/on {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable signal output"
+
+  signal_output_range:
+    getter: "/dev/sigouts/{n}/range"
+    setter: "/dev/sigouts/{n}/range {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        unit: V
+        options: ["0.15", "1.5"]
+    returns:
+      type: float
+      unit: V
+    description: "Signal output range (150mV or 1.5V)"
+
+  signal_output_offset:
+    getter: "/dev/sigouts/{n}/offset"
+    setter: "/dev/sigouts/{n}/offset {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        unit: V
+        min: -1.5
+        max: 1.5
+    returns:
+      type: float
+      unit: V
+    description: "DC offset voltage"
+
+  signal_output_amplitude:
+    getter: "/dev/sigouts/{n}/amplitudes/{m}"
+    setter: "/dev/sigouts/{n}/amplitudes/{m} {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      m:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 1.5
+    returns:
+      type: float
+      unit: V
+    description: "Output amplitude for demodulator m"
+
+  signal_output_enable_amplitude:
+    getter: "/dev/sigouts/{n}/enables/{m}"
+    setter: "/dev/sigouts/{n}/enables/{m} {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      m:
+        type: int
+        min: 0
+        max: 7
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable output amplitude for demodulator m"
+
+  # ============================================================================
+  # Demodulator Commands (8 demodulators)
+  # ============================================================================
+  demod_enable:
+    getter: "/dev/demods/{n}/enable"
+    setter: "/dev/demods/{n}/enable {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable demodulator data transfer"
+
+  demod_rate:
+    getter: "/dev/demods/{n}/rate"
+    setter: "/dev/demods/{n}/rate {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: float
+        unit: Sa/s
+        min: 0.0006
+        max: 1800000
+    returns:
+      type: float
+      unit: Sa/s
+    description: "Demodulator output sampling rate"
+
+  demod_order:
+    getter: "/dev/demods/{n}/order"
+    setter: "/dev/demods/{n}/order {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: int
+    description: "Low-pass filter order (1-8 corresponding to 6-48 dB/oct)"
+
+  demod_timeconstant:
+    getter: "/dev/demods/{n}/timeconstant"
+    setter: "/dev/demods/{n}/timeconstant {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: float
+        unit: s
+        min: 0.00000003
+        max: 76
+    returns:
+      type: float
+      unit: s
+    description: "Low-pass filter time constant (30ns to 76s)"
+
+  demod_harmonic:
+    getter: "/dev/demods/{n}/harmonic"
+    setter: "/dev/demods/{n}/harmonic {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: int
+        min: 1
+        max: 1023
+    returns:
+      type: int
+    description: "Harmonic multiplier (1-1023)"
+
+  demod_phase:
+    getter: "/dev/demods/{n}/phaseshift"
+    setter: "/dev/demods/{n}/phaseshift {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: float
+        unit: deg
+        min: -180
+        max: 180
+    returns:
+      type: float
+      unit: deg
+    description: "Phase shift in degrees"
+
+  demod_adcselect:
+    getter: "/dev/demods/{n}/adcselect"
+    setter: "/dev/demods/{n}/adcselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Select input signal source"
+
+  demod_oscselect:
+    getter: "/dev/demods/{n}/oscselect"
+    setter: "/dev/demods/{n}/oscselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Select oscillator for demodulation"
+
+  demod_sinc:
+    getter: "/dev/demods/{n}/sinc"
+    setter: "/dev/demods/{n}/sinc {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable sinc filter"
+
+  demod_sample_r:
+    scpi: "/dev/demods/{n}/sample/r"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: float
+    description: "Read demodulator R (amplitude) value"
+    streamable: true
+
+  demod_sample_theta:
+    scpi: "/dev/demods/{n}/sample/theta"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: float
+      unit: deg
+    description: "Read demodulator theta (phase) value"
+    streamable: true
+
+  demod_sample_x:
+    scpi: "/dev/demods/{n}/sample/x"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: float
+    description: "Read demodulator X value"
+    streamable: true
+
+  demod_sample_y:
+    scpi: "/dev/demods/{n}/sample/y"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: float
+    description: "Read demodulator Y value"
+    streamable: true
+
+  # ============================================================================
+  # Auxiliary Output Commands (4 outputs)
+  # ============================================================================
+  aux_output_offset:
+    getter: "/dev/auxouts/{n}/offset"
+    setter: "/dev/auxouts/{n}/offset {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        unit: V
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Auxiliary output offset voltage"
+
+  aux_output_scale:
+    getter: "/dev/auxouts/{n}/scale"
+    setter: "/dev/auxouts/{n}/scale {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        min: 0
+        max: 100
+    returns:
+      type: float
+    description: "Auxiliary output scaling factor"
+
+  aux_output_preoffset:
+    getter: "/dev/auxouts/{n}/preoffset"
+    setter: "/dev/auxouts/{n}/preoffset {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        min: -10000
+        max: 10000
+    returns:
+      type: float
+    description: "Offset before scaling"
+
+  aux_output_demodselect:
+    getter: "/dev/auxouts/{n}/demodselect"
+    setter: "/dev/auxouts/{n}/demodselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Select demodulator for output"
+
+  aux_output_outputselect:
+    getter: "/dev/auxouts/{n}/outputselect"
+    setter: "/dev/auxouts/{n}/outputselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+        min: -1
+        max: 52
+    returns:
+      type: int
+    description: "Select signal source for auxiliary output"
+
+  aux_output_limitlower:
+    getter: "/dev/auxouts/{n}/limitlower"
+    setter: "/dev/auxouts/{n}/limitlower {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        unit: V
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Lower output limit"
+
+  aux_output_limitupper:
+    getter: "/dev/auxouts/{n}/limitupper"
+    setter: "/dev/auxouts/{n}/limitupper {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        unit: V
+        min: -10
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Upper output limit"
+
+  # ============================================================================
+  # Auxiliary Input Commands (2 inputs)
+  # ============================================================================
+  aux_input_sample:
+    scpi: "/dev/auxins/{n}/sample"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: float
+      unit: V
+    description: "Read auxiliary input voltage"
+    streamable: true
+
+  # ============================================================================
+  # Scope Commands
+  # ============================================================================
+  scope_enable:
+    getter: "/dev/scopes/0/enable"
+    setter: "/dev/scopes/0/enable {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable scope acquisition"
+
+  scope_length:
+    getter: "/dev/scopes/0/length"
+    setter: "/dev/scopes/0/length {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 4096
+        max: 134217728
+    returns:
+      type: int
+    description: "Scope shot length in samples"
+
+  scope_time:
+    getter: "/dev/scopes/0/time"
+    setter: "/dev/scopes/0/time {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Scope acquisition duration"
+
+  scope_channel:
+    getter: "/dev/scopes/0/channels/{n}/inputselect"
+    setter: "/dev/scopes/0/channels/{n}/inputselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Select input signal for scope channel"
+
+  scope_channel_enable:
+    getter: "/dev/scopes/0/channels/{n}/enable"
+    setter: "/dev/scopes/0/channels/{n}/enable {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable scope channel"
+
+  scope_trigger_enable:
+    getter: "/dev/scopes/0/trigenable"
+    setter: "/dev/scopes/0/trigenable {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable scope trigger"
+
+  scope_trigger_level:
+    getter: "/dev/scopes/0/triglevel"
+    setter: "/dev/scopes/0/triglevel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Trigger level voltage"
+
+  scope_trigger_reference:
+    getter: "/dev/scopes/0/trigreference"
+    setter: "/dev/scopes/0/trigreference {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "Trigger reference position (0-1)"
+
+  scope_trigger_delay:
+    getter: "/dev/scopes/0/trigdelay"
+    setter: "/dev/scopes/0/trigdelay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay in seconds"
+
+  scope_trigger_holdoff:
+    getter: "/dev/scopes/0/trigholdoff"
+    setter: "/dev/scopes/0/trigholdoff {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+    returns:
+      type: float
+      unit: s
+    description: "Trigger holdoff time"
+
+  # ============================================================================
+  # AWG Commands (requires UHF-AWG option)
+  # ============================================================================
+  awg_enable:
+    getter: "/dev/awgs/0/enable"
+    setter: "/dev/awgs/0/enable {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable AWG core"
+
+  awg_single:
+    scpi: "/dev/awgs/0/single {state}"
+    type: write
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    description: "Execute AWG program once (1) or continuously (0)"
+
+  awg_userregs:
+    getter: "/dev/awgs/0/userregs/{n}"
+    setter: "/dev/awgs/0/userregs/{n} {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: int
+    returns:
+      type: int
+    description: "User register value (accessible from sequencer)"
+
+  awg_time:
+    scpi: "/dev/awgs/0/time"
+    type: query
+    returns:
+      type: int
+    description: "AWG internal timer value"
+
+  awg_reset:
+    scpi: "/dev/awgs/0/reset {state}"
+    type: write
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    description: "Reset AWG"
+
+  awg_amplitude:
+    getter: "/dev/awgs/0/outputs/{n}/amplitude"
+    setter: "/dev/awgs/0/outputs/{n}/amplitude {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "AWG output amplitude scaling (0-1)"
+
+  awg_modulation_mode:
+    getter: "/dev/awgs/0/outputs/{n}/mode"
+    setter: "/dev/awgs/0/outputs/{n}/mode {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+        options: ["0", "1", "2"]
+    returns:
+      type: int
+    description: "AWG modulation mode (0=off, 1=sine11, 2=sine1122)"
+
+  awg_waveform_index:
+    getter: "/dev/awgs/0/waveform/index"
+    setter: "/dev/awgs/0/waveform/index {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Waveform index"
+
+  awg_waveform_length:
+    scpi: "/dev/awgs/0/waveform/length"
+    type: query
+    returns:
+      type: int
+    description: "Current waveform length"
+
+  awg_waveform_memoryusage:
+    scpi: "/dev/awgs/0/waveform/memoryusage"
+    type: query
+    returns:
+      type: float
+    description: "Waveform memory usage (0-1)"
+
+  # ============================================================================
+  # PID/PLL Commands (requires UHF-PID option)
+  # ============================================================================
+  pid_enable:
+    getter: "/dev/pids/{n}/enable"
+    setter: "/dev/pids/{n}/enable {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable PID controller"
+
+  pid_mode:
+    getter: "/dev/pids/{n}/mode"
+    setter: "/dev/pids/{n}/mode {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "PID mode (0=PID, 1=PLL)"
+
+  pid_setpoint:
+    getter: "/dev/pids/{n}/setpoint"
+    setter: "/dev/pids/{n}/setpoint {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID setpoint value"
+
+  pid_center:
+    getter: "/dev/pids/{n}/center"
+    setter: "/dev/pids/{n}/center {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID center value"
+
+  pid_p:
+    getter: "/dev/pids/{n}/p"
+    setter: "/dev/pids/{n}/p {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Proportional gain"
+
+  pid_i:
+    getter: "/dev/pids/{n}/i"
+    setter: "/dev/pids/{n}/i {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Integral gain"
+
+  pid_d:
+    getter: "/dev/pids/{n}/d"
+    setter: "/dev/pids/{n}/d {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Derivative gain"
+
+  pid_dlimittimeconstant:
+    getter: "/dev/pids/{n}/dlimittimeconstant"
+    setter: "/dev/pids/{n}/dlimittimeconstant {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Derivative filter time constant"
+
+  pid_rate:
+    getter: "/dev/pids/{n}/rate"
+    setter: "/dev/pids/{n}/rate {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+        unit: Sa/s
+    returns:
+      type: float
+      unit: Sa/s
+    description: "PID output sampling rate"
+
+  pid_input:
+    getter: "/dev/pids/{n}/input"
+    setter: "/dev/pids/{n}/input {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+    returns:
+      type: int
+    description: "PID input signal selector"
+
+  pid_inputchannel:
+    getter: "/dev/pids/{n}/inputchannel"
+    setter: "/dev/pids/{n}/inputchannel {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "PID input channel"
+
+  pid_output:
+    getter: "/dev/pids/{n}/output"
+    setter: "/dev/pids/{n}/output {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+    returns:
+      type: int
+    description: "PID output signal selector"
+
+  pid_outputchannel:
+    getter: "/dev/pids/{n}/outputchannel"
+    setter: "/dev/pids/{n}/outputchannel {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "PID output channel"
+
+  pid_limitlower:
+    getter: "/dev/pids/{n}/limitlower"
+    setter: "/dev/pids/{n}/limitlower {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID output lower limit"
+
+  pid_limitupper:
+    getter: "/dev/pids/{n}/limitupper"
+    setter: "/dev/pids/{n}/limitupper {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID output upper limit"
+
+  pid_value:
+    scpi: "/dev/pids/{n}/value"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: float
+    description: "Current PID output value"
+    streamable: true
+
+  pid_error:
+    scpi: "/dev/pids/{n}/error"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: float
+    description: "Current PID error value"
+    streamable: true
+
+  pid_shift:
+    scpi: "/dev/pids/{n}/shift"
+    type: query
+    params:
+      n:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: float
+    description: "Current PID frequency shift"
+    streamable: true
+
+  # ============================================================================
+  # Boxcar Commands (requires UHF-BOX option)
+  # ============================================================================
+  boxcar_enable:
+    getter: "/dev/boxcars/{n}/enable"
+    setter: "/dev/boxcars/{n}/enable {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable boxcar unit"
+
+  boxcar_periods:
+    getter: "/dev/boxcars/{n}/periods"
+    setter: "/dev/boxcars/{n}/periods {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+        min: 1
+        max: 1000000
+    returns:
+      type: int
+    description: "Number of periods to average"
+
+  boxcar_oscselect:
+    getter: "/dev/boxcars/{n}/oscselect"
+    setter: "/dev/boxcars/{n}/oscselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: "Select oscillator for boxcar timing"
+
+  boxcar_inputselect:
+    getter: "/dev/boxcars/{n}/inputselect"
+    setter: "/dev/boxcars/{n}/inputselect {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Select input signal for boxcar"
+
+  # ============================================================================
+  # Trigger Commands
+  # ============================================================================
+  trigger_input_level:
+    getter: "/dev/triggers/in/{n}/level"
+    setter: "/dev/triggers/in/{n}/level {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Trigger input level"
+
+  trigger_input_imp50:
+    getter: "/dev/triggers/in/{n}/imp50"
+    setter: "/dev/triggers/in/{n}/imp50 {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Trigger input impedance (0=1kOhm, 1=50Ohm)"
+
+  trigger_output_source:
+    getter: "/dev/triggers/out/{n}/source"
+    setter: "/dev/triggers/out/{n}/source {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Trigger output source selector"
+
+  trigger_output_drive:
+    getter: "/dev/triggers/out/{n}/drive"
+    setter: "/dev/triggers/out/{n}/drive {state}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable trigger output drive"
+
+  trigger_output_delay:
+    getter: "/dev/triggers/out/{n}/delay"
+    setter: "/dev/triggers/out/{n}/delay {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Trigger output delay"
+
+  # ============================================================================
+  # Error Commands
+  # ============================================================================
+  system_error:
+    scpi: "/dev/system/error"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  # ============================================================================
+  # Feature Commands
+  # ============================================================================
+  features_options:
+    scpi: "/dev/features/options"
+    type: query
+    returns:
+      type: string
+    description: "Query installed options"
+
+  features_serial:
+    scpi: "/dev/features/serial"
+    type: query
+    returns:
+      type: string
+    description: "Query device serial number"
+
+  features_devtype:
+    scpi: "/dev/features/devtype"
+    type: query
+    returns:
+      type: string
+    description: "Query device type"
+
+sequences:
+  frequency_sweep:
+    description: "Perform a frequency sweep measurement"
+    params:
+      demod:
+        type: int
+        default: 0
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      num_points:
+        type: int
+        default: 100
+    steps:
+      - command: oscillator_frequency
+        args:
+          n: "{demod}"
+          value: "{start_freq}"
+      - command: demod_enable
+        args:
+          n: "{demod}"
+          state: "1"
+    returns: null
+
+  lock_in_measurement:
+    description: "Perform a basic lock-in measurement"
+    params:
+      demod:
+        type: int
+        default: 0
+      osc_freq:
+        type: float
+        unit: Hz
+      time_constant:
+        type: float
+        unit: s
+        default: 0.001
+    steps:
+      - command: oscillator_frequency
+        args:
+          n: "{demod}"
+          value: "{osc_freq}"
+      - command: demod_timeconstant
+        args:
+          n: "{demod}"
+          value: "{time_constant}"
+      - command: demod_enable
+        args:
+          n: "{demod}"
+          state: "1"
+      - command: signal_output_on
+        args:
+          n: "0"
+          state: "1"
+    returns: null
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

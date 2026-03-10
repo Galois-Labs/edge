@@ -1,0 +1,1848 @@
+instrument:
+  manufacturer: "RIGOL"
+  model: "DG4000"
+  class: function_generator
+  description: "Dual-channel Function/Arbitrary Waveform Generator - 60MHz to 200MHz, 500MSa/s, 14-bit"
+
+identity:
+  query: "*IDN?"
+  pattern: "RIGOL.*DG4[0-2][0-9][0-9]"
+
+interfaces:
+  - type: gpib
+    default_address: 10
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save current state to memory location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall state from memory location"
+
+  # Channel Selection
+  select_channel:
+    scpi: ":INSTrument:NSELect {channel}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+    description: "Select active channel"
+
+  # Output Control
+  output_state:
+    getter: ":OUTPut{channel}?"
+    setter: ":OUTPut{channel} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Enable or disable channel output"
+
+  output_load:
+    getter: ":OUTPut{channel}:LOAD?"
+    setter: ":OUTPut{channel}:LOAD {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 10000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set output load impedance (use INFINITY for high-Z)"
+
+  output_polarity:
+    getter: ":OUTPut{channel}:POLarity?"
+    setter: ":OUTPut{channel}:POLarity {polarity}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "Set output polarity"
+
+  # Sync Output
+  sync_output:
+    getter: ":OUTPut{channel}:SYNC?"
+    setter: ":OUTPut{channel}:SYNC {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable sync output"
+
+  sync_polarity:
+    getter: ":OUTPut{channel}:SYNC:POLarity?"
+    setter: ":OUTPut{channel}:SYNC:POLarity {polarity}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Set sync signal polarity"
+
+  # Waveform Function Selection
+  function:
+    getter: ":SOURce{channel}:FUNCtion?"
+    setter: ":SOURce{channel}:FUNCtion {shape}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "RAMP", "PULSe", "NOISe", "DC", "USER", "HARMonic"]
+    returns:
+      type: string
+    description: "Select output waveform function"
+
+  # Frequency and Period
+  frequency:
+    getter: ":SOURce{channel}:FREQuency?"
+    setter: ":SOURce{channel}:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 200000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set output frequency"
+
+  period:
+    getter: ":SOURce{channel}:PERiod?"
+    setter: ":SOURce{channel}:PERiod {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set output period"
+
+  # Amplitude and Offset
+  amplitude:
+    getter: ":SOURce{channel}:VOLTage:AMPLitude?"
+    setter: ":SOURce{channel}:VOLTage:AMPLitude {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Vpp
+        min: 0.001
+        max: 10
+    returns:
+      type: float
+      unit: Vpp
+    description: "Set output amplitude"
+
+  amplitude_unit:
+    getter: ":SOURce{channel}:VOLTage:UNIT?"
+    setter: ":SOURce{channel}:VOLTage:UNIT {unit}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      unit:
+        type: enum
+        options: ["VPP", "VRMS", "DBM"]
+    returns:
+      type: string
+    description: "Set amplitude unit"
+
+  offset:
+    getter: ":SOURce{channel}:VOLTage:OFFSet?"
+    setter: ":SOURce{channel}:VOLTage:OFFSet {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Set DC offset voltage"
+
+  voltage_high:
+    getter: ":SOURce{channel}:VOLTage:HIGH?"
+    setter: ":SOURce{channel}:VOLTage:HIGH {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set high voltage level"
+
+  voltage_low:
+    getter: ":SOURce{channel}:VOLTage:LOW?"
+    setter: ":SOURce{channel}:VOLTage:LOW {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set low voltage level"
+
+  # Phase
+  phase:
+    getter: ":SOURce{channel}:PHASe?"
+    setter: ":SOURce{channel}:PHASe {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set output start phase"
+
+  align_phase:
+    scpi: ":SOURce{channel}:PHASe:SYNC"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+    description: "Align phase between channels"
+
+  # Square Wave Parameters
+  square_duty_cycle:
+    getter: ":SOURce{channel}:FUNCtion:SQUare:DCYCle?"
+    setter: ":SOURce{channel}:FUNCtion:SQUare:DCYCle {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: "%"
+        min: 20
+        max: 80
+    returns:
+      type: float
+      unit: "%"
+    description: "Set square wave duty cycle"
+
+  # Ramp Parameters
+  ramp_symmetry:
+    getter: ":SOURce{channel}:FUNCtion:RAMP:SYMMetry?"
+    setter: ":SOURce{channel}:FUNCtion:RAMP:SYMMetry {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Set ramp symmetry"
+
+  # Pulse Parameters
+  pulse_width:
+    getter: ":SOURce{channel}:FUNCtion:PULSe:WIDTh?"
+    setter: ":SOURce{channel}:FUNCtion:PULSe:WIDTh {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse width"
+
+  pulse_duty_cycle:
+    getter: ":SOURce{channel}:FUNCtion:PULSe:DCYCle?"
+    setter: ":SOURce{channel}:FUNCtion:PULSe:DCYCle {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: "%"
+    returns:
+      type: float
+      unit: "%"
+    description: "Set pulse duty cycle"
+
+  pulse_period:
+    getter: ":SOURce{channel}:FUNCtion:PULSe:PERiod?"
+    setter: ":SOURce{channel}:FUNCtion:PULSe:PERiod {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse period"
+
+  pulse_leading_edge:
+    getter: ":SOURce{channel}:FUNCtion:PULSe:TRANsition:LEADing?"
+    setter: ":SOURce{channel}:FUNCtion:PULSe:TRANsition:LEADing {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse leading edge time"
+
+  pulse_trailing_edge:
+    getter: ":SOURce{channel}:FUNCtion:PULSe:TRANsition:TRAiling?"
+    setter: ":SOURce{channel}:FUNCtion:PULSe:TRANsition:TRAiling {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse trailing edge time"
+
+  # Arbitrary Waveform
+  arb_select:
+    getter: ":SOURce{channel}:FUNCtion:ARBitrary?"
+    setter: ":SOURce{channel}:FUNCtion:ARBitrary {name}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Select arbitrary waveform"
+
+  arb_point_by_point:
+    getter: ":SOURce{channel}:FUNCtion:ARBitrary:PTP?"
+    setter: ":SOURce{channel}:FUNCtion:ARBitrary:PTP {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable point-by-point output mode"
+
+  # Harmonic
+  harmonic_order:
+    getter: ":SOURce{channel}:FUNCtion:HARMonic:ORDer?"
+    setter: ":SOURce{channel}:FUNCtion:HARMonic:ORDer {order}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      order:
+        type: int
+        min: 2
+        max: 16
+    returns:
+      type: int
+    description: "Set harmonic order"
+
+  harmonic_type:
+    getter: ":SOURce{channel}:FUNCtion:HARMonic:TYPE?"
+    setter: ":SOURce{channel}:FUNCtion:HARMonic:TYPE {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      type:
+        type: enum
+        options: ["EVEN", "ODD", "ALL", "USER"]
+    returns:
+      type: string
+    description: "Set harmonic type"
+
+  # AM Modulation
+  am_state:
+    getter: ":SOURce{channel}:AM:STATe?"
+    setter: ":SOURce{channel}:AM:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable AM modulation"
+
+  am_source:
+    getter: ":SOURce{channel}:AM:SOURce?"
+    setter: ":SOURce{channel}:AM:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set AM modulation source"
+
+  am_internal_function:
+    getter: ":SOURce{channel}:AM:INTernal:FUNCtion?"
+    setter: ":SOURce{channel}:AM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "Set AM internal modulation waveform"
+
+  am_internal_frequency:
+    getter: ":SOURce{channel}:AM:INTernal:FREQuency?"
+    setter: ":SOURce{channel}:AM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 50000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set AM modulation frequency"
+
+  am_depth:
+    getter: ":SOURce{channel}:AM:DEPTh?"
+    setter: ":SOURce{channel}:AM:DEPTh {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 120
+    returns:
+      type: float
+      unit: "%"
+    description: "Set AM modulation depth"
+
+  am_dssc:
+    getter: ":SOURce{channel}:AM:DSSC?"
+    setter: ":SOURce{channel}:AM:DSSC {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable double-sideband suppressed carrier"
+
+  # FM Modulation
+  fm_state:
+    getter: ":SOURce{channel}:FM:STATe?"
+    setter: ":SOURce{channel}:FM:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable FM modulation"
+
+  fm_source:
+    getter: ":SOURce{channel}:FM:SOURce?"
+    setter: ":SOURce{channel}:FM:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set FM modulation source"
+
+  fm_internal_function:
+    getter: ":SOURce{channel}:FM:INTernal:FUNCtion?"
+    setter: ":SOURce{channel}:FM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "Set FM internal modulation waveform"
+
+  fm_internal_frequency:
+    getter: ":SOURce{channel}:FM:INTernal:FREQuency?"
+    setter: ":SOURce{channel}:FM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 50000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set FM modulation frequency"
+
+  fm_deviation:
+    getter: ":SOURce{channel}:FM:DEViation?"
+    setter: ":SOURce{channel}:FM:DEViation {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set FM frequency deviation"
+
+  # PM Modulation
+  pm_state:
+    getter: ":SOURce{channel}:PM:STATe?"
+    setter: ":SOURce{channel}:PM:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable PM modulation"
+
+  pm_source:
+    getter: ":SOURce{channel}:PM:SOURce?"
+    setter: ":SOURce{channel}:PM:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set PM modulation source"
+
+  pm_internal_function:
+    getter: ":SOURce{channel}:PM:INTernal:FUNCtion?"
+    setter: ":SOURce{channel}:PM:INTernal:FUNCtion {shape}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "TRIangle", "RAMP", "NRAMp", "NOISe", "USER"]
+    returns:
+      type: string
+    description: "Set PM internal modulation waveform"
+
+  pm_internal_frequency:
+    getter: ":SOURce{channel}:PM:INTernal:FREQuency?"
+    setter: ":SOURce{channel}:PM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 50000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set PM modulation frequency"
+
+  pm_deviation:
+    getter: ":SOURce{channel}:PM:DEViation?"
+    setter: ":SOURce{channel}:PM:DEViation {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set PM phase deviation"
+
+  # ASK Modulation
+  ask_state:
+    getter: ":SOURce{channel}:ASK:STATe?"
+    setter: ":SOURce{channel}:ASK:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable ASK modulation"
+
+  ask_source:
+    getter: ":SOURce{channel}:ASK:SOURce?"
+    setter: ":SOURce{channel}:ASK:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set ASK modulation source"
+
+  ask_rate:
+    getter: ":SOURce{channel}:ASK:INTernal:RATE?"
+    setter: ":SOURce{channel}:ASK:INTernal:RATE {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set ASK rate"
+
+  # FSK Modulation
+  fsk_state:
+    getter: ":SOURce{channel}:FSK:STATe?"
+    setter: ":SOURce{channel}:FSK:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable FSK modulation"
+
+  fsk_source:
+    getter: ":SOURce{channel}:FSK:SOURce?"
+    setter: ":SOURce{channel}:FSK:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set FSK modulation source"
+
+  fsk_rate:
+    getter: ":SOURce{channel}:FSK:INTernal:RATE?"
+    setter: ":SOURce{channel}:FSK:INTernal:RATE {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set FSK rate"
+
+  fsk_hop_frequency:
+    getter: ":SOURce{channel}:FSK:FREQuency?"
+    setter: ":SOURce{channel}:FSK:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set FSK hop frequency"
+
+  # PSK Modulation
+  psk_state:
+    getter: ":SOURce{channel}:PSK:STATe?"
+    setter: ":SOURce{channel}:PSK:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable PSK modulation"
+
+  psk_source:
+    getter: ":SOURce{channel}:PSK:SOURce?"
+    setter: ":SOURce{channel}:PSK:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set PSK modulation source"
+
+  psk_rate:
+    getter: ":SOURce{channel}:PSK:INTernal:RATE?"
+    setter: ":SOURce{channel}:PSK:INTernal:RATE {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set PSK rate"
+
+  # PWM Modulation
+  pwm_state:
+    getter: ":SOURce{channel}:PWM:STATe?"
+    setter: ":SOURce{channel}:PWM:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable PWM modulation"
+
+  pwm_source:
+    getter: ":SOURce{channel}:PWM:SOURce?"
+    setter: ":SOURce{channel}:PWM:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set PWM modulation source"
+
+  pwm_internal_frequency:
+    getter: ":SOURce{channel}:PWM:INTernal:FREQuency?"
+    setter: ":SOURce{channel}:PWM:INTernal:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+        min: 0.002
+        max: 1000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set PWM modulation frequency"
+
+  pwm_deviation:
+    getter: ":SOURce{channel}:PWM:DEViation?"
+    setter: ":SOURce{channel}:PWM:DEViation {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set PWM width deviation"
+
+  # Sweep
+  sweep_state:
+    getter: ":SOURce{channel}:SWEep:STATe?"
+    setter: ":SOURce{channel}:SWEep:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable frequency sweep"
+
+  sweep_start_frequency:
+    getter: ":SOURce{channel}:FREQuency:STARt?"
+    setter: ":SOURce{channel}:FREQuency:STARt {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep start frequency"
+
+  sweep_stop_frequency:
+    getter: ":SOURce{channel}:FREQuency:STOP?"
+    setter: ":SOURce{channel}:FREQuency:STOP {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep stop frequency"
+
+  sweep_center_frequency:
+    getter: ":SOURce{channel}:FREQuency:CENTer?"
+    setter: ":SOURce{channel}:FREQuency:CENTer {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep center frequency"
+
+  sweep_span:
+    getter: ":SOURce{channel}:FREQuency:SPAN?"
+    setter: ":SOURce{channel}:FREQuency:SPAN {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Set sweep frequency span"
+
+  sweep_spacing:
+    getter: ":SOURce{channel}:SWEep:SPACing?"
+    setter: ":SOURce{channel}:SWEep:SPACing {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      mode:
+        type: enum
+        options: ["LINear", "LOGarithmic", "STEP"]
+    returns:
+      type: string
+    description: "Set sweep spacing type"
+
+  sweep_time:
+    getter: ":SOURce{channel}:SWEep:TIME?"
+    setter: ":SOURce{channel}:SWEep:TIME {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+        min: 0.001
+        max: 300
+    returns:
+      type: float
+      unit: s
+    description: "Set sweep time"
+
+  sweep_return_time:
+    getter: ":SOURce{channel}:SWEep:RTIMe?"
+    setter: ":SOURce{channel}:SWEep:RTIMe {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 300
+    returns:
+      type: float
+      unit: s
+    description: "Set sweep return time"
+
+  sweep_hold_start:
+    getter: ":SOURce{channel}:SWEep:HTIMe?"
+    setter: ":SOURce{channel}:SWEep:HTIMe {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 300
+    returns:
+      type: float
+      unit: s
+    description: "Set sweep start hold time"
+
+  # Burst
+  burst_state:
+    getter: ":SOURce{channel}:BURSt:STATe?"
+    setter: ":SOURce{channel}:BURSt:STATe {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable burst mode"
+
+  burst_mode:
+    getter: ":SOURce{channel}:BURSt:MODE?"
+    setter: ":SOURce{channel}:BURSt:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      mode:
+        type: enum
+        options: ["TRIGgered", "GATed"]
+    returns:
+      type: string
+    description: "Set burst mode"
+
+  burst_ncycles:
+    getter: ":SOURce{channel}:BURSt:NCYCles?"
+    setter: ":SOURce{channel}:BURSt:NCYCles {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: int
+        min: 1
+        max: 1000000
+    returns:
+      type: int
+    description: "Set burst cycle count"
+
+  burst_period:
+    getter: ":SOURce{channel}:BURSt:INTernal:PERiod?"
+    setter: ":SOURce{channel}:BURSt:INTernal:PERiod {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+        min: 0.000002
+        max: 500
+    returns:
+      type: float
+      unit: s
+    description: "Set burst period"
+
+  burst_phase:
+    getter: ":SOURce{channel}:BURSt:PHASe?"
+    setter: ":SOURce{channel}:BURSt:PHASe {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set burst start phase"
+
+  burst_trigger_source:
+    getter: ":SOURce{channel}:BURSt:TRIGger:SOURce?"
+    setter: ":SOURce{channel}:BURSt:TRIGger:SOURce {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal", "MANual"]
+    returns:
+      type: string
+    description: "Set burst trigger source"
+
+  burst_trigger_delay:
+    getter: ":SOURce{channel}:BURSt:TDELay?"
+    setter: ":SOURce{channel}:BURSt:TDELay {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 85
+    returns:
+      type: float
+      unit: s
+    description: "Set burst trigger delay"
+
+  # Counter
+  counter_state:
+    getter: ":COUNter:STATe?"
+    setter: ":COUNter:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable frequency counter"
+
+  counter_function:
+    getter: ":COUNter:FUNCtion?"
+    setter: ":COUNter:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["FREQuency", "PERiod", "DUTY", "PWIDth", "NWIDth"]
+    returns:
+      type: string
+    description: "Set counter measurement function"
+
+  counter_read:
+    scpi: ":COUNter:MEASure?"
+    type: query
+    returns:
+      type: float
+    description: "Read counter measurement result"
+
+  counter_gate_time:
+    getter: ":COUNter:GATE:TIME?"
+    setter: ":COUNter:GATE:TIME {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set counter gate time"
+
+  counter_impedance:
+    getter: ":COUNter:IMPedance?"
+    setter: ":COUNter:IMPedance {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["FIFTy", "OMEGa"]
+    returns:
+      type: string
+    description: "Set counter input impedance"
+
+  counter_coupling:
+    getter: ":COUNter:COUPling?"
+    setter: ":COUNter:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Set counter input coupling"
+
+  # System
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_language:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["ENGLish", "CHINese"]
+    returns:
+      type: string
+    description: "Set system language"
+
+  system_beeper:
+    getter: ":SYSTem:BEEPer:STATe?"
+    setter: ":SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable beeper"
+
+  system_beep:
+    scpi: ":SYSTem:BEEPer"
+    type: write
+    description: "Issue a beep"
+
+  display_state:
+    getter: ":DISPlay:STATe?"
+    setter: ":DISPlay:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable display"
+
+  display_brightness:
+    getter: ":DISPlay:BRIGhtness?"
+    setter: ":DISPlay:BRIGhtness {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Set display brightness"
+
+  # Key Lock
+  key_lock:
+    getter: ":SYSTem:KLOCk? {key}"
+    setter: ":SYSTem:KLOCk {key},{state}"
+    type: property
+    params:
+      key:
+        type: enum
+        options: ["ALL", "SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "ARB", "HARMONIC", "USER", "MOD", "SWEEP", "BURST", "UTILITY", "STORE", "HELP", "PRINT", "EDIT", "PRESET", "OUTPUT1", "OUTPUT2", "CH1", "CH2", "COUNTER"]
+      state:
+        type: enum
+        options: ["ON", "OFF", "0", "1"]
+    returns:
+      type: bool
+    description: "Lock or unlock specified key"
+
+  # Clock Reference
+  clock_source:
+    getter: ":SYSTem:CLOCk:SOURce?"
+    setter: ":SYSTem:CLOCk:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Set clock source"
+
+  # Data and Memory
+  data_volatile_clear:
+    scpi: ":DATA:VOLatile:CLEar"
+    type: write
+    description: "Clear volatile arbitrary waveform memory"
+
+  memory_state_catalog:
+    scpi: ":MEMory:STATe:CATalog?"
+    type: query
+    returns:
+      type: string
+    description: "Query stored state files"
+
+  # Status Commands
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+sequences:
+  output_sine_wave:
+    description: "Configure and output a sine wave"
+    params:
+      channel:
+        type: int
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1
+      offset:
+        type: float
+        unit: V
+        default: 0
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "SINusoid"
+      - command: frequency
+        args:
+          channel: "{channel}"
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          channel: "{channel}"
+          value: "{amplitude}"
+      - command: offset
+        args:
+          channel: "{channel}"
+          value: "{offset}"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+  output_square_wave:
+    description: "Configure and output a square wave"
+    params:
+      channel:
+        type: int
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1
+      duty_cycle:
+        type: float
+        unit: "%"
+        default: 50
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "SQUare"
+      - command: frequency
+        args:
+          channel: "{channel}"
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          channel: "{channel}"
+          value: "{amplitude}"
+      - command: square_duty_cycle
+        args:
+          channel: "{channel}"
+          value: "{duty_cycle}"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+  output_pulse:
+    description: "Configure and output a pulse waveform"
+    params:
+      channel:
+        type: int
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      amplitude:
+        type: float
+        unit: Vpp
+        default: 1
+      width:
+        type: float
+        unit: s
+        default: 0.0001
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "PULSe"
+      - command: frequency
+        args:
+          channel: "{channel}"
+          value: "{frequency}"
+      - command: amplitude
+        args:
+          channel: "{channel}"
+          value: "{amplitude}"
+      - command: pulse_width
+        args:
+          channel: "{channel}"
+          value: "{width}"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+  frequency_sweep:
+    description: "Configure and run a frequency sweep"
+    params:
+      channel:
+        type: int
+        default: 1
+      start_freq:
+        type: float
+        unit: Hz
+        default: 100
+      stop_freq:
+        type: float
+        unit: Hz
+        default: 1000
+      sweep_time:
+        type: float
+        unit: s
+        default: 1
+      spacing:
+        type: string
+        default: "LINear"
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "SINusoid"
+      - command: sweep_start_frequency
+        args:
+          channel: "{channel}"
+          value: "{start_freq}"
+      - command: sweep_stop_frequency
+        args:
+          channel: "{channel}"
+          value: "{stop_freq}"
+      - command: sweep_time
+        args:
+          channel: "{channel}"
+          value: "{sweep_time}"
+      - command: sweep_spacing
+        args:
+          channel: "{channel}"
+          mode: "{spacing}"
+      - command: sweep_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+  am_modulation:
+    description: "Configure AM modulation"
+    params:
+      channel:
+        type: int
+        default: 1
+      carrier_freq:
+        type: float
+        unit: Hz
+        default: 10000
+      mod_freq:
+        type: float
+        unit: Hz
+        default: 100
+      depth:
+        type: float
+        unit: "%"
+        default: 50
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "SINusoid"
+      - command: frequency
+        args:
+          channel: "{channel}"
+          value: "{carrier_freq}"
+      - command: am_source
+        args:
+          channel: "{channel}"
+          source: "INTernal"
+      - command: am_internal_frequency
+        args:
+          channel: "{channel}"
+          value: "{mod_freq}"
+      - command: am_depth
+        args:
+          channel: "{channel}"
+          value: "{depth}"
+      - command: am_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+  burst_output:
+    description: "Configure burst output"
+    params:
+      channel:
+        type: int
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      ncycles:
+        type: int
+        default: 5
+    steps:
+      - command: function
+        args:
+          channel: "{channel}"
+          shape: "SINusoid"
+      - command: frequency
+        args:
+          channel: "{channel}"
+          value: "{frequency}"
+      - command: burst_mode
+        args:
+          channel: "{channel}"
+          mode: "TRIGgered"
+      - command: burst_ncycles
+        args:
+          channel: "{channel}"
+          value: "{ncycles}"
+      - command: burst_trigger_source
+        args:
+          channel: "{channel}"
+          source: "INTernal"
+      - command: burst_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+      - command: output_state
+        args:
+          channel: "{channel}"
+          state: "ON"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

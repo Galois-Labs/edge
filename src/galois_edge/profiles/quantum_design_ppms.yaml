@@ -1,0 +1,158 @@
+instrument:
+  manufacturer: "Quantum Design"
+  model: "PPMS DynaCool"
+  class: cryostat
+  description: "Physical Property Measurement System via MultiPyVu SDK"
+
+sdk:
+  package: "MultiPyVu"
+  import_path: "MultiPyVu"
+  class_name: "Client"
+  connect:
+    method: "open"
+    args:
+      host: "{host}"
+      port: "{port}"
+    defaults:
+      host: "192.168.0.1"
+      port: 5000
+  disconnect:
+    method: "close"
+  identity:
+    method: "get_system_info"
+    pattern: "PPMS.*DynaCool"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "PPMS.*DynaCool"
+
+interfaces:
+  - type: ethernet
+    port: 5000
+
+settings:
+  timeout_ms: 30000
+
+commands:
+  set_temperature:
+    sdk_call:
+      method: "set_temperature"
+      args_map:
+        temperature: "temperature"
+        rate: "rate"
+    type: write
+    params:
+      temperature:
+        type: float
+        unit: K
+        min: 1.8
+        max: 400
+      rate:
+        type: float
+        unit: K/min
+        default: 5.0
+    description: "Set target sample temperature"
+
+  get_temperature:
+    sdk_call:
+      method: "get_temperature"
+    type: query
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read current sample temperature"
+
+  set_field:
+    sdk_call:
+      method: "set_field"
+      args_map:
+        field: "field"
+        rate: "rate"
+    type: write
+    params:
+      field:
+        type: float
+        unit: Oe
+        min: -140000
+        max: 140000
+      rate:
+        type: float
+        unit: Oe/s
+        default: 100
+    description: "Set magnetic field"
+
+  get_field:
+    sdk_call:
+      method: "get_field"
+    type: query
+    returns:
+      type: float
+      unit: Oe
+    streamable: true
+    description: "Read current magnetic field"
+
+  get_chamber:
+    sdk_call:
+      method: "get_chamber"
+    type: query
+    returns:
+      type: string
+    description: "Read chamber status (sealed, purged, vented, etc.)"
+
+  set_chamber:
+    sdk_call:
+      method: "set_chamber"
+      args_map:
+        state: "state"
+    type: write
+    params:
+      state:
+        type: enum
+        options: ["seal", "purge_seal", "vent_seal", "pump_continuous", "vent_continuous"]
+    description: "Set chamber state"
+
+  wait_for_stability:
+    sdk_call:
+      method: "wait_for"
+      args_map:
+        temperature: "temperature"
+        field: "field"
+        timeout: "delay"
+    type: write
+    params:
+      temperature:
+        type: bool
+        default: true
+      field:
+        type: bool
+        default: true
+      timeout:
+        type: int
+        unit: s
+        default: 0
+    description: "Wait for temperature and/or field to stabilize"
+
+sequences:
+  cool_and_field:
+    description: "Set temperature and field, then wait for stability"
+    params:
+      temperature:
+        type: float
+        unit: K
+      field:
+        type: float
+        unit: Oe
+    steps:
+      - command: set_temperature
+        args:
+          temperature: "{temperature}"
+          rate: "10"
+      - command: set_field
+        args:
+          field: "{field}"
+          rate: "100"
+      - command: wait_for_stability
+        args:
+          temperature: "true"
+          field: "true"

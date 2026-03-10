@@ -1,0 +1,446 @@
+# Keithley 2450 SourceMeter Instrument Profile
+# Reference: https://download.tek.com/manual/2450-901-01_D_May_2015_Ref.pdf
+
+instrument:
+  manufacturer: "Keithley"
+  model: "2450"
+  class: smu
+  description: "Interactive SourceMeter - 200V, 1A, 20W"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY.*MODEL 2450"
+
+interfaces:
+  - type: usb
+  - type: gpib
+    default_address: 24
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # Standard IEEE-488.2 Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers"
+
+  operation_complete:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  # Measurement Commands
+  measure_voltage:
+    scpi: "MEAS:VOLT?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+    streamable: true
+
+  measure_current:
+    scpi: "MEAS:CURR?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+    streamable: true
+
+  measure_resistance:
+    scpi: "MEAS:RES?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure resistance"
+    streamable: true
+
+  measure_power:
+    scpi: "MEAS:POW?"
+    type: query
+    returns:
+      type: float
+      unit: W
+    description: "Measure power"
+    streamable: true
+
+  # Source Voltage Commands
+  source_voltage:
+    getter: "SOUR:VOLT?"
+    setter: "SOUR:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -200
+        max: 200
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage level"
+
+  source_voltage_range:
+    getter: "SOUR:VOLT:RANG?"
+    setter: "SOUR:VOLT:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.02
+        max: 200
+    returns:
+      type: float
+      unit: V
+    description: "Source voltage range"
+
+  # Source Current Commands
+  source_current:
+    getter: "SOUR:CURR?"
+    setter: "SOUR:CURR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -1
+        max: 1
+    returns:
+      type: float
+      unit: A
+    description: "Source current level"
+
+  source_current_range:
+    getter: "SOUR:CURR:RANG?"
+    setter: "SOUR:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 10e-9
+        max: 1
+    returns:
+      type: float
+      unit: A
+    description: "Source current range"
+
+  # Source Function (Voltage or Current mode)
+  source_function:
+    getter: "SOUR:FUNC?"
+    setter: "SOUR:FUNC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLT", "CURR"]
+    returns:
+      type: string
+    description: "Source function (voltage or current)"
+
+  # Output Control
+  output_state:
+    getter: "OUTP?"
+    setter: "OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+          "1": 1
+          "0": 0
+    returns:
+      type: bool
+    description: "Output on/off state"
+
+  # Sense/Measurement Configuration
+  sense_function:
+    getter: "SENS:FUNC?"
+    setter: "SENS:FUNC \"{mode}\""
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["VOLT", "CURR", "RES"]
+    returns:
+      type: string
+    description: "Sense function for measurements"
+
+  # Current Compliance (Protection)
+  current_compliance:
+    getter: "SENS:CURR:PROT?"
+    setter: "SENS:CURR:PROT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 10e-9
+        max: 1.05
+    returns:
+      type: float
+      unit: A
+    description: "Current compliance limit"
+
+  # Voltage Compliance (Protection)
+  voltage_compliance:
+    getter: "SENS:VOLT:PROT?"
+    setter: "SENS:VOLT:PROT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.02
+        max: 210
+    returns:
+      type: float
+      unit: V
+    description: "Voltage compliance limit"
+
+  # NPLC (Integration Time)
+  nplc:
+    getter: "SENS:VOLT:NPLC?"
+    setter: "SENS:VOLT:NPLC {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0.01
+        max: 10
+        default: 1
+    returns:
+      type: float
+    description: "Integration time in power line cycles"
+
+  # Sweep Configuration
+  configure_voltage_sweep:
+    scpi: "SOUR:SWE:VOLT:LIN {start}, {stop}, {points}"
+    type: write
+    params:
+      start:
+        type: float
+        unit: V
+        min: -200
+        max: 200
+      stop:
+        type: float
+        unit: V
+        min: -200
+        max: 200
+      points:
+        type: int
+        min: 1
+        max: 2500
+    description: "Configure linear voltage sweep"
+
+  configure_current_sweep:
+    scpi: "SOUR:SWE:CURR:LIN {start}, {stop}, {points}"
+    type: write
+    params:
+      start:
+        type: float
+        unit: A
+        min: -1
+        max: 1
+      stop:
+        type: float
+        unit: A
+        min: -1
+        max: 1
+      points:
+        type: int
+        min: 1
+        max: 2500
+    description: "Configure linear current sweep"
+
+  # Trigger and Initiate
+  initiate:
+    scpi: "INIT"
+    type: write
+    description: "Initiate measurement trigger"
+
+  abort:
+    scpi: "ABOR"
+    type: write
+    description: "Abort measurement in progress"
+
+  # Data Retrieval
+  fetch_data:
+    scpi: "FETC?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch measurement buffer data"
+
+  read_data:
+    scpi: "READ?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate and fetch single measurement"
+    streamable: true
+
+  # Buffer Commands
+  buffer_clear:
+    scpi: "TRAC:CLE"
+    type: write
+    description: "Clear trace buffer"
+
+  buffer_count:
+    scpi: "TRAC:ACT?"
+    type: query
+    returns:
+      type: int
+    description: "Get number of readings in buffer"
+
+  # Display Commands
+  display_text:
+    scpi: "DISP:USER1:TEXT \"{text}\""
+    type: write
+    params:
+      text:
+        type: string
+    description: "Display text on front panel"
+
+  display_clear:
+    scpi: "DISP:CLE"
+    type: write
+    description: "Clear front panel display"
+
+sequences:
+  iv_sweep:
+    description: "Perform IV sweep measurement"
+    params:
+      start_v:
+        type: float
+        unit: V
+      stop_v:
+        type: float
+        unit: V
+      points:
+        type: int
+      compliance_i:
+        type: float
+        unit: A
+    steps:
+      - command: reset
+      - command: source_function
+        args:
+          mode: "VOLT"
+      - command: current_compliance
+        args:
+          value: "{compliance_i}"
+      - command: configure_voltage_sweep
+        args:
+          start: "{start_v}"
+          stop: "{stop_v}"
+          points: "{points}"
+      - command: output_state
+        args:
+          state: "ON"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch_data
+        capture: result
+      - command: output_state
+        args:
+          state: "OFF"
+    returns: result
+
+  quick_voltage_measure:
+    description: "Quick voltage measurement with output off"
+    steps:
+      - command: reset
+      - command: source_function
+        args:
+          mode: "CURR"
+      - command: source_current
+        args:
+          value: "0"
+      - command: output_state
+        args:
+          state: "ON"
+      - command: measure_voltage
+        capture: voltage
+      - command: output_state
+        args:
+          state: "OFF"
+    returns: voltage
+
+  quick_current_measure:
+    description: "Quick current measurement at specified voltage"
+    params:
+      voltage:
+        type: float
+        unit: V
+      compliance:
+        type: float
+        unit: A
+        default: 0.1
+    steps:
+      - command: reset
+      - command: source_function
+        args:
+          mode: "VOLT"
+      - command: current_compliance
+        args:
+          value: "{compliance}"
+      - command: source_voltage
+        args:
+          value: "{voltage}"
+      - command: output_state
+        args:
+          state: "ON"
+      - scpi: "DELAY 0.1"
+      - command: measure_current
+        capture: current
+      - command: output_state
+        args:
+          state: "OFF"
+    returns: current
+
+status:
+  stb:
+    bit0: MSS   # Master Summary Status
+    bit2: EAV   # Error Available
+    bit4: MAV   # Message Available
+    bit5: ESB   # Event Status Bit
+    bit6: RQS   # Request Service
+  esr:
+    bit0: OPC   # Operation Complete
+    bit2: QYE   # Query Error
+    bit3: DDE   # Device Dependent Error
+    bit4: EXE   # Execution Error
+    bit5: CME   # Command Error
+    bit7: PON   # Power On

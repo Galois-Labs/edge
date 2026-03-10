@@ -1,0 +1,1226 @@
+instrument:
+  manufacturer: "RIGOL"
+  model: "MSO1000Z/DS1000Z"
+  class: oscilloscope
+  description: "Mixed Signal/Digital Storage Oscilloscope - 70MHz to 100MHz bandwidth, 4 analog + 16 digital channels"
+
+identity:
+  query: "*IDN?"
+  pattern: "RIGOL TECHNOLOGIES.*,(MSO|DS)1[0-9]{3}Z"
+
+interfaces:
+  - type: usb
+  - type: gpib
+    default_address: 1
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after current operation finishes"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query if current operation is finished"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return results"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for operation to finish"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  save_state:
+    scpi: "*SAV {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory slot"
+
+  recall_state:
+    scpi: "*RCL {slot}"
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory slot"
+
+  autoscale:
+    scpi: ":AUToscale"
+    type: write
+    description: "Perform autoscale operation"
+
+  clear:
+    scpi: ":CLEar"
+    type: write
+    description: "Clear all waveforms on screen"
+
+  run:
+    scpi: ":RUN"
+    type: write
+    description: "Start acquisition"
+
+  stop:
+    scpi: ":STOP"
+    type: write
+    description: "Stop acquisition"
+
+  single:
+    scpi: ":SINGle"
+    type: write
+    description: "Set to single trigger mode"
+
+  trigger_force:
+    scpi: ":TFORce"
+    type: write
+    description: "Force a trigger event"
+
+  acquire_type:
+    getter: ":ACQuire:TYPE?"
+    setter: ":ACQuire:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["NORMal", "AVERages", "PEAK", "HRESolution"]
+    returns:
+      type: string
+    description: "Acquisition mode"
+
+  acquire_averages:
+    getter: ":ACQuire:AVERages?"
+    setter: ":ACQuire:AVERages {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 1024
+    returns:
+      type: int
+    description: "Number of averages in average mode"
+
+  acquire_memory_depth:
+    getter: ":ACQuire:MDEPth?"
+    setter: ":ACQuire:MDEPth {mdep}"
+    type: property
+    params:
+      mdep:
+        type: enum
+        options: ["AUTO", "12000", "120000", "1200000", "12000000", "24000000"]
+    returns:
+      type: string
+    description: "Memory depth"
+
+  acquire_sample_rate:
+    scpi: ":ACQuire:SRATe?"
+    type: query
+    returns:
+      type: float
+      unit: Sa/s
+    description: "Query current sample rate"
+
+  channel_display:
+    getter: ":CHANnel{channel}:DISPlay?"
+    setter: ":CHANnel{channel}:DISPlay {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable channel"
+
+  channel_coupling:
+    getter: ":CHANnel{channel}:COUPling?"
+    setter: ":CHANnel{channel}:COUPling {coupling}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      coupling:
+        type: enum
+        options: ["AC", "DC", "GND"]
+    returns:
+      type: string
+    description: "Channel coupling mode"
+
+  channel_bandwidth_limit:
+    getter: ":CHANnel{channel}:BWLimit?"
+    setter: ":CHANnel{channel}:BWLimit {type}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      type:
+        type: enum
+        options: ["20M", "OFF"]
+    returns:
+      type: string
+    description: "Channel bandwidth limit"
+
+  channel_scale:
+    getter: ":CHANnel{channel}:SCALe?"
+    setter: ":CHANnel{channel}:SCALe {scale}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      scale:
+        type: float
+        unit: V
+        min: 0.001
+        max: 100
+    returns:
+      type: float
+      unit: V
+    description: "Channel vertical scale"
+
+  channel_offset:
+    getter: ":CHANnel{channel}:OFFSet?"
+    setter: ":CHANnel{channel}:OFFSet {offset}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      offset:
+        type: float
+        unit: V
+        min: -100
+        max: 100
+    returns:
+      type: float
+      unit: V
+    description: "Channel vertical offset"
+
+  channel_probe_ratio:
+    getter: ":CHANnel{channel}:PROBe?"
+    setter: ":CHANnel{channel}:PROBe {atten}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      atten:
+        type: enum
+        options: ["0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2", "5", "10", "20", "50", "100", "200", "500", "1000"]
+    returns:
+      type: float
+    description: "Probe attenuation ratio"
+
+  channel_range:
+    getter: ":CHANnel{channel}:RANGe?"
+    setter: ":CHANnel{channel}:RANGe {range}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      range:
+        type: float
+        unit: V
+        min: 0.008
+        max: 800
+    returns:
+      type: float
+      unit: V
+    description: "Channel vertical range"
+
+  channel_invert:
+    getter: ":CHANnel{channel}:INVert?"
+    setter: ":CHANnel{channel}:INVert {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable waveform invert"
+
+  channel_units:
+    getter: ":CHANnel{channel}:UNITs?"
+    setter: ":CHANnel{channel}:UNITs {unit}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      unit:
+        type: enum
+        options: ["VOLT", "WATT", "AMP", "UNKN"]
+    returns:
+      type: string
+    description: "Channel amplitude unit"
+
+  channel_vernier:
+    getter: ":CHANnel{channel}:VERNier?"
+    setter: ":CHANnel{channel}:VERNier {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable fine adjustment of vertical scale"
+
+  channel_time_calibration:
+    getter: ":CHANnel{channel}:TCAL?"
+    setter: ":CHANnel{channel}:TCAL {val}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      val:
+        type: float
+        unit: s
+        min: -1e-7
+        max: 1e-7
+    returns:
+      type: float
+      unit: s
+    description: "Delay calibration time"
+
+  timebase_mode:
+    getter: ":TIMebase:MODE?"
+    setter: ":TIMebase:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MAIN", "XY", "ROLL"]
+    returns:
+      type: string
+    description: "Horizontal timebase mode"
+
+  timebase_scale:
+    getter: ":TIMebase:MAIN:SCALe?"
+    setter: ":TIMebase:MAIN:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: float
+        unit: s/div
+        min: 5e-9
+        max: 50
+    returns:
+      type: float
+      unit: s/div
+    description: "Main timebase scale"
+
+  timebase_offset:
+    getter: ":TIMebase:MAIN:OFFSet?"
+    setter: ":TIMebase:MAIN:OFFSet {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Main timebase offset"
+
+  timebase_delay_enable:
+    getter: ":TIMebase:DELay:ENABle?"
+    setter: ":TIMebase:DELay:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable delayed sweep"
+
+  timebase_delay_offset:
+    getter: ":TIMebase:DELay:OFFSet?"
+    setter: ":TIMebase:DELay:OFFSet {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Delayed timebase offset"
+
+  timebase_delay_scale:
+    getter: ":TIMebase:DELay:SCALe?"
+    setter: ":TIMebase:DELay:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: float
+        unit: s/div
+    returns:
+      type: float
+      unit: s/div
+    description: "Delayed timebase scale"
+
+  trigger_mode:
+    getter: ":TRIGger:MODE?"
+    setter: ":TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["EDGE", "PULSe", "RUNT", "WIND", "NEDG", "SLOPe", "VIDeo", "PATTern", "DELay", "TIMeout", "DURation", "SHOLd", "RS232", "IIC", "SPI"]
+    returns:
+      type: string
+    description: "Trigger type"
+
+  trigger_sweep:
+    getter: ":TRIGger:SWEep?"
+    setter: ":TRIGger:SWEep {sweep}"
+    type: property
+    params:
+      sweep:
+        type: enum
+        options: ["AUTO", "NORMal", "SINGle"]
+    returns:
+      type: string
+    description: "Trigger sweep mode"
+
+  trigger_status:
+    scpi: ":TRIGger:STATus?"
+    type: query
+    returns:
+      type: string
+    description: "Query trigger status"
+
+  trigger_coupling:
+    getter: ":TRIGger:COUPling?"
+    setter: ":TRIGger:COUPling {couple}"
+    type: property
+    params:
+      couple:
+        type: enum
+        options: ["AC", "DC", "LFReject", "HFReject"]
+    returns:
+      type: string
+    description: "Trigger coupling type"
+
+  trigger_holdoff:
+    getter: ":TRIGger:HOLDoff?"
+    setter: ":TRIGger:HOLDoff {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 1.6e-8
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Trigger holdoff time"
+
+  trigger_noise_reject:
+    getter: ":TRIGger:NREJect?"
+    setter: ":TRIGger:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable noise rejection"
+
+  trigger_position:
+    scpi: ":TRIGger:POSition?"
+    type: query
+    returns:
+      type: int
+    description: "Query trigger position in internal memory"
+
+  trigger_edge_source:
+    getter: ":TRIGger:EDGe:SOURce?"
+    setter: ":TRIGger:EDGe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "AC", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"]
+    returns:
+      type: string
+    description: "Edge trigger source"
+
+  trigger_edge_slope:
+    getter: ":TRIGger:EDGe:SLOPe?"
+    setter: ":TRIGger:EDGe:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative", "RFALl"]
+    returns:
+      type: string
+    description: "Edge trigger slope"
+
+  trigger_edge_level:
+    getter: ":TRIGger:EDGe:LEVel?"
+    setter: ":TRIGger:EDGe:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+    returns:
+      type: float
+    description: "Edge trigger level"
+
+  trigger_pulse_source:
+    getter: ":TRIGger:PULSe:SOURce?"
+    setter: ":TRIGger:PULSe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"]
+    returns:
+      type: string
+    description: "Pulse width trigger source"
+
+  trigger_pulse_when:
+    getter: ":TRIGger:PULSe:WHEN?"
+    setter: ":TRIGger:PULSe:WHEN {when}"
+    type: property
+    params:
+      when:
+        type: enum
+        options: ["PGReater", "PLESs", "NGReater", "NLESs", "PGLess", "NGLess"]
+    returns:
+      type: string
+    description: "Pulse width trigger condition"
+
+  trigger_pulse_width:
+    getter: ":TRIGger:PULSe:WIDTh?"
+    setter: ":TRIGger:PULSe:WIDTh {width}"
+    type: property
+    params:
+      width:
+        type: float
+        unit: s
+        min: 8e-9
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Pulse width"
+
+  trigger_pulse_level:
+    getter: ":TRIGger:PULSe:LEVel?"
+    setter: ":TRIGger:PULSe:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+    returns:
+      type: float
+    description: "Pulse trigger level"
+
+  trigger_video_source:
+    getter: ":TRIGger:VIDeo:SOURce?"
+    setter: ":TRIGger:VIDeo:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+    returns:
+      type: string
+    description: "Video trigger source"
+
+  trigger_video_polarity:
+    getter: ":TRIGger:VIDeo:POLarity?"
+    setter: ":TRIGger:VIDeo:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Video trigger polarity"
+
+  trigger_video_mode:
+    getter: ":TRIGger:VIDeo:MODE?"
+    setter: ":TRIGger:VIDeo:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["ODDField", "EVENfield", "LINE", "ALINes"]
+    returns:
+      type: string
+    description: "Video trigger sync type"
+
+  trigger_video_standard:
+    getter: ":TRIGger:VIDeo:STANdard?"
+    setter: ":TRIGger:VIDeo:STANdard {standard}"
+    type: property
+    params:
+      standard:
+        type: enum
+        options: ["PALSecam", "NTSC", "480P", "576P"]
+    returns:
+      type: string
+    description: "Video standard"
+
+  trigger_video_line:
+    getter: ":TRIGger:VIDeo:LINE?"
+    setter: ":TRIGger:VIDeo:LINE {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 625
+    returns:
+      type: int
+    description: "Video trigger line number"
+
+  waveform_source:
+    getter: ":WAVeform:SOURce?"
+    setter: ":WAVeform:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "MATH", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"]
+    returns:
+      type: string
+    description: "Waveform data source channel"
+
+  waveform_mode:
+    getter: ":WAVeform:MODE?"
+    setter: ":WAVeform:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "MAXimum", "RAW"]
+    returns:
+      type: string
+    description: "Waveform reading mode"
+
+  waveform_format:
+    getter: ":WAVeform:FORMat?"
+    setter: ":WAVeform:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["WORD", "BYTE", "ASCii"]
+    returns:
+      type: string
+    description: "Waveform data return format"
+
+  waveform_data:
+    scpi: ":WAVeform:DATA?"
+    type: query
+    returns:
+      type: binary
+    description: "Read waveform data"
+
+  waveform_xincrement:
+    scpi: ":WAVeform:XINCrement?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time difference between points"
+
+  waveform_xorigin:
+    scpi: ":WAVeform:XORigin?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query start time of waveform data"
+
+  waveform_xreference:
+    scpi: ":WAVeform:XREFerence?"
+    type: query
+    returns:
+      type: int
+    description: "Query reference time of data point"
+
+  waveform_yincrement:
+    scpi: ":WAVeform:YINCrement?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Query waveform increment in Y direction"
+
+  waveform_yorigin:
+    scpi: ":WAVeform:YORigin?"
+    type: query
+    returns:
+      type: int
+    description: "Query vertical offset relative to reference"
+
+  waveform_yreference:
+    scpi: ":WAVeform:YREFerence?"
+    type: query
+    returns:
+      type: int
+    description: "Query vertical reference position"
+
+  waveform_start:
+    getter: ":WAVeform:STARt?"
+    setter: ":WAVeform:STARt {sta}"
+    type: property
+    params:
+      sta:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Start point of waveform data reading"
+
+  waveform_stop:
+    getter: ":WAVeform:STOP?"
+    setter: ":WAVeform:STOP {stop}"
+    type: property
+    params:
+      stop:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Stop point of waveform data reading"
+
+  waveform_preamble:
+    scpi: ":WAVeform:PREamble?"
+    type: query
+    returns:
+      type: string
+    description: "Query all waveform parameters"
+
+  measure_source:
+    getter: ":MEASure:SOURce?"
+    setter: ":MEASure:SOURce {sour}"
+    type: property
+    params:
+      sour:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "MATH", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"]
+    returns:
+      type: string
+    description: "Measurement source channel"
+
+  measure_counter_source:
+    getter: ":MEASure:COUNter:SOURce?"
+    setter: ":MEASure:COUNter:SOURce {sour}"
+    type: property
+    params:
+      sour:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "OFF", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"]
+    returns:
+      type: string
+    description: "Frequency counter source"
+
+  measure_counter_value:
+    scpi: ":MEASure:COUNter:VALue?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query frequency counter measurement result"
+
+  measure_clear:
+    scpi: ":MEASure:CLEar {item}"
+    type: write
+    params:
+      item:
+        type: enum
+        options: ["ITEM1", "ITEM2", "ITEM3", "ITEM4", "ITEM5", "ALL"]
+    description: "Clear measurement items"
+
+  measure_statistic_display:
+    getter: ":MEASure:STATistic:DISPlay?"
+    setter: ":MEASure:STATistic:DISPlay {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable statistic function"
+
+  measure_statistic_mode:
+    getter: ":MEASure:STATistic:MODE?"
+    setter: ":MEASure:STATistic:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DIFFerence", "EXTRemum"]
+    returns:
+      type: string
+    description: "Statistic mode"
+
+  measure_statistic_reset:
+    scpi: ":MEASure:STATistic:RESet"
+    type: write
+    description: "Clear history data and restart statistics"
+
+  display_type:
+    getter: ":DISPlay:TYPE?"
+    setter: ":DISPlay:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["VECTors", "DOTS"]
+    returns:
+      type: string
+    description: "Waveform display mode"
+
+  display_grid:
+    getter: ":DISPlay:GRID?"
+    setter: ":DISPlay:GRID {grid}"
+    type: property
+    params:
+      grid:
+        type: enum
+        options: ["FULL", "HALF", "NONE"]
+    returns:
+      type: string
+    description: "Grid type"
+
+  display_waveform_brightness:
+    getter: ":DISPlay:WBRightness?"
+    setter: ":DISPlay:WBRightness {time}"
+    type: property
+    params:
+      time:
+        type: int
+        min: 0
+        max: 100
+    returns:
+      type: int
+    description: "Waveform brightness"
+
+  display_grid_brightness:
+    getter: ":DISPlay:GBRightness?"
+    setter: ":DISPlay:GBRightness {brightness}"
+    type: property
+    params:
+      brightness:
+        type: int
+        min: 0
+        max: 100
+    returns:
+      type: int
+    description: "Grid brightness"
+
+  display_grading_time:
+    getter: ":DISPlay:GRADing:TIME?"
+    setter: ":DISPlay:GRADing:TIME {time}"
+    type: property
+    params:
+      time:
+        type: enum
+        options: ["MIN", "0.1", "0.2", "0.5", "1", "5", "10", "INFinite"]
+    returns:
+      type: string
+    description: "Persistence time"
+
+  display_clear:
+    scpi: ":DISPlay:CLEar"
+    type: write
+    description: "Clear all waveforms on screen"
+
+  display_data:
+    scpi: ":DISPlay:DATA?"
+    type: query
+    returns:
+      type: binary
+      format: image
+    description: "Read screen image data"
+
+  system_error:
+    scpi: ":SYSTem:ERRor:NEXT?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error message"
+
+  system_beeper:
+    getter: ":SYSTem:BEEPer?"
+    setter: ":SYSTem:BEEPer {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable beeper"
+
+  system_language:
+    getter: ":SYSTem:LANGuage?"
+    setter: ":SYSTem:LANGuage {lang}"
+    type: property
+    params:
+      lang:
+        type: enum
+        options: ["SCHinese", "TCHinese", "ENGLish", "PORTuguese", "GERMan", "POLish", "KORean", "JAPAnese", "FRENch", "RUSSian"]
+    returns:
+      type: string
+    description: "System language"
+
+  system_locked:
+    getter: ":SYSTem:LOCKed?"
+    setter: ":SYSTem:LOCKed {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Lock or unlock keyboard"
+
+  system_autoscale:
+    getter: ":SYSTem:AUToscale?"
+    setter: ":SYSTem:AUToscale {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable AUTO key"
+
+  math_display:
+    getter: ":MATH:DISPlay?"
+    setter: ":MATH:DISPlay {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable or disable math operation"
+
+  math_operator:
+    getter: ":MATH:OPERator?"
+    setter: ":MATH:OPERator {opt}"
+    type: property
+    params:
+      opt:
+        type: enum
+        options: ["ADD", "SUBTract", "MULTiply", "DIVision", "AND", "OR", "XOR", "NOT", "FFT", "INTG", "DIFF", "SQRT", "LOG", "LN", "EXP", "ABS", "FILTer"]
+    returns:
+      type: string
+    description: "Math operation operator"
+
+  math_source1:
+    getter: ":MATH:SOURce1?"
+    setter: ":MATH:SOURce1 {src}"
+    type: property
+    params:
+      src:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FX"]
+    returns:
+      type: string
+    description: "Math operation source A"
+
+  math_source2:
+    getter: ":MATH:SOURce2?"
+    setter: ":MATH:SOURce2 {src}"
+    type: property
+    params:
+      src:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FX"]
+    returns:
+      type: string
+    description: "Math operation source B"
+
+  math_scale:
+    getter: ":MATH:SCALe?"
+    setter: ":MATH:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: float
+        min: 1e-12
+        max: 5e12
+    returns:
+      type: float
+    description: "Math operation vertical scale"
+
+  math_offset:
+    getter: ":MATH:OFFSet?"
+    setter: ":MATH:OFFSet {offs}"
+    type: property
+    params:
+      offs:
+        type: float
+    returns:
+      type: float
+    description: "Math operation vertical offset"
+
+  math_invert:
+    getter: ":MATH:INVert?"
+    setter: ":MATH:INVert {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Enable inverted display of operation result"
+
+  math_reset:
+    scpi: ":MATH:RESet"
+    type: write
+    description: "Reset math operation vertical scale"
+
+  math_fft_source:
+    getter: ":MATH:FFT:SOURce?"
+    setter: ":MATH:FFT:SOURce {src}"
+    type: property
+    params:
+      src:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+    returns:
+      type: string
+    description: "FFT operation source"
+
+  math_fft_window:
+    getter: ":MATH:FFT:WINDow?"
+    setter: ":MATH:FFT:WINDow {wnd}"
+    type: property
+    params:
+      wnd:
+        type: enum
+        options: ["RECTangle", "BLACkman", "HANNing", "HAMMing", "FLATtop", "TRIangle"]
+    returns:
+      type: string
+    description: "FFT window function"
+
+  math_fft_split:
+    getter: ":MATH:FFT:SPLit?"
+    setter: ":MATH:FFT:SPLit {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "FFT half-screen display mode"
+
+  math_fft_unit:
+    getter: ":MATH:FFT:UNIT?"
+    setter: ":MATH:FFT:UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["VRMS", "DB"]
+    returns:
+      type: string
+    description: "FFT vertical unit"
+
+  math_fft_hscale:
+    getter: ":MATH:FFT:HSCale?"
+    setter: ":MATH:FFT:HSCale {hsc}"
+    type: property
+    params:
+      hsc:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT horizontal scale"
+
+  math_fft_hcenter:
+    getter: ":MATH:FFT:HCENter?"
+    setter: ":MATH:FFT:HCENter {cent}"
+    type: property
+    params:
+      cent:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "FFT center frequency"
+
+  cursor_mode:
+    getter: ":CURSor:MODE?"
+    setter: ":CURSor:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "MANual", "TRACk", "AUTO", "XY"]
+    returns:
+      type: string
+    description: "Cursor measurement mode"
+
+  la_state:
+    getter: ":LA:STATe?"
+    setter: ":LA:STATe {state}"
+    type: property
+    params:
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Turn on or off LA function"
+
+  la_display:
+    getter: ":LA:DISPlay {channel}?"
+    setter: ":LA:DISPlay {channel},{state}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15", "GROUP1", "GROUP2", "GROUP3", "GROUP4", "POD1", "POD2"]
+      state:
+        type: bool
+    returns:
+      type: bool
+    description: "Turn on or off digital channel"
+
+  la_threshold:
+    getter: ":LA:POD{n}:THReshold?"
+    setter: ":LA:POD{n}:THReshold {thre}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 2
+      thre:
+        type: float
+        unit: V
+        min: -15
+        max: 15
+    returns:
+      type: float
+      unit: V
+    description: "Digital channel group threshold"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

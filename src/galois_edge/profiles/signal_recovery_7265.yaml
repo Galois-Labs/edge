@@ -1,0 +1,1593 @@
+# Signal Recovery 7265 DSP Lock-In Amplifier Instrument Profile
+# Reference: Signal Recovery Model 7265 DSP Lock-in Amplifier Instruction Manual
+# Connection: GPIB (IEEE-488) or RS-232 serial interface
+# Note: The 7265 is the predecessor to the 7270 with a nearly identical command set.
+#       Key differences: GPIB/RS-232 interfaces (no USB/Ethernet), ACGAIN 0-9 (10dB steps),
+#       single reference mode only (no dual reference/virtual reference/tandem demodulation).
+
+instrument:
+  manufacturer: "Signal Recovery"
+  model: "7265"
+  class: lockin
+  description: "DSP Lock-In Amplifier with GPIB and RS-232 interfaces - 1 mHz to 250 kHz"
+
+identity:
+  query: "ID"
+  pattern: "(?i)(Signal Recovery|SIGNAL RECOVERY|EG&G|AMETEK)?.*7265"
+
+interfaces:
+  - type: gpib
+    default_address: 12
+    note: "IEEE-488 interface, default address 12"
+  - type: serial
+    port: 9600
+    note: "RS-232 with echo handshake, 7 data bits, even parity, 1 stop bit (factory defaults)"
+
+settings:
+  timeout_ms: 5000
+  terminator: "\r\n"
+  opc_query: false
+
+commands:
+  # ============================================================================
+  # System / Identification
+  # ============================================================================
+  identify:
+    scpi: "ID"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification (responds with '7265')"
+
+  firmware_version:
+    scpi: "VER"
+    type: query
+    returns:
+      type: string
+    description: "Query firmware version"
+
+  last_calibration_date:
+    scpi: "DATE"
+    type: query
+    returns:
+      type: string
+    description: "Query last calibration date (DDMMYY format)"
+
+  # ============================================================================
+  # Signal Channel
+  # ============================================================================
+  sensitivity:
+    getter: "SEN"
+    setter: "SEN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 27
+    returns:
+      type: int
+    description: >
+      Sensitivity setting (1-27). IMODE=0 voltage: 1=2nV, 2=5nV, 3=10nV, 4=20nV,
+      5=50nV, 6=100nV, 7=200nV, 8=500nV, 9=1uV, 10=2uV, 11=5uV, 12=10uV,
+      13=20uV, 14=50uV, 15=100uV, 16=200uV, 17=500uV, 18=1mV, 19=2mV, 20=5mV,
+      21=10mV, 22=20mV, 23=50mV, 24=100mV, 25=200mV, 26=500mV, 27=1V
+
+  sensitivity_float:
+    scpi: "SEN."
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read sensitivity in volts (or amps if current mode)"
+
+  auto_sensitivity:
+    scpi: "AS"
+    type: write
+    description: "Perform auto-sensitivity adjustment (magnitude between 30% and 90% FS)"
+
+  auto_measure:
+    scpi: "ASM"
+    type: write
+    description: "Auto-sensitivity then auto-phase (adjusts sensitivity then maximizes X, minimizes Y)"
+
+  input_mode:
+    getter: "IMODE"
+    setter: "IMODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: int
+    description: "Input mode (0=voltage mode, 1=high bandwidth current mode, 2=low noise current mode)"
+
+  voltage_mode:
+    getter: "VMODE"
+    setter: "VMODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Voltage input configuration (0=both inputs grounded, 1=A input only, 2=-B input only, 3=A-B differential)"
+
+  float_input:
+    getter: "FLOAT"
+    setter: "FLOAT {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Input connector shield float (0=grounded, 1=floating at 1 kOhm)"
+
+  fet_input:
+    getter: "FET"
+    setter: "FET {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "FET input device selection (0=bipolar, 1=FET)"
+
+  dc_couple:
+    getter: "DCCOUPLE"
+    setter: "DCCOUPLE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Input coupling control (0=AC coupled, 1=DC coupled)"
+
+  ac_gain:
+    getter: "ACGAIN"
+    setter: "ACGAIN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 9
+    returns:
+      type: int
+    description: "AC gain setting (0=0dB, 1=10dB, 2=20dB, 3=30dB, 4=40dB, 5=50dB, 6=60dB, 7=70dB, 8=80dB, 9=90dB)"
+
+  ac_gain_auto:
+    getter: "AUTOMATIC"
+    setter: "AUTOMATIC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "AC gain automatic control (0=manual, 1=automatic gain adjusted by sensitivity)"
+
+  line_filter:
+    getter: "LF"
+    setter: "LF {n1} {n2}"
+    type: property
+    params:
+      n1:
+        type: int
+        min: 0
+        max: 3
+      n2:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Line frequency rejection filter (n1: 0=off, 1=50/60Hz notch, 2=100/120Hz notch, 3=both; n2: 0=60Hz, 1=50Hz)"
+
+  # ============================================================================
+  # Reference Channel
+  # ============================================================================
+  reference_source:
+    getter: "IE"
+    setter: "IE {source}"
+    type: property
+    params:
+      source:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: int
+    description: "Reference source (0=internal, 1=external rear TTL REF IN, 2=external front analog REF)"
+
+  reference_frequency:
+    scpi: "FRQ."
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query current reference frequency in Hz (0 if unlocked in external mode)"
+
+  reference_frequency_int:
+    scpi: "FRQ"
+    type: query
+    returns:
+      type: int
+      unit: mHz
+    description: "Query current reference frequency in millihertz"
+
+  internal_frequency:
+    getter: "OF."
+    setter: "OF. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 250000
+    returns:
+      type: float
+      unit: Hz
+    description: "Internal oscillator frequency in Hz (0.001 to 250000)"
+
+  internal_frequency_int:
+    getter: "OF"
+    setter: "OF {value}"
+    type: property
+    params:
+      value:
+        type: int
+        unit: mHz
+        min: 0
+        max: 250000000
+    returns:
+      type: int
+      unit: mHz
+    description: "Internal oscillator frequency in millihertz"
+
+  oscillator_amplitude:
+    getter: "OA."
+    setter: "OA. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Internal oscillator amplitude in volts rms (0 to 5.0 V)"
+
+  oscillator_amplitude_int:
+    getter: "OA"
+    setter: "OA {value}"
+    type: property
+    params:
+      value:
+        type: int
+        unit: mV
+        min: 0
+        max: 5000
+    returns:
+      type: int
+      unit: mV
+    description: "Internal oscillator amplitude in millivolts rms (0 to 5000)"
+
+  reference_phase:
+    getter: "REFP."
+    setter: "REFP. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -360.0
+        max: 360.0
+    returns:
+      type: float
+      unit: deg
+    description: "Reference phase in degrees"
+
+  reference_phase_int:
+    getter: "REFP"
+    setter: "REFP {value}"
+    type: property
+    params:
+      value:
+        type: int
+        unit: mdeg
+        min: -360000
+        max: 360000
+    returns:
+      type: int
+      unit: mdeg
+    description: "Reference phase in millidegrees"
+
+  auto_phase:
+    scpi: "AQN"
+    type: write
+    description: "Perform auto-phase (auto quadrature null) to maximize X and minimize Y"
+
+  reference_harmonic:
+    getter: "REFN"
+    setter: "REFN {n}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 127
+    returns:
+      type: int
+    description: "Detection harmonic number (1=fundamental 1F, 2-127=NF modes)"
+
+  system_lock:
+    scpi: "LOCK"
+    type: write
+    description: "Update all frequency-dependent gain and phase correction parameters"
+
+  # ============================================================================
+  # Signal Channel Output Filters
+  # ============================================================================
+  time_constant:
+    getter: "TC"
+    setter: "TC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 30
+    returns:
+      type: int
+    description: >
+      Time constant setting (0-30): 0=10us, 1=20us, 2=50us, 3=100us, 4=200us,
+      5=500us, 6=1ms, 7=2ms, 8=5ms, 9=10ms, 10=20ms, 11=50ms, 12=100ms,
+      13=200ms, 14=500ms, 15=1s, 16=2s, 17=5s, 18=10s, 19=20s, 20=50s,
+      21=100s, 22=200s, 23=500s, 24=1ks, 25=2ks, 26=5ks, 27=10ks,
+      28=20ks, 29=50ks, 30=100ks
+
+  time_constant_float:
+    scpi: "TC."
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Read current time constant in seconds"
+
+  sync_time_constant:
+    getter: "SYNC"
+    setter: "SYNC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Synchronous time constant control (0=disabled, 1=enabled)"
+
+  filter_slope:
+    getter: "SLOPE"
+    setter: "SLOPE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Output low-pass filter slope (0=6dB/oct, 1=12dB/oct, 2=18dB/oct, 3=24dB/oct)"
+
+  # ============================================================================
+  # Signal Channel Output Amplifiers
+  # ============================================================================
+  x_offset:
+    getter: "XOF"
+    setter: "XOF {enable} {value}"
+    type: property
+    params:
+      enable:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+        min: -30000
+        max: 30000
+    returns:
+      type: int
+    description: "X channel output offset (enable: 0=disable, 1=enable; value: +/-30000 = +/-300% FS)"
+
+  y_offset:
+    getter: "YOF"
+    setter: "YOF {enable} {value}"
+    type: property
+    params:
+      enable:
+        type: int
+        min: 0
+        max: 1
+      value:
+        type: int
+        min: -30000
+        max: 30000
+    returns:
+      type: int
+    description: "Y channel output offset (enable: 0=disable, 1=enable; value: +/-30000 = +/-300% FS)"
+
+  auto_offset:
+    scpi: "AXO"
+    type: write
+    description: "Auto-offset - sets X and Y offsets to give zero X and Y outputs"
+
+  expand:
+    getter: "EX"
+    setter: "EX {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Output expand control (0=off, 1=expand X, 2=expand Y, 3=expand X and Y)"
+
+  # ============================================================================
+  # Demodulator Outputs
+  # ============================================================================
+  x_output:
+    scpi: "X."
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read X channel output (in-phase component) in volts or amps"
+    streamable: true
+
+  x_output_int:
+    scpi: "X"
+    type: query
+    returns:
+      type: int
+    description: "Read X channel output as integer (+/-30000, +/-10000 = full scale)"
+
+  y_output:
+    scpi: "Y."
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read Y channel output (quadrature component) in volts or amps"
+    streamable: true
+
+  y_output_int:
+    scpi: "Y"
+    type: query
+    returns:
+      type: int
+    description: "Read Y channel output as integer (+/-30000, +/-10000 = full scale)"
+
+  xy_output:
+    scpi: "XY."
+    type: query
+    returns:
+      type: array
+      separator: ","
+      fields:
+        - name: x
+          type: float
+          unit: V
+        - name: y
+          type: float
+          unit: V
+    description: "Read X and Y channel outputs simultaneously in floating point mode"
+    streamable: true
+
+  xy_output_int:
+    scpi: "XY"
+    type: query
+    returns:
+      type: string
+    description: "Read X and Y channel outputs simultaneously as integers"
+
+  magnitude:
+    scpi: "MAG."
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read signal magnitude (sqrt(X^2 + Y^2)) in volts or amps"
+    streamable: true
+
+  magnitude_int:
+    scpi: "MAG"
+    type: query
+    returns:
+      type: int
+    description: "Read signal magnitude as integer (0-30000, 10000 = full scale)"
+
+  phase:
+    scpi: "PHA."
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Read signal phase (arctan(Y/X)) in degrees"
+    streamable: true
+
+  phase_int:
+    scpi: "PHA"
+    type: query
+    returns:
+      type: int
+      unit: cdeg
+    description: "Read signal phase in centidegrees (+/-18000 = +/-180 degrees)"
+
+  magnitude_phase:
+    scpi: "MP."
+    type: query
+    returns:
+      type: array
+      separator: ","
+      fields:
+        - name: magnitude
+          type: float
+          unit: V
+        - name: phase
+          type: float
+          unit: deg
+    description: "Read magnitude and phase simultaneously in floating point mode"
+    streamable: true
+
+  magnitude_phase_int:
+    scpi: "MP"
+    type: query
+    returns:
+      type: string
+    description: "Read magnitude and phase simultaneously as integers"
+
+  ratio:
+    scpi: "RT."
+    type: query
+    returns:
+      type: float
+    description: "Read ratio output X/ADC1 in floating point mode"
+
+  ratio_int:
+    scpi: "RT"
+    type: query
+    returns:
+      type: int
+    description: "Read ratio output as integer (1000 * X/ADC1)"
+
+  log_ratio:
+    scpi: "LR."
+    type: query
+    returns:
+      type: float
+    description: "Read log ratio output log(X/ADC1) in floating point mode"
+
+  log_ratio_int:
+    scpi: "LR"
+    type: query
+    returns:
+      type: int
+    description: "Read log ratio output as integer (1000 * log(X/ADC1)), range -3000 to +2079"
+
+  noise:
+    scpi: "NHZ."
+    type: query
+    returns:
+      type: float
+      unit: V/rtHz
+    description: "Read equivalent input noise spectral density in V/sqrt(Hz) or A/sqrt(Hz)"
+
+  noise_bandwidth:
+    scpi: "ENBW."
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Read equivalent noise bandwidth of output filters in Hz"
+
+  noise_bandwidth_int:
+    scpi: "ENBW"
+    type: query
+    returns:
+      type: int
+      unit: uHz
+    description: "Read equivalent noise bandwidth of output filters in microhertz"
+
+  noise_output:
+    scpi: "NN."
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read mean absolute value of Y channel output in volts"
+
+  noise_output_int:
+    scpi: "NN"
+    type: query
+    returns:
+      type: int
+    description: "Read mean absolute value of Y channel output as integer (0-12000, 10000 = FS)"
+
+  fast_data_transfer:
+    scpi: "?"
+    type: query
+    returns:
+      type: string
+    description: "Fast correlated multi-output snapshot - returns outputs defined by CBD in floating point, separated by delimiter"
+
+  # ============================================================================
+  # User Equations
+  # ============================================================================
+  define_equation:
+    scpi: "DEFEQU {n1} {n2} {n3} {n4} {n5} {n6}"
+    type: write
+    params:
+      n1:
+        type: int
+        min: 1
+        max: 2
+        description: "Equation number (1 or 2)"
+      n2:
+        type: int
+        min: 0
+        max: 13
+        description: "Variable A selector"
+      n3:
+        type: int
+        min: 0
+        max: 1
+        description: "Operator (0=subtract, 1=add)"
+      n4:
+        type: int
+        min: 0
+        max: 13
+        description: "Variable B selector"
+      n5:
+        type: int
+        min: 0
+        max: 13
+        description: "Variable C (denominator divisor) selector"
+      n6:
+        type: int
+        min: 0
+        max: 13
+        description: "Variable D (denominator multiplier) selector"
+    description: >
+      Define user equation: ((A +/- B) * C) / D.
+      Variable codes: 0=X, 1=Y, 2=MAG, 3=PHA, 4=ADC1, 5=ADC2, 6=ADC3, 7=ADC4,
+      8=C1, 9=C2, 10=zero, 11=unity, 12=FRQ, 13=OSC
+
+  equation_output:
+    scpi: "EQU {n}"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: int
+    description: "Read result of user equation #1 (n=1) or #2 (n=2)"
+
+  equation_constant_c1:
+    getter: "C1 {n1}"
+    setter: "C1 {n1} {n2}"
+    type: property
+    params:
+      n1:
+        type: int
+        min: 1
+        max: 2
+        description: "Equation number (1 or 2)"
+      n2:
+        type: int
+        min: -30000
+        max: 30000
+    returns:
+      type: int
+    description: "Get/set equation constant C1 for equation n1"
+
+  equation_constant_c2:
+    getter: "C2 {n1}"
+    setter: "C2 {n1} {n2}"
+    type: property
+    params:
+      n1:
+        type: int
+        min: 1
+        max: 2
+        description: "Equation number (1 or 2)"
+      n2:
+        type: int
+        min: -30000
+        max: 30000
+    returns:
+      type: int
+    description: "Get/set equation constant C2 for equation n1"
+
+  # ============================================================================
+  # Internal Oscillator
+  # ============================================================================
+  frequency_sweep_start:
+    getter: "FSTART."
+    setter: "FSTART. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 250000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency sweep start frequency in Hz"
+
+  frequency_sweep_stop:
+    getter: "FSTOP."
+    setter: "FSTOP. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 250000.0
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency sweep stop frequency in Hz"
+
+  frequency_sweep_step:
+    getter: "FSTEP."
+    setter: "FSTEP. {n1} {n2}"
+    type: property
+    params:
+      n1:
+        type: float
+        description: "Step size (Hz for linear, percent for log)"
+      n2:
+        type: int
+        min: 0
+        max: 2
+        description: "Sweep type (0=log, 1=linear, 2=linear seek)"
+    returns:
+      type: string
+    description: "Oscillator frequency sweep step size and type"
+
+  amplitude_sweep_start:
+    getter: "ASTART."
+    setter: "ASTART. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Oscillator amplitude sweep start amplitude in volts rms"
+
+  amplitude_sweep_stop:
+    getter: "ASTOP."
+    setter: "ASTOP. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Oscillator amplitude sweep stop amplitude in volts rms"
+
+  amplitude_sweep_step:
+    getter: "ASTEP."
+    setter: "ASTEP. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Oscillator amplitude sweep step size in volts rms"
+
+  sweep_rate:
+    getter: "SRATE."
+    setter: "SRATE. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.001
+        max: 1000.0
+    returns:
+      type: float
+      unit: s
+    description: "Oscillator frequency/amplitude sweep step rate in seconds per step"
+
+  sweep_control:
+    getter: "SWEEP"
+    setter: "SWEEP {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 11
+    returns:
+      type: int
+    description: >
+      Oscillator sweep control: 0=stop, 1=start freq sweep, 2=start amp sweep,
+      3=start both, 5=pause freq, 6=pause amp, 7=pause both,
+      9=link freq to curve buffer, 10=link amp to curve buffer, 11=link both
+
+  # ============================================================================
+  # Analog Outputs (DACs)
+  # ============================================================================
+  dac_channel_define:
+    getter: "CH {n1}"
+    setter: "CH {n1} {n2}"
+    type: property
+    params:
+      n1:
+        type: int
+        min: 1
+        max: 4
+        description: "DAC number (1-4)"
+      n2:
+        type: int
+        min: 0
+        max: 7
+        description: "Signal source code for DAC output"
+    returns:
+      type: int
+    description: >
+      Define DAC analog output source. DAC1 n2: 0=X%, 1=Noise%, 2=Ratio, 3=LogRatio,
+      4=Eq1, 5=Eq2, 6=UserDAC1, 7=SigMon1.
+      DAC2 n2: 0=Y%, 1=Noise%, 2=Ratio, 3=LogRatio, 4=Eq1, 5=Eq2, 6=UserDAC2, 7=ExtADC1Mon.
+      DAC3 n2: 0=Mag%, 1=Noise%, 2=Ratio, 3=LogRatio, 4=Eq1, 5=Eq2, 6=UserDAC3, 7=SigMon2.
+      DAC4 n2: 0=Phase, 1=Noise%, 2=Ratio, 3=LogRatio, 4=Eq1, 5=Eq2, 6=UserDAC4, 7=SyncOsc.
+
+  dac1:
+    getter: "DAC. 1"
+    setter: "DAC. 1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 1 user output voltage (-10.0 to +10.0 V)"
+
+  dac2:
+    getter: "DAC. 2"
+    setter: "DAC. 2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 2 user output voltage (-10.0 to +10.0 V)"
+
+  dac3:
+    getter: "DAC. 3"
+    setter: "DAC. 3 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 3 user output voltage (-10.0 to +10.0 V)"
+
+  dac4:
+    getter: "DAC. 4"
+    setter: "DAC. 4 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 4 user output voltage (-10.0 to +10.0 V)"
+
+  # ============================================================================
+  # Auxiliary Inputs (ADCs)
+  # ============================================================================
+  adc1:
+    scpi: "ADC. 1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 1 voltage (-11.0 to +11.0 V)"
+
+  adc2:
+    scpi: "ADC. 2"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 2 voltage (-11.0 to +11.0 V)"
+
+  adc3:
+    scpi: "ADC. 3"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 3 voltage (-11.0 to +11.0 V)"
+
+  adc4:
+    scpi: "ADC. 4"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 4 voltage (-11.0 to +11.0 V)"
+
+  adc1_int:
+    scpi: "ADC 1"
+    type: query
+    returns:
+      type: int
+    description: "Read ADC channel 1 as integer (+/-11000 = +/-11.0 V)"
+
+  adc2_int:
+    scpi: "ADC 2"
+    type: query
+    returns:
+      type: int
+    description: "Read ADC channel 2 as integer (+/-11000 = +/-11.0 V)"
+
+  adc3_int:
+    scpi: "ADC 3"
+    type: query
+    returns:
+      type: int
+    description: "Read ADC channel 3 as integer (+/-11000 = +/-11.0 V)"
+
+  adc4_int:
+    scpi: "ADC 4"
+    type: query
+    returns:
+      type: int
+    description: "Read ADC channel 4 as integer (+/-11000 = +/-11.0 V)"
+
+  adc_trigger_mode:
+    getter: "TADC"
+    setter: "TADC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "ADC trigger mode (0=internal 1kHz, 1=external trigger, 2=burst ADC1, 3=burst ADC1+ADC2)"
+
+  # ============================================================================
+  # Digital I/O
+  # ============================================================================
+  digital_port_direction:
+    getter: "PORTDIR"
+    setter: "PORTDIR {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Digital port direction control (bitmask: bit=1 for output, bit=0 for input)"
+
+  digital_port_output:
+    getter: "BYTE"
+    setter: "BYTE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Digital port output byte (0-255, sets output lines configured by PORTDIR)"
+
+  digital_port_read:
+    scpi: "READBYTE"
+    type: query
+    returns:
+      type: int
+    description: "Read digital port input byte (0-255, reads all 8 lines regardless of direction)"
+
+  # ============================================================================
+  # Curve Buffer
+  # ============================================================================
+  curve_buffer_define:
+    getter: "CBD"
+    setter: "CBD {bitmask}"
+    type: property
+    params:
+      bitmask:
+        type: int
+        min: 1
+        max: 131071
+    returns:
+      type: int
+    description: >
+      Define curve buffer data channels via bitmask.
+      bit0=X, bit1=Y, bit2=MAG, bit3=PHA, bit4=SEN, bit5=Noise, bit6=Ratio,
+      bit7=LogRatio, bit8=ADC1, bit9=ADC2, bit10=ADC3, bit11=ADC4,
+      bit12=DAC1, bit13=DAC2, bit14=EVENT, bit15=FreqLo, bit16=FreqHi
+
+  curve_buffer_length:
+    getter: "LEN"
+    setter: "LEN {length}"
+    type: property
+    params:
+      length:
+        type: int
+        min: 1
+        max: 100000
+    returns:
+      type: int
+    description: "Curve buffer length in points (max depends on number of curves selected by CBD)"
+
+  storage_interval:
+    getter: "STR"
+    setter: "STR {interval}"
+    type: property
+    params:
+      interval:
+        type: int
+        min: 1000
+        max: 1000000000
+        unit: us
+    returns:
+      type: int
+    description: "Storage interval in microseconds (minimum 1000 us = 1 ms in standard mode)"
+
+  new_curve:
+    scpi: "NC"
+    type: write
+    description: "Initialize curve buffer storage memory and status variables"
+
+  take_data:
+    scpi: "TD"
+    type: write
+    description: "Start single curve buffer acquisition until buffer is full"
+
+  take_data_triggered:
+    scpi: "TDT {mode}"
+    type: write
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 9
+    description: >
+      Start triggered curve buffer acquisition. Modes: 0=ext rising start,
+      1=ext rising per-point, 2=ext falling start, 3=ext falling per-point,
+      4=ext rising start/HC stop, 5=ext rising per-point/HC stop,
+      6=ext falling start/HC stop, 7=ext falling per-point/HC stop,
+      8=ext rising start/ext falling stop, 9=ext falling start/ext rising stop
+
+  take_data_continuous:
+    scpi: "TDC"
+    type: write
+    description: "Start continuous circular curve buffer acquisition (halted by HC command)"
+
+  take_data_continuous_triggered:
+    scpi: "TDC {mode}"
+    type: write
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 2
+    description: "Start continuous acquisition with stop trigger (0=HC stop, 1=ext rising stop, 2=ext falling stop)"
+
+  halt_curve:
+    scpi: "HC"
+    type: write
+    description: "Halt curve buffer acquisition in progress"
+
+  curve_buffer_status:
+    scpi: "M"
+    type: query
+    returns:
+      type: string
+    description: >
+      Monitor curve acquisition status. Returns 4 values:
+      1) Status (0=idle, 1=TD running, 2=TDC running, 5=TD halted, 6=TDC halted),
+      2) Sweeps acquired, 3) Status byte, 4) Points acquired
+
+  trigger_output:
+    getter: "TRIGOUT"
+    setter: "TRIGOUT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Curve buffer trigger output mode (0=once per curve, 1=once per point)"
+
+  trigger_output_polarity:
+    getter: "TRIGOUTPOL"
+    setter: "TRIGOUTPOL {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Curve buffer trigger output polarity (0=rising edge, 1=falling edge)"
+
+  event_marker:
+    getter: "EVENT"
+    setter: "EVENT {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 32767
+    returns:
+      type: int
+    description: "Event marker variable value for curve buffer storage (0-32767)"
+
+  dump_curve_ascii:
+    scpi: "DC. {curve}"
+    type: query
+    params:
+      curve:
+        type: int
+        min: 0
+        max: 16
+    returns:
+      type: string
+    description: "Dump curve buffer data in ASCII floating point format (curve = bit number from CBD)"
+
+  dump_curve_ascii_int:
+    scpi: "DC {curve}"
+    type: query
+    params:
+      curve:
+        type: int
+        min: 0
+        max: 16
+    returns:
+      type: string
+    description: "Dump curve buffer data in ASCII fixed point format (curve = bit number from CBD)"
+
+  dump_curve_binary:
+    scpi: "DCB {curve}"
+    type: write
+    params:
+      curve:
+        type: int
+        min: 0
+        max: 16
+    description: "Dump curve buffer data in binary format (16-bit signed, MSB first, curve = bit number)"
+
+  dump_curve_table:
+    scpi: "DCT {bitmask}"
+    type: query
+    params:
+      bitmask:
+        type: int
+        min: 1
+        max: 131071
+    returns:
+      type: string
+    description: "Dump multiple curves in tabular format (bitmask selects curves, delimiter-separated)"
+
+  # ============================================================================
+  # Status and Overload
+  # ============================================================================
+  status_byte:
+    scpi: "ST"
+    type: query
+    returns:
+      type: int
+    description: >
+      Read instrument status byte (bit0=cmd complete, bit1=invalid cmd,
+      bit2=param error, bit3=ref unlock, bit4=output overload,
+      bit5=new ADC values, bit6=input overload, bit7=data available)
+
+  overload_byte:
+    scpi: "N"
+    type: query
+    returns:
+      type: int
+    description: >
+      Read overload status byte (bit0=X overload, bit1=Y overload,
+      bit2=X2 overload, bit3=Y2 overload, bit4=CH1 overload,
+      bit5=CH2 overload, bit6=CH3 overload, bit7=CH4 overload)
+
+  # ============================================================================
+  # Computer Interface Configuration
+  # ============================================================================
+  rs232_settings:
+    getter: "RS"
+    setter: "RS {baud} {params}"
+    type: property
+    params:
+      baud:
+        type: int
+        min: 0
+        max: 13
+        description: >
+          Baud rate code: 0=75, 1=110, 2=134.5, 3=150, 4=300, 5=600,
+          6=1200, 7=1800, 8=2000, 9=2400, 10=4800, 11=9600, 12=19200, 13=38400
+      params:
+        type: int
+        min: 0
+        max: 31
+        description: >
+          Parameter byte: bit0=8-bit data, bit1=parity bit, bit2=odd parity,
+          bit3=echo enabled, bit4=prompt enabled
+    returns:
+      type: string
+    description: "Set or read RS232 interface baud rate and parameters"
+
+  rs232_address:
+    getter: "RSADDR"
+    setter: "RSADDR {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "RS232 daisy-chain address (0-15, for multi-instrument serial connections)"
+
+  delimiter:
+    getter: "DD"
+    setter: "DD {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 13
+        max: 125
+    returns:
+      type: int
+    description: "Define delimiter character ASCII code for multi-value responses (13 or 32-125)"
+
+  remote_mode:
+    getter: "REMOTE"
+    setter: "REMOTE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Remote-only mode (0=front panel enabled, 1=front panel locked out)"
+
+  # ============================================================================
+  # Front Panel Control
+  # ============================================================================
+  display_control:
+    getter: "LTS"
+    setter: "LTS {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "LCD display on/off control (0=display off, 1=normal operation)"
+
+  display_page:
+    getter: "PAGE"
+    setter: "PAGE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 89
+    returns:
+      type: int
+    description: "Front panel display page number"
+
+  # ============================================================================
+  # Auto Default and Calibration
+  # ============================================================================
+  auto_default:
+    scpi: "ADF {value}"
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1
+    description: "Auto-default (0=all settings to factory defaults, 1=all except communications)"
+
+# ============================================================================
+# Measurement Sequences
+# ============================================================================
+sequences:
+  quick_measure:
+    description: "Quick measurement of X, Y, Magnitude, and Phase via fast data transfer"
+    steps:
+      - command: fast_data_transfer
+        capture: result
+    returns: result
+
+  read_all_outputs:
+    description: "Read X, Y, Magnitude, Phase, and reference frequency"
+    steps:
+      - command: x_output
+        capture: x
+      - command: y_output
+        capture: y
+      - command: magnitude
+        capture: mag
+      - command: phase
+        capture: pha
+      - command: reference_frequency
+        capture: freq
+    returns: "x, y, mag, pha, freq"
+
+  acquire_curve:
+    description: "Configure and acquire a single curve buffer dataset"
+    params:
+      length:
+        type: int
+        default: 1000
+      interval:
+        type: int
+        default: 10000
+        unit: us
+        description: "Storage interval in microseconds (min 1000)"
+      channels:
+        type: int
+        default: 3
+        description: "Channel bitmask (3 = X and Y)"
+    steps:
+      - command: halt_curve
+      - command: new_curve
+      - command: curve_buffer_length
+        args:
+          length: "{length}"
+      - command: storage_interval
+        args:
+          interval: "{interval}"
+      - command: curve_buffer_define
+        args:
+          bitmask: "{channels}"
+      - command: take_data
+    returns: "Acquisition started - monitor with curve_buffer_status, download with dump_curve_ascii"
+
+  continuous_acquire:
+    description: "Start continuous circular buffer acquisition"
+    params:
+      length:
+        type: int
+        default: 10000
+      interval:
+        type: int
+        default: 10000
+        unit: us
+        description: "Storage interval in microseconds (min 1000)"
+      channels:
+        type: int
+        default: 3
+        description: "Channel bitmask (3 = X and Y)"
+    steps:
+      - command: halt_curve
+      - command: new_curve
+      - command: curve_buffer_length
+        args:
+          length: "{length}"
+      - command: storage_interval
+        args:
+          interval: "{interval}"
+      - command: curve_buffer_define
+        args:
+          bitmask: "{channels}"
+      - command: take_data_continuous
+    returns: "Continuous acquisition started - halt with halt_curve"
+
+  setup_measurement:
+    description: "Configure signal channel for a measurement"
+    params:
+      sensitivity:
+        type: int
+        default: 15
+        description: "Sensitivity (1-27)"
+      time_constant:
+        type: int
+        default: 10
+        description: "Time constant (0-30)"
+      input_mode:
+        type: int
+        default: 0
+        description: "Input mode (0=voltage, 1=current HBW, 2=current LN)"
+      filter_slope:
+        type: int
+        default: 1
+        description: "Filter slope (0=6dB, 1=12dB, 2=18dB, 3=24dB)"
+    steps:
+      - command: sensitivity
+        args:
+          value: "{sensitivity}"
+      - command: time_constant
+        args:
+          value: "{time_constant}"
+      - command: input_mode
+        args:
+          mode: "{input_mode}"
+      - command: filter_slope
+        args:
+          value: "{filter_slope}"
+      - command: auto_sensitivity
+      - command: auto_phase
+
+  frequency_response:
+    description: "Set up for a frequency response measurement using internal oscillator"
+    params:
+      amplitude:
+        type: float
+        default: 1.0
+        unit: V
+        description: "Oscillator amplitude in volts rms"
+      start_freq:
+        type: float
+        default: 100.0
+        unit: Hz
+        description: "Start frequency in Hz"
+      sensitivity:
+        type: int
+        default: 27
+        description: "Sensitivity setting (1-27)"
+      time_constant:
+        type: int
+        default: 11
+        description: "Time constant setting (0-30)"
+    steps:
+      - command: reference_source
+        args:
+          source: "0"
+      - command: voltage_mode
+        args:
+          mode: "1"
+      - command: ac_gain_auto
+        args:
+          value: "1"
+      - command: float_input
+        args:
+          state: "1"
+      - command: oscillator_amplitude
+        args:
+          value: "{amplitude}"
+      - command: internal_frequency
+        args:
+          value: "{start_freq}"
+      - command: sensitivity
+        args:
+          value: "{sensitivity}"
+      - command: time_constant
+        args:
+          value: "{time_constant}"
+      - command: auto_phase
+
+  curve_storage_measurement:
+    description: "Acquire X and Y curves with sensitivity tracking for floating point readback"
+    params:
+      length:
+        type: int
+        default: 1000
+        description: "Number of points to acquire"
+      interval:
+        type: int
+        default: 10000
+        unit: us
+        description: "Storage interval in microseconds"
+    steps:
+      - command: new_curve
+      - command: curve_buffer_define
+        args:
+          bitmask: "19"
+      - command: curve_buffer_length
+        args:
+          length: "{length}"
+      - command: storage_interval
+        args:
+          interval: "{interval}"
+      - command: take_data
+    returns: "Acquisition started - CBD=19 stores X, Y, and SEN for floating point conversion"
+
+# ============================================================================
+# Status Register Definitions
+# ============================================================================
+status:
+  stb:
+    bit0: "Command complete"
+    bit1: "Invalid command"
+    bit2: "Command parameter error"
+    bit3: "Reference unlock"
+    bit4: "Output overload"
+    bit5: "New ADC values available after trigger"
+    bit6: "Input overload"
+    bit7: "Data available"
+  esr:
+    bit0: "X channel output overload"
+    bit1: "Y channel output overload"
+    bit2: "X2 channel output overload"
+    bit3: "Y2 channel output overload"
+    bit4: "CH1 output overload"
+    bit5: "CH2 output overload"
+    bit6: "CH3 output overload"
+    bit7: "CH4 output overload"

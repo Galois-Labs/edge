@@ -1,0 +1,741 @@
+instrument:
+  manufacturer: "RIGOL"
+  model: "DG1062Z"
+  class: function_generator
+  description: "60MHz Arbitrary Waveform Generator - 2 channels, 14-bit, 16k points"
+
+identity:
+  query: "*IDN?"
+  pattern: "Rigol Technologies,DG10[36]2Z"
+
+interfaces:
+  - type: gpib
+    default_address: 2
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to factory default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: enum
+        options: ["USER1", "USER2", "USER3", "USER4", "USER5", "USER6", "USER7", "USER8", "USER9", "USER10", "ARB1", "ARB2", "ARB3", "ARB4", "ARB5", "ARB6", "ARB7", "ARB8", "ARB9", "ARB10"]
+    description: "Save instrument state or arbitrary waveform to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: enum
+        options: ["USER1", "USER2", "USER3", "USER4", "USER5", "USER6", "USER7", "USER8", "USER9", "USER10", "ARB1", "ARB2", "ARB3", "ARB4", "ARB5", "ARB6", "ARB7", "ARB8", "ARB9", "ARB10"]
+    description: "Recall setup from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Enable/disable clearing status registers at power-on"
+
+  # Output Configuration
+  output_state:
+    getter: ":OUTPut{channel}?"
+    setter: ":OUTPut{channel} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Turn channel output on or off"
+
+  output_impedance:
+    getter: ":OUTPut{channel}:IMPedance?"
+    setter: ":OUTPut{channel}:IMPedance {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 10000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set output termination impedance (use INFinity for high-Z)"
+
+  output_load:
+    getter: ":OUTPut{channel}:LOAD?"
+    setter: ":OUTPut{channel}:LOAD {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: Ohm
+        min: 1
+        max: 10000
+    returns:
+      type: float
+      unit: Ohm
+    description: "Set output load impedance"
+
+  output_polarity:
+    getter: ":OUTPut{channel}:POLarity?"
+    setter: ":OUTPut{channel}:POLarity {polarity}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      polarity:
+        type: enum
+        options: ["NORMal", "INVerted"]
+    returns:
+      type: string
+    description: "Set output polarity to normal or inverted"
+
+  output_mode:
+    getter: ":OUTPut{channel}:MODE?"
+    setter: ":OUTPut{channel}:MODE {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      mode:
+        type: enum
+        options: ["NORMal", "GATed"]
+    returns:
+      type: string
+    description: "Set output mode to normal or gated"
+
+  sync_output:
+    getter: ":OUTPut{channel}:SYNC?"
+    setter: ":OUTPut{channel}:SYNC {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable sync output signal"
+
+  sync_polarity:
+    getter: ":OUTPut{channel}:SYNC:POLarity?"
+    setter: ":OUTPut{channel}:SYNC:POLarity {polarity}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Set sync signal polarity"
+
+  sync_delay:
+    getter: ":OUTPut{channel}:SYNC:DELay?"
+    setter: ":OUTPut{channel}:SYNC:DELay {delay}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      delay:
+        type: float
+        unit: s
+        min: 0
+    returns:
+      type: float
+      unit: s
+    description: "Set sync signal output delay"
+
+  # Source Function Commands
+  apply_query:
+    scpi: ":SOURce{channel}:APPLy?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+    returns:
+      type: string
+    description: "Query current waveform configuration"
+
+  apply_sine:
+    scpi: ":SOURce{channel}:APPLy:SINusoid {frequency},{amplitude},{offset},{phase}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 60000000
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+      phase:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    description: "Configure and output sine wave"
+
+  apply_square:
+    scpi: ":SOURce{channel}:APPLy:SQUare {frequency},{amplitude},{offset},{phase}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 25000000
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+      phase:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    description: "Configure and output square wave"
+
+  apply_ramp:
+    scpi: ":SOURce{channel}:APPLy:RAMP {frequency},{amplitude},{offset},{phase}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 1000000
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+      phase:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    description: "Configure and output ramp wave"
+
+  apply_pulse:
+    scpi: ":SOURce{channel}:APPLy:PULSe {frequency},{amplitude},{offset},{phase}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 25000000
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+      phase:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    description: "Configure and output pulse wave"
+
+  apply_noise:
+    scpi: ":SOURce{channel}:APPLy:NOISe {amplitude},{offset}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    description: "Configure and output noise"
+
+  apply_dc:
+    scpi: ":SOURce{channel}:APPLy:DC DEF,DEF,{offset}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    description: "Configure and output DC voltage"
+
+  apply_arbitrary:
+    scpi: ":SOURce{channel}:APPLy:USER {frequency},{amplitude},{offset},{phase}"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 20000000
+      amplitude:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+      phase:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    description: "Configure and output arbitrary waveform"
+
+  function:
+    getter: ":SOURce{channel}:FUNCtion?"
+    setter: ":SOURce{channel}:FUNCtion {shape}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      shape:
+        type: enum
+        options: ["SINusoid", "SQUare", "RAMP", "PULSe", "NOISe", "DC", "USER"]
+    returns:
+      type: string
+    description: "Set output waveform function/shape"
+
+  frequency:
+    getter: ":SOURce{channel}:FREQuency?"
+    setter: ":SOURce{channel}:FREQuency {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 0.000001
+        max: 60000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Set output frequency"
+
+  period:
+    getter: ":SOURce{channel}:PERiod?"
+    setter: ":SOURce{channel}:PERiod {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: s
+        min: 0.00000001667
+        max: 1000000
+    returns:
+      type: float
+      unit: s
+    description: "Set output period"
+
+  amplitude:
+    getter: ":SOURce{channel}:VOLTage?"
+    setter: ":SOURce{channel}:VOLTage {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: Vpp
+        min: 0.002
+        max: 10
+    returns:
+      type: float
+      unit: Vpp
+    description: "Set output amplitude (peak-to-peak)"
+
+  offset:
+    getter: ":SOURce{channel}:VOLTage:OFFSet?"
+    setter: ":SOURce{channel}:VOLTage:OFFSet {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Set DC offset voltage"
+
+  voltage_high:
+    getter: ":SOURce{channel}:VOLTage:HIGH?"
+    setter: ":SOURce{channel}:VOLTage:HIGH {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set high-level voltage"
+
+  voltage_low:
+    getter: ":SOURce{channel}:VOLTage:LOW?"
+    setter: ":SOURce{channel}:VOLTage:LOW {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set low-level voltage"
+
+  voltage_autorange:
+    getter: ":SOURce{channel}:VOLTage:RANGe:AUTO?"
+    setter: ":SOURce{channel}:VOLTage:RANGe:AUTO {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable voltage autoranging"
+
+  voltage_unit:
+    getter: ":SOURce{channel}:VOLTage:UNIT?"
+    setter: ":SOURce{channel}:VOLTage:UNIT {unit}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      unit:
+        type: enum
+        options: ["VPP", "VRMS", "DBM"]
+    returns:
+      type: string
+    description: "Set voltage amplitude units"
+
+  phase:
+    getter: ":SOURce{channel}:PHASe?"
+    setter: ":SOURce{channel}:PHASe {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+      value:
+        type: float
+        unit: deg
+        min: 0
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Set waveform start phase"
+
+  phase_initialize:
+    scpi: ":SOURce{channel}:PHASe:INITiate"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+    description: "Execute align phase operation"
+
+  phase_synchronize:
+    scpi: ":SOURce{channel}:PHASe:SYNChronize"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+    description: "Execute align phase operation"
+
+  # Counter Commands
+  counter_state:
+    getter: ":COUNter?"
+    setter: ":COUNter {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0", "RUN", "STOP", "SINGLE"]
+    returns:
+      type: string
+    description: "Set frequency counter state"
+
+  counter_measure:
+    scpi: ":COUNter:MEASure?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+      fields:
+        - name: frequency
+          type: float
+          unit: Hz
+        - name: period
+          type: float
+          unit: s
+        - name: duty_cycle
+          type: float
+          unit: "%"
+        - name: positive_width
+          type: float
+          unit: s
+        - name: negative_width
+          type: float
+          unit: s
+    description: "Query frequency counter measurements"

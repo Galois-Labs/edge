@@ -1,0 +1,1647 @@
+instrument:
+  manufacturer: "Keithley Instruments Inc."
+  model: "2182"
+  class: dmm
+  description: "7½-Digit Nanovoltmeter with two channels for DC voltage and temperature measurements"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY INSTRUMENTS INC.,MODEL 218[2|2A]"
+
+interfaces:
+  - type: gpib
+    default_address: 7
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # Standard IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to *RST default conditions"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 0
+    description: "Save present setup to memory"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 0
+    description: "Recall setup from memory"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  # System Commands
+  system_preset:
+    scpi: ":SYSTem:PRESet"
+    type: write
+    description: "Return to system preset defaults"
+
+  system_version:
+    scpi: ":SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error queue"
+
+  system_clear:
+    scpi: ":SYSTem:CLEar"
+    type: write
+    description: "Clear error queue"
+
+  line_frequency:
+    scpi: ":SYSTem:LFRequency?"
+    type: query
+    returns:
+      type: int
+    description: "Query power line frequency setting (50 or 60)"
+
+  front_autozero:
+    getter: ":SYSTem:FAZero[:STATe]?"
+    setter: ":SYSTem:FAZero[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable front autozero"
+
+  autozero:
+    getter: ":SYSTem:AZERo[:STATe]?"
+    setter: ":SYSTem:AZERo[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable autozero"
+
+  line_sync:
+    getter: ":SYSTem:LSYNc[:STATe]?"
+    setter: ":SYSTem:LSYNc[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable line cycle synchronization"
+
+  power_on_setup:
+    getter: ":SYSTem:POSetup?"
+    setter: ":SYSTem:POSetup {setup}"
+    type: property
+    params:
+      setup:
+        type: enum
+        options: ["RST", "PRESet", "SAV0"]
+    returns:
+      type: string
+    description: "Select power-on setup"
+
+  key_click:
+    getter: ":SYSTem:KCLick?"
+    setter: ":SYSTem:KCLick {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable key click"
+
+  beeper:
+    getter: ":SYSTem:BEEPer[:STATe]?"
+    setter: ":SYSTem:BEEPer[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable beeper"
+
+  simulate_key:
+    scpi: ":SYSTem:KEY {key_code}"
+    type: write
+    params:
+      key_code:
+        type: int
+        min: 1
+        max: 32
+    description: "Simulate front panel key press"
+
+  # Sense Commands - Function Selection
+  sense_function:
+    getter: ":SENSe[1]:FUNCtion?"
+    setter: ":SENSe[1]:FUNCtion {function}"
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["VOLTage", "VOLTage:DC", "TEMPerature"]
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  sense_channel:
+    getter: ":SENSe[1]:CHANnel?"
+    setter: ":SENSe[1]:CHANnel {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: int
+    description: "Select measurement channel (0=internal temp, 1=CH1, 2=CH2)"
+
+  sense_data_latest:
+    scpi: ":SENSe[1]:DATA[:LATest]?"
+    type: query
+    returns:
+      type: float
+    description: "Return last reading"
+    streamable: true
+
+  sense_data_fresh:
+    scpi: ":SENSe[1]:DATA:FRESh?"
+    type: query
+    returns:
+      type: float
+    description: "Return fresh reading"
+    streamable: true
+
+  # Voltage DC Commands - Channel 1
+  voltage_nplc:
+    getter: ":SENSe[1]:VOLTage[:DC]:NPLCycles?"
+    setter: ":SENSe[1]:VOLTage[:DC]:NPLCycles {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: "Set integration time in power line cycles"
+
+  voltage_aperture:
+    getter: ":SENSe[1]:VOLTage[:DC]:APERture?"
+    setter: ":SENSe[1]:VOLTage[:DC]:APERture {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.000166667
+        max: 1.0
+    returns:
+      type: float
+      unit: s
+    description: "Set integration time in seconds"
+
+  voltage_digits:
+    getter: ":SENSe[1]:VOLTage[:DC]:DIGits?"
+    setter: ":SENSe[1]:VOLTage[:DC]:DIGits {digits}"
+    type: property
+    params:
+      digits:
+        type: int
+        min: 4
+        max: 8
+        default: 8
+    returns:
+      type: int
+    description: "Set display resolution"
+
+  voltage_ratio:
+    getter: ":SENSe[1]:VOLTage[:DC]:RATio?"
+    setter: ":SENSe[1]:VOLTage[:DC]:RATio {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable ratio (V1/V2)"
+
+  voltage_delta:
+    getter: ":SENSe[1]:VOLTage[:DC]:DELTa?"
+    setter: ":SENSe[1]:VOLTage[:DC]:DELTa {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable delta mode"
+
+  voltage_ch1_range:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:RANGe[:UPPer]?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 120
+    returns:
+      type: float
+      unit: V
+    description: "Channel 1 voltage range"
+
+  voltage_ch1_range_auto:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:RANGe:AUTO?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 autorange"
+
+  voltage_ch1_reference:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:REFerence?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -120
+        max: 120
+    returns:
+      type: float
+      unit: V
+    description: "Channel 1 relative reference value"
+
+  voltage_ch1_reference_state:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:REFerence:STATe?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:REFerence:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 relative"
+
+  voltage_ch1_reference_acquire:
+    scpi: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:REFerence:ACQuire"
+    type: write
+    description: "Use input signal as channel 1 relative value"
+
+  voltage_ch1_analog_filter:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:LPASs[:STATe]?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:LPASs[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 analog filter"
+
+  voltage_ch1_filter_window:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:WINDow?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.01
+    returns:
+      type: float
+      unit: "%"
+    description: "Channel 1 digital filter window"
+
+  voltage_ch1_filter_count:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:COUNt?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Channel 1 digital filter count"
+
+  voltage_ch1_filter_type:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:TCONtrol?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter:TCONtrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOVing", "REPeat"]
+    returns:
+      type: string
+    description: "Channel 1 digital filter type"
+
+  voltage_ch1_filter_state:
+    getter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter[:STATe]?"
+    setter: ":SENSe[1]:VOLTage[:DC][:CHANnel1]:DFILter[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 digital filter"
+
+  # Voltage DC Commands - Channel 2
+  voltage_ch2_low_charge_mode:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:LQMode?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:LQMode {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 low charge injection mode"
+
+  voltage_ch2_range:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:RANGe[:UPPer]?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:RANGe[:UPPer] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 12
+    returns:
+      type: float
+      unit: V
+    description: "Channel 2 voltage range"
+
+  voltage_ch2_range_auto:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:RANGe:AUTO?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 autorange"
+
+  voltage_ch2_reference:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:REFerence?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2]:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -12
+        max: 12
+    returns:
+      type: float
+      unit: V
+    description: "Channel 2 relative reference value"
+
+  voltage_ch2_reference_state:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:REFerence:STATe?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:REFerence:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 relative"
+
+  voltage_ch2_reference_acquire:
+    scpi: ":SENSe[1]:VOLTage[:DC]:CHANnel2:REFerence:ACQuire"
+    type: write
+    description: "Use input signal as channel 2 relative value"
+
+  voltage_ch2_analog_filter:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:LPASs[:STATe]?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:LPASs[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 analog filter"
+
+  voltage_ch2_filter_window:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:WINDow?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.01
+    returns:
+      type: float
+      unit: "%"
+    description: "Channel 2 digital filter window"
+
+  voltage_ch2_filter_count:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:COUNt?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Channel 2 digital filter count"
+
+  voltage_ch2_filter_type:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:TCONtrol?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter:TCONtrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOVing", "REPeat"]
+    returns:
+      type: string
+    description: "Channel 2 digital filter type"
+
+  voltage_ch2_filter_state:
+    getter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter[:STATe]?"
+    setter: ":SENSe[1]:VOLTage[:DC]:CHANnel2:DFILter[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 digital filter"
+
+  # Temperature Commands
+  temperature_transducer:
+    getter: ":SENSe[1]:TEMPerature:TRANsducer?"
+    setter: ":SENSe[1]:TEMPerature:TRANsducer {sensor}"
+    type: property
+    params:
+      sensor:
+        type: enum
+        options: ["TCouple", "INTernal"]
+    returns:
+      type: string
+    description: "Select temperature sensor"
+
+  temperature_type:
+    getter: ":SENSe[1]:TEMPerature:TCouple[:TYPE]?"
+    setter: ":SENSe[1]:TEMPerature:TCouple[:TYPE] {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["J", "K", "T", "E", "R", "S", "B", "N"]
+    returns:
+      type: string
+    description: "Select thermocouple type"
+
+  temperature_reference_select:
+    getter: ":SENSe[1]:TEMPerature:RJUNction:RSELect?"
+    setter: ":SENSe[1]:TEMPerature:RJUNction:RSELect {reference}"
+    type: property
+    params:
+      reference:
+        type: enum
+        options: ["SIMulated", "INTernal"]
+    returns:
+      type: string
+    description: "Select reference junction type"
+
+  temperature_reference_simulated:
+    getter: ":SENSe[1]:TEMPerature:RJUNction:SIMulated?"
+    setter: ":SENSe[1]:TEMPerature:RJUNction:SIMulated {temp}"
+    type: property
+    params:
+      temp:
+        type: float
+        unit: C
+        min: 0
+        max: 60
+        default: 23
+    returns:
+      type: float
+      unit: C
+    description: "Simulated reference temperature"
+
+  temperature_internal:
+    scpi: ":SENSe[1]:TEMPerature:RTEMperature?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Query internal temperature"
+
+  temperature_nplc:
+    getter: ":SENSe[1]:TEMPerature:NPLCycles?"
+    setter: ":SENSe[1]:TEMPerature:NPLCycles {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        min: 0.01
+        max: 60
+        default: 5.0
+    returns:
+      type: float
+    description: "Temperature integration time in power line cycles"
+
+  temperature_aperture:
+    getter: ":SENSe[1]:TEMPerature:APERture?"
+    setter: ":SENSe[1]:TEMPerature:APERture {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+        min: 0.000166667
+        max: 1.0
+    returns:
+      type: float
+      unit: s
+    description: "Temperature integration time in seconds"
+
+  temperature_digits:
+    getter: ":SENSe[1]:TEMPerature:DIGits?"
+    setter: ":SENSe[1]:TEMPerature:DIGits {digits}"
+    type: property
+    params:
+      digits:
+        type: int
+        min: 4
+        max: 7
+        default: 6
+    returns:
+      type: int
+    description: "Temperature display resolution"
+
+  temperature_ch1_reference:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:REFerence?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -328
+        max: 3310
+    returns:
+      type: float
+    description: "Channel 1 temperature relative reference"
+
+  temperature_ch1_reference_state:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:REFerence:STATe?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:REFerence:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 temperature relative"
+
+  temperature_ch1_reference_acquire:
+    scpi: ":SENSe[1]:TEMPerature[:CHANnel1]:REFerence:ACQuire"
+    type: write
+    description: "Use input as channel 1 temperature relative value"
+
+  temperature_ch1_analog_filter:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:LPASs[:STATe]?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:LPASs[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 temperature analog filter"
+
+  temperature_ch1_filter_window:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:WINDow?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.01
+    returns:
+      type: float
+      unit: "%"
+    description: "Channel 1 temperature filter window"
+
+  temperature_ch1_filter_count:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:COUNt?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Channel 1 temperature filter count"
+
+  temperature_ch1_filter_type:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:TCONtrol?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter:TCONtrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOVing", "REPeat"]
+    returns:
+      type: string
+    description: "Channel 1 temperature filter type"
+
+  temperature_ch1_filter_state:
+    getter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter[:STATe]?"
+    setter: ":SENSe[1]:TEMPerature[:CHANnel1]:DFILter[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 1 temperature filter"
+
+  temperature_ch2_reference:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:REFerence?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:REFerence {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -328
+        max: 3310
+    returns:
+      type: float
+    description: "Channel 2 temperature relative reference"
+
+  temperature_ch2_reference_state:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:REFerence:STATe?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:REFerence:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 temperature relative"
+
+  temperature_ch2_reference_acquire:
+    scpi: ":SENSe[1]:TEMPerature:CHANnel2:REFerence:ACQuire"
+    type: write
+    description: "Use input as channel 2 temperature relative value"
+
+  temperature_ch2_analog_filter:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:LPASs[:STATe]?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:LPASs[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 temperature analog filter"
+
+  temperature_ch2_filter_window:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:WINDow?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+        default: 0.01
+    returns:
+      type: float
+      unit: "%"
+    description: "Channel 2 temperature filter window"
+
+  temperature_ch2_filter_count:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:COUNt?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 100
+        default: 10
+    returns:
+      type: int
+    description: "Channel 2 temperature filter count"
+
+  temperature_ch2_filter_type:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:TCONtrol?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter:TCONtrol {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["MOVing", "REPeat"]
+    returns:
+      type: string
+    description: "Channel 2 temperature filter type"
+
+  temperature_ch2_filter_state:
+    getter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter[:STATe]?"
+    setter: ":SENSe[1]:TEMPerature:CHANnel2:DFILter[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable channel 2 temperature filter"
+
+  # Hold Commands
+  hold_window:
+    getter: ":SENSe[1]:HOLD:WINDow?"
+    setter: ":SENSe[1]:HOLD:WINDow {window}"
+    type: property
+    params:
+      window:
+        type: float
+        unit: "%"
+        min: 0.01
+        max: 20
+        default: 1
+    returns:
+      type: float
+      unit: "%"
+    description: "Hold window"
+
+  hold_count:
+    getter: ":SENSe[1]:HOLD:COUNt?"
+    setter: ":SENSe[1]:HOLD:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 100
+        default: 5
+    returns:
+      type: int
+    description: "Hold count"
+
+  hold_state:
+    getter: ":SENSe[1]:HOLD:STATe?"
+    setter: ":SENSe[1]:HOLD:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable hold"
+
+  # Temperature Unit
+  temperature_unit:
+    getter: ":UNIT:TEMPerature?"
+    setter: ":UNIT:TEMPerature {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["C", "F", "K"]
+    returns:
+      type: string
+    description: "Select temperature units"
+
+  # Calculate Commands (Math)
+  calculate_format:
+    getter: ":CALCulate[1]:FORMat?"
+    setter: ":CALCulate[1]:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["NONE", "MXB", "PERCent"]
+    returns:
+      type: string
+    description: "Select math format"
+
+  calculate_mx_scale:
+    getter: ":CALCulate[1]:KMATh:MMFactor?"
+    setter: ":CALCulate[1]:KMATh:MMFactor {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: 1.0
+    returns:
+      type: float
+    description: "Scale factor (M) for mX+b"
+
+  calculate_mx_offset:
+    getter: ":CALCulate[1]:KMATh:MBFactor?"
+    setter: ":CALCulate[1]:KMATh:MBFactor {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: 0.0
+    returns:
+      type: float
+    description: "Offset (B) for mX+b"
+
+  calculate_mx_units:
+    getter: ":CALCulate[1]:KMATh:MUNits?"
+    setter: ":CALCulate[1]:KMATh:MUNits {units}"
+    type: property
+    params:
+      units:
+        type: string
+    returns:
+      type: string
+    description: "Units for mX+b result"
+
+  calculate_percent_target:
+    getter: ":CALCulate[1]:KMATh:PERCent?"
+    setter: ":CALCulate[1]:KMATh:PERCent {value}"
+    type: property
+    params:
+      value:
+        type: float
+        default: 1.0
+    returns:
+      type: float
+    description: "Target value for percent calculation"
+
+  calculate_percent_acquire:
+    scpi: ":CALCulate[1]:KMATh:PERCent:ACQuire"
+    type: write
+    description: "Use input signal as percent target"
+
+  calculate_state:
+    getter: ":CALCulate[1]:KMATh:STATe?"
+    setter: ":CALCulate[1]:KMATh:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable math calculation"
+
+  calculate_data_latest:
+    scpi: ":CALCulate[1]:DATA[:LATest]?"
+    type: query
+    returns:
+      type: float
+    description: "Return last calculation result"
+
+  calculate_data_fresh:
+    scpi: ":CALCulate[1]:DATA:FRESh?"
+    type: query
+    returns:
+      type: float
+    description: "Trigger and return calculation result"
+
+  # Calculate2 Commands (Buffer Statistics)
+  calculate2_format:
+    getter: ":CALCulate2:FORMat?"
+    setter: ":CALCulate2:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["MEAN", "SDEViation", "MAXimum", "MINimum", "NONE"]
+    returns:
+      type: string
+    description: "Select buffer statistic"
+
+  calculate2_state:
+    getter: ":CALCulate2:STATe?"
+    setter: ":CALCulate2:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable statistic calculation"
+
+  calculate2_data:
+    scpi: ":CALCulate2:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Read statistic result"
+
+  calculate2_immediate:
+    scpi: ":CALCulate2:IMMediate"
+    type: write
+    description: "Recalculate using buffer data"
+
+  calculate2_immediate_query:
+    scpi: ":CALCulate2:IMMediate?"
+    type: query
+    returns:
+      type: float
+    description: "Recalculate and return result"
+
+  # Calculate3 Commands (Limits)
+  limit1_upper:
+    getter: ":CALCulate3:LIMit[1]:UPPer[:DATA]?"
+    setter: ":CALCulate3:LIMit[1]:UPPer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: 1
+    returns:
+      type: float
+    description: "Limit 1 upper value"
+
+  limit1_lower:
+    getter: ":CALCulate3:LIMit[1]:LOWer[:DATA]?"
+    setter: ":CALCulate3:LIMit[1]:LOWer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: -1
+    returns:
+      type: float
+    description: "Limit 1 lower value"
+
+  limit1_state:
+    getter: ":CALCulate3:LIMit[1]:STATe?"
+    setter: ":CALCulate3:LIMit[1]:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit 1 test"
+
+  limit1_fail:
+    scpi: ":CALCulate3:LIMit[1]:FAIL?"
+    type: query
+    returns:
+      type: int
+    description: "Query limit 1 test result (0=pass, 1=fail)"
+
+  limit1_clear:
+    scpi: ":CALCulate3:LIMit[1]:CLEar[:IMMediate]"
+    type: write
+    description: "Clear limit 1 test results"
+
+  limit1_clear_auto:
+    getter: ":CALCulate3:LIMit[1]:CLEar:AUTO?"
+    setter: ":CALCulate3:LIMit[1]:CLEar:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto clear of limit 1"
+
+  limit2_upper:
+    getter: ":CALCulate3:LIMit2:UPPer[:DATA]?"
+    setter: ":CALCulate3:LIMit2:UPPer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: 2
+    returns:
+      type: float
+    description: "Limit 2 upper value"
+
+  limit2_lower:
+    getter: ":CALCulate3:LIMit2:LOWer[:DATA]?"
+    setter: ":CALCulate3:LIMit2:LOWer[:DATA] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: -2
+    returns:
+      type: float
+    description: "Limit 2 lower value"
+
+  limit2_state:
+    getter: ":CALCulate3:LIMit2:STATe?"
+    setter: ":CALCulate3:LIMit2:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable limit 2 test"
+
+  limit2_fail:
+    scpi: ":CALCulate3:LIMit2:FAIL?"
+    type: query
+    returns:
+      type: int
+    description: "Query limit 2 test result (0=pass, 1=fail)"
+
+  limit2_clear:
+    scpi: ":CALCulate3:LIMit2:CLEar[:IMMediate]"
+    type: write
+    description: "Clear limit 2 test results"
+
+  limit2_clear_auto:
+    getter: ":CALCulate3:LIMit2:CLEar:AUTO?"
+    setter: ":CALCulate3:LIMit2:CLEar:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto clear of limit 2"
+
+  limits_immediate:
+    scpi: ":CALCulate3:IMMediate"
+    type: write
+    description: "Recalculate limit tests"
+
+  # Calibration Commands
+  acal_initiate:
+    scpi: ":CALibration:UNPRotected:ACALibration:INITiate"
+    type: write
+    description: "Prepare 2182 for ACAL"
+
+  acal_full:
+    scpi: ":CALibration:UNPRotected:ACALibration:STEP1"
+    type: write
+    description: "Perform full ACAL (100V and 10mV)"
+
+  acal_low_level:
+    scpi: ":CALibration:UNPRotected:ACALibration:STEP2"
+    type: write
+    description: "Perform low-level ACAL (10mV only)"
+
+  acal_done:
+    scpi: ":CALibration:UNPRotected:ACALibration:DONE"
+    type: write
+    description: "Exit ACAL mode"
+
+  acal_temperature:
+    scpi: ":CALibration:UNPRotected:ACALibration:TEMPerature?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Query temperature at last ACAL"
+
+  # Display Commands
+  display_enable:
+    getter: ":DISPlay:ENABle?"
+    setter: ":DISPlay:ENABle {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display"
+
+  display_text:
+    getter: ":DISPlay[:WINDow[1]]:TEXT:DATA?"
+    setter: ":DISPlay[:WINDow[1]]:TEXT:DATA {text}"
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message (max 12 characters)"
+
+  display_text_state:
+    getter: ":DISPlay[:WINDow[1]]:TEXT:STATe?"
+    setter: ":DISPlay[:WINDow[1]]:TEXT:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable text message"
+
+  # Format Commands
+  format_data:
+    getter: ":FORMat[:DATA]?"
+    setter: ":FORMat[:DATA] {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASCii", "SREal", "DREal"]
+    returns:
+      type: string
+    description: "Data format (ASCII, single or double precision)"
+
+  format_border:
+    getter: ":FORMat:BORDer?"
+    setter: ":FORMat:BORDer {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORMal", "SWAPped"]
+    returns:
+      type: string
+    description: "Byte order for binary formats"
+
+  format_elements:
+    getter: ":FORMat:ELEMents?"
+    setter: ":FORMat:ELEMents {elements}"
+    type: property
+    params:
+      elements:
+        type: string
+    returns:
+      type: string
+    description: "Specify data elements (READing, CHANnel, UNITs)"
+
+  # Analog Output Commands
+  output_gain:
+    getter: ":OUTPut:GAIN?"
+    setter: ":OUTPut:GAIN {gain}"
+    type: property
+    params:
+      gain:
+        type: float
+        min: -100000000
+        max: 100000000
+        default: 1.0
+    returns:
+      type: float
+    description: "Analog output gain"
+
+  output_offset:
+    getter: ":OUTPut:OFFSet?"
+    setter: ":OUTPut:OFFSet {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        min: -1.2
+        max: 1.2
+        default: 0.0
+    returns:
+      type: float
+    description: "Analog output offset"
+
+  output_state:
+    getter: ":OUTPut[:STATe]?"
+    setter: ":OUTPut[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable analog output"
+
+  output_relative:
+    getter: ":OUTPut:RELative?"
+    setter: ":OUTPut:RELative {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable analog output relative"
+
+  # Route/Scan Commands
+  scan_internal_count:
+    getter: ":ROUTe:SCAN:INTernal:CCOunt?"
+    setter: ":ROUTe:SCAN:INTernal:CCOunt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1023
+    returns:
+      type: int
+    description: "Channel 1 reading count for internal scan"
+
+  scan_external:
+    getter: ":ROUTe:SCAN[:EXTernal]?"
+    setter: ":ROUTe:SCAN[:EXTernal] {list}"
+    type: property
+    params:
+      list:
+        type: string
+    returns:
+      type: string
+    description: "External scan list"
+
+  scan_select:
+    getter: ":ROUTe:SCAN:LSELect?"
+    setter: ":ROUTe:SCAN:LSELect {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["NONE", "INTernal", "EXTernal"]
+    returns:
+      type: string
+    description: "Select scan operation"
+
+  # Trigger Commands
+  trigger_source:
+    getter: ":TRIGger:SOURce?"
+    setter: ":TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "TIMer", "MANual", "BUS", "EXTernal"]
+    returns:
+      type: string
+    description: "Select trigger source"
+
+  trigger_timer:
+    getter: ":TRIGger:TIMer?"
+    setter: ":TRIGger:TIMer {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0
+        max: 999999.999
+        default: 0.1
+    returns:
+      type: float
+      unit: s
+    description: "Timer interval"
+
+  trigger_count:
+    getter: ":TRIGger:COUNt?"
+    setter: ":TRIGger:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: string
+    returns:
+      type: string
+    description: "Trigger count (1 to 9999 or INF)"
+
+  trigger_delay:
+    getter: ":TRIGger:DELay?"
+    setter: ":TRIGger:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 999999.999
+        default: 0
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay"
+
+  trigger_delay_auto:
+    getter: ":TRIGger:DELay:AUTO?"
+    setter: ":TRIGger:DELay:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable auto delay"
+
+  trigger_signal:
+    scpi: ":TRIGger:SIGNal"
+    type: write
+    description: "Loop around control source"
+
+  # Sample Commands
+  sample_count:
+    getter: ":SAMPle:COUNt?"
+    setter: ":SAMPle:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1024
+        default: 1
+    returns:
+      type: int
+    description: "Sample count"
+
+  # Initiate Commands
+  initiate:
+    scpi: ":INITiate[:IMMediate]"
+    type: write
+    description: "Initiate one trigger cycle"
+
+  initiate_continuous:
+    getter: ":INITiate:CONTinuous?"
+    setter: ":INITiate:CONTinuous {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable continuous initiation"
+
+  abort:
+    scpi: ":ABORt"
+    type: write
+    description: "Reset trigger system"
+
+  # Trace/Buffer Commands
+  trace_data:
+    scpi: ":TRACe:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read buffer contents"
+
+  trace_clear:
+    scpi: ":TRACe:CLEar"
+    type: write
+    description: "Clear buffer"
+
+  trace_free:
+    scpi: ":TRACe:FREE?"
+    type: query
+    returns:
+      type: string
+    description: "Query bytes available and in use"
+
+  trace_points:
+    getter: ":TRACe:POINts?"
+    setter: ":TRACe:POINts {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 1024
+    returns:
+      type: int
+    description: "Buffer size"
+
+  trace_feed:
+    getter: ":TRACe:FEED?"
+    setter: ":TRACe:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["SENSe", "CALCulate", "NONE"]
+    returns:
+      type: string
+    description: "Select reading source"
+
+  trace_feed_control:
+    getter: ":TRACe:FEED:CONTrol?"
+    setter: ":TRACe:FEED:CONTrol {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NEVer", "NEXT"]
+    returns:
+      type: string
+    description: "Buffer control mode"
+
+  # Signal Oriented Measurement Commands
+  fetch:
+    scpi: ":FETCh?"
+    type: query
+    returns:
+      type: float
+    description: "Request latest reading"
+
+  read:
+    scpi: ":READ?"
+    type: query
+    returns:
+      type: float
+    description: "Trigger and return reading"
+
+  measure_voltage:
+    scpi: ":MEASure:VOLTage?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Configure and measure DC voltage"
+
+  measure_temperature:
+    scpi: ":MEASure:TEMPerature?"
+    type: query
+    returns:
+      type: float
+    description: "Configure and measure temperature"
+
+status:
+  stb:
+    bit0: "Measurement Summary"
+    bit2: "Error Available"
+    bit3: "Questionable Summary"
+    bit4: "Message Available"
+    bit5: "Event Summary"
+    bit7: "Operation Summary"
+  esr:
+    bit0: "Operation Complete"
+    bit2: "Query Error"
+    bit3: "Device-Dependent Error"
+    bit4: "Execution Error"
+    bit5: "Command Error"
+    bit6: "User Request"
+    bit7: "Power On"

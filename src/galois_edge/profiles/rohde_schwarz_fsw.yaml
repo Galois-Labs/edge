@@ -1,0 +1,1175 @@
+instrument:
+  manufacturer: "Rohde&Schwarz"
+  model: "FSW"
+  class: spectrum_analyzer
+  description: "Signal and Spectrum Analyzer with ACLR and Channel Power measurement capabilities"
+
+identity:
+  query: "*IDN?"
+  pattern: "ROHDE&SCHWARZ,FSW"
+
+interfaces:
+  - type: gpib
+    default_address: 20
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 10000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all previous commands to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save current setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  # Power Measurement Configuration
+  power_preset_standard:
+    scpi: "CALC:MARK:FUNC:POW:PRES {standard}"
+    type: write
+    params:
+      standard:
+        type: string
+    description: "Load predefined ACLR measurement standard"
+
+  power_standard_catalog:
+    scpi: "CALC:MARK:FUNC:POW:STAN:CAT?"
+    type: query
+    returns:
+      type: string
+    description: "Query available ACLR standards"
+
+  power_standard_delete:
+    scpi: "CALC:MARK:FUNC:POW:STAN:DEL {standard}"
+    type: write
+    params:
+      standard:
+        type: string
+    description: "Delete user-defined ACLR standard"
+
+  power_standard_save:
+    scpi: "CALC:MARK:FUNC:POW:STAN:SAVE {standard}"
+    type: write
+    params:
+      standard:
+        type: string
+    description: "Save current ACLR configuration as standard"
+
+  # Channel Configuration
+  adjacent_channel_pairs:
+    getter: "POW:ACH:ACP?"
+    setter: "POW:ACH:ACP {pairs}"
+    type: property
+    params:
+      pairs:
+        type: int
+        min: 0
+        max: 12
+    returns:
+      type: int
+    description: "Number of adjacent channel pairs"
+
+  adjacent_channel_bandwidth:
+    getter: "POW:ACH:BAND:ACH?"
+    setter: "POW:ACH:BAND:ACH {bandwidth}"
+    type: property
+    params:
+      bandwidth:
+        type: float
+        unit: Hz
+        min: 100
+        max: 1000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Bandwidth of adjacent channels"
+
+  alternate_channel_bandwidth:
+    getter: "POW:ACH:BAND:ALT{channel}?"
+    setter: "POW:ACH:BAND:ALT{channel} {bandwidth}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      bandwidth:
+        type: float
+        unit: Hz
+        min: 100
+        max: 1000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Bandwidth of alternate channel"
+
+  tx_channel_bandwidth:
+    getter: "POW:ACH:BAND:CHAN{channel}?"
+    setter: "POW:ACH:BAND:CHAN{channel} {bandwidth}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+      bandwidth:
+        type: float
+        unit: Hz
+        min: 100
+        max: 1000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Bandwidth of transmission channel"
+
+  adjacent_channel_spacing:
+    getter: "POW:ACH:SPAC:ACH?"
+    setter: "POW:ACH:SPAC:ACH {spacing}"
+    type: property
+    params:
+      spacing:
+        type: float
+        unit: Hz
+        min: 100
+        max: 2000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spacing from Tx to adjacent channel"
+
+  alternate_channel_spacing:
+    getter: "POW:ACH:SPAC:ALT{channel}?"
+    setter: "POW:ACH:SPAC:ALT{channel} {spacing}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      spacing:
+        type: float
+        unit: Hz
+        min: 100
+        max: 2000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spacing from Tx to alternate channel"
+
+  tx_channel_spacing:
+    getter: "POW:ACH:SPAC:CHAN{channel}?"
+    setter: "POW:ACH:SPAC:CHAN{channel} {spacing}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+      spacing:
+        type: float
+        unit: Hz
+        min: 14000
+        max: 2000000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Spacing between transmission channels"
+
+  tx_channel_count:
+    getter: "POW:ACH:TXCH:COUN?"
+    setter: "POW:ACH:TXCH:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: "Number of transmission channels"
+
+  # Channel Names
+  adjacent_channel_name:
+    getter: "POW:ACH:NAME:ACH?"
+    setter: "POW:ACH:NAME:ACH {name}"
+    type: property
+    params:
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Name of adjacent channel"
+
+  alternate_channel_name:
+    getter: "POW:ACH:NAME:ALT{channel}?"
+    setter: "POW:ACH:NAME:ALT{channel} {name}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Name of alternate channel"
+
+  tx_channel_name:
+    getter: "POW:ACH:NAME:CHAN{channel}?"
+    setter: "POW:ACH:NAME:CHAN{channel} {name}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+      name:
+        type: string
+    returns:
+      type: string
+    description: "Name of transmission channel"
+
+  # Weighting Filters
+  adjacent_filter_alpha:
+    getter: "POW:ACH:FILT:ALPH:ACH?"
+    setter: "POW:ACH:FILT:ALPH:ACH {alpha}"
+    type: property
+    params:
+      alpha:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "Roll-off factor for adjacent channel filter"
+
+  alternate_filter_alpha:
+    getter: "POW:ACH:FILT:ALPH:ALT{channel}?"
+    setter: "POW:ACH:FILT:ALPH:ALT{channel} {alpha}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      alpha:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "Roll-off factor for alternate channel filter"
+
+  tx_filter_alpha:
+    getter: "POW:ACH:FILT:ALPH:CHAN{channel}?"
+    setter: "POW:ACH:FILT:ALPH:CHAN{channel} {alpha}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+      alpha:
+        type: float
+        min: 0
+        max: 1
+    returns:
+      type: float
+    description: "Roll-off factor for Tx channel filter"
+
+  adjacent_filter_state:
+    getter: "POW:ACH:FILT:STAT:ACH?"
+    setter: "POW:ACH:FILT:STAT:ACH {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable adjacent channel weighting filter"
+
+  alternate_filter_state:
+    getter: "POW:ACH:FILT:STAT:ALT{channel}?"
+    setter: "POW:ACH:FILT:STAT:ALT{channel} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable alternate channel weighting filter"
+
+  tx_filter_state:
+    getter: "POW:ACH:FILT:STAT:CHAN{channel}?"
+    setter: "POW:ACH:FILT:STAT:CHAN{channel} {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable Tx channel weighting filter"
+
+  # Reference Channel
+  reference_channel_auto:
+    getter: "POW:ACH:REF:TXCH:AUTO?"
+    setter: "POW:ACH:REF:TXCH:AUTO {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MIN", "MAX", "LHIG"]
+    returns:
+      type: string
+    description: "Automatic reference channel selection"
+
+  reference_channel_manual:
+    getter: "POW:ACH:REF:TXCH:MAN?"
+    setter: "POW:ACH:REF:TXCH:MAN {channel}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: "Manual reference channel selection"
+
+  reference_channel_auto_once:
+    scpi: "POW:ACH:REF:AUTO ONCE"
+    type: write
+    description: "Set current channel power as reference"
+
+  # Limit Checking
+  aclr_limit_state:
+    getter: "CALC:LIM:ACP:STAT?"
+    setter: "CALC:LIM:ACP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable ACLR limit checking"
+
+  adjacent_limit_relative:
+    getter: "CALC:LIM:ACP:ACH:REL?"
+    setter: "CALC:LIM:ACP:ACH:REL {lower},{upper}"
+    type: property
+    params:
+      lower:
+        type: float
+        unit: dB
+        min: 0
+        max: 100
+      upper:
+        type: float
+        unit: dB
+        min: 0
+        max: 100
+    returns:
+      type: array
+      separator: ","
+    description: "Relative limits for adjacent channels"
+
+  adjacent_limit_absolute:
+    getter: "CALC:LIM:ACP:ACH:ABS?"
+    setter: "CALC:LIM:ACP:ACH:ABS {lower},{upper}"
+    type: property
+    params:
+      lower:
+        type: float
+        unit: dBm
+        min: -200
+        max: 200
+      upper:
+        type: float
+        unit: dBm
+        min: -200
+        max: 200
+    returns:
+      type: array
+      separator: ","
+    description: "Absolute limits for adjacent channels"
+
+  adjacent_limit_relative_state:
+    getter: "CALC:LIM:ACP:ACH:REL:STAT?"
+    setter: "CALC:LIM:ACP:ACH:REL:STAT {lower},{upper}"
+    type: property
+    params:
+      lower:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      upper:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: array
+      separator: ","
+    description: "Enable/disable relative limit check for adjacent"
+
+  adjacent_limit_absolute_state:
+    getter: "CALC:LIM:ACP:ACH:ABS:STAT?"
+    setter: "CALC:LIM:ACP:ACH:ABS:STAT {lower},{upper}"
+    type: property
+    params:
+      lower:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      upper:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: array
+      separator: ","
+    description: "Enable/disable absolute limit check for adjacent"
+
+  adjacent_limit_result:
+    scpi: "CALC:LIM:ACP:ACH:RES?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+    description: "Query adjacent channel limit check results"
+
+  alternate_limit_relative:
+    getter: "CALC:LIM:ACP:ALT{channel}:REL?"
+    setter: "CALC:LIM:ACP:ALT{channel}:REL {lower},{upper}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      lower:
+        type: float
+        unit: dB
+        min: 0
+        max: 100
+      upper:
+        type: float
+        unit: dB
+        min: 0
+        max: 100
+    returns:
+      type: array
+      separator: ","
+    description: "Relative limits for alternate channels"
+
+  alternate_limit_absolute:
+    getter: "CALC:LIM:ACP:ALT{channel}:ABS?"
+    setter: "CALC:LIM:ACP:ALT{channel}:ABS {lower},{upper}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      lower:
+        type: float
+        unit: dBm
+        min: -200
+        max: 200
+      upper:
+        type: float
+        unit: dBm
+        min: -200
+        max: 200
+    returns:
+      type: array
+      separator: ","
+    description: "Absolute limits for alternate channels"
+
+  alternate_limit_relative_state:
+    getter: "CALC:LIM:ACP:ALT{channel}:REL:STAT?"
+    setter: "CALC:LIM:ACP:ALT{channel}:REL:STAT {lower},{upper}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      lower:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      upper:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: array
+      separator: ","
+    description: "Enable/disable relative limit check for alternate"
+
+  alternate_limit_absolute_state:
+    getter: "CALC:LIM:ACP:ALT{channel}:ABS:STAT?"
+    setter: "CALC:LIM:ACP:ALT{channel}:ABS:STAT {lower},{upper}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+      lower:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+      upper:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: array
+      separator: ","
+    description: "Enable/disable absolute limit check for alternate"
+
+  alternate_limit_result:
+    scpi: "CALC:LIM:ACP:ALT{channel}:RES?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 12
+    returns:
+      type: array
+      separator: ","
+    description: "Query alternate channel limit check results"
+
+  # Frequency Settings
+  frequency_center:
+    getter: "FREQ:CENT?"
+    setter: "FREQ:CENT {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Center frequency"
+
+  frequency_span:
+    getter: "FREQ:SPAN?"
+    setter: "FREQ:SPAN {span}"
+    type: property
+    params:
+      span:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Frequency span"
+
+  frequency_start:
+    getter: "FREQ:STAR?"
+    setter: "FREQ:STAR {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Start frequency"
+
+  frequency_stop:
+    getter: "FREQ:STOP?"
+    setter: "FREQ:STOP {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Stop frequency"
+
+  # Sweep Settings
+  sweep_points:
+    getter: "SWE:POIN?"
+    setter: "SWE:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 101
+        max: 100001
+    returns:
+      type: int
+    description: "Number of sweep points"
+
+  sweep_time:
+    getter: "SWE:TIME?"
+    setter: "SWE:TIME {time}"
+    type: property
+    params:
+      time:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Sweep time"
+
+  sweep_time_auto:
+    getter: "SWE:TIME:AUTO?"
+    setter: "SWE:TIME:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic sweep time"
+
+  # Bandwidth Settings
+  resolution_bandwidth:
+    getter: "BAND:RES?"
+    setter: "BAND:RES {bandwidth}"
+    type: property
+    params:
+      bandwidth:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Resolution bandwidth"
+
+  resolution_bandwidth_auto:
+    getter: "BAND:RES:AUTO?"
+    setter: "BAND:RES:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic resolution bandwidth"
+
+  video_bandwidth:
+    getter: "BAND:VID?"
+    setter: "BAND:VID {bandwidth}"
+    type: property
+    params:
+      bandwidth:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Video bandwidth"
+
+  video_bandwidth_auto:
+    getter: "BAND:VID:AUTO?"
+    setter: "BAND:VID:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic video bandwidth"
+
+  # Amplitude Settings
+  reference_level:
+    getter: "DISP:WIND:TRAC:Y:RLEV?"
+    setter: "DISP:WIND:TRAC:Y:RLEV {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: "Reference level"
+
+  attenuation:
+    getter: "INP:ATT?"
+    setter: "INP:ATT {attenuation}"
+    type: property
+    params:
+      attenuation:
+        type: float
+        unit: dB
+        min: 0
+        max: 70
+    returns:
+      type: float
+      unit: dB
+    description: "RF input attenuation"
+
+  attenuation_auto:
+    getter: "INP:ATT:AUTO?"
+    setter: "INP:ATT:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Automatic RF attenuation"
+
+  # Measurement Control
+  initiate_continuous:
+    getter: "INIT:CONT?"
+    setter: "INIT:CONT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Continuous sweep mode"
+
+  initiate:
+    scpi: "INIT:IMM"
+    type: write
+    description: "Start a single sweep"
+
+  abort:
+    scpi: "ABOR"
+    type: write
+    description: "Abort current sweep"
+
+  # Data Retrieval
+  read_data:
+    scpi: "READ?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+    description: "Initiate and fetch measurement results"
+
+  fetch_data:
+    scpi: "FETC?"
+    type: query
+    returns:
+      type: array
+      separator: ","
+    description: "Fetch measurement results"
+
+  trace_data:
+    scpi: "TRAC:DATA? TRACE{trace}"
+    type: query
+    params:
+      trace:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: array
+      separator: ","
+    description: "Query trace data"
+
+  # Marker Functions
+  marker_on:
+    getter: "CALC:MARK{marker}?"
+    setter: "CALC:MARK{marker} {state}"
+    type: property
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Activate marker"
+
+  marker_x:
+    getter: "CALC:MARK{marker}:X?"
+    setter: "CALC:MARK{marker}:X {position}"
+    type: property
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+      position:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Marker position on x-axis"
+
+  marker_y:
+    scpi: "CALC:MARK{marker}:Y?"
+    type: query
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+    description: "Marker level at current position"
+
+  marker_max:
+    scpi: "CALC:MARK{marker}:MAX"
+    type: write
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+    description: "Move marker to maximum"
+
+  marker_min:
+    scpi: "CALC:MARK{marker}:MIN"
+    type: write
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+    description: "Move marker to minimum"
+
+  marker_peak:
+    scpi: "CALC:MARK{marker}:MAX:PEAK"
+    type: write
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+    description: "Move marker to peak"
+
+  # Delta Markers
+  delta_marker_on:
+    getter: "CALC:DELT{marker}?"
+    setter: "CALC:DELT{marker} {state}"
+    type: property
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Activate delta marker"
+
+  delta_marker_x:
+    getter: "CALC:DELT{marker}:X?"
+    setter: "CALC:DELT{marker}:X {position}"
+    type: property
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+      position:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Delta marker position"
+
+  delta_marker_y:
+    scpi: "CALC:DELT{marker}:Y?"
+    type: query
+    params:
+      marker:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+    description: "Delta marker level"
+
+  # Display Settings
+  display_update:
+    getter: "SYST:DISP:UPD?"
+    setter: "SYST:DISP:UPD {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable display updates"
+
+  # Error Handling
+  error_next:
+    scpi: "SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read next error from error queue"
+
+  error_all:
+    scpi: "SYST:ERR:ALL?"
+    type: query
+    returns:
+      type: string
+    description: "Read all errors from queue"
+
+  error_count:
+    scpi: "SYST:ERR:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  # Status Registers
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+sequences:
+  basic_spectrum_measurement:
+    description: "Configure and perform basic spectrum measurement"
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+      span:
+        type: float
+        unit: Hz
+      rbw:
+        type: float
+        unit: Hz
+        default: 10000
+    steps:
+      - command: reset
+      - command: frequency_center
+        args:
+          frequency: "{center_freq}"
+      - command: frequency_span
+        args:
+          span: "{span}"
+      - command: resolution_bandwidth
+        args:
+          bandwidth: "{rbw}"
+      - command: initiate_continuous
+        args:
+          state: "OFF"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch_data
+        capture: result
+    returns: result
+
+  aclr_measurement:
+    description: "Perform ACLR measurement"
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+      channel_bw:
+        type: float
+        unit: Hz
+      num_channels:
+        type: int
+        default: 1
+      compliance:
+        type: float
+        unit: dBm
+        default: 30
+    steps:
+      - command: reset
+      - command: frequency_center
+        args:
+          frequency: "{center_freq}"
+      - command: tx_channel_count
+        args:
+          count: "{num_channels}"
+      - command: tx_channel_bandwidth
+        args:
+          channel: "1"
+          bandwidth: "{channel_bw}"
+      - command: adjacent_channel_pairs
+        args:
+          pairs: "1"
+      - command: adjacent_channel_bandwidth
+        args:
+          bandwidth: "{channel_bw}"
+      - command: adjacent_limit_absolute
+        args:
+          lower: "{compliance}"
+          upper: "{compliance}"
+      - command: aclr_limit_state
+        args:
+          state: "ON"
+      - command: adjacent_limit_absolute_state
+        args:
+          lower: "ON"
+          upper: "ON"
+      - command: initiate_continuous
+        args:
+          state: "OFF"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: fetch_data
+        capture: result
+    returns: result
+
+  marker_peak_search:
+    description: "Find and mark peak power"
+    steps:
+      - command: marker_on
+        args:
+          marker: "1"
+          state: "ON"
+      - command: marker_peak
+        args:
+          marker: "1"
+      - command: marker_x
+        args:
+          marker: "1"
+        capture: peak_freq
+      - command: marker_y
+        args:
+          marker: "1"
+        capture: peak_level
+    returns: peak_freq
+
+status:
+  stb:
+    bit0: MSB
+    bit2: EAV
+    bit3: QSB
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

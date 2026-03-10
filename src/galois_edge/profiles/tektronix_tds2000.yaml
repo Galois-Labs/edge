@@ -1,0 +1,1570 @@
+instrument:
+  manufacturer: "Tektronix"
+  model: "TDS2000"
+  class: oscilloscope
+  description: "Digital Storage Oscilloscope - TDS200, TDS1000/2000, TDS1000B/2000B, TPS2000 Series"
+
+identity:
+  query: "*IDN?"
+  pattern: "TEKTRONIX,.*TDS.*|TEKTRONIX,.*TPS.*"
+
+interfaces:
+  - type: gpib
+    default_address: 1
+  - type: usb
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after pending operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all pending operations complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Execute trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Save current setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Recall setup from memory location"
+
+  learn:
+    scpi: "*LRN?"
+    type: query
+    returns:
+      type: string
+    description: "Query device settings"
+
+  # Acquisition Commands
+  acquire_mode:
+    getter: "ACQuire:MODe?"
+    setter: "ACQuire:MODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SAMple", "PEAKdetect", "AVErage"]
+    returns:
+      type: string
+    description: "Set or query acquisition mode"
+
+  acquire_numavg:
+    getter: "ACQuire:NUMAVg?"
+    setter: "ACQuire:NUMAVg {count}"
+    type: property
+    params:
+      count:
+        type: int
+        options: ["4", "16", "64", "128"]
+    returns:
+      type: int
+    description: "Set or query number of acquisitions for averaging"
+
+  acquire_numacq:
+    scpi: "ACQuire:NUMACq?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of acquisitions since start"
+
+  acquire_state:
+    getter: "ACQuire:STATE?"
+    setter: "ACQuire:STATE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "RUN", "STOP"]
+        map:
+          "OFF": 0
+          "ON": 1
+          "RUN": 1
+          "STOP": 0
+    returns:
+      type: bool
+    description: "Start or stop acquisitions"
+
+  acquire_stopafter:
+    getter: "ACQuire:STOPAfter?"
+    setter: "ACQuire:STOPAfter {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["RUNSTop", "SEQuence"]
+    returns:
+      type: string
+    description: "Set or query when acquisitions stop"
+
+  # Calibration Commands
+  calibrate_internal:
+    scpi: "CALibrate:INTERNAL"
+    type: write
+    description: "Perform internal self-calibration"
+
+  calibrate_query:
+    scpi: "*CAL?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-calibration and return status"
+
+  calibrate_status:
+    scpi: "CALibrate:STATUS?"
+    type: query
+    returns:
+      type: string
+    description: "Query calibration status (PASS or FAIL)"
+
+  # Cursor Commands
+  cursor_function:
+    getter: "CURSor:FUNCtion?"
+    setter: "CURSor:FUNCtion {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["HBArs", "OFF", "VBArs"]
+    returns:
+      type: string
+    description: "Set or query cursor type"
+
+  cursor_select_source:
+    getter: "CURSor:SELect:SOUrce?"
+    setter: "CURSor:SELect:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query cursor waveform source"
+
+  cursor_hbars_position1:
+    getter: "CURSor:HBArs:POSITION1?"
+    setter: "CURSor:HBArs:POSITION1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query horizontal bar cursor 1 position"
+
+  cursor_hbars_position2:
+    getter: "CURSor:HBArs:POSITION2?"
+    setter: "CURSor:HBArs:POSITION2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query horizontal bar cursor 2 position"
+
+  cursor_hbars_delta:
+    scpi: "CURSor:HBArs:DELTa?"
+    type: query
+    returns:
+      type: float
+    description: "Query difference between horizontal bar cursors"
+
+  cursor_hbars_units:
+    scpi: "CURSor:HBArs:UNIts?"
+    type: query
+    returns:
+      type: string
+    description: "Query horizontal bar cursor units"
+
+  cursor_vbars_position1:
+    getter: "CURSor:VBArs:POSITION1?"
+    setter: "CURSor:VBArs:POSITION1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query vertical bar cursor 1 position"
+
+  cursor_vbars_position2:
+    getter: "CURSor:VBArs:POSITION2?"
+    setter: "CURSor:VBArs:POSITION2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query vertical bar cursor 2 position"
+
+  cursor_vbars_delta:
+    scpi: "CURSor:VBArs:DELTa?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Query time difference between vertical bar cursors"
+
+  cursor_vbars_units:
+    getter: "CURSor:VBArs:UNIts?"
+    setter: "CURSor:VBArs:UNIts {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["SECOnds", "HERtz"]
+    returns:
+      type: string
+    description: "Set or query vertical bar cursor units"
+
+  # Channel Commands
+  ch1_coupling:
+    getter: "CH1:COUPling?"
+    setter: "CH1:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AC", "DC", "GND"]
+    returns:
+      type: string
+    description: "Set or query channel 1 input coupling"
+
+  ch1_bandwidth:
+    getter: "CH1:BANdwidth?"
+    setter: "CH1:BANdwidth {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Set or query channel 1 bandwidth limit"
+
+  ch1_scale:
+    getter: "CH1:SCAle?"
+    setter: "CH1:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.002
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Set or query channel 1 vertical scale (V/div)"
+
+  ch1_position:
+    getter: "CH1:POSition?"
+    setter: "CH1:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -5
+        max: 5
+    returns:
+      type: float
+    description: "Set or query channel 1 vertical position (divisions)"
+
+  ch1_probe:
+    getter: "CH1:PRObe?"
+    setter: "CH1:PRObe {attenuation}"
+    type: property
+    params:
+      attenuation:
+        type: enum
+        options: ["1", "10", "20", "50", "100", "500", "1000"]
+    returns:
+      type: float
+    description: "Set or query channel 1 probe attenuation"
+
+  ch1_invert:
+    getter: "CH1:INVert?"
+    setter: "CH1:INVert {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Set or query channel 1 invert state"
+
+  ch2_coupling:
+    getter: "CH2:COUPling?"
+    setter: "CH2:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AC", "DC", "GND"]
+    returns:
+      type: string
+    description: "Set or query channel 2 input coupling"
+
+  ch2_bandwidth:
+    getter: "CH2:BANdwidth?"
+    setter: "CH2:BANdwidth {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Set or query channel 2 bandwidth limit"
+
+  ch2_scale:
+    getter: "CH2:SCAle?"
+    setter: "CH2:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.002
+        max: 10
+    returns:
+      type: float
+      unit: V
+    description: "Set or query channel 2 vertical scale (V/div)"
+
+  ch2_position:
+    getter: "CH2:POSition?"
+    setter: "CH2:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -5
+        max: 5
+    returns:
+      type: float
+    description: "Set or query channel 2 vertical position (divisions)"
+
+  ch2_probe:
+    getter: "CH2:PRObe?"
+    setter: "CH2:PRObe {attenuation}"
+    type: property
+    params:
+      attenuation:
+        type: enum
+        options: ["1", "10", "20", "50", "100", "500", "1000"]
+    returns:
+      type: float
+    description: "Set or query channel 2 probe attenuation"
+
+  ch2_invert:
+    getter: "CH2:INVert?"
+    setter: "CH2:INVert {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Set or query channel 2 invert state"
+
+  # Select Commands
+  select_ch1:
+    getter: "SELect:CH1?"
+    setter: "SELect:CH1 {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Turn channel 1 display on or off"
+
+  select_ch2:
+    getter: "SELect:CH2?"
+    setter: "SELect:CH2 {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Turn channel 2 display on or off"
+
+  select_math:
+    getter: "SELect:MATH?"
+    setter: "SELect:MATH {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Turn math waveform display on or off"
+
+  # Horizontal Commands
+  horizontal_main_scale:
+    getter: "HORizontal:MAIn:SCAle?"
+    setter: "HORizontal:MAIn:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 5e-9
+        max: 50
+    returns:
+      type: float
+      unit: s
+    description: "Set or query horizontal time base (s/div)"
+
+  horizontal_main_position:
+    getter: "HORizontal:MAIn:POSition?"
+    setter: "HORizontal:MAIn:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query horizontal trigger position"
+
+  horizontal_delay_scale:
+    getter: "HORizontal:DELay:SCAle?"
+    setter: "HORizontal:DELay:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query window time base scale"
+
+  horizontal_delay_position:
+    getter: "HORizontal:DELay:POSition?"
+    setter: "HORizontal:DELay:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Set or query window time base position"
+
+  horizontal_view:
+    getter: "HORizontal:VIEW?"
+    setter: "HORizontal:VIEW {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MAIn", "WINDOW", "ZONE"]
+    returns:
+      type: string
+    description: "Set or query horizontal view mode"
+
+  horizontal_recordlength:
+    scpi: "HORizontal:RECOrdlength?"
+    type: query
+    returns:
+      type: int
+    description: "Query waveform record length"
+
+  # Trigger Commands
+  trigger_main_type:
+    getter: "TRIGger:MAIn:TYPe?"
+    setter: "TRIGger:MAIn:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EDGE", "VIDeo", "PULse"]
+    returns:
+      type: string
+    description: "Set or query trigger type"
+
+  trigger_main_mode:
+    getter: "TRIGger:MAIn:MODe?"
+    setter: "TRIGger:MAIn:MODe {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "NORMal"]
+    returns:
+      type: string
+    description: "Set or query trigger mode"
+
+  trigger_main_level:
+    getter: "TRIGger:MAIn:LEVel?"
+    setter: "TRIGger:MAIn:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query trigger level"
+
+  trigger_main_edge_source:
+    getter: "TRIGger:MAIn:EDGE:SOUrce?"
+    setter: "TRIGger:MAIn:EDGE:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5", "EXT10", "AC LINE"]
+    returns:
+      type: string
+    description: "Set or query edge trigger source"
+
+  trigger_main_edge_slope:
+    getter: "TRIGger:MAIn:EDGE:SLOpe?"
+    setter: "TRIGger:MAIn:EDGE:SLOpe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["FALL", "RISe"]
+    returns:
+      type: string
+    description: "Set or query edge trigger slope"
+
+  trigger_main_edge_coupling:
+    getter: "TRIGger:MAIn:EDGE:COUPling?"
+    setter: "TRIGger:MAIn:EDGE:COUPling {coupling}"
+    type: property
+    params:
+      coupling:
+        type: enum
+        options: ["AC", "DC", "HFRej", "LFRej", "NOISErej"]
+    returns:
+      type: string
+    description: "Set or query edge trigger coupling"
+
+  trigger_main_holdoff:
+    getter: "TRIGger:MAIn:HOLDOff:VALue?"
+    setter: "TRIGger:MAIn:HOLDOff:VALue {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 500e-9
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Set or query trigger holdoff time"
+
+  trigger_main_video_source:
+    getter: "TRIGger:MAIn:VIDeo:SOUrce?"
+    setter: "TRIGger:MAIn:VIDeo:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5", "EXT10"]
+    returns:
+      type: string
+    description: "Set or query video trigger source"
+
+  trigger_main_video_sync:
+    getter: "TRIGger:MAIn:VIDeo:SYNC?"
+    setter: "TRIGger:MAIn:VIDeo:SYNC {sync}"
+    type: property
+    params:
+      sync:
+        type: enum
+        options: ["FIELD", "LINE", "ODD", "EVEN", "LINENum"]
+    returns:
+      type: string
+    description: "Set or query video trigger sync type"
+
+  trigger_main_video_polarity:
+    getter: "TRIGger:MAIn:VIDeo:POLarity?"
+    setter: "TRIGger:MAIn:VIDeo:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["NORMal", "INVert", "INVERTed"]
+    returns:
+      type: string
+    description: "Set or query video trigger polarity"
+
+  trigger_main_video_standard:
+    getter: "TRIGger:MAIn:VIDeo:STANdard?"
+    setter: "TRIGger:MAIn:VIDeo:STANdard {standard}"
+    type: property
+    params:
+      standard:
+        type: enum
+        options: ["NTSc", "PAL"]
+    returns:
+      type: string
+    description: "Set or query video standard"
+
+  trigger_main_video_line:
+    getter: "TRIGger:MAIn:VIDeo:LINE?"
+    setter: "TRIGger:MAIn:VIDeo:LINE {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 625
+    returns:
+      type: int
+    description: "Set or query video trigger line number"
+
+  trigger_main_pulse_source:
+    getter: "TRIGger:MAIn:PULse:SOUrce?"
+    setter: "TRIGger:MAIn:PULse:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CH1", "CH2", "CH3", "CH4", "EXT", "EXT5", "EXT10"]
+    returns:
+      type: string
+    description: "Set or query pulse trigger source"
+
+  trigger_main_pulse_width_polarity:
+    getter: "TRIGger:MAIn:PULse:WIDth:POLarity?"
+    setter: "TRIGger:MAIn:PULse:WIDth:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSITIVe", "NEGAtive"]
+    returns:
+      type: string
+    description: "Set or query pulse trigger polarity"
+
+  trigger_main_pulse_width_when:
+    getter: "TRIGger:MAIn:PULse:WIDth:WHEN?"
+    setter: "TRIGger:MAIn:PULse:WIDth:WHEN {when}"
+    type: property
+    params:
+      when:
+        type: enum
+        options: ["EQual", "NOTEqual", "INside", "OUTside"]
+    returns:
+      type: string
+    description: "Set or query pulse trigger condition"
+
+  trigger_main_pulse_width_width:
+    getter: "TRIGger:MAIn:PULse:WIDth:WIDth?"
+    setter: "TRIGger:MAIn:PULse:WIDth:WIDth {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 33e-9
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Set or query pulse width"
+
+  trigger_force:
+    scpi: "TRIGger FORCe"
+    type: write
+    description: "Force a trigger event"
+
+  trigger_state:
+    scpi: "TRIGger:STATE?"
+    type: query
+    returns:
+      type: string
+    description: "Query trigger state (ARMED, READY, TRIGGER, AUTO, SAVE, SCAN)"
+
+  trigger_frequency:
+    scpi: "TRIGger:MAIn:FREQuency?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query trigger frequency"
+
+  trigger_setlevel:
+    scpi: "TRIGger:MAIn SETLevel"
+    type: write
+    description: "Set trigger level to 50% of signal amplitude"
+
+  # Measurement Commands
+  measurement_immed_type:
+    getter: "MEASUrement:IMMed:TYPe?"
+    setter: "MEASUrement:IMMed:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PHAse", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth"]
+    returns:
+      type: string
+    description: "Set or query immediate measurement type"
+
+  measurement_immed_source1:
+    getter: "MEASUrement:IMMed:SOUrce1?"
+    setter: "MEASUrement:IMMed:SOUrce1 {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query immediate measurement source"
+
+  measurement_immed_value:
+    scpi: "MEASUrement:IMMed:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query immediate measurement value"
+
+  measurement_immed_units:
+    scpi: "MEASUrement:IMMed:UNIts?"
+    type: query
+    returns:
+      type: string
+    description: "Query immediate measurement units"
+
+  measurement_meas1_type:
+    getter: "MEASUrement:MEAS1:TYPe?"
+    setter: "MEASUrement:MEAS1:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"]
+    returns:
+      type: string
+    description: "Set or query measurement 1 type"
+
+  measurement_meas1_source:
+    getter: "MEASUrement:MEAS1:SOUrce?"
+    setter: "MEASUrement:MEAS1:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query measurement 1 source"
+
+  measurement_meas1_value:
+    scpi: "MEASUrement:MEAS1:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query measurement 1 value"
+
+  measurement_meas1_units:
+    scpi: "MEASUrement:MEAS1:UNIts?"
+    type: query
+    returns:
+      type: string
+    description: "Query measurement 1 units"
+
+  measurement_meas2_type:
+    getter: "MEASUrement:MEAS2:TYPe?"
+    setter: "MEASUrement:MEAS2:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"]
+    returns:
+      type: string
+    description: "Set or query measurement 2 type"
+
+  measurement_meas2_source:
+    getter: "MEASUrement:MEAS2:SOUrce?"
+    setter: "MEASUrement:MEAS2:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query measurement 2 source"
+
+  measurement_meas2_value:
+    scpi: "MEASUrement:MEAS2:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query measurement 2 value"
+
+  measurement_meas3_type:
+    getter: "MEASUrement:MEAS3:TYPe?"
+    setter: "MEASUrement:MEAS3:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"]
+    returns:
+      type: string
+    description: "Set or query measurement 3 type"
+
+  measurement_meas3_source:
+    getter: "MEASUrement:MEAS3:SOUrce?"
+    setter: "MEASUrement:MEAS3:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query measurement 3 source"
+
+  measurement_meas3_value:
+    scpi: "MEASUrement:MEAS3:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query measurement 3 value"
+
+  measurement_meas4_type:
+    getter: "MEASUrement:MEAS4:TYPe?"
+    setter: "MEASUrement:MEAS4:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"]
+    returns:
+      type: string
+    description: "Set or query measurement 4 type"
+
+  measurement_meas4_source:
+    getter: "MEASUrement:MEAS4:SOUrce?"
+    setter: "MEASUrement:MEAS4:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query measurement 4 source"
+
+  measurement_meas4_value:
+    scpi: "MEASUrement:MEAS4:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query measurement 4 value"
+
+  measurement_meas5_type:
+    getter: "MEASUrement:MEAS5:TYPe?"
+    setter: "MEASUrement:MEAS5:TYPe {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["FREQuency", "MEAN", "PERIod", "PK2pk", "CRMs", "MINImum", "MAXImum", "RISe", "FALL", "PWIdth", "NWIdth", "NONe"]
+    returns:
+      type: string
+    description: "Set or query measurement 5 type"
+
+  measurement_meas5_source:
+    getter: "MEASUrement:MEAS5:SOUrce?"
+    setter: "MEASUrement:MEAS5:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query measurement 5 source"
+
+  measurement_meas5_value:
+    scpi: "MEASUrement:MEAS5:VALue?"
+    type: query
+    returns:
+      type: float
+    description: "Query measurement 5 value"
+
+  # Math Commands
+  math_define:
+    getter: "MATH:DEFINE?"
+    setter: "MATH:DEFINE \"{expression}\""
+    type: property
+    params:
+      expression:
+        type: string
+    returns:
+      type: string
+    description: "Set or query math waveform definition"
+
+  math_vertical_position:
+    getter: "MATH:VERtical:POSition?"
+    setter: "MATH:VERtical:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query math waveform vertical position"
+
+  math_vertical_scale:
+    getter: "MATH:VERtical:SCAle?"
+    setter: "MATH:VERtical:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query math waveform vertical scale"
+
+  math_fft_horizontal_position:
+    getter: "MATH:FFT:HORizontal:POSition?"
+    setter: "MATH:FFT:HORizontal:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: 0
+        max: 100
+    returns:
+      type: float
+    description: "Set or query FFT horizontal position (percent)"
+
+  math_fft_horizontal_scale:
+    getter: "MATH:FFT:HORizontal:SCAle?"
+    setter: "MATH:FFT:HORizontal:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["1", "2", "5", "10"]
+    returns:
+      type: float
+    description: "Set or query FFT horizontal zoom factor"
+
+  math_fft_vertical_position:
+    getter: "MATH:FFT:VERtical:POSition?"
+    setter: "MATH:FFT:VERtical:POSition {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Set or query FFT vertical position (divisions)"
+
+  math_fft_vertical_scale:
+    getter: "MATH:FFT:VERtical:SCAle?"
+    setter: "MATH:FFT:VERtical:SCAle {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0.5", "1", "2", "5", "10"]
+    returns:
+      type: float
+    description: "Set or query FFT vertical zoom factor"
+
+  # Display Commands
+  display_format:
+    getter: "DISplay:FORMat?"
+    setter: "DISplay:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["XY", "YT"]
+    returns:
+      type: string
+    description: "Set or query display format"
+
+  display_style:
+    getter: "DISplay:STYle?"
+    setter: "DISplay:STYle {style}"
+    type: property
+    params:
+      style:
+        type: enum
+        options: ["DOTs", "VECtors"]
+    returns:
+      type: string
+    description: "Set or query waveform display style"
+
+  display_persistence:
+    getter: "DISplay:PERSistence?"
+    setter: "DISplay:PERSistence {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OFF", "1", "2", "5", "INF"]
+    returns:
+      type: string
+    description: "Set or query display persistence"
+
+  display_contrast:
+    getter: "DISplay:CONTRast?"
+    setter: "DISplay:CONTRast {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100
+    returns:
+      type: int
+    description: "Set or query display contrast"
+
+  display_brightness:
+    getter: "DISplay:BRIGHTness?"
+    setter: "DISplay:BRIGHTness {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0", "15", "30", "45", "60", "75", "90", "100"]
+    returns:
+      type: int
+    description: "Set or query display brightness (TPS2000 only)"
+
+  display_invert:
+    getter: "DISplay:INVert?"
+    setter: "DISplay:INVert {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Set or query display invert (TDS1000/1000B only)"
+
+  # Waveform Transfer Commands
+  data_source:
+    getter: "DATa:SOUrce?"
+    setter: "DATa:SOUrce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query waveform data source"
+
+  data_encoding:
+    getter: "DATa:ENCdg?"
+    setter: "DATa:ENCdg {encoding}"
+    type: property
+    params:
+      encoding:
+        type: enum
+        options: ["ASCIi", "RIBinary", "RPBinary", "SRIbinary", "SRPbinary"]
+    returns:
+      type: string
+    description: "Set or query waveform data encoding"
+
+  data_width:
+    getter: "DATa:WIDth?"
+    setter: "DATa:WIDth {width}"
+    type: property
+    params:
+      width:
+        type: int
+        options: ["1", "2"]
+    returns:
+      type: int
+    description: "Set or query bytes per waveform point"
+
+  data_start:
+    getter: "DATa:STARt?"
+    setter: "DATa:STARt {point}"
+    type: property
+    params:
+      point:
+        type: int
+        min: 1
+        max: 2500
+    returns:
+      type: int
+    description: "Set or query starting data point for transfer"
+
+  data_stop:
+    getter: "DATa:STOP?"
+    setter: "DATa:STOP {point}"
+    type: property
+    params:
+      point:
+        type: int
+        min: 1
+        max: 2500
+    returns:
+      type: int
+    description: "Set or query ending data point for transfer"
+
+  curve:
+    scpi: "CURVe?"
+    type: query
+    returns:
+      type: binary
+    description: "Transfer waveform data from oscilloscope"
+
+  wfmpre:
+    scpi: "WFMPre?"
+    type: query
+    returns:
+      type: string
+    description: "Query waveform preamble"
+
+  wfmpre_xincr:
+    scpi: "WFMPre:XINcr?"
+    type: query
+    returns:
+      type: float
+    description: "Query horizontal sampling interval"
+
+  wfmpre_xzero:
+    scpi: "WFMPre:XZEro?"
+    type: query
+    returns:
+      type: float
+    description: "Query time of first point in waveform"
+
+  wfmpre_xunit:
+    scpi: "WFMPre:XUNit?"
+    type: query
+    returns:
+      type: string
+    description: "Query horizontal units"
+
+  wfmpre_ymult:
+    scpi: "WFMPre:YMUlt?"
+    type: query
+    returns:
+      type: float
+    description: "Query vertical scale factor"
+
+  wfmpre_yoff:
+    scpi: "WFMPre:YOFf?"
+    type: query
+    returns:
+      type: float
+    description: "Query vertical offset"
+
+  wfmpre_yzero:
+    scpi: "WFMPre:YZEro?"
+    type: query
+    returns:
+      type: float
+    description: "Query waveform conversion factor"
+
+  wfmpre_yunit:
+    scpi: "WFMPre:YUNit?"
+    type: query
+    returns:
+      type: string
+    description: "Query vertical units"
+
+  wfmpre_nr_pt:
+    scpi: "WFMPre:NR_Pt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in waveform"
+
+  # Autoset Commands
+  autoset:
+    scpi: "AUTOSet EXECute"
+    type: write
+    description: "Execute autoset"
+
+  autoset_signal:
+    scpi: "AUTOSet:SIGNAL?"
+    type: query
+    returns:
+      type: string
+    description: "Query signal type discovered by autoset"
+
+  autoset_view:
+    getter: "AUTOSet:VIEW?"
+    setter: "AUTOSet:VIEW {view}"
+    type: property
+    params:
+      view:
+        type: enum
+        options: ["MULTICYcle", "SINGLECYcle", "FFT", "RISINGedge", "FALLINGedge", "FIELD", "ODD", "EVEN", "LINE", "LINENum", "DCLIne", "DEFault", "NONE"]
+    returns:
+      type: string
+    description: "Set or query autoset view"
+
+  # Autorange Commands
+  autorange_state:
+    getter: "AUTORange:STATE?"
+    setter: "AUTORange:STATE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Set or query autorange on/off (TDS1000B/2000B/TPS2000)"
+
+  autorange_settings:
+    getter: "AUTORange:SETTings?"
+    setter: "AUTORange:SETTings {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["HORizontal", "VERTical", "BOTH"]
+    returns:
+      type: string
+    description: "Set or query autorange adjustment parameters"
+
+  # Save/Recall Commands
+  save_setup:
+    scpi: "SAVe:SETUp {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Save current setup to memory location"
+
+  recall_setup_cmd:
+    scpi: "RECAll:SETUp {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 10
+    description: "Recall setup from memory location"
+
+  factory_reset:
+    scpi: "FACtory"
+    type: write
+    description: "Reset to factory defaults"
+
+  # Hardcopy Commands
+  hardcopy:
+    scpi: "HARDCopy {action}"
+    type: write
+    params:
+      action:
+        type: enum
+        options: ["STARt", "ABOrt"]
+    description: "Start or abort hardcopy"
+
+  hardcopy_format:
+    getter: "HARDCopy:FORMat?"
+    setter: "HARDCopy:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["BMP", "BUBBLEJet", "DESKJet", "DPU3445", "DPU411", "DPU412", "EPSC60", "EPSC80", "EPSIMAGE", "EPSOn", "INTERLEAF", "JPEG", "LASERJet", "PCX", "RLE", "THINKjet", "TIFF"]
+    returns:
+      type: string
+    description: "Set or query hardcopy format"
+
+  hardcopy_layout:
+    getter: "HARDCopy:LAYout?"
+    setter: "HARDCopy:LAYout {layout}"
+    type: property
+    params:
+      layout:
+        type: enum
+        options: ["LANdscape", "PORTRait"]
+    returns:
+      type: string
+    description: "Set or query hardcopy layout"
+
+  hardcopy_port:
+    getter: "HARDCopy:PORT?"
+    setter: "HARDCopy:PORT {port}"
+    type: property
+    params:
+      port:
+        type: enum
+        options: ["CENtronics", "RS232", "GPIb", "USB"]
+    returns:
+      type: string
+    description: "Set or query hardcopy output port"
+
+  # Status Commands
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Query status byte register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Query and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set or query service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set or query event status enable register"
+
+  device_event_status_enable:
+    getter: "DESE?"
+    setter: "DESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set or query device event status enable register"
+
+  all_events:
+    scpi: "ALLEv?"
+    type: query
+    returns:
+      type: string
+    description: "Query and clear all events from event queue"
+
+  event_message:
+    scpi: "EVMsg?"
+    type: query
+    returns:
+      type: string
+    description: "Query and remove event from queue with message"
+
+  event:
+    scpi: "EVENT?"
+    type: query
+    returns:
+      type: int
+    description: "Query and remove event code from queue"
+
+  error_next:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Query and clear next error"
+
+  busy:
+    scpi: "BUSY?"
+    type: query
+    returns:
+      type: int
+    description: "Query if oscilloscope is busy processing commands"
+
+  # Miscellaneous Commands
+  header:
+    getter: "HEADer?"
+    setter: "HEADer {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Set or query response header enable state"
+
+  verbose:
+    getter: "VERBose?"
+    setter: "VERBose {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Set or query verbose mode"
+
+  language:
+    getter: "LANGuage?"
+    setter: "LANGuage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["ENGLish", "FRENch", "GERMan", "ITALian", "SPANish", "JAPAnese", "PORTUguese", "KOREan", "TRADitionalchinese", "SIMPlifiedchinese"]
+    returns:
+      type: string
+    description: "Set or query display language"
+
+  lock:
+    scpi: "LOCk {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["ALL", "NONe"]
+    description: "Lock or unlock front panel"
+
+  unlock:
+    scpi: "UNLock ALL"
+    type: write
+    description: "Unlock front panel"
+
+  power_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: int
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Set or query power-on status clear flag"
+
+sequences:
+  single_acquisition:
+    description: "Acquire a single waveform"
+    steps:
+      - command: acquire_stopafter
+        args:
+          mode: "SEQuence"
+      - command: acquire_state
+        args:
+          state: "RUN"
+      - scpi: "*OPC?"
+        capture: complete
+    returns: complete
+
+  measure_frequency:
+    description: "Measure frequency of channel 1"
+    params:
+      channel:
+        type: string
+        default: "CH1"
+    steps:
+      - command: measurement_immed_type
+        args:
+          type: "FREQuency"
+      - command: measurement_immed_source1
+        args:
+          source: "{channel}"
+      - command: measurement_immed_value
+        capture: frequency
+    returns: frequency

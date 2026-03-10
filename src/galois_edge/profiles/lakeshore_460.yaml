@@ -1,0 +1,944 @@
+instrument:
+  manufacturer: Lake Shore
+  model: "460"
+  class: dmm
+  description: 3-Channel Gaussmeter for magnetic field measurement
+
+identity:
+  query: "*IDN?"
+  pattern: "L.*460"
+
+interfaces:
+  - type: gpib
+    default_address: 12
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # ============================================================================
+  # Standard IEEE-488.2 Common Commands
+  # ============================================================================
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to power-up settings"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status byte and standard event status registers"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass, 1 = fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save present setup to memory location (0-4)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location (0-4)"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Configure event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Configure service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register without clearing"
+
+  # ============================================================================
+  # Interface Commands
+  # ============================================================================
+  ieee_address:
+    getter: "ADDR?"
+    setter: "ADDR {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 1
+        max: 30
+    returns:
+      type: int
+    description: "IEEE-488 bus address"
+
+  baud_rate:
+    getter: "BAUD?"
+    setter: "BAUD {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": 300
+          "1": 1200
+          "2": 9600
+    returns:
+      type: int
+    description: "Serial interface baud rate (0=300, 1=1200, 2=9600)"
+
+  display_brightness:
+    getter: "BRIGT?"
+    setter: "BRIGT {level}"
+    type: property
+    params:
+      level:
+        type: int
+        min: 0
+        max: 7
+        default: 4
+    returns:
+      type: int
+    description: "Front panel display brightness (0=dimmest, 7=brightest)"
+
+  keyboard_lock_code:
+    getter: "CODE?"
+    setter: "CODE {code}"
+    type: property
+    params:
+      code:
+        type: int
+        min: 0
+        max: 999
+        default: 123
+    returns:
+      type: int
+    description: "Three-digit keyboard lock code"
+
+  eoi_status:
+    getter: "END?"
+    setter: "END {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Enabled"
+          "1": "Disabled"
+    returns:
+      type: int
+    description: "End or identify (EOI) status"
+
+  fast_data_mode:
+    getter: "FAST?"
+    setter: "FAST {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Fast data acquisition mode (up to 18 readings/sec)"
+
+  key_pressed:
+    scpi: "KEY?"
+    type: query
+    returns:
+      type: int
+    description: "Query if front panel key was pressed (0=No, 1=Yes)"
+
+  keyboard_lock:
+    getter: "LOCK?"
+    setter: "LOCK {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Unlocked"
+          "1": "Locked"
+    returns:
+      type: int
+    description: "Keyboard lock state"
+
+  operation_mode:
+    getter: "MODE?"
+    setter: "MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "Local"
+          "1": "Remote"
+          "2": "Remote with lockout"
+    returns:
+      type: int
+    description: "Local/remote operation mode"
+
+  current_source_sleep:
+    getter: "SLEEP?"
+    setter: "SLEEP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "On"
+          "1": "Off"
+    returns:
+      type: int
+    description: "Turn all current sources off (sleep mode)"
+
+  terminator:
+    getter: "TERM?"
+    setter: "TERM {terminator}"
+    type: property
+    params:
+      terminator:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "CR LF"
+          "1": "LF CR"
+          "2": "LF"
+          "3": "EOI"
+    returns:
+      type: int
+    description: "Message terminator character type"
+
+  # ============================================================================
+  # Device Specific Commands
+  # ============================================================================
+  ac_dc_mode:
+    getter: "ACDC?"
+    setter: "ACDC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "DC"
+          "1": "AC"
+    returns:
+      type: int
+    description: "AC or DC field measurement mode"
+
+  alarm_state:
+    getter: "ALARM?"
+    setter: "ALARM {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Alarm function on/off"
+
+  all_fields:
+    scpi: "ALLF?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Query all field readings (X, Y, Z, Vector)"
+    streamable: true
+
+  alarm_audible:
+    getter: "ALMB?"
+    setter: "ALMB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Disabled"
+          "1": "Enabled"
+    returns:
+      type: int
+    description: "Audible alarm enable/disable"
+
+  alarm_high_point:
+    getter: "ALMH?"
+    setter: "ALMH {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Alarm high setpoint"
+
+  alarm_high_multiplier:
+    scpi: "ALMHM?"
+    type: query
+    returns:
+      type: string
+    description: "Alarm high point units multiplier (u, m, blank, k)"
+
+  alarm_inside_outside:
+    getter: "ALMIO?"
+    setter: "ALMIO {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Outside"
+          "1": "Inside"
+    returns:
+      type: int
+    description: "Alarm triggers inside or outside setpoints"
+
+  alarm_low_point:
+    getter: "ALML?"
+    setter: "ALML {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Alarm low setpoint"
+
+  alarm_low_multiplier:
+    scpi: "ALMLM?"
+    type: query
+    returns:
+      type: string
+    description: "Alarm low point units multiplier (u, m, blank, k)"
+
+  alarm_status:
+    scpi: "ALMS?"
+    type: query
+    returns:
+      type: int
+    description: "Query current alarm status (0=Off, 1=On)"
+
+  analog_output_default:
+    getter: "ANOD?"
+    setter: "ANOD {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1", "2"]
+        map:
+          "0": "User scale"
+          "1": "Default scale"
+          "2": "Remote control"
+    returns:
+      type: int
+    description: "Corrected analog output scaling mode"
+
+  analog_output_high:
+    getter: "ANOH?"
+    setter: "ANOH {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Analog output high setpoint"
+
+  analog_output_high_multiplier:
+    scpi: "ANOHM?"
+    type: query
+    returns:
+      type: string
+    description: "Analog output high setpoint multiplier"
+
+  analog_output_low:
+    getter: "ANOL?"
+    setter: "ANOL {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Analog output low setpoint"
+
+  analog_output_low_multiplier:
+    scpi: "ANOLM?"
+    type: query
+    returns:
+      type: string
+    description: "Analog output low setpoint multiplier"
+
+  analog_output_source:
+    getter: "ANOS?"
+    setter: "ANOS {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["1", "2", "3", "4"]
+        map:
+          "1": "X"
+          "2": "Y"
+          "3": "Z"
+          "4": "Vector"
+    returns:
+      type: int
+    description: "Corrected analog output source channel"
+
+  analog_output_control:
+    getter: "AOCON?"
+    setter: "AOCON {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        min: -100
+        max: 100
+    returns:
+      type: float
+    description: "Direct analog output voltage control in percent of full scale"
+
+  auto_range:
+    getter: "AUTO?"
+    setter: "AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Auto range mode"
+
+  channel_select:
+    getter: "CHNL?"
+    setter: "CHNL {channel}"
+    type: property
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z", "V"]
+    returns:
+      type: string
+    description: "Select active channel for subsequent commands"
+
+  field_reading:
+    scpi: "FIELD?"
+    type: query
+    returns:
+      type: float
+    description: "Query magnetic field reading for selected channel"
+    streamable: true
+
+  field_multiplier:
+    scpi: "FIELDM?"
+    type: query
+    returns:
+      type: string
+    description: "Query field reading units multiplier (u, m, blank, k)"
+
+  filter_state:
+    getter: "FILT?"
+    setter: "FILT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Display filter on/off"
+
+  filter_points:
+    getter: "FNUM?"
+    setter: "FNUM {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 2
+        max: 64
+    returns:
+      type: int
+    description: "Display filter number of points (2-8 linear, 9-64 exponential)"
+
+  filter_window:
+    getter: "FWIN?"
+    setter: "FWIN {window}"
+    type: property
+    params:
+      window:
+        type: int
+        min: 1
+        max: 10
+    returns:
+      type: int
+    description: "Display filter window percentage (1-10%)"
+
+  max_hold:
+    getter: "MAX?"
+    setter: "MAX {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Max hold feature on/off"
+
+  max_clear:
+    scpi: "MAXC"
+    type: write
+    description: "Clear (reset) max hold reading"
+
+  max_reading:
+    scpi: "MAXR?"
+    type: query
+    returns:
+      type: float
+    description: "Query max hold reading"
+
+  max_reading_multiplier:
+    scpi: "MAXRM?"
+    type: query
+    returns:
+      type: string
+    description: "Query max reading units multiplier"
+
+  peak_rms_mode:
+    getter: "PRMS?"
+    setter: "PRMS {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "RMS"
+          "1": "Peak"
+    returns:
+      type: int
+    description: "AC measurement mode (RMS or Peak)"
+
+  range_select:
+    getter: "RANGE?"
+    setter: "RANGE {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3"]
+        map:
+          "0": "Highest"
+          "1": "Second"
+          "2": "Third"
+          "3": "Lowest"
+    returns:
+      type: int
+    description: "Manual range selection (0=highest, 3=lowest)"
+
+  relative_mode:
+    getter: "REL?"
+    setter: "REL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Relative mode on/off"
+
+  relative_reading:
+    scpi: "RELR?"
+    type: query
+    returns:
+      type: float
+    description: "Query relative mode reading"
+
+  relative_reading_multiplier:
+    scpi: "RELRM?"
+    type: query
+    returns:
+      type: string
+    description: "Query relative reading multiplier"
+
+  relative_setpoint:
+    getter: "RELS?"
+    setter: "RELS {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Relative mode setpoint"
+
+  relative_setpoint_multiplier:
+    scpi: "RELSM?"
+    type: query
+    returns:
+      type: string
+    description: "Query relative setpoint multiplier"
+
+  units:
+    getter: "UNIT?"
+    setter: "UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["G", "T"]
+    returns:
+      type: string
+    description: "Field units (G=gauss, T=tesla)"
+
+  vector_source:
+    getter: "VSRC?"
+    setter: "VSRC {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["1", "2", "3", "4", "5"]
+        map:
+          "1": "XYZ"
+          "2": "XY"
+          "3": "XZ"
+          "4": "YZ"
+          "5": "X-Y"
+    returns:
+      type: int
+    description: "Vector magnitude calculation source"
+
+  # ============================================================================
+  # Probe Specific Commands
+  # ============================================================================
+  field_compensation:
+    getter: "FCOMP?"
+    setter: "FCOMP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Probe field compensation on/off"
+
+  probe_on_off:
+    getter: "ONOFF?"
+    setter: "ONOFF {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Probe excitation on/off for selected channel"
+
+  probe_serial_number:
+    scpi: "SNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query probe serial number"
+
+  temperature_compensation:
+    getter: "TCOMP?"
+    setter: "TCOMP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+        map:
+          "0": "Off"
+          "1": "On"
+    returns:
+      type: int
+    description: "Probe temperature compensation on/off"
+
+  probe_type:
+    scpi: "TYPE?"
+    type: query
+    returns:
+      type: int
+    description: "Query probe type (0=HSE, 1=HST, 2=UHS)"
+
+  zero_probe:
+    scpi: "ZCAL"
+    type: write
+    description: "Zero probe (perform with probe in zero gauss chamber)"
+
+sequences:
+  measure_field_all_channels:
+    description: "Measure field on all three channels plus vector"
+    steps:
+      - command: all_fields
+        capture: result
+    returns: result
+
+  setup_dc_measurement:
+    description: "Configure instrument for DC field measurement"
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z", "V"]
+        default: "X"
+      range:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+    steps:
+      - command: channel_select
+        args:
+          channel: "{channel}"
+      - command: ac_dc_mode
+        args:
+          mode: "0"
+      - command: range_select
+        args:
+          range: "{range}"
+      - command: filter_state
+        args:
+          state: "1"
+      - command: field_reading
+        capture: result
+    returns: result
+
+  setup_ac_rms_measurement:
+    description: "Configure instrument for AC RMS field measurement"
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z"]
+        default: "X"
+    steps:
+      - command: channel_select
+        args:
+          channel: "{channel}"
+      - command: ac_dc_mode
+        args:
+          mode: "1"
+      - command: peak_rms_mode
+        args:
+          mode: "0"
+      - command: field_reading
+        capture: result
+    returns: result
+
+  setup_ac_peak_measurement:
+    description: "Configure instrument for AC peak field measurement"
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z"]
+        default: "X"
+    steps:
+      - command: channel_select
+        args:
+          channel: "{channel}"
+      - command: ac_dc_mode
+        args:
+          mode: "1"
+      - command: peak_rms_mode
+        args:
+          mode: "1"
+      - command: field_reading
+        capture: result
+    returns: result
+
+  perform_zero_calibration:
+    description: "Zero all three probe channels"
+    steps:
+      - command: channel_select
+        args:
+          channel: "X"
+      - command: zero_probe
+      - command: channel_select
+        args:
+          channel: "Y"
+      - command: zero_probe
+      - command: channel_select
+        args:
+          channel: "Z"
+      - command: zero_probe
+
+  setup_max_hold_measurement:
+    description: "Setup and perform max hold measurement"
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z", "V"]
+        default: "X"
+    steps:
+      - command: channel_select
+        args:
+          channel: "{channel}"
+      - command: max_clear
+      - command: max_hold
+        args:
+          state: "1"
+      - command: max_reading
+        capture: result
+    returns: result
+
+  setup_relative_measurement:
+    description: "Setup and perform relative measurement"
+    params:
+      channel:
+        type: enum
+        options: ["X", "Y", "Z", "V"]
+        default: "X"
+      setpoint:
+        type: float
+        default: 0.0
+    steps:
+      - command: channel_select
+        args:
+          channel: "{channel}"
+      - command: relative_setpoint
+        args:
+          value: "{setpoint}"
+      - command: relative_mode
+        args:
+          state: "1"
+      - command: relative_reading
+        capture: result
+    returns: result
+
+  fast_data_acquisition:
+    description: "Enable fast data mode and read continuously"
+    steps:
+      - command: fast_data_mode
+        args:
+          state: "1"
+      - command: all_fields
+        capture: result
+    returns: result
+
+status:
+  stb:
+    bit0: FDR   # Field Data Ready
+    bit1: RNG   # Range Change
+    bit2: ALM   # Alarm
+    bit4: OVI   # Overload Indicator
+    bit5: ESB   # Event Status Bit
+    bit6: SRQ   # Service Request
+  esr:
+    bit0: OPC   # Operation Complete
+    bit2: QYE   # Query Error
+    bit3: DDE   # Device Dependent Error
+    bit4: EXE   # Execution Error
+    bit5: CME   # Command Error
+    bit7: PON   # Power On

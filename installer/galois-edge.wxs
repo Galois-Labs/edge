@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  WiX v4 installer definition for the galois-edge daemon.
+
+  Build with:
+    dotnet tool install -g wix
+    wix build -d Version=1.0.0 -d BinDir=path\to\binaries installer/galois-edge.wxs
+
+  The BinDir variable must point to a directory containing:
+    - galois-edge.exe          (Go supervisor binary)
+    - galois-edge-daemon.exe   (Python frozen binary via PyInstaller)
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+>
+  <Package
+    Name="galois-edge"
+    Manufacturer="Galois Labs"
+    Version="$(var.Version)"
+    UpgradeCode="e1b7a93f-4c2d-4f8a-b6e1-7d3c5a9f0e42"
+    Compressed="yes"
+    InstallerVersion="500"
+    Scope="perMachine">
+
+    <SummaryInformation
+      Description="galois-edge daemon — laboratory instrument gateway" />
+
+    <!-- Remove previous versions before installing -->
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of galois-edge is already installed."
+      Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ============================================================ -->
+    <!-- Directory layout                                              -->
+    <!-- ============================================================ -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="galois-edge" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="CONFIGFOLDER" Name="galois-edge" />
+    </StandardDirectory>
+
+    <!-- ============================================================ -->
+    <!-- Components                                                    -->
+    <!-- ============================================================ -->
+
+    <!-- Go supervisor binary + Windows service registration -->
+    <ComponentGroup Id="GoBinary" Directory="INSTALLFOLDER">
+      <Component Id="GoExe" Guid="a3d8e6c1-5b47-4f9a-8e2d-1c6f3a7b9d05">
+        <File Id="galois_edge_exe"
+              Source="$(var.BinDir)\galois-edge.exe"
+              KeyPath="yes" />
+        <ServiceInstall
+          Id="galoisEdgeService"
+          Name="galois-edge"
+          DisplayName="galois-edge daemon"
+          Description="Laboratory instrument gateway — connects bench equipment to Galois cloud"
+          Type="ownProcess"
+          Start="auto"
+          Account="LocalSystem"
+          ErrorControl="normal"
+          Arguments="start --config &quot;[CONFIGFOLDER]config.env&quot;" />
+        <ServiceControl
+          Id="galoisEdgeServiceControl"
+          Name="galois-edge"
+          Stop="both"
+          Remove="uninstall"
+          Wait="yes" />
+        <util:ServiceConfig
+          ServiceName="galois-edge"
+          FirstFailureActionType="restart"
+          SecondFailureActionType="restart"
+          ThirdFailureActionType="none"
+          RestartServiceDelayInSeconds="30"
+          ResetPeriodInDays="1" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Python frozen binary (PyInstaller one-file) -->
+    <ComponentGroup Id="PythonBinary" Directory="INSTALLFOLDER">
+      <Component Id="PythonExe" Guid="b4e9f7d2-6c58-4a0b-9f3e-2d7a4b8c0e16">
+        <File Id="galois_edge_daemon_exe"
+              Source="$(var.BinDir)\galois-edge-daemon.exe"
+              KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Default configuration template -->
+    <ComponentGroup Id="ConfigTemplate" Directory="CONFIGFOLDER">
+      <Component Id="ConfigEnv" Guid="c5f0a8e3-7d69-4b1c-a04f-3e8b5c9d1f27">
+        <File Id="config_env"
+              Source="installer\config.env.template"
+              Name="config.env"
+              KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Add install directory to system PATH -->
+    <ComponentGroup Id="PathEntry" Directory="INSTALLFOLDER">
+      <Component Id="SystemPath" Guid="e7b2c0a5-9f8b-4d3e-c261-5a0d7e1f3b49">
+        <Environment
+          Id="PATH"
+          Name="PATH"
+          Value="[INSTALLFOLDER]"
+          Permanent="no"
+          Part="last"
+          Action="set"
+          System="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ============================================================ -->
+    <!-- Feature tree                                                  -->
+    <!-- ============================================================ -->
+    <Feature Id="Complete" Title="galois-edge" Level="1">
+      <ComponentGroupRef Id="GoBinary" />
+      <ComponentGroupRef Id="PythonBinary" />
+      <ComponentGroupRef Id="ConfigTemplate" />
+      <ComponentGroupRef Id="PathEntry" />
+    </Feature>
+
+  </Package>
+</Wix>

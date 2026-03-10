@@ -1,0 +1,1683 @@
+instrument:
+  manufacturer: "Keithley"
+  model: "6220/6221"
+  class: power_supply
+  description: "DC Precision Current Source - 100pA to 105mA, up to 105V compliance"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEITHLEY INSTRUMENTS INC.,MODEL 62[0-2][0-1]"
+
+interfaces:
+  - type: gpib
+    default_address: 12
+  - type: serial
+    port: 19200
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save current setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  source_current:
+    getter: ":SOUR:CURR?"
+    setter: ":SOUR:CURR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query DC current output level"
+
+  source_current_range:
+    getter: ":SOUR:CURR:RANG?"
+    setter: ":SOUR:CURR:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 2e-9
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query current source range"
+
+  source_current_range_auto:
+    getter: ":SOUR:CURR:RANG:AUTO?"
+    setter: ":SOUR:CURR:RANG:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable or disable current auto-ranging"
+
+  current_compliance:
+    getter: ":SOUR:CURR:COMP?"
+    setter: ":SOUR:CURR:COMP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0.1
+        max: 105
+    returns:
+      type: float
+      unit: V
+    description: "Set or query voltage compliance limit"
+
+  current_filter:
+    getter: ":SOUR:CURR:FILT?"
+    setter: ":SOUR:CURR:FILT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable or disable analog output filter"
+
+  source_delay:
+    getter: ":SOUR:DEL?"
+    setter: ":SOUR:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0.001
+        max: 999999.999
+    returns:
+      type: float
+      unit: s
+    description: "Set or query source delay time"
+
+  source_clear:
+    scpi: ":SOUR:CLE"
+    type: write
+    description: "Set output to zero and turn off"
+
+  sweep_start:
+    getter: ":SOUR:CURR:STAR?"
+    setter: ":SOUR:CURR:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query sweep start current"
+
+  sweep_stop:
+    getter: ":SOUR:CURR:STOP?"
+    setter: ":SOUR:CURR:STOP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query sweep stop current"
+
+  sweep_step:
+    getter: ":SOUR:CURR:STEP?"
+    setter: ":SOUR:CURR:STEP {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 1e-13
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query sweep step size"
+
+  sweep_center:
+    getter: ":SOUR:CURR:CENT?"
+    setter: ":SOUR:CURR:CENT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set or query sweep center current"
+
+  sweep_span:
+    getter: ":SOUR:CURR:SPAN?"
+    setter: ":SOUR:CURR:SPAN {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 2e-13
+        max: 0.210
+    returns:
+      type: float
+      unit: A
+    description: "Set or query sweep span"
+
+  sweep_spacing:
+    getter: ":SOUR:SWE:SPAC?"
+    setter: ":SOUR:SWE:SPAC {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["LIN", "LOG", "LIST"]
+    returns:
+      type: string
+    description: "Select sweep type (linear, logarithmic, or list)"
+
+  sweep_points:
+    getter: ":SOUR:SWE:POIN?"
+    setter: ":SOUR:SWE:POIN {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 1
+        max: 65535
+    returns:
+      type: int
+    description: "Set or query number of sweep points"
+
+  sweep_ranging:
+    getter: ":SOUR:SWE:RANG?"
+    setter: ":SOUR:SWE:RANG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "BEST", "FIX"]
+    returns:
+      type: string
+    description: "Select sweep source ranging mode"
+
+  sweep_count:
+    getter: ":SOUR:SWE:COUN?"
+    setter: ":SOUR:SWE:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 9999
+    returns:
+      type: int
+    description: "Set or query sweep count (use INF for infinite)"
+
+  sweep_compliance_abort:
+    getter: ":SOUR:SWE:CAB?"
+    setter: ":SOUR:SWE:CAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable compliance abort for sweeps"
+
+  sweep_arm:
+    scpi: ":SOUR:SWE:ARM"
+    type: write
+    description: "Arm the sweep"
+
+  sweep_abort:
+    scpi: ":SOUR:SWE:ABOR"
+    type: write
+    description: "Abort sweep immediately"
+
+  list_current:
+    scpi: ":SOUR:LIST:CURR {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Define list of current values for custom sweep"
+
+  list_current_append:
+    scpi: ":SOUR:LIST:CURR:APP {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Append current values to existing list"
+
+  list_current_points:
+    scpi: ":SOUR:LIST:CURR:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in current list"
+
+  list_delay:
+    scpi: ":SOUR:LIST:DEL {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Define list of delay values for custom sweep"
+
+  list_delay_append:
+    scpi: ":SOUR:LIST:DEL:APP {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Append delay values to existing list"
+
+  list_delay_points:
+    scpi: ":SOUR:LIST:DEL:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in delay list"
+
+  list_compliance:
+    scpi: ":SOUR:LIST:COMP {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Define list of compliance values for custom sweep"
+
+  list_compliance_append:
+    scpi: ":SOUR:LIST:COMP:APP {values}"
+    type: write
+    params:
+      values:
+        type: string
+    description: "Append compliance values to existing list"
+
+  list_compliance_points:
+    scpi: ":SOUR:LIST:COMP:POIN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points in compliance list"
+
+  output_state:
+    getter: ":OUTP?"
+    setter: ":OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Turn output on or off"
+
+  output_low_earth:
+    getter: ":OUTP:LTE?"
+    setter: ":OUTP:LTE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Connect output low to earth ground or float"
+
+  output_inner_shield:
+    getter: ":OUTP:ISH?"
+    setter: ":OUTP:ISH {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["OLOW", "GUAR"]
+    returns:
+      type: string
+    description: "Connect triax inner shield to output low or guard"
+
+  output_response:
+    getter: ":OUTP:RESP?"
+    setter: ":OUTP:RESP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["FAST", "SLOW"]
+    returns:
+      type: string
+    description: "Set output response speed (6221 only)"
+    enabled: false
+
+  output_interlock_tripped:
+    scpi: ":OUTP:INT:TRIP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query interlock status (0=open, 1=closed)"
+
+  sense_data_latest:
+    scpi: ":SENS:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest pre-math reading"
+
+  sense_data_fresh:
+    scpi: ":SENS:DATA:FRES?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest reading (can only be read once)"
+
+  average_filter_control:
+    getter: ":SENS:AVER:TCON?"
+    setter: ":SENS:AVER:TCON {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MOV", "REP"]
+    returns:
+      type: string
+    description: "Select averaging filter control (moving or repeat)"
+
+  average_filter_window:
+    getter: ":SENS:AVER:WIND?"
+    setter: ":SENS:AVER:WIND {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: "%"
+        min: 0
+        max: 10
+    returns:
+      type: float
+      unit: "%"
+    description: "Set filter window as percentage of range"
+
+  average_filter_count:
+    getter: ":SENS:AVER:COUN?"
+    setter: ":SENS:AVER:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 300
+    returns:
+      type: int
+    description: "Set averaging filter count"
+
+  average_filter_state:
+    getter: ":SENS:AVER?"
+    setter: ":SENS:AVER {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable averaging filter"
+
+  calc_format:
+    getter: ":CALC:FORM?"
+    setter: ":CALC:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["NONE", "MXB", "REC"]
+    returns:
+      type: string
+    description: "Select math calculation format"
+
+  calc_m_factor:
+    getter: ":CALC:KMAT:MMF?"
+    setter: ":CALC:KMAT:MMF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.99999e20
+        max: 9.99999e20
+    returns:
+      type: float
+    description: "Set scale factor for mX+b or m/X+b calculation"
+
+  calc_b_factor:
+    getter: ":CALC:KMAT:MBF?"
+    setter: ":CALC:KMAT:MBF {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -9.99999e20
+        max: 9.99999e20
+    returns:
+      type: float
+    description: "Set offset for mX+b or m/X+b calculation"
+
+  calc_state:
+    getter: ":CALC:STAT?"
+    setter: ":CALC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable calculation"
+
+  calc_data_latest:
+    scpi: ":CALC:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest post-math reading"
+
+  calc_data_fresh:
+    scpi: ":CALC:DATA:FRES?"
+    type: query
+    returns:
+      type: float
+    description: "Return latest post-math reading (can only be read once)"
+
+  calc2_format:
+    getter: ":CALC2:FORM?"
+    setter: ":CALC2:FORM {statistic}"
+    type: property
+    params:
+      statistic:
+        type: enum
+        options: ["MEAN", "SDEV", "MAX", "MIN", "PKPK"]
+    returns:
+      type: string
+    description: "Select buffer statistic to calculate"
+
+  calc2_state:
+    getter: ":CALC2:STAT?"
+    setter: ":CALC2:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable buffer statistics calculation"
+
+  calc2_immediate:
+    scpi: ":CALC2:IMM"
+    type: write
+    description: "Perform selected buffer calculation"
+
+  calc2_data:
+    scpi: ":CALC2:DATA?"
+    type: query
+    returns:
+      type: float
+    description: "Read result of buffer statistic"
+
+  limit_test_state:
+    getter: ":CALC3:LIM:STAT?"
+    setter: ":CALC3:LIM:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable limit testing"
+
+  limit_test_pattern:
+    getter: ":CALC3:LIM:SOUR2?"
+    setter: ":CALC3:LIM:SOUR2 {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Set digital I/O fail pattern"
+
+  limit_test_fail:
+    scpi: ":CALC3:LIM:FAIL?"
+    type: query
+    returns:
+      type: bool
+    description: "Query limit test result (0=pass, 1=fail)"
+
+  force_pattern_state:
+    getter: ":CALC3:FORC:STAT?"
+    setter: ":CALC3:FORC:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable forced I/O pattern"
+
+  force_pattern:
+    getter: ":CALC3:FORC:PATT?"
+    setter: ":CALC3:FORC:PATT {pattern}"
+    type: property
+    params:
+      pattern:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: "Set forced digital I/O pattern"
+
+  trace_clear:
+    scpi: ":TRAC:CLE"
+    type: write
+    description: "Clear buffer readings"
+
+  trace_free:
+    scpi: ":TRAC:FREE?"
+    type: query
+    returns:
+      type: int
+    description: "Query available buffer memory in bytes"
+
+  trace_points:
+    getter: ":TRAC:POIN?"
+    setter: ":TRAC:POIN {size}"
+    type: property
+    params:
+      size:
+        type: int
+        min: 1
+        max: 65536
+    returns:
+      type: int
+    description: "Set or query buffer size"
+
+  trace_points_actual:
+    scpi: ":TRAC:POIN:ACT?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of readings stored in buffer"
+
+  trace_notify:
+    getter: ":TRAC:NOT?"
+    setter: ":TRAC:NOT {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 65535
+    returns:
+      type: int
+    description: "Set buffer notify threshold"
+
+  trace_feed:
+    getter: ":TRAC:FEED?"
+    setter: ":TRAC:FEED {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["SENS1", "CALC1", "NONE"]
+    returns:
+      type: string
+    description: "Select buffer data source"
+
+  trace_feed_control:
+    getter: ":TRAC:FEED:CONT?"
+    setter: ":TRAC:FEED:CONT {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NEXT", "NEV"]
+    returns:
+      type: string
+    description: "Set buffer control mode"
+
+  trace_timestamp_format:
+    getter: ":TRAC:TST:FORM?"
+    setter: ":TRAC:TST:FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ABS", "DELT"]
+    returns:
+      type: string
+    description: "Select timestamp format (absolute or delta)"
+
+  trace_data:
+    scpi: ":TRAC:DATA?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read all buffer readings"
+
+  trace_data_type:
+    scpi: ":TRAC:DATA:TYPE?"
+    type: query
+    returns:
+      type: string
+    description: "Query type of readings in buffer"
+
+  trace_data_selected:
+    scpi: ":TRAC:DATA:SEL? {start},{count}"
+    type: query
+    params:
+      start:
+        type: int
+      count:
+        type: int
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read selected buffer readings"
+
+  format_data:
+    getter: ":FORM?"
+    setter: ":FORM {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "REAL", "SREAL", "DREAL"]
+    returns:
+      type: string
+    description: "Set data format for readings"
+
+  format_elements:
+    getter: ":FORM:ELEM?"
+    setter: ":FORM:ELEM {elements}"
+    type: property
+    params:
+      elements:
+        type: string
+    returns:
+      type: string
+    description: "Specify data elements to return"
+
+  format_border:
+    getter: ":FORM:BORD?"
+    setter: ":FORM:BORD {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["NORM", "SWAP"]
+    returns:
+      type: string
+    description: "Set byte order for binary data"
+
+  format_sregister:
+    getter: ":FORM:SREG?"
+    setter: ":FORM:SREG {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ASC", "HEX", "OCT", "BIN"]
+    returns:
+      type: string
+    description: "Set format for reading status registers"
+
+  initiate:
+    scpi: ":INIT"
+    type: write
+    description: "Initiate trigger cycle"
+
+  abort:
+    scpi: ":ABOR"
+    type: write
+    description: "Abort and return to idle state"
+
+  arm_source:
+    getter: ":ARM:SOUR?"
+    setter: ":ARM:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "TIM", "BUS", "TLIN", "NST", "PST", "BST", "MAN"]
+    returns:
+      type: string
+    description: "Select arm layer event source"
+
+  arm_signal:
+    scpi: ":ARM:SIGN"
+    type: write
+    description: "Bypass arm control source"
+
+  arm_timer:
+    getter: ":ARM:TIM?"
+    setter: ":ARM:TIM {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0
+        max: 99999.99
+    returns:
+      type: float
+      unit: s
+    description: "Set arm layer timer interval"
+
+  arm_direction:
+    getter: ":ARM:DIR?"
+    setter: ":ARM:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["SOUR", "ACC"]
+    returns:
+      type: string
+    description: "Control arm source bypass"
+
+  arm_input_line:
+    getter: ":ARM:ILIN?"
+    setter: ":ARM:ILIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: int
+    description: "Set arm layer input trigger line"
+
+  arm_output_line:
+    getter: ":ARM:OLIN?"
+    setter: ":ARM:OLIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: int
+    description: "Set arm layer output trigger line"
+
+  arm_output:
+    getter: ":ARM:OUTP?"
+    setter: ":ARM:OUTP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["TENT", "TEX", "NONE"]
+    returns:
+      type: string
+    description: "Enable/disable arm layer output trigger"
+
+  trigger_source:
+    getter: ":TRIG:SOUR?"
+    setter: ":TRIG:SOUR {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMM", "TLIN"]
+    returns:
+      type: string
+    description: "Select trigger layer event source"
+
+  trigger_signal:
+    scpi: ":TRIG:SIGN"
+    type: write
+    description: "Bypass trigger control source"
+
+  trigger_direction:
+    getter: ":TRIG:DIR?"
+    setter: ":TRIG:DIR {direction}"
+    type: property
+    params:
+      direction:
+        type: enum
+        options: ["SOUR", "ACC"]
+    returns:
+      type: string
+    description: "Control trigger source bypass"
+
+  trigger_input_line:
+    getter: ":TRIG:ILIN?"
+    setter: ":TRIG:ILIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: int
+    description: "Set trigger layer input trigger line"
+
+  trigger_output_line:
+    getter: ":TRIG:OLIN?"
+    setter: ":TRIG:OLIN {line}"
+    type: property
+    params:
+      line:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: int
+    description: "Set trigger layer output trigger line"
+
+  trigger_output:
+    getter: ":TRIG:OUTP?"
+    setter: ":TRIG:OUTP {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SOUR", "DEL", "NONE"]
+    returns:
+      type: string
+    description: "Enable/disable trigger layer output trigger"
+
+  unit:
+    getter: ":UNIT?"
+    setter: ":UNIT {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["V", "OHMS", "W", "SIEM"]
+    returns:
+      type: string
+    description: "Set measurement units for delta measurements"
+
+  unit_power_type:
+    getter: ":UNIT:POW?"
+    setter: ":UNIT:POW {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["AVER", "PEAK"]
+    returns:
+      type: string
+    description: "Set power reading type (6221 only)"
+    enabled: false
+
+  display_enable:
+    getter: ":DISP:ENAB?"
+    setter: ":DISP:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable front panel display"
+
+  display_text_top:
+    getter: ":DISP:WIND:TEXT:DATA?"
+    setter: ":DISP:WIND:TEXT:DATA \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Set text for top display line (up to 20 chars)"
+
+  display_text_top_state:
+    getter: ":DISP:WIND:TEXT:STAT?"
+    setter: ":DISP:WIND:TEXT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable top display text"
+
+  display_text_bottom:
+    getter: ":DISP:WIND2:TEXT:DATA?"
+    setter: ":DISP:WIND2:TEXT:DATA \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Set text for bottom display line (up to 32 chars)"
+
+  display_text_bottom_state:
+    getter: ":DISP:WIND2:TEXT:STAT?"
+    setter: ":DISP:WIND2:TEXT:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable bottom display text"
+
+  system_communicate_select:
+    getter: ":SYST:COMM:SEL?"
+    setter: ":SYST:COMM:SEL {interface}"
+    type: property
+    params:
+      interface:
+        type: enum
+        options: ["SER", "GPIB", "ETH"]
+    returns:
+      type: string
+    description: "Select communication interface"
+
+  system_gpib_address:
+    getter: ":SYST:COMM:GPIB:ADDR?"
+    setter: ":SYST:COMM:GPIB:ADDR {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 0
+        max: 30
+    returns:
+      type: int
+    description: "Set GPIB primary address"
+
+  system_serial_send:
+    scpi: ":SYST:COMM:SER:SEND {data}"
+    type: write
+    params:
+      data:
+        type: string
+    description: "Send data via RS-232"
+
+  system_serial_enter:
+    scpi: ":SYST:COMM:SER:ENT?"
+    type: query
+    returns:
+      type: string
+    description: "Read data from RS-232"
+
+  system_local:
+    scpi: ":SYST:LOC"
+    type: write
+    description: "Take instrument out of remote (RS-232 only)"
+
+  system_remote:
+    scpi: ":SYST:REM"
+    type: write
+    description: "Put instrument in remote (RS-232 only)"
+
+  system_rwlock:
+    getter: ":SYST:RWL?"
+    setter: ":SYST:RWL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable/disable local lockout (RS-232 only)"
+
+  system_key:
+    scpi: ":SYST:KEY {code}"
+    type: write
+    params:
+      code:
+        type: int
+    description: "Simulate front panel key press"
+
+  system_key_query:
+    scpi: ":SYST:KEY?"
+    type: query
+    returns:
+      type: int
+    description: "Query last pressed key"
+
+  system_keyclick:
+    getter: ":SYST:KCL?"
+    setter: ":SYST:KCL {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable key click"
+
+  system_beeper_state:
+    getter: ":SYST:BEEP:STAT?"
+    setter: ":SYST:BEEP:STAT {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable beeper"
+
+  system_preset:
+    scpi: ":SYST:PRES"
+    type: write
+    description: "Return to system preset defaults"
+
+  system_power_on_setup:
+    getter: ":SYST:POS?"
+    setter: ":SYST:POS {setup}"
+    type: property
+    params:
+      setup:
+        type: enum
+        options: ["RST", "PRES", "SAV0", "SAV1", "SAV2", "SAV3", "SAV4"]
+    returns:
+      type: string
+    description: "Select power-on setup"
+
+  system_error:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error from queue"
+
+  system_error_clear:
+    scpi: ":SYST:ERR:CLE"
+    type: write
+    description: "Clear all errors from queue"
+
+  system_timestamp_reset:
+    scpi: ":SYST:TST:RES"
+    type: write
+    description: "Reset timestamp to zero"
+
+  system_reading_number_reset:
+    scpi: ":SYST:RNUM:RES"
+    type: write
+    description: "Reset reading number to zero"
+
+  system_version:
+    scpi: ":SYST:VERS?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_analog_board_serial:
+    scpi: ":SYST:ABO:SNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query analog board serial number"
+
+  system_analog_board_revision:
+    scpi: ":SYST:ABO:REV?"
+    type: query
+    returns:
+      type: string
+    description: "Query analog board revision"
+
+  system_digital_board_serial:
+    scpi: ":SYST:DBO:SNUM?"
+    type: query
+    returns:
+      type: string
+    description: "Query digital board serial number"
+
+  system_digital_board_revision:
+    scpi: ":SYST:DBO:REV?"
+    type: query
+    returns:
+      type: string
+    description: "Query digital board revision"
+
+  system_line_frequency:
+    scpi: ":SYST:LFR?"
+    type: query
+    returns:
+      type: int
+    description: "Query line frequency (50 or 60 Hz)"
+
+  status_preset:
+    scpi: ":STAT:PRES"
+    type: write
+    description: "Reset status registers to default states"
+
+  status_measurement_event:
+    scpi: ":STAT:MEAS?"
+    type: query
+    returns:
+      type: int
+    description: "Read measurement event register"
+
+  status_measurement_enable:
+    getter: ":STAT:MEAS:ENAB?"
+    setter: ":STAT:MEAS:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set measurement event enable register"
+
+  status_measurement_condition:
+    scpi: ":STAT:MEAS:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read measurement condition register"
+
+  status_operation_event:
+    scpi: ":STAT:OPER?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation event register"
+
+  status_operation_enable:
+    getter: ":STAT:OPER:ENAB?"
+    setter: ":STAT:OPER:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set operation event enable register"
+
+  status_operation_condition:
+    scpi: ":STAT:OPER:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation condition register"
+
+  status_questionable_event:
+    scpi: ":STAT:QUES?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable event register"
+
+  status_questionable_enable:
+    getter: ":STAT:QUES:ENAB?"
+    setter: ":STAT:QUES:ENAB {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Set questionable event enable register"
+
+  status_questionable_condition:
+    scpi: ":STAT:QUES:COND?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable condition register"
+
+  status_queue_next:
+    scpi: ":STAT:QUE?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error/status message"
+
+  status_queue_clear:
+    scpi: ":STAT:QUE:CLE"
+    type: write
+    description: "Clear all messages from error queue"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Set event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  delta_nv_present:
+    scpi: ":SOUR:DELT:NVP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if Model 2182/2182A is connected"
+
+  delta_high:
+    getter: ":SOUR:DELT:HIGH?"
+    setter: ":SOUR:DELT:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set high source value for delta"
+
+  delta_low:
+    getter: ":SOUR:DELT:LOW?"
+    setter: ":SOUR:DELT:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0
+    returns:
+      type: float
+      unit: A
+    description: "Set low source value for delta"
+
+  delta_delay:
+    getter: ":SOUR:DELT:DEL?"
+    setter: ":SOUR:DELT:DEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 9999.999
+    returns:
+      type: float
+      unit: s
+    description: "Set delta delay"
+
+  delta_count:
+    getter: ":SOUR:DELT:COUN?"
+    setter: ":SOUR:DELT:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 65536
+    returns:
+      type: int
+    description: "Set delta count (use INF for infinite)"
+
+  delta_compliance_abort:
+    getter: ":SOUR:DELT:CAB?"
+    setter: ":SOUR:DELT:CAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable compliance abort for delta"
+
+  delta_cold_switch:
+    getter: ":SOUR:DELT:CSW?"
+    setter: ":SOUR:DELT:CSW {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable cold switching mode"
+
+  delta_arm:
+    scpi: ":SOUR:DELT:ARM"
+    type: write
+    description: "Arm delta mode"
+
+  delta_arm_query:
+    scpi: ":SOUR:DELT:ARM?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if delta is armed"
+
+  pulse_delta_nv_present:
+    scpi: ":SOUR:PDEL:NVP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if Model 2182A is connected"
+    enabled: false
+
+  pulse_delta_high:
+    getter: ":SOUR:PDEL:HIGH?"
+    setter: ":SOUR:PDEL:HIGH {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set high pulse value (6221 only)"
+    enabled: false
+
+  pulse_delta_low:
+    getter: ":SOUR:PDEL:LOW?"
+    setter: ":SOUR:PDEL:LOW {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set low pulse value (6221 only)"
+    enabled: false
+
+  pulse_delta_width:
+    getter: ":SOUR:PDEL:WIDT?"
+    setter: ":SOUR:PDEL:WIDT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 50e-6
+        max: 12e-3
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse width (6221 only)"
+    enabled: false
+
+  pulse_delta_source_delay:
+    getter: ":SOUR:PDEL:SDEL?"
+    setter: ":SOUR:PDEL:SDEL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 16e-6
+        max: 11.996e-3
+    returns:
+      type: float
+      unit: s
+    description: "Set pulse source delay (6221 only)"
+    enabled: false
+
+  pulse_delta_ranging:
+    getter: ":SOUR:PDEL:RANG?"
+    setter: ":SOUR:PDEL:RANG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["BEST", "FIX"]
+    returns:
+      type: string
+    description: "Set pulse ranging mode (6221 only)"
+    enabled: false
+
+  pulse_delta_count:
+    getter: ":SOUR:PDEL:COUN?"
+    setter: ":SOUR:PDEL:COUN {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 65636
+    returns:
+      type: int
+    description: "Set pulse delta count (6221 only, use INF for infinite)"
+    enabled: false
+
+  pulse_delta_interval:
+    getter: ":SOUR:PDEL:INT?"
+    setter: ":SOUR:PDEL:INT {interval}"
+    type: property
+    params:
+      interval:
+        type: int
+        min: 5
+        max: 999999
+    returns:
+      type: int
+    description: "Set pulse interval in PLCs (6221 only)"
+    enabled: false
+
+  pulse_delta_sweep_state:
+    getter: ":SOUR:PDEL:SWE?"
+    setter: ":SOUR:PDEL:SWE {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: bool
+    description: "Enable or disable sweep output mode (6221 only)"
+    enabled: false
+
+  pulse_delta_low_measure:
+    getter: ":SOUR:PDEL:LME?"
+    setter: ":SOUR:PDEL:LME {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: int
+    description: "Set number of low measurements per pulse (6221 only)"
+    enabled: false
+
+  pulse_delta_arm:
+    scpi: ":SOUR:PDEL:ARM"
+    type: write
+    description: "Arm pulse delta (6221 only)"
+    enabled: false
+
+  pulse_delta_arm_query:
+    scpi: ":SOUR:PDEL:ARM?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if pulse delta is armed (6221 only)"
+    enabled: false
+
+  diff_cond_nv_present:
+    scpi: ":SOUR:DCON:NVP?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if Model 2182/2182A is connected"
+
+  diff_cond_nv_zero:
+    scpi: ":SOUR:DCON:NVZ?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Query V-zero value from 2182/2182A"
+
+  diff_cond_start:
+    getter: ":SOUR:DCON:STAR?"
+    setter: ":SOUR:DCON:STAR {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: -0.105
+        max: 0.105
+    returns:
+      type: float
+      unit: A
+    description: "Set differential conductance start value"
+
+  diff_cond_step:
+    getter: ":SOUR:DCON:STEP?"
+    setter: ":SOUR:DCON:STEP {value}"
+    type: property

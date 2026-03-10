@@ -1,0 +1,1270 @@
+instrument:
+  manufacturer: "RIGOL Technologies, Inc."
+  model: "DM3058"
+  class: dmm
+  description: "5½ Digit Digital Multimeter with dual display and math functions"
+
+identity:
+  query: "*IDN?"
+  pattern: "RIGOL.*DM3058"
+
+interfaces:
+  - type: gpib
+    default_address: 7
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE 488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit in ESR"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for pending operations to complete"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall setup from memory location"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 189
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 188
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["0", "1"]
+    returns:
+      type: int
+    description: "Power-on status clear setting"
+
+  # System Commands
+  beeper:
+    scpi: "SYSTem:BEEPer"
+    type: write
+    description: "Issue a single beep"
+
+  beeper_state:
+    getter: "SYSTem:BEEPer:STATe?"
+    setter: "SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Beeper on/off state"
+
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from queue"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  # Status Register Commands
+  status_operation_condition:
+    scpi: "STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation status condition register"
+
+  status_operation_enable:
+    getter: "STATus:OPERation:ENABle?"
+    setter: "STATus:OPERation:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 1841
+    returns:
+      type: int
+    description: "Operation status enable register"
+
+  status_operation_event:
+    scpi: "STATus:OPERation:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation status event register"
+
+  status_questionable_condition:
+    scpi: "STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable status condition register"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 24375
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_questionable_event:
+    scpi: "STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Query questionable status event register"
+
+  status_preset:
+    scpi: "STATus:PRESet"
+    type: write
+    description: "Reset status registers to default"
+
+  # Calculate Commands
+  calculate_function:
+    getter: "CALCulate:FUNCtion?"
+    setter: "CALCulate:FUNCtion {func}"
+    type: property
+    params:
+      func:
+        type: enum
+        options: ["NONE", "REL", "DB", "DBM", "MIN", "MAX", "AVERAGE", "TOTAL", "PF"]
+    returns:
+      type: string
+    description: "Select math function"
+
+  calculate_statistic_min:
+    scpi: "CALCulate:STATistic:MIN?"
+    type: query
+    returns:
+      type: float
+    description: "Query minimum statistic value"
+
+  calculate_statistic_max:
+    scpi: "CALCulate:STATistic:MAX?"
+    type: query
+    returns:
+      type: float
+    description: "Query maximum statistic value"
+
+  calculate_statistic_average:
+    scpi: "CALCulate:STATistic:AVERage?"
+    type: query
+    returns:
+      type: float
+    description: "Query average statistic value"
+
+  calculate_statistic_count:
+    scpi: "CALCulate:STATistic:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of measurements"
+
+  calculate_statistic_state:
+    getter: "CALCulate:STATistic:STATe?"
+    setter: "CALCulate:STATistic:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Statistics on/off state"
+
+  calculate_rel_offset:
+    getter: "CALCulate:REL:OFFSet?"
+    setter: "CALCulate:REL:OFFSet {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1200
+        max: 1200
+    returns:
+      type: float
+    description: "REL operation offset value"
+
+  calculate_rel_state:
+    getter: "CALCulate:REL:STATe?"
+    setter: "CALCulate:REL:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "REL operation on/off state"
+
+  calculate_db:
+    scpi: "CALCulate:DB?"
+    type: query
+    returns:
+      type: float
+      unit: dB
+    description: "Query dB value"
+
+  calculate_db_reference:
+    getter: "CALCulate:DB:REFErence?"
+    setter: "CALCulate:DB:REFErence {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: -120
+        max: 120
+    returns:
+      type: int
+      unit: dB
+    description: "dB reference value"
+
+  calculate_db_state:
+    getter: "CALCulate:DB:STATe?"
+    setter: "CALCulate:DB:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "dB operation on/off state"
+
+  calculate_dbm:
+    scpi: "CALCulate:DBM?"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Query dBm value"
+
+  calculate_dbm_reference:
+    getter: "CALCulate:DBM:REFErence?"
+    setter: "CALCulate:DBM:REFErence {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 2
+        max: 8000
+        default: 600
+    returns:
+      type: int
+      unit: Ohm
+    description: "dBm reference resistance"
+
+  calculate_dbm_state:
+    getter: "CALCulate:DBM:STATe?"
+    setter: "CALCulate:DBM:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "dBm operation on/off state"
+
+  calculate_pf:
+    scpi: "CALCulate:PF?"
+    type: query
+    returns:
+      type: string
+    description: "Query pass/fail result"
+
+  calculate_pf_lower:
+    getter: "CALCulate:PF:LOWEr?"
+    setter: "CALCulate:PF:LOWEr {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1200
+        max: 1200000
+    returns:
+      type: float
+    description: "Pass/fail lower limit"
+
+  calculate_pf_upper:
+    getter: "CALCulate:PF:UPPEr?"
+    setter: "CALCulate:PF:UPPEr {value}"
+    type: property
+    params:
+      value:
+        type: float
+        min: -1200
+        max: 1200000
+    returns:
+      type: float
+    description: "Pass/fail upper limit"
+
+  calculate_pf_state:
+    getter: "CALCulate:PF:STATe?"
+    setter: "CALCulate:PF:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Pass/fail operation on/off state"
+
+  # Function Commands
+  function:
+    scpi: "FUNCtion?"
+    type: query
+    returns:
+      type: string
+    description: "Query current measurement function"
+
+  function_voltage_dc:
+    scpi: "FUNCtion:VOLTage:DC"
+    type: write
+    description: "Enable DC voltage measurement"
+
+  function_voltage_ac:
+    scpi: "FUNCtion:VOLTage:AC"
+    type: write
+    description: "Enable AC voltage measurement"
+
+  function_current_dc:
+    scpi: "FUNCtion:CURRent:DC"
+    type: write
+    description: "Enable DC current measurement"
+
+  function_current_ac:
+    scpi: "FUNCtion:CURRent:AC"
+    type: write
+    description: "Enable AC current measurement"
+
+  function_resistance:
+    scpi: "FUNCtion:RESistance"
+    type: write
+    description: "Enable 2-wire resistance measurement"
+
+  function_fresistance:
+    scpi: "FUNCtion:FRESistance"
+    type: write
+    description: "Enable 4-wire resistance measurement"
+
+  function_frequency:
+    scpi: "FUNCtion:FREQuency"
+    type: write
+    description: "Enable frequency measurement"
+
+  function_period:
+    scpi: "FUNCtion:PERiod"
+    type: write
+    description: "Enable period measurement"
+
+  function_continuity:
+    scpi: "FUNCtion:CONTinuity"
+    type: write
+    description: "Enable continuity test"
+
+  function_diode:
+    scpi: "FUNCtion:DIODe"
+    type: write
+    description: "Enable diode test"
+
+  function_capacitance:
+    scpi: "FUNCtion:CAPacitance"
+    type: write
+    description: "Enable capacitance measurement"
+
+  # Function2 Commands (Dual Display)
+  function2:
+    scpi: "FUNCtion2?"
+    type: query
+    returns:
+      type: string
+    description: "Query secondary display function"
+
+  function2_value1:
+    scpi: "FUNCtion2:VALUe1?"
+    type: query
+    returns:
+      type: float
+    description: "Query main display value"
+
+  function2_value2:
+    scpi: "FUNCtion2:VALUe2?"
+    type: query
+    returns:
+      type: float
+    description: "Query secondary display value"
+
+  function2_voltage_dc:
+    scpi: "FUNCtion2:VOLTage:DC"
+    type: write
+    description: "Set secondary display to DC voltage"
+
+  function2_voltage_ac:
+    scpi: "FUNCtion2:VOLTage:AC"
+    type: write
+    description: "Set secondary display to AC voltage"
+
+  function2_current_dc:
+    scpi: "FUNCtion2:CURRent:DC"
+    type: write
+    description: "Set secondary display to DC current"
+
+  function2_current_ac:
+    scpi: "FUNCtion2:CURRent:AC"
+    type: write
+    description: "Set secondary display to AC current"
+
+  function2_frequency:
+    scpi: "FUNCtion2:FREQuency"
+    type: write
+    description: "Set secondary display to frequency"
+
+  function2_period:
+    scpi: "FUNCtion2:PERiod"
+    type: write
+    description: "Set secondary display to period"
+
+  function2_resistance:
+    scpi: "FUNCtion2:RESistance"
+    type: write
+    description: "Set secondary display to 2-wire resistance"
+
+  function2_fresistance:
+    scpi: "FUNCtion2:FRESistance"
+    type: write
+    description: "Set secondary display to 4-wire resistance"
+
+  function2_capacitance:
+    scpi: "FUNCtion2:CAPacitance"
+    type: write
+    description: "Set secondary display to capacitance"
+
+  function2_on:
+    scpi: "FUNCtion2:ON?"
+    type: query
+    returns:
+      type: bool
+    description: "Query if secondary display is enabled"
+
+  function2_clear:
+    scpi: "FUNCtion2:CLEar"
+    type: write
+    description: "Disable secondary display"
+
+  # Measure Commands
+  measure_check:
+    scpi: "MEASure?"
+    type: query
+    returns:
+      type: bool
+    description: "Check if new data available"
+
+  measure_mode:
+    scpi: "MEASure {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["AUTO", "MANU"]
+    description: "Set measurement mode"
+
+  measure_voltage_dc:
+    scpi: "MEASure:VOLTage:DC?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+    streamable: true
+
+  measure_voltage_dc_range:
+    getter: "MEASure:VOLTage:DC:RANGe?"
+    setter: "MEASure:VOLTage:DC {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "DC voltage range (0=200mV, 1=2V, 2=20V, 3=200V, 4=1000V)"
+
+  measure_voltage_dc_impedance:
+    getter: "MEASure:VOLTage:DC:IMPEdance?"
+    setter: "MEASure:VOLTage:DC:IMPEdance {impedance}"
+    type: property
+    params:
+      impedance:
+        type: enum
+        options: ["10M", "10G"]
+    returns:
+      type: string
+    description: "DC voltage input impedance"
+
+  measure_voltage_dc_filter:
+    getter: "MEASure:VOLTage:DC:FILTer:STATe?"
+    setter: "MEASure:VOLTage:DC:FILTer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "DC voltage AC filter state"
+
+  measure_voltage_ac:
+    scpi: "MEASure:VOLTage:AC?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure AC voltage"
+    streamable: true
+
+  measure_voltage_ac_range:
+    getter: "MEASure:VOLTage:AC:RANGe?"
+    setter: "MEASure:VOLTage:AC {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "AC voltage range (0=200mV, 1=2V, 2=20V, 3=200V, 4=750V)"
+
+  measure_current_dc:
+    scpi: "MEASure:CURRent:DC?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+    streamable: true
+
+  measure_current_dc_range:
+    getter: "MEASure:CURRent:DC:RANGe?"
+    setter: "MEASure:CURRent:DC {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "5", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "DC current range (0=200uA, 1=2mA, 2=20mA, 3=200mA, 4=2A, 5=10A)"
+
+  measure_current_dc_filter:
+    getter: "MEASure:CURRent:DC:FILTer:STATe?"
+    setter: "MEASure:CURRent:DC:FILTer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "DC current AC filter state"
+
+  measure_current_ac:
+    scpi: "MEASure:CURRent:AC?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Measure AC current"
+    streamable: true
+
+  measure_current_ac_range:
+    getter: "MEASure:CURRent:AC:RANGe?"
+    setter: "MEASure:CURRent:AC {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "AC current range (0=20mA, 1=200mA, 2=2A, 3=10A)"
+
+  measure_resistance:
+    scpi: "MEASure:RESistance?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 2-wire resistance"
+    streamable: true
+
+  measure_resistance_range:
+    getter: "MEASure:RESistance:RANGe?"
+    setter: "MEASure:RESistance {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "5", "6", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "2-wire resistance range (0=200Ω to 6=100MΩ)"
+
+  measure_fresistance:
+    scpi: "MEASure:FRESistance?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 4-wire resistance"
+    streamable: true
+
+  measure_fresistance_range:
+    getter: "MEASure:FRESistance:RANGe?"
+    setter: "MEASure:FRESistance {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "5", "6", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "4-wire resistance range (0=200Ω to 6=100MΩ)"
+
+  measure_frequency:
+    scpi: "MEASure:FREQuency?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency (20Hz to 1MHz)"
+    streamable: true
+
+  measure_frequency_range:
+    getter: "MEASure:FREQuency:RANGe?"
+    setter: "MEASure:FREQuency {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "Frequency measurement voltage range"
+
+  measure_period:
+    scpi: "MEASure:PERiod?"
+    type: query
+    returns:
+      type: float
+      unit: s
+    description: "Measure period (1us to 50ms)"
+    streamable: true
+
+  measure_period_range:
+    getter: "MEASure:PERiod:RANGe?"
+    setter: "MEASure:PERiod {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "Period measurement voltage range"
+
+  measure_continuity:
+    scpi: "MEASure:CONTinuity?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure continuity"
+
+  measure_continuity_threshold:
+    scpi: "MEASure:CONTinuity {value}"
+    type: write
+    params:
+      value:
+        type: int
+        min: 1
+        max: 2000
+        default: 10
+        unit: Ohm
+    description: "Set continuity threshold"
+
+  measure_diode:
+    scpi: "MEASure:DIODe?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure diode voltage"
+
+  measure_capacitance:
+    scpi: "MEASure:CAPacitance?"
+    type: query
+    returns:
+      type: float
+      unit: F
+    description: "Measure capacitance"
+    streamable: true
+
+  measure_capacitance_range:
+    getter: "MEASure:CAPacitance:RANGe?"
+    setter: "MEASure:CAPacitance {range}"
+    type: property
+    params:
+      range:
+        type: enum
+        options: ["0", "1", "2", "3", "4", "5", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "Capacitance range (0=2nF to 5=10000uF)"
+
+  # Rate Commands
+  rate_voltage_dc:
+    getter: "RATE:VOLTage:DC?"
+    setter: "RATE:VOLTage:DC {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "DC voltage measurement rate (F=Fast, M=Medium, S=Slow)"
+
+  rate_voltage_ac:
+    getter: "RATE:VOLTage:AC?"
+    setter: "RATE:VOLTage:AC {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "AC voltage measurement rate"
+
+  rate_current_dc:
+    getter: "RATE:CURRent:DC?"
+    setter: "RATE:CURRent:DC {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "DC current measurement rate"
+
+  rate_current_ac:
+    getter: "RATE:CURRent:AC?"
+    setter: "RATE:CURRent:AC {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "AC current measurement rate"
+
+  rate_resistance:
+    getter: "RATE:RESistance?"
+    setter: "RATE:RESistance {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "2-wire resistance measurement rate"
+
+  rate_fresistance:
+    getter: "RATE:FRESistance?"
+    setter: "RATE:FRESistance {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["F", "M", "S"]
+    returns:
+      type: string
+    description: "4-wire resistance measurement rate"
+
+  rate_sensor:
+    getter: "RATE:SENSor?"
+    setter: "RATE:SENSor {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["M", "S"]
+    returns:
+      type: string
+    description: "Sensor measurement rate"
+
+  # System Configuration Commands
+  system_configure_poweron:
+    scpi: "SYSTem:CONFigure:POWEron {mode}"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["LAST", "DEF"]
+    description: "Power-on configuration mode"
+
+  system_configure_default:
+    scpi: "SYSTem:CONFigure:DEFault"
+    type: write
+    description: "Set system configuration to default"
+
+  system_language:
+    getter: "SYSTem:LANGuage?"
+    setter: "SYSTem:LANGuage {language}"
+    type: property
+    params:
+      language:
+        type: enum
+        options: ["CHINESE", "ENGLISH"]
+    returns:
+      type: string
+    description: "System language"
+
+  system_format_decimal:
+    getter: "SYSTem:FORMat:DECImal?"
+    setter: "SYSTem:FORMat:DECImal {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["COMMA", "DOT"]
+    returns:
+      type: string
+    description: "Decimal display format"
+
+  system_format_separate:
+    getter: "SYSTem:FORMat:SEPArate?"
+    setter: "SYSTem:FORMat:SEPArate {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["ON", "NONE", "SPACE"]
+    returns:
+      type: string
+    description: "Data delimiter format"
+
+  system_display_bright:
+    getter: "SYSTem:DISPlay:BRIGht?"
+    setter: "SYSTem:DISPlay:BRIGht {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 32
+        default: 22
+    returns:
+      type: int
+    description: "Screen brightness"
+
+  system_display_contrast:
+    getter: "SYSTem:DISPlay:CONTrast?"
+    setter: "SYSTem:DISPlay:CONTrast {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 32
+        default: 19
+    returns:
+      type: int
+    description: "Screen contrast"
+
+  system_display_invert:
+    scpi: "SYSTem:DISPlay:INVErt"
+    type: write
+    description: "Invert screen display"
+
+  # Trigger Commands
+  trigger_source:
+    getter: "TRIGger:SOURce?"
+    setter: "TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["AUTO", "SINGLE", "EXT"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_auto_interval:
+    getter: "TRIGger:AUTO:INTErval?"
+    setter: "TRIGger:AUTO:INTErval {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 8
+        max: 2000
+        unit: ms
+    returns:
+      type: int
+    description: "Auto trigger interval"
+
+  trigger_auto_hold:
+    getter: "TRIGger:AUTO:HOLD?"
+    setter: "TRIGger:AUTO:HOLD {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Auto trigger hold state"
+
+  trigger_auto_hold_sensitivity:
+    getter: "TRIGger:AUTO:HOLD:SENSitivity?"
+    setter: "TRIGger:AUTO:HOLD:SENSitivity {value}"
+    type: property
+    params:
+      value:
+        type: enum
+        options: ["0", "1", "2", "3", "MIN", "MAX", "DEF"]
+    returns:
+      type: int
+    description: "Auto trigger hold sensitivity (0=0.01%, 1=0.1%, 2=1%, 3=10%)"
+
+  trigger_single:
+    getter: "TRIGger:SINGle?"
+    setter: "TRIGger:SINGle {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2000
+        default: 1
+    returns:
+      type: int
+    description: "Single trigger sample count"
+
+  trigger_single_triggered:
+    scpi: "TRIGger:SINGle:TRIGgered"
+    type: write
+    description: "Execute single trigger manually"
+
+  trigger_ext:
+    getter: "TRIGger:EXT?"
+    setter: "TRIGger:EXT {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["RISE", "FALL", "HIGH", "LOW"]
+    returns:
+      type: string
+    description: "External trigger type"
+
+  trigger_vmc_polar:
+    getter: "TRIGger:VMComplete:POLAr?"
+    setter: "TRIGger:VMComplete:POLAr {polar}"
+    type: property
+    params:
+      polar:
+        type: enum
+        options: ["POS", "NEG"]
+    returns:
+      type: string
+    description: "VMC output polarity"
+
+  trigger_vmc_pulsewidth:
+    getter: "TRIGger:VMComplete:PULSewidth?"
+    setter: "TRIGger:VMComplete:PULSewidth {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 399
+        default: 100
+        unit: ms
+    returns:
+      type: int
+    description: "VMC output pulse width"
+
+  # Utility/Interface Commands
+  utility_lan_dhcp:
+    getter: "UTILity:INTErface:LAN:DHCP?"
+    setter: "UTILity:INTErface:LAN:DHCP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LAN DHCP state"
+
+  utility_lan_autoip:
+    getter: "UTILity:INTErface:LAN:AUTOip?"
+    setter: "UTILity:INTErface:LAN:AUTOip {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LAN Auto IP state"
+
+  utility_lan_manuip:
+    getter: "UTILity:INTErface:LAN:MANUip?"
+    setter: "UTILity:INTErface:LAN:MANUip {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "LAN Manual IP state"
+
+  utility_lan_ip:
+    getter: "UTILity:INTErface:LAN:IP?"
+    setter: "UTILity:INTErface:LAN:IP {address}"
+    type: property
+    params:
+      address:
+        type: string
+        default: "168.254.0.238"
+    returns:
+      type: string
+    description: "LAN IP address"
+
+  utility_lan_mask:
+    getter: "UTILity:INTErface:LAN:MASK?"
+    setter: "UTILity:INTErface:LAN:MASK {mask}"
+    type: property
+    params:
+      mask:
+        type: string
+        default: "255.255.255.0"
+    returns:
+      type: string
+    description: "LAN subnet mask"
+
+  utility_lan_gateway:
+    getter: "UTILity:INTErface:LAN:GATEway?"
+    setter: "UTILity:INTErface:LAN:GATEway {gateway}"
+    type: property
+    params:
+      gateway:
+        type: string
+        default: "172.16.3.1"
+    returns:
+      type: string
+    description: "LAN gateway address"
+
+  utility_lan_dns:
+    getter: "UTILity:INTErface:LAN:DNS?"
+    setter: "UTILity:INTErface:LAN:DNS {dns}"
+    type: property
+    params:
+      dns:
+        type: string
+        default: "0.0.0.0"
+    returns:
+      type: string
+    description: "LAN DNS server address"
+
+  utility_gpib_address:
+    getter: "UTILity:INTErface:GPIB:ADDRess?"
+    setter: "UTILity:INTErface:GPIB:ADDRess {address}"
+    type: property
+    params:
+      address:
+        type: int
+        min: 0
+        max: 30
+        default: 7
+    returns:
+      type: int
+    description: "GPIB address"
+
+  utility_rs232_baud:
+    getter: "UTILity:INTErface:RS232:BAUD?"
+    setter: "UTILity:INTErface:RS232:BAUD {rate}"
+    type: property
+    params:
+      rate:
+        type: enum
+        options: ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
+    returns:
+      type: int
+    description: "RS232 baud rate"
+
+  utility_rs232_parity:
+    getter: "UTILity:INTErface:RS232:PARIty?"
+    setter: "UTILity:INTErface:RS232:PARIty {parity}"
+    type: property
+    params:
+      parity:
+        type: enum
+        options: ["NONE", "ODD", "EVEN"]
+    returns:
+      type: string
+    description: "RS232 parity setting"
+
+  # Command Set Selection
+  cmdset:
+    getter: "CMDSET?"
+    setter: "CMDSET {set}"
+    type: property
+    params:
+      set:
+        type: enum
+        options: ["RIGOL", "AGILENT", "FLUKE"]
+    returns:
+      type: string
+    description: "Select command set compatibility mode"
+
+status:
+  stb:
+    bit2: EAV
+    bit3: QSB
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+    bit7: OSB
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit6: URQ
+    bit7: PON

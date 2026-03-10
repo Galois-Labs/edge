@@ -1,0 +1,607 @@
+# Signal Recovery 7270 DSP Lock-In Amplifier Instrument Profile
+# Reference: Signal Recovery Model 7270 Instruction Manual
+# Connection: USB Vendor Specific (VID 0x0A2D, PID 0x001B) - requires raw USB transport
+
+instrument:
+  manufacturer: "Signal Recovery"
+  model: "7270"
+  class: lockin
+  description: "DSP Lock-In Amplifier with USB interface - 1 mHz to 250 kHz"
+
+identity:
+  query: "ID"
+  pattern: "(?i)(Signal Recovery|SIGNAL RECOVERY|AMETEK)?.*7270"
+
+interfaces:
+  - type: usb
+    vid: 0x0A2D
+    pid: 0x001B
+    protocol: vendor_specific
+    note: "Null-terminated command protocol over bulk endpoints"
+
+settings:
+  timeout_ms: 5000
+  terminator: "\x00"
+  opc_query: false
+
+commands:
+  # ============================================================================
+  # System / Identification
+  # ============================================================================
+  identify:
+    scpi: "ID"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  firmware_version:
+    scpi: "VER"
+    type: query
+    returns:
+      type: string
+    description: "Query firmware version"
+
+  # ============================================================================
+  # Signal Channel
+  # ============================================================================
+  sensitivity:
+    getter: "SEN"
+    setter: "SEN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 27
+    returns:
+      type: int
+    description: "Sensitivity setting (1-27, mapping to 2nV - 1V full scale)"
+
+  auto_sensitivity:
+    scpi: "AS"
+    type: write
+    description: "Perform auto-sensitivity adjustment"
+
+  time_constant:
+    getter: "TC"
+    setter: "TC {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 30
+    returns:
+      type: int
+    description: "Time constant setting (0-30, mapping to 10 us - 100 ks)"
+
+  input_mode:
+    getter: "IMODE"
+    setter: "IMODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Input mode (0=voltage A, 1=current via 1 MOhm, 2=current via 100 MOhm, 3=voltage A-B)"
+
+  voltage_mode:
+    getter: "VMODE"
+    setter: "VMODE {mode}"
+    type: property
+    params:
+      mode:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Voltage input mode (0=both inputs grounded, 1=A, 2=-B, 3=A-B)"
+
+  filter_slope:
+    getter: "SLOPE"
+    setter: "SLOPE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Output low-pass filter slope (0=6dB/oct, 1=12dB/oct, 2=18dB/oct, 3=24dB/oct)"
+
+  ac_gain:
+    getter: "ACGAIN"
+    setter: "ACGAIN {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 9
+    returns:
+      type: int
+    description: "AC gain setting (0=0dB to 9=90dB in 10dB steps)"
+
+  line_filter:
+    getter: "LF"
+    setter: "LF {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 3
+    returns:
+      type: int
+    description: "Line frequency rejection filter (0=off, 1=enable notch, 2=enable 2x notch, 3=both)"
+
+  float_input:
+    getter: "FLOAT"
+    setter: "FLOAT {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Input connector shield float (0=grounded, 1=floating at 1 kOhm)"
+
+  # ============================================================================
+  # Reference Channel
+  # ============================================================================
+  reference_source:
+    getter: "IE"
+    setter: "IE {source}"
+    type: property
+    params:
+      source:
+        type: int
+        min: 0
+        max: 2
+    returns:
+      type: int
+    description: "Reference source (0=internal, 1=external rear, 2=external front)"
+
+  reference_frequency:
+    scpi: "FRQ."
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query current reference frequency"
+
+  internal_frequency:
+    getter: "OF."
+    setter: "OF. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0.001
+        max: 250000
+    returns:
+      type: float
+      unit: Hz
+    description: "Internal oscillator frequency"
+
+  oscillator_amplitude:
+    getter: "OA."
+    setter: "OA. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 5.0
+    returns:
+      type: float
+      unit: V
+    description: "Internal oscillator amplitude (0 - 5 V rms)"
+
+  reference_phase:
+    getter: "REFP."
+    setter: "REFP. {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: deg
+        min: -360
+        max: 360
+    returns:
+      type: float
+      unit: deg
+    description: "Reference phase in millidegrees"
+
+  auto_phase:
+    scpi: "AQN"
+    type: write
+    description: "Perform auto-phase adjustment"
+
+  reference_harmonic:
+    getter: "REFN"
+    setter: "REFN {n}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 65535
+    returns:
+      type: int
+    description: "Detection harmonic number"
+
+  # ============================================================================
+  # Demodulator Outputs
+  # ============================================================================
+  x_output:
+    scpi: "X."
+    type: query
+    returns:
+      type: float
+    description: "Read X channel output (in-phase component)"
+
+  y_output:
+    scpi: "Y."
+    type: query
+    returns:
+      type: float
+    description: "Read Y channel output (quadrature component)"
+
+  magnitude:
+    scpi: "MAG."
+    type: query
+    returns:
+      type: float
+    description: "Read signal magnitude (sqrt(X^2 + Y^2))"
+
+  phase:
+    scpi: "PHA."
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Read signal phase (arctan(Y/X)) in millidegrees"
+
+  x1_output:
+    scpi: "X1."
+    type: query
+    returns:
+      type: float
+    description: "Read X1 channel output (dual reference mode)"
+
+  y1_output:
+    scpi: "Y1."
+    type: query
+    returns:
+      type: float
+    description: "Read Y1 channel output (dual reference mode)"
+
+  x2_output:
+    scpi: "X2."
+    type: query
+    returns:
+      type: float
+    description: "Read X2 channel output (dual reference mode)"
+
+  y2_output:
+    scpi: "Y2."
+    type: query
+    returns:
+      type: float
+    description: "Read Y2 channel output (dual reference mode)"
+
+  noise:
+    scpi: "NHZ."
+    type: query
+    returns:
+      type: float
+      unit: V/rtHz
+    description: "Read equivalent input noise in V/sqrt(Hz)"
+
+  fast_data_transfer:
+    scpi: "?"
+    type: query
+    returns:
+      type: string
+    description: "Fast correlated multi-output data snapshot (X, Y, MAG, PHA, etc.)"
+
+  # ============================================================================
+  # Auxiliary I/O
+  # ============================================================================
+  adc1:
+    scpi: "ADC. 1"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 1 voltage (-10.0 to +10.0 V)"
+
+  adc2:
+    scpi: "ADC. 2"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 2 voltage"
+
+  adc3:
+    scpi: "ADC. 3"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 3 voltage"
+
+  adc4:
+    scpi: "ADC. 4"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read ADC channel 4 voltage"
+
+  dac1:
+    getter: "DAC. 1"
+    setter: "DAC. 1 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 1 output voltage"
+
+  dac2:
+    getter: "DAC. 2"
+    setter: "DAC. 2 {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DAC channel 2 output voltage"
+
+  # ============================================================================
+  # Curve Buffer
+  # ============================================================================
+  curve_buffer_length:
+    getter: "LEN"
+    setter: "LEN {length}"
+    type: property
+    params:
+      length:
+        type: int
+        min: 1
+        max: 100000
+    returns:
+      type: int
+    description: "Curve buffer length in points"
+
+  storage_interval:
+    getter: "STR"
+    setter: "STR {interval}"
+    type: property
+    params:
+      interval:
+        type: int
+        min: 0
+        max: 1000000000
+    returns:
+      type: int
+    description: "Storage interval in microseconds (0=fastest, limited by time constant)"
+
+  curve_buffer_define:
+    scpi: "CBD {bitmask}"
+    type: write
+    params:
+      bitmask:
+        type: int
+    description: "Define curve buffer data channels via bitmask (bit 0=X, 1=Y, 2=MAG, 3=PHA, etc.)"
+
+  curve_buffer_status:
+    scpi: "M"
+    type: query
+    returns:
+      type: int
+    description: "Monitor curve buffer acquisition status"
+
+  take_data:
+    scpi: "TD"
+    type: write
+    description: "Start single curve buffer acquisition (take data)"
+
+  take_data_continuous:
+    scpi: "TDC"
+    type: write
+    description: "Start continuous (circular) curve buffer acquisition"
+
+  halt_curve:
+    scpi: "HC"
+    type: write
+    description: "Halt curve buffer acquisition"
+
+  dump_curve_binary:
+    scpi: "DCB {curve}"
+    type: write
+    params:
+      curve:
+        type: int
+        min: 0
+        max: 23
+    description: "Dump curve buffer data in binary format (16-bit signed integers)"
+
+  dump_curve_ascii:
+    scpi: "DC. {curve}"
+    type: query
+    params:
+      curve:
+        type: int
+        min: 0
+        max: 23
+    returns:
+      type: string
+    description: "Dump curve buffer data in ASCII format"
+
+  new_curve:
+    scpi: "NC"
+    type: write
+    description: "Initialize curve buffer and start new acquisition"
+
+  # ============================================================================
+  # Status and Overload
+  # ============================================================================
+  status_byte:
+    scpi: "ST"
+    type: query
+    returns:
+      type: int
+    description: "Read instrument status byte"
+
+  overload_byte:
+    scpi: "N"
+    type: query
+    returns:
+      type: int
+    description: "Read overload status byte"
+
+  event_status:
+    scpi: "EVENT"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  event_enable:
+    getter: "EMASK"
+    setter: "EMASK {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+    returns:
+      type: int
+    description: "Event status enable mask"
+
+# ============================================================================
+# Measurement Sequences
+# ============================================================================
+sequences:
+  quick_measure:
+    description: "Quick measurement of X, Y, Magnitude, and Phase via fast data transfer"
+    steps:
+      - command: fast_data_transfer
+        capture: result
+    returns: result
+
+  acquire_curve:
+    description: "Configure and acquire a single curve buffer dataset"
+    params:
+      length:
+        type: int
+        default: 1000
+      interval:
+        type: int
+        default: 1000
+        unit: us
+      channels:
+        type: int
+        default: 3
+        description: "Channel bitmask (3 = X and Y)"
+    steps:
+      - command: halt_curve
+      - command: curve_buffer_length
+        args:
+          length: "{length}"
+      - command: storage_interval
+        args:
+          interval: "{interval}"
+      - command: curve_buffer_define
+        args:
+          bitmask: "{channels}"
+      - command: new_curve
+      - command: take_data
+    returns: "Acquisition started - monitor with curve_buffer_status, download with dump_curve_binary"
+
+  continuous_acquire:
+    description: "Start continuous circular buffer acquisition"
+    params:
+      length:
+        type: int
+        default: 10000
+      interval:
+        type: int
+        default: 100
+        unit: us
+      channels:
+        type: int
+        default: 3
+        description: "Channel bitmask (3 = X and Y)"
+    steps:
+      - command: halt_curve
+      - command: curve_buffer_length
+        args:
+          length: "{length}"
+      - command: storage_interval
+        args:
+          interval: "{interval}"
+      - command: curve_buffer_define
+        args:
+          bitmask: "{channels}"
+      - command: new_curve
+      - command: take_data_continuous
+    returns: "Continuous acquisition started - halt with halt_curve"
+
+  setup_measurement:
+    description: "Configure signal channel for a measurement"
+    params:
+      sensitivity:
+        type: int
+        default: 15
+        description: "Sensitivity (1-27)"
+      time_constant:
+        type: int
+        default: 10
+        description: "Time constant (0-30)"
+      input_mode:
+        type: int
+        default: 0
+        description: "Input mode (0=voltage A)"
+      filter_slope:
+        type: int
+        default: 1
+        description: "Filter slope (0=6dB, 1=12dB, 2=18dB, 3=24dB)"
+    steps:
+      - command: sensitivity
+        args:
+          value: "{sensitivity}"
+      - command: time_constant
+        args:
+          value: "{time_constant}"
+      - command: input_mode
+        args:
+          mode: "{input_mode}"
+      - command: filter_slope
+        args:
+          value: "{filter_slope}"
+      - command: auto_sensitivity
+      - command: auto_phase

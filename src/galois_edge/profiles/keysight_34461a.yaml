@@ -1,0 +1,1391 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "34460A"
+  class: dmm
+  description: "Truevolt Series Digital Multimeter - 6.5 digit resolution"
+
+identity:
+  query: "*IDN?"
+  pattern: "(?:Keysight|Agilent).*34[4-7][0-9][0-9]A"
+
+interfaces:
+  - type: gpib
+    default_address: 22
+  - type: usb
+  - type: ethernet
+    port: 5025
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in standard event register"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Save instrument state to memory location"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 4
+    description: "Recall instrument state from memory location"
+
+  abort:
+    scpi: "ABORt"
+    type: write
+    description: "Abort measurement and return to idle state"
+
+  fetch:
+    scpi: "FETCh?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Fetch completed measurements from memory"
+
+  initiate:
+    scpi: "INITiate"
+    type: write
+    description: "Initiate measurement and move to wait-for-trigger state"
+
+  read:
+    scpi: "READ?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Initiate and fetch measurements"
+
+  read_remove:
+    scpi: "R? {max_readings}"
+    type: query
+    params:
+      max_readings:
+        type: int
+        min: 1
+        max: 2000000
+    returns:
+      type: binary
+    description: "Read and remove measurements from memory"
+
+  test_all:
+    scpi: "TEST:ALL?"
+    type: query
+    returns:
+      type: int
+    description: "Comprehensive self-test (0=pass, 1=fail)"
+
+  configure_voltage_dc:
+    scpi: "CONFigure:VOLTage:DC {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: V
+        options: ["0.1", "1", "10", "100", "1000", "AUTO"]
+      resolution:
+        type: float
+        unit: V
+    description: "Configure DC voltage measurement"
+
+  configure_voltage_ac:
+    scpi: "CONFigure:VOLTage:AC {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: V
+        options: ["0.1", "1", "10", "100", "1000", "AUTO"]
+      resolution:
+        type: float
+        unit: V
+    description: "Configure AC voltage measurement"
+
+  configure_current_dc:
+    scpi: "CONFigure:CURRent:DC {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: A
+        options: ["0.0001", "0.001", "0.01", "0.1", "1", "3", "10", "AUTO"]
+      resolution:
+        type: float
+        unit: A
+    description: "Configure DC current measurement"
+
+  configure_current_ac:
+    scpi: "CONFigure:CURRent:AC {range}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: A
+        options: ["0.0001", "0.001", "0.01", "0.1", "1", "3", "10", "AUTO"]
+    description: "Configure AC current measurement"
+
+  configure_resistance_2wire:
+    scpi: "CONFigure:RESistance {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Ohm
+        options: ["100", "1000", "10000", "100000", "1000000", "10000000", "100000000", "1000000000", "AUTO"]
+      resolution:
+        type: float
+        unit: Ohm
+    description: "Configure 2-wire resistance measurement"
+
+  configure_resistance_4wire:
+    scpi: "CONFigure:FRESistance {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Ohm
+        options: ["100", "1000", "10000", "100000", "1000000", "10000000", "100000000", "1000000000", "AUTO"]
+      resolution:
+        type: float
+        unit: Ohm
+    description: "Configure 4-wire resistance measurement"
+
+  configure_frequency:
+    scpi: "CONFigure:FREQuency {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: Hz
+        min: 3
+        max: 300000
+      resolution:
+        type: float
+        unit: Hz
+    description: "Configure frequency measurement"
+
+  configure_period:
+    scpi: "CONFigure:PERiod {range},{resolution}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: s
+        min: 0.00000333
+        max: 0.33333
+      resolution:
+        type: float
+        unit: s
+    description: "Configure period measurement"
+
+  configure_temperature:
+    scpi: "CONFigure:TEMPerature {transducer},{type},1,{resolution}"
+    type: write
+    params:
+      transducer:
+        type: enum
+        options: ["FRTD", "RTD", "FTHermistor", "THERmistor", "TCouple"]
+      type:
+        type: string
+      resolution:
+        type: float
+    description: "Configure temperature measurement"
+
+  configure_continuity:
+    scpi: "CONFigure:CONTinuity"
+    type: write
+    description: "Configure continuity test"
+
+  configure_diode:
+    scpi: "CONFigure:DIODe"
+    type: write
+    description: "Configure diode test"
+
+  configure_capacitance:
+    scpi: "CONFigure:CAPacitance {range}"
+    type: write
+    params:
+      range:
+        type: float
+        unit: F
+        options: ["0.000000001", "0.00000001", "0.0000001", "0.000001", "0.00001", "0.0001", "AUTO"]
+    description: "Configure capacitance measurement"
+
+  configure_query:
+    scpi: "CONFigure?"
+    type: query
+    returns:
+      type: string
+    description: "Query current configuration"
+
+  measure_voltage_dc:
+    scpi: "MEASure:VOLTage:DC? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: V
+      resolution:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Measure DC voltage"
+
+  measure_voltage_ac:
+    scpi: "MEASure:VOLTage:AC? {range}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Measure AC voltage"
+
+  measure_current_dc:
+    scpi: "MEASure:CURRent:DC? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: A
+      resolution:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Measure DC current"
+
+  measure_current_ac:
+    scpi: "MEASure:CURRent:AC? {range}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: A
+    returns:
+      type: float
+      unit: A
+    description: "Measure AC current"
+
+  measure_resistance_2wire:
+    scpi: "MEASure:RESistance? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Ohm
+      resolution:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 2-wire resistance"
+
+  measure_resistance_4wire:
+    scpi: "MEASure:FRESistance? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Ohm
+      resolution:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure 4-wire resistance"
+
+  measure_frequency:
+    scpi: "MEASure:FREQuency? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: Hz
+      resolution:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency"
+
+  measure_period:
+    scpi: "MEASure:PERiod? {range},{resolution}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: s
+      resolution:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Measure period"
+
+  measure_temperature:
+    scpi: "MEASure:TEMPerature? {transducer},{type}"
+    type: query
+    params:
+      transducer:
+        type: enum
+        options: ["FRTD", "RTD", "FTHermistor", "THERmistor", "TCouple"]
+      type:
+        type: string
+    returns:
+      type: float
+      unit: C
+    description: "Measure temperature"
+
+  measure_continuity:
+    scpi: "MEASure:CONTinuity?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure continuity"
+
+  measure_diode:
+    scpi: "MEASure:DIODe?"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Measure diode voltage"
+
+  measure_capacitance:
+    scpi: "MEASure:CAPacitance? {range}"
+    type: query
+    params:
+      range:
+        type: float
+        unit: F
+    returns:
+      type: float
+      unit: F
+    description: "Measure capacitance"
+
+  sense_function:
+    getter: "SENSe:FUNCtion?"
+    setter: "SENSe:FUNCtion \"{function}\""
+    type: property
+    params:
+      function:
+        type: enum
+        options: ["CAPacitance", "CONTinuity", "CURRent:AC", "CURRent:DC", "DIODe", "FREQuency", "FRESistance", "PERiod", "RESistance", "TEMPerature", "VOLTage:AC", "VOLTage:DC", "VOLTage:DC:RATio"]
+    returns:
+      type: string
+    description: "Select measurement function"
+
+  voltage_dc_range:
+    getter: "SENSe:VOLTage:DC:RANGe?"
+    setter: "SENSe:VOLTage:DC:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage measurement range"
+
+  voltage_dc_range_auto:
+    getter: "SENSe:VOLTage:DC:RANGe:AUTO?"
+    setter: "SENSe:VOLTage:DC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "DC voltage auto-ranging"
+
+  voltage_dc_nplc:
+    getter: "SENSe:VOLTage:DC:NPLC?"
+    setter: "SENSe:VOLTage:DC:NPLC {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        options: ["0.001", "0.002", "0.006", "0.02", "0.06", "0.2", "1", "10", "100"]
+    returns:
+      type: float
+    description: "DC voltage integration time in power line cycles"
+
+  voltage_dc_resolution:
+    getter: "SENSe:VOLTage:DC:RESolution?"
+    setter: "SENSe:VOLTage:DC:RESolution {resolution}"
+    type: property
+    params:
+      resolution:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "DC voltage measurement resolution"
+
+  voltage_dc_zero_auto:
+    getter: "SENSe:VOLTage:DC:ZERO:AUTO?"
+    setter: "SENSe:VOLTage:DC:ZERO:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "DC voltage autozero"
+
+  voltage_dc_impedance_auto:
+    getter: "SENSe:VOLTage:DC:IMPedance:AUTO?"
+    setter: "SENSe:VOLTage:DC:IMPedance:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "DC voltage input impedance auto mode"
+
+  voltage_ac_range:
+    getter: "SENSe:VOLTage:AC:RANGe?"
+    setter: "SENSe:VOLTage:AC:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: V
+        min: 0.1
+        max: 1000
+    returns:
+      type: float
+      unit: V
+    description: "AC voltage measurement range"
+
+  voltage_ac_range_auto:
+    getter: "SENSe:VOLTage:AC:RANGe:AUTO?"
+    setter: "SENSe:VOLTage:AC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "AC voltage auto-ranging"
+
+  voltage_ac_bandwidth:
+    getter: "SENSe:VOLTage:AC:BANDwidth?"
+    setter: "SENSe:VOLTage:AC:BANDwidth {bandwidth}"
+    type: property
+    params:
+      bandwidth:
+        type: enum
+        options: ["3", "20", "200"]
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "AC voltage filter bandwidth"
+
+  current_dc_range:
+    getter: "SENSe:CURRent:DC:RANGe?"
+    setter: "SENSe:CURRent:DC:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.0001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "DC current measurement range"
+
+  current_dc_range_auto:
+    getter: "SENSe:CURRent:DC:RANGe:AUTO?"
+    setter: "SENSe:CURRent:DC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "DC current auto-ranging"
+
+  current_dc_nplc:
+    getter: "SENSe:CURRent:DC:NPLC?"
+    setter: "SENSe:CURRent:DC:NPLC {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        options: ["0.001", "0.002", "0.006", "0.02", "0.06", "0.2", "1", "10", "100"]
+    returns:
+      type: float
+    description: "DC current integration time in power line cycles"
+
+  current_dc_zero_auto:
+    getter: "SENSe:CURRent:DC:ZERO:AUTO?"
+    setter: "SENSe:CURRent:DC:ZERO:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "DC current autozero"
+
+  current_ac_range:
+    getter: "SENSe:CURRent:AC:RANGe?"
+    setter: "SENSe:CURRent:AC:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: A
+        min: 0.0001
+        max: 10
+    returns:
+      type: float
+      unit: A
+    description: "AC current measurement range"
+
+  current_ac_range_auto:
+    getter: "SENSe:CURRent:AC:RANGe:AUTO?"
+    setter: "SENSe:CURRent:AC:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "AC current auto-ranging"
+
+  current_ac_bandwidth:
+    getter: "SENSe:CURRent:AC:BANDwidth?"
+    setter: "SENSe:CURRent:AC:BANDwidth {bandwidth}"
+    type: property
+    params:
+      bandwidth:
+        type: enum
+        options: ["3", "20", "200"]
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "AC current filter bandwidth"
+
+  resistance_range:
+    getter: "SENSe:RESistance:RANGe?"
+    setter: "SENSe:RESistance:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "2-wire resistance measurement range"
+
+  resistance_range_auto:
+    getter: "SENSe:RESistance:RANGe:AUTO?"
+    setter: "SENSe:RESistance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "2-wire resistance auto-ranging"
+
+  resistance_nplc:
+    getter: "SENSe:RESistance:NPLC?"
+    setter: "SENSe:RESistance:NPLC {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        options: ["0.001", "0.002", "0.006", "0.02", "0.06", "0.2", "1", "10", "100"]
+    returns:
+      type: float
+    description: "2-wire resistance integration time"
+
+  resistance_zero_auto:
+    getter: "SENSe:RESistance:ZERO:AUTO?"
+    setter: "SENSe:RESistance:ZERO:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "2-wire resistance autozero"
+
+  fresistance_range:
+    getter: "SENSe:FRESistance:RANGe?"
+    setter: "SENSe:FRESistance:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: Ohm
+    returns:
+      type: float
+      unit: Ohm
+    description: "4-wire resistance measurement range"
+
+  fresistance_range_auto:
+    getter: "SENSe:FRESistance:RANGe:AUTO?"
+    setter: "SENSe:FRESistance:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "4-wire resistance auto-ranging"
+
+  fresistance_nplc:
+    getter: "SENSe:FRESistance:NPLC?"
+    setter: "SENSe:FRESistance:NPLC {nplc}"
+    type: property
+    params:
+      nplc:
+        type: float
+        options: ["0.001", "0.002", "0.006", "0.02", "0.06", "0.2", "1", "10", "100"]
+    returns:
+      type: float
+    description: "4-wire resistance integration time"
+
+  frequency_aperture:
+    getter: "SENSe:FREQuency:APERture?"
+    setter: "SENSe:FREQuency:APERture {aperture}"
+    type: property
+    params:
+      aperture:
+        type: float
+        unit: s
+        options: ["0.001", "0.01", "0.1", "1"]
+    returns:
+      type: float
+      unit: s
+    description: "Frequency measurement aperture time"
+
+  frequency_voltage_range:
+    getter: "SENSe:FREQuency:VOLTage:RANGe?"
+    setter: "SENSe:FREQuency:VOLTage:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Frequency measurement voltage range"
+
+  frequency_voltage_range_auto:
+    getter: "SENSe:FREQuency:VOLTage:RANGe:AUTO?"
+    setter: "SENSe:FREQuency:VOLTage:RANGe:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON", "ONCE"]
+    returns:
+      type: bool
+    description: "Frequency voltage auto-ranging"
+
+  sample_count:
+    getter: "SAMPle:COUNt?"
+    setter: "SAMPle:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1000000000
+    returns:
+      type: int
+    description: "Number of samples per trigger"
+
+  sample_source:
+    getter: "SAMPle:SOURce?"
+    setter: "SAMPle:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "TIMer"]
+    returns:
+      type: string
+    description: "Sample source (immediate or timer)"
+
+  sample_timer:
+    getter: "SAMPle:TIMer?"
+    setter: "SAMPle:TIMer {interval}"
+    type: property
+    params:
+      interval:
+        type: float
+        unit: s
+        min: 0.00002
+        max: 3600
+    returns:
+      type: float
+      unit: s
+    description: "Sample timer interval"
+
+  trigger_count:
+    getter: "TRIGger:COUNt?"
+    setter: "TRIGger:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 1
+        max: 1000000000
+    returns:
+      type: int
+    description: "Number of triggers"
+
+  trigger_delay:
+    getter: "TRIGger:DELay?"
+    setter: "TRIGger:DELay {delay}"
+    type: property
+    params:
+      delay:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+    returns:
+      type: float
+      unit: s
+    description: "Trigger delay"
+
+  trigger_delay_auto:
+    getter: "TRIGger:DELay:AUTO?"
+    setter: "TRIGger:DELay:AUTO {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Automatic trigger delay"
+
+  trigger_source:
+    getter: "TRIGger:SOURce?"
+    setter: "TRIGger:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["IMMediate", "BUS", "EXTernal", "INTernal"]
+    returns:
+      type: string
+    description: "Trigger source"
+
+  trigger_slope:
+    getter: "TRIGger:SLOPe?"
+    setter: "TRIGger:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "External trigger slope"
+
+  trigger_level:
+    getter: "TRIGger:LEVel?"
+    setter: "TRIGger:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Internal trigger level"
+
+  output_trigger_slope:
+    getter: "OUTPut:TRIGger:SLOPe?"
+    setter: "OUTPut:TRIGger:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "VM Complete trigger output slope"
+
+  route_terminals:
+    scpi: "ROUTe:TERMinals?"
+    type: query
+    returns:
+      type: string
+    description: "Query front/rear terminal selection"
+
+  temperature_unit:
+    getter: "UNIT:TEMPerature?"
+    setter: "UNIT:TEMPerature {unit}"
+    type: property
+    params:
+      unit:
+        type: enum
+        options: ["C", "F", "K"]
+    returns:
+      type: string
+    description: "Temperature units"
+
+  data_points:
+    scpi: "DATA:POINts?"
+    type: query
+    returns:
+      type: int
+    description: "Number of measurements in memory"
+
+  data_last:
+    scpi: "DATA:LAST?"
+    type: query
+    returns:
+      type: float
+    description: "Last measurement taken"
+
+  data_remove:
+    scpi: "DATA:REMove? {count}"
+    type: query
+    params:
+      count:
+        type: int
+        min: 1
+        max: 2000000
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Read and remove measurements from memory"
+
+  display_state:
+    getter: "DISPlay:STATe?"
+    setter: "DISPlay:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Front panel display on/off"
+
+  display_text:
+    getter: "DISPlay:TEXT:DATA?"
+    setter: "DISPlay:TEXT:DATA \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message"
+
+  display_text_clear:
+    scpi: "DISPlay:TEXT:CLEar"
+    type: write
+    description: "Clear display text"
+
+  display_view:
+    getter: "DISPlay:VIEW?"
+    setter: "DISPlay:VIEW {view}"
+    type: property
+    params:
+      view:
+        type: enum
+        options: ["NUMeric", "HISTogram", "TCHart", "METer"]
+    returns:
+      type: string
+    description: "Display view mode"
+
+  calculate_average_state:
+    getter: "CALCulate:AVERage:STATe?"
+    setter: "CALCulate:AVERage:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Enable statistics calculations"
+
+  calculate_average_all:
+    scpi: "CALCulate:AVERage:ALL?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+    description: "Return all statistics (average, min, max, stdev)"
+
+  calculate_average_average:
+    scpi: "CALCulate:AVERage:AVERage?"
+    type: query
+    returns:
+      type: float
+    description: "Return average"
+
+  calculate_average_minimum:
+    scpi: "CALCulate:AVERage:MINimum?"
+    type: query
+    returns:
+      type: float
+    description: "Return minimum value"
+
+  calculate_average_maximum:
+    scpi: "CALCulate:AVERage:MAXimum?"
+    type: query
+    returns:
+      type: float
+    description: "Return maximum value"
+
+  calculate_average_sdeviation:
+    scpi: "CALCulate:AVERage:SDEViation?"
+    type: query
+    returns:
+      type: float
+    description: "Return standard deviation"
+
+  calculate_average_count:
+    scpi: "CALCulate:AVERage:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Return statistics count"
+
+  calculate_average_clear:
+    scpi: "CALCulate:AVERage:CLEar"
+    type: write
+    description: "Clear statistics"
+
+  calculate_limit_state:
+    getter: "CALCulate:LIMit:STATe?"
+    setter: "CALCulate:LIMit:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Enable limit testing"
+
+  calculate_limit_lower:
+    getter: "CALCulate:LIMit:LOWer:DATA?"
+    setter: "CALCulate:LIMit:LOWer:DATA {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Lower limit value"
+
+  calculate_limit_upper:
+    getter: "CALCulate:LIMit:UPPer:DATA?"
+    setter: "CALCulate:LIMit:UPPer:DATA {value}"
+    type: property
+    params:
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Upper limit value"
+
+  calculate_limit_clear:
+    scpi: "CALCulate:LIMit:CLEar"
+    type: write
+    description: "Clear limit test results"
+
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear one error from queue"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version"
+
+  system_beeper:
+    scpi: "SYSTem:BEEPer"
+    type: write
+    description: "Issue single beep"
+
+  system_beeper_state:
+    getter: "SYSTem:BEEPer:STATe?"
+    setter: "SYSTem:BEEPer:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Beeper enable/disable"
+
+  system_local:
+    scpi: "SYSTem:LOCal"
+    type: write
+    description: "Return to local control"
+
+  system_preset:
+    scpi: "SYSTem:PRESet"
+    type: write
+    description: "Preset instrument for front panel use"
+
+  system_temperature:
+    scpi: "SYSTem:TEMPerature?"
+    type: query
+    returns:
+      type: float
+      unit: C
+    description: "Query internal temperature"
+
+  system_date:
+    getter: "SYSTem:DATE?"
+    setter: "SYSTem:DATE {year},{month},{day}"
+    type: property
+    params:
+      year:
+        type: int
+        min: 2000
+        max: 2099
+      month:
+        type: int
+        min: 1
+        max: 12
+      day:
+        type: int
+        min: 1
+        max: 31
+    returns:
+      type: string
+    description: "System date"
+
+  system_time:
+    getter: "SYSTem:TIME?"
+    setter: "SYSTem:TIME {hour},{minute},{second}"
+    type: property
+    params:
+      hour:
+        type: int
+        min: 0
+        max: 23
+      minute:
+        type: int
+        min: 0
+        max: 59
+      second:
+        type: int
+        min: 0
+        max: 60
+    returns:
+      type: string
+    description: "System time"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read event status register"
+
+  status_operation_condition:
+    scpi: "STATus:OPERation:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation condition register"
+
+  status_operation_event:
+    scpi: "STATus:OPERation:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read operation event register"
+
+  status_operation_enable:
+    getter: "STATus:OPERation:ENABle?"
+    setter: "STATus:OPERation:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Operation event enable register"
+
+  status_questionable_condition:
+    scpi: "STATus:QUEStionable:CONDition?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable condition register"
+
+  status_questionable_event:
+    scpi: "STATus:QUEStionable:EVENt?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable event register"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable event enable register"
+
+  status_preset:
+    scpi: "STATus:PRESet"
+    type: write
+    description: "Preset status registers"
+
+sequences:
+  measure_voltage_sweep:
+    description: "Measure DC voltage across a range with multiple samples"
+    params:
+      range:
+        type: float
+        unit: V
+        default: 10
+      resolution:
+        type: float
+        unit: V
+        default: 0.001
+      count:
+        type: int
+        default: 10
+    steps:
+      - command: configure_voltage_dc
+        args:
+          range: "{range}"
+          resolution: "{resolution}"
+      - command: sample_count
+        args:
+          count: "{count}"
+      - command: read
+        capture: result
+    returns: result
+
+  measure_resistance_fast:
+    description: "Fast resistance measurement with minimum integration time"
+    params:
+      range:
+        type: float
+        unit: Ohm
+        default: 1000
+    steps:
+      - command: configure_resistance_4wire
+        args:
+          range: "{range}"
+          resolution: "1"
+      - command: fresistance_nplc
+        args:
+          nplc: "0.02"
+      - command: read
+        capture: result
+    returns: result
+
+  measure_temperature_rtd:
+    description: "Measure temperature using 4-wire RTD"
+    params:
+      rtd_type:
+        type: int
+        default: 85
+    steps:
+      - command: configure_temperature
+        args:
+          transducer: "FRTD"
+          type: "{rtd_type}"
+          resolution: "0.001"
+      - command: read
+        capture: result
+    returns: result
+
+  continuous_monitoring:
+    description: "Continuous measurement with statistics"
+    params:
+      function:
+        type: string
+        default: "VOLTage:DC"
+      count:
+        type: int
+        default: 100
+    steps:
+      - command: sense_function
+        args:
+          function: "{function}"
+      - command: calculate_average_state
+        args:
+          state: "ON"
+      - command: sample_count
+        args:
+          count: "{count}"
+      - command: initiate
+      - scpi: "*WAI"
+      - command: calculate_average_all
+        capture: stats
+      - command: fetch
+        capture: readings
+    returns: stats
+
+status:
+  stb:
+    bit2: "Error Available"
+    bit3: "Questionable Summary"
+    bit4: "Message Available"
+    bit5: "Event Summary"
+    bit6: "Request Service"
+    bit7: "Operation Summary"
+  esr:
+    bit0: "Operation Complete"
+    bit2: "Query Error"
+    bit3: "Device Error"
+    bit4: "Execution Error"
+    bit5: "Command Error"
+    bit7: "Power On"

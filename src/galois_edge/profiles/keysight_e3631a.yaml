@@ -1,0 +1,757 @@
+instrument:
+  manufacturer: "Keysight Technologies"
+  model: "E3631A"
+  class: power_supply
+  description: "Triple Output DC Power Supply - +6V/5A, ±25V/1A, 80W total"
+
+identity:
+  query: "*IDN?"
+  pattern: "(HEWLETT-PACKARD|KEYSIGHT),E3631A"
+
+interfaces:
+  - type: gpib
+    default_address: 5
+  - type: serial
+    port: 9600
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # IEEE-488.2 Common Commands
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to power-on state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations finish"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 to output buffer when all operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass, non-zero=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait for all pending operations to complete"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger (requires TRIGger:SOURce BUS)"
+
+  save_state:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    description: "Save current state to memory location 1-3"
+
+  recall_state:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    description: "Recall state from memory location 1-3"
+
+  # Apply Command (simplified programming)
+  apply:
+    scpi: "APPLy {output}[,{voltage}[,{current}]]"
+    type: write
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    description: "Configure output voltage and current in one command"
+
+  apply_query:
+    scpi: "APPLy? [{output}]"
+    type: query
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+    returns:
+      type: string
+    description: "Query voltage and current settings for output"
+
+  # Instrument Selection
+  instrument_select:
+    getter: "INSTrument[:SELect]?"
+    setter: "INSTrument[:SELect] {output}"
+    type: property
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+    returns:
+      type: string
+    description: "Select active output for programming"
+
+  instrument_nselect:
+    getter: "INSTrument:NSELect?"
+    setter: "INSTrument:NSELect {number}"
+    type: property
+    params:
+      number:
+        type: int
+        min: 1
+        max: 3
+    returns:
+      type: int
+    description: "Select output by number (1=P6V, 2=P25V, 3=N25V)"
+
+  instrument_couple:
+    getter: "INSTrument:COUPle[:TRIGger]?"
+    setter: "INSTrument:COUPle[:TRIGger] {mode}"
+    type: property
+    params:
+      mode:
+        type: string
+    returns:
+      type: string
+    description: "Couple outputs for simultaneous triggering (ALL, NONE, or list)"
+
+  # Measurement Commands
+  measure_voltage:
+    scpi: "MEASure[:VOLTage][:DC]? [{output}]"
+    type: query
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+    returns:
+      type: float
+      unit: V
+    description: "Measure output voltage"
+    streamable: true
+
+  measure_current:
+    scpi: "MEASure:CURRent[:DC]? [{output}]"
+    type: query
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+    returns:
+      type: float
+      unit: A
+    description: "Measure output current"
+    streamable: true
+
+  # Output Control
+  output_state:
+    getter: "OUTPut[:STATe]?"
+    setter: "OUTPut[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Enable or disable all three outputs"
+
+  output_track:
+    getter: "OUTPut:TRACk[:STATe]?"
+    setter: "OUTPut:TRACk[:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Enable/disable tracking mode for ±25V supplies"
+
+  # Voltage Source Commands
+  voltage:
+    getter: "VOLTage[:LEVel][:IMMediate][:AMPLitude]?"
+    setter: "VOLTage[:LEVel][:IMMediate][:AMPLitude] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -25.75
+        max: 25.75
+    returns:
+      type: float
+      unit: V
+    description: "Set immediate voltage level for selected output"
+
+  voltage_triggered:
+    getter: "VOLTage[:LEVel]:TRIGgered[:AMPLitude]?"
+    setter: "VOLTage[:LEVel]:TRIGgered[:AMPLitude] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -25.75
+        max: 25.75
+    returns:
+      type: float
+      unit: V
+    description: "Set pending triggered voltage level"
+
+  voltage_min:
+    scpi: "VOLTage[:LEVel][:IMMediate][:AMPLitude]? MIN"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Query minimum programmable voltage"
+
+  voltage_max:
+    scpi: "VOLTage[:LEVel][:IMMediate][:AMPLitude]? MAX"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Query maximum programmable voltage"
+
+  # Current Source Commands
+  current:
+    getter: "CURRent[:LEVel][:IMMediate][:AMPLitude]?"
+    setter: "CURRent[:LEVel][:IMMediate][:AMPLitude] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 5.15
+    returns:
+      type: float
+      unit: A
+    description: "Set immediate current level for selected output"
+
+  current_triggered:
+    getter: "CURRent[:LEVel]:TRIGgered[:AMPLitude]?"
+    setter: "CURRent[:LEVel]:TRIGgered[:AMPLitude] {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 5.15
+    returns:
+      type: float
+      unit: A
+    description: "Set pending triggered current level"
+
+  current_min:
+    scpi: "CURRent[:LEVel][:IMMediate][:AMPLitude]? MIN"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Query minimum programmable current"
+
+  current_max:
+    scpi: "CURRent[:LEVel][:IMMediate][:AMPLitude]? MAX"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Query maximum programmable current"
+
+  # Triggering Commands
+  initiate:
+    scpi: "INITiate[:IMMediate]"
+    type: write
+    description: "Initiate trigger system"
+
+  trigger_delay:
+    getter: "TRIGger[:SEQuence]:DELay?"
+    setter: "TRIGger[:SEQuence]:DELay {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 0
+        max: 3600
+    returns:
+      type: float
+      unit: s
+    description: "Set delay between trigger and output change"
+
+  trigger_source:
+    getter: "TRIGger[:SEQuence]:SOURce?"
+    setter: "TRIGger[:SEQuence]:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["BUS", "IMM"]
+    returns:
+      type: string
+    description: "Select trigger source (BUS or immediate)"
+
+  # Display Commands
+  display_state:
+    getter: "DISPlay[:WINDow][:STATe]?"
+    setter: "DISPlay[:WINDow][:STATe] {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: bool
+    description: "Enable/disable front panel display"
+
+  display_text:
+    getter: "DISPlay[:WINDow]:TEXT[:DATA]?"
+    setter: "DISPlay[:WINDow]:TEXT[:DATA] \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Display text message on front panel (max 12 characters)"
+
+  display_text_clear:
+    scpi: "DISPlay[:WINDow]:TEXT:CLEar"
+    type: write
+    description: "Clear displayed text message"
+
+  # System Commands
+  system_beeper:
+    scpi: "SYSTem:BEEPer[:IMMediate]"
+    type: write
+    description: "Sound beeper once"
+
+  system_error:
+    scpi: "SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read one error from error queue"
+
+  system_version:
+    scpi: "SYSTem:VERSion?"
+    type: query
+    returns:
+      type: string
+    description: "Query SCPI version compliance"
+
+  system_local:
+    scpi: "SYSTem:LOCal"
+    type: write
+    description: "Return to local mode (RS-232 only)"
+
+  system_remote:
+    scpi: "SYSTem:REMote"
+    type: write
+    description: "Enter remote mode (RS-232 only)"
+
+  system_rwlock:
+    scpi: "SYSTem:RWLock"
+    type: write
+    description: "Enter remote mode with front panel locked (RS-232 only)"
+
+  # Calibration Commands
+  calibration_count:
+    scpi: "CALibration:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of times instrument has been calibrated"
+
+  calibration_current_data:
+    scpi: "CALibration:CURRent[:DATA] {value}"
+    type: write
+    params:
+      value:
+        type: float
+    description: "Enter current calibration value from external meter"
+
+  calibration_current_level:
+    scpi: "CALibration:CURRent:LEVel {level}"
+    type: write
+    params:
+      level:
+        type: enum
+        options: ["MIN", "MAX"]
+    description: "Select current calibration point"
+
+  calibration_voltage_data:
+    scpi: "CALibration:VOLTage[:DATA] {value}"
+    type: write
+    params:
+      value:
+        type: float
+    description: "Enter voltage calibration value from external meter"
+
+  calibration_voltage_level:
+    scpi: "CALibration:VOLTage:LEVel {level}"
+    type: write
+    params:
+      level:
+        type: enum
+        options: ["MIN", "MAX"]
+    description: "Select voltage calibration point"
+
+  calibration_secure_code:
+    scpi: "CALibration:SECure:CODE {code}"
+    type: write
+    params:
+      code:
+        type: string
+    description: "Set new calibration security code"
+
+  calibration_secure_state:
+    getter: "CALibration:SECure:STATe?"
+    setter: "CALibration:SECure:STATe {state},{code}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+      code:
+        type: string
+    returns:
+      type: bool
+    description: "Secure/unsecure calibration with code"
+
+  calibration_string:
+    getter: "CALibration:STRing?"
+    setter: "CALibration:STRing \"{text}\""
+    type: property
+    params:
+      text:
+        type: string
+    returns:
+      type: string
+    description: "Store/query calibration message (max 40 characters)"
+
+  # Status Reporting Commands
+  status_questionable:
+    scpi: "STATus:QUEStionable[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable status event register"
+
+  status_questionable_enable:
+    getter: "STATus:QUEStionable:ENABle?"
+    setter: "STATus:QUEStionable:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: "Questionable status enable register"
+
+  status_questionable_instrument:
+    scpi: "STATus:QUEStionable:INSTrument[:EVENt]?"
+    type: query
+    returns:
+      type: int
+    description: "Read questionable instrument event register"
+
+  status_questionable_instrument_enable:
+    getter: "STATus:QUEStionable:INSTrument:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ENABle {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Questionable instrument enable register"
+
+  status_questionable_isummary_event:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary{n}[:EVENt]?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 3
+    returns:
+      type: int
+    description: "Read questionable isummary event for output n"
+
+  status_questionable_isummary_condition:
+    scpi: "STATus:QUEStionable:INSTrument:ISUMmary{n}:CONDition?"
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 3
+    returns:
+      type: int
+    description: "Read CV/CC condition for output n (0=off, 1=CC, 2=CV)"
+
+  status_questionable_isummary_enable:
+    getter: "STATus:QUEStionable:INSTrument:ISUMmary{n}:ENABle?"
+    setter: "STATus:QUEStionable:INSTrument:ISUMmary{n}:ENABle {value}"
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 3
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Questionable isummary enable register for output n"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  power_on_status_clear:
+    getter: "*PSC?"
+    setter: "*PSC {state}"
+    type: property
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+    returns:
+      type: int
+    description: "Power-on status clear flag"
+
+sequences:
+  set_voltage_current:
+    description: "Set output voltage and current for selected output"
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    steps:
+      - command: instrument_select
+        args:
+          output: "{output}"
+      - command: voltage
+        args:
+          value: "{voltage}"
+      - command: current
+        args:
+          value: "{current}"
+      - command: output_state
+        args:
+          state: "ON"
+
+  measure_output:
+    description: "Measure voltage and current for specified output"
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+    steps:
+      - command: measure_voltage
+        args:
+          output: "{output}"
+        capture: voltage
+      - command: measure_current
+        args:
+          output: "{output}"
+        capture: current
+    returns: voltage
+
+  triggered_output:
+    description: "Set triggered voltage/current and initiate"
+    params:
+      output:
+        type: enum
+        options: ["P6V", "P25V", "N25V"]
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+      delay:
+        type: float
+        unit: s
+        default: 0
+    steps:
+      - command: instrument_select
+        args:
+          output: "{output}"
+      - command: voltage_triggered
+        args:
+          value: "{voltage}"
+      - command: current_triggered
+        args:
+          value: "{current}"
+      - command: trigger_delay
+        args:
+          value: "{delay}"
+      - command: trigger_source
+        args:
+          source: "BUS"
+      - command: output_state
+        args:
+          state: "ON"
+      - command: initiate
+      - command: trigger
+
+  setup_tracking:
+    description: "Configure ±25V supplies in tracking mode"
+    params:
+      voltage:
+        type: float
+        unit: V
+      current:
+        type: float
+        unit: A
+    steps:
+      - command: instrument_select
+        args:
+          output: "P25V"
+      - command: voltage
+        args:
+          value: "{voltage}"
+      - command: current
+        args:
+          value: "{current}"
+      - command: output_track
+        args:
+          state: "ON"
+      - command: output_state
+        args:
+          state: "ON"
+
+  save_configuration:
+    description: "Save current configuration to memory"
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    steps:
+      - command: save_state
+        args:
+          location: "{location}"
+
+  recall_configuration:
+    description: "Recall saved configuration from memory"
+    params:
+      location:
+        type: int
+        min: 1
+        max: 3
+    steps:
+      - command: recall_state
+        args:
+          location: "{location}"
+      - command: output_state
+        args:
+          state: "ON"
+
+status:
+  stb:
+    bit3: QUES
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

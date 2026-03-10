@@ -1,0 +1,629 @@
+instrument:
+  manufacturer: "Siglent"
+  model: "SDS Series"
+  class: oscilloscope
+  description: "Digital Storage Oscilloscope - Multiple models including SDS7000A, SDS6000 Pro, SDS6000A, SDS6000L, SDS5000X, SDS3000X HD, SDS2000X Plus, SDS2000X HD, SDS1000X HD, SDS800X HD"
+
+identity:
+  query: "*IDN?"
+  pattern: "Siglent.*SDS.*"
+
+interfaces:
+  - type: ethernet
+    port: 5025
+  - type: usb
+  - type: gpib
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set operation complete bit after all pending operations"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0 = pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger_frequency:
+    scpi: ":TRIGger:FREQuency?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query hardware frequency counter value"
+
+  trigger_mode:
+    getter: ":TRIGger:MODE?"
+    setter: ":TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SINGle", "NORMal", "AUTO", "FTRIG"]
+    returns:
+      type: string
+    description: "Set or query trigger mode"
+
+  trigger_run:
+    scpi: ":TRIGger:RUN"
+    type: write
+    description: "Set oscilloscope to run"
+
+  trigger_status:
+    scpi: ":TRIGger:STATus?"
+    type: query
+    returns:
+      type: string
+    description: "Query current state of trigger"
+
+  trigger_stop:
+    scpi: ":TRIGger:STOP"
+    type: write
+    description: "Stop oscilloscope acquisition"
+
+  trigger_type:
+    getter: ":TRIGger:TYPE?"
+    setter: ":TRIGger:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["EDGE", "PULSE", "SLOPe", "INTerval", "PATTern", "RUNT", "WINDow", "DROPout", "VIDeo", "QUALified", "NEDGe", "DELay", "SHOLd", "IIC", "SPI", "UART", "LIN", "CAN"]
+    returns:
+      type: string
+    description: "Set or query trigger type"
+
+  trigger_edge_coupling:
+    getter: ":TRIGger:EDGE:COUPling?"
+    setter: ":TRIGger:EDGE:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Set or query edge trigger coupling mode"
+
+  trigger_edge_holdoff_event:
+    getter: ":TRIGger:EDGE:HLDEVent?"
+    setter: ":TRIGger:EDGE:HLDEVent {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100000000
+    returns:
+      type: int
+    description: "Set or query number of holdoff events for edge trigger"
+
+  trigger_edge_holdoff_time:
+    getter: ":TRIGger:EDGE:HLDTime?"
+    setter: ":TRIGger:EDGE:HLDTime {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 8.00e-09
+        max: 3.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query holdoff time for edge trigger"
+
+  trigger_edge_holdoff:
+    getter: ":TRIGger:EDGE:HOLDoff?"
+    setter: ":TRIGger:EDGE:HOLDoff {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["OFF", "EVENts", "TIME"]
+    returns:
+      type: string
+    description: "Set or query holdoff type for edge trigger"
+
+  trigger_edge_holdoff_start:
+    getter: ":TRIGger:EDGE:HSTart?"
+    setter: ":TRIGger:EDGE:HSTart {start}"
+    type: property
+    params:
+      start:
+        type: enum
+        options: ["LAST_TRIG", "ACQ_START"]
+    returns:
+      type: string
+    description: "Set or query initial position of edge trigger holdoff"
+
+  trigger_edge_impedance:
+    getter: ":TRIGger:EDGE:IMPedance?"
+    setter: ":TRIGger:EDGE:IMPedance {ohm}"
+    type: property
+    params:
+      ohm:
+        type: enum
+        options: ["ONEMeg", "FIFTy"]
+    returns:
+      type: string
+    description: "Set or query edge trigger source impedance"
+
+  trigger_edge_level:
+    getter: ":TRIGger:EDGE:LEVel?"
+    setter: ":TRIGger:EDGE:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query trigger level for edge trigger"
+
+  trigger_edge_noise_reject:
+    getter: ":TRIGger:EDGE:NREJect?"
+    setter: ":TRIGger:EDGE:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Set or query noise rejection state"
+
+  trigger_edge_slope:
+    getter: ":TRIGger:EDGE:SLOPe?"
+    setter: ":TRIGger:EDGE:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISing", "FALLing", "ALTernate"]
+    returns:
+      type: string
+    description: "Set or query slope of edge trigger"
+
+  trigger_edge_source:
+    getter: ":TRIGger:EDGE:SOURce?"
+    setter: ":TRIGger:EDGE:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query trigger source for edge trigger"
+
+  trigger_slope_coupling:
+    getter: ":TRIGger:SLOPe:COUPling?"
+    setter: ":TRIGger:SLOPe:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Set or query slope trigger coupling mode"
+
+  trigger_slope_holdoff_event:
+    getter: ":TRIGger:SLOPe:HLDEVent?"
+    setter: ":TRIGger:SLOPe:HLDEVent {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100000000
+    returns:
+      type: int
+    description: "Set or query number of holdoff events for slope trigger"
+
+  trigger_slope_holdoff_time:
+    getter: ":TRIGger:SLOPe:HLDTime?"
+    setter: ":TRIGger:SLOPe:HLDTime {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 8.00e-09
+        max: 3.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query holdoff time for slope trigger"
+
+  trigger_slope_high_level:
+    getter: ":TRIGger:SLOPe:HLEVel?"
+    setter: ":TRIGger:SLOPe:HLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query high level for slope trigger"
+
+  trigger_slope_holdoff:
+    getter: ":TRIGger:SLOPe:HOLDoff?"
+    setter: ":TRIGger:SLOPe:HOLDoff {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["OFF", "EVENts", "TIME"]
+    returns:
+      type: string
+    description: "Set or query holdoff type for slope trigger"
+
+  trigger_slope_holdoff_start:
+    getter: ":TRIGger:SLOPe:HSTart?"
+    setter: ":TRIGger:SLOPe:HSTart {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LAST_TRIG", "ACQ_START"]
+    returns:
+      type: string
+    description: "Set or query initial position of slope trigger holdoff"
+
+  trigger_slope_limit:
+    getter: ":TRIGger:SLOPe:LIMit?"
+    setter: ":TRIGger:SLOPe:LIMit {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LESSthan", "GREATerthan", "INNer", "OUTer"]
+    returns:
+      type: string
+    description: "Set or query limit range type for slope trigger"
+
+  trigger_slope_low_level:
+    getter: ":TRIGger:SLOPe:LLEVel?"
+    setter: ":TRIGger:SLOPe:LLEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query low level for slope trigger"
+
+  trigger_slope_noise_reject:
+    getter: ":TRIGger:SLOPe:NREJect?"
+    setter: ":TRIGger:SLOPe:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Set or query noise rejection for slope trigger"
+
+  trigger_slope_slope:
+    getter: ":TRIGger:SLOPe:SLOPe?"
+    setter: ":TRIGger:SLOPe:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISing", "FALLing", "ALTernate"]
+    returns:
+      type: string
+    description: "Set or query slope of slope trigger"
+
+  trigger_slope_source:
+    getter: ":TRIGger:SLOPe:SOURce?"
+    setter: ":TRIGger:SLOPe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query trigger source for slope trigger"
+
+  trigger_slope_time_lower:
+    getter: ":TRIGger:SLOPe:TLOWer?"
+    setter: ":TRIGger:SLOPe:TLOWer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query lower time value for slope trigger limit"
+
+  trigger_slope_time_upper:
+    getter: ":TRIGger:SLOPe:TUPPer?"
+    setter: ":TRIGger:SLOPe:TUPPer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query upper time value for slope trigger limit"
+
+  trigger_pulse_coupling:
+    getter: ":TRIGger:PULSe:COUPling?"
+    setter: ":TRIGger:PULSe:COUPling {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["DC", "AC", "LFREJect", "HFREJect"]
+    returns:
+      type: string
+    description: "Set or query pulse trigger coupling mode"
+
+  trigger_pulse_holdoff_event:
+    getter: ":TRIGger:PULSe:HLDEVent?"
+    setter: ":TRIGger:PULSe:HLDEVent {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 100000000
+    returns:
+      type: int
+    description: "Set or query number of holdoff events for pulse trigger"
+
+  trigger_pulse_holdoff_time:
+    getter: ":TRIGger:PULSe:HLDTime?"
+    setter: ":TRIGger:PULSe:HLDTime {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 8.00e-09
+        max: 3.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query holdoff time for pulse trigger"
+
+  trigger_pulse_holdoff:
+    getter: ":TRIGger:PULSe:HOLDoff?"
+    setter: ":TRIGger:PULSe:HOLDoff {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["OFF", "EVENts", "TIME"]
+    returns:
+      type: string
+    description: "Set or query holdoff type for pulse trigger"
+
+  trigger_pulse_holdoff_start:
+    getter: ":TRIGger:PULSe:HSTart?"
+    setter: ":TRIGger:PULSe:HSTart {start}"
+    type: property
+    params:
+      start:
+        type: enum
+        options: ["LAST_TRIG", "ACQ_START"]
+    returns:
+      type: string
+    description: "Set or query initial position of pulse trigger holdoff"
+
+  trigger_pulse_level:
+    getter: ":TRIGger:PULSe:LEVel?"
+    setter: ":TRIGger:PULSe:LEVel {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Set or query trigger level for pulse trigger"
+
+  trigger_pulse_limit:
+    getter: ":TRIGger:PULSe:LIMit?"
+    setter: ":TRIGger:PULSe:LIMit {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["LESSthan", "GREATerthan", "INNer", "OUTer"]
+    returns:
+      type: string
+    description: "Set or query limit range type for pulse trigger"
+
+  trigger_pulse_noise_reject:
+    getter: ":TRIGger:PULSe:NREJect?"
+    setter: ":TRIGger:PULSe:NREJect {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "ON"]
+    returns:
+      type: string
+    description: "Set or query noise rejection for pulse trigger"
+
+  trigger_pulse_polarity:
+    getter: ":TRIGger:PULSe:POLarity?"
+    setter: ":TRIGger:PULSe:POLarity {polarity}"
+    type: property
+    params:
+      polarity:
+        type: enum
+        options: ["POSitive", "NEGative"]
+    returns:
+      type: string
+    description: "Set or query polarity for pulse trigger"
+
+  trigger_pulse_source:
+    getter: ":TRIGger:PULSe:SOURce?"
+    setter: ":TRIGger:PULSe:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: string
+    returns:
+      type: string
+    description: "Set or query trigger source for pulse trigger"
+
+  trigger_pulse_time_lower:
+    getter: ":TRIGger:PULSe:TLOWer?"
+    setter: ":TRIGger:PULSe:TLOWer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query lower time value for pulse trigger limit"
+
+  trigger_pulse_time_upper:
+    getter: ":TRIGger:PULSe:TUPPer?"
+    setter: ":TRIGger:PULSe:TUPPer {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: s
+        min: 2.00e-09
+        max: 2.00e+01
+    returns:
+      type: float
+      unit: s
+    description: "Set or query upper time value for pulse trigger limit"
+
+  decode_enable:
+    getter: ":DECode?"
+    setter: ":DECode {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+    returns:
+      type: string
+    description: "Enable or disable decode function"
+
+  decode_list:
+    getter: ":DECode:LIST?"
+    setter: ":DECode:LIST {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["OFF", "D1", "D2"]
+    returns:
+      type: string
+    description: "Enable or disable decode result list"
+
+  decode_list_line:
+    getter: ":DECode:LIST:LINE?"
+    setter: ":DECode:LIST:LINE {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 7
+    returns:
+      type: int
+    description: "Set or query number of lines displayed in decode list"
+
+  decode_list_scroll:
+    getter: ":DECode:LIST:SCRoll?"
+    setter: ":DECode:LIST:SCRoll {value}"
+    type: property
+    params:
+      value:
+        type: int
+    returns:
+      type: int
+    description: "Set or query selected line in decode list"
+
+  function_fft_display:
+    getter: ":FUNCtion:FFTDisplay?"
+    setter: ":FUNCtion:FFTDisplay {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["SPLit", "FULL", "EXCLusive"]
+    returns:
+      type: string
+    description: "Set or query FFT waveform display mode"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

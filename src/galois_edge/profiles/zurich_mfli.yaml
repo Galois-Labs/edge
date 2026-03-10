@@ -1,0 +1,1410 @@
+instrument:
+  manufacturer: "Zurich Instruments"
+  model: "MFLI"
+  class: lockin
+  description: "Lock-in Amplifier with optional Impedance Analyzer - DC to 5 MHz, 120 dB dynamic reserve"
+
+identity:
+  query: "*IDN?"
+  pattern: "Zurich Instruments.*MFLI.*"
+
+interfaces:
+  - type: usb
+  - type: ethernet
+    port: 8004
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: true
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear all event registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification string"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit in Standard Event Register after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 to output queue when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test and return result (0=pass, 1=fail)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands are executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 6
+    description: "Save present setup to memory location (0-6)"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 6
+    description: "Recall setup from memory location (0-6)"
+
+  system_preset:
+    scpi: ":SYST:PRES"
+    type: write
+    description: "Return to system preset defaults"
+
+  external_reference:
+    getter: ":SYST:EXTC?"
+    setter: ":SYST:EXTC {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["INT", "EXT", "0", "1"]
+        map:
+          "INT": 0
+          "EXT": 1
+          "0": 0
+          "1": 1
+    returns:
+      type: bool
+    description: "Enable/disable 10 MHz external reference clock"
+
+  shutdown:
+    scpi: ":SYST:SHUT"
+    type: write
+    description: "Shutdown the instrument operating system"
+
+  signal_input_range:
+    getter: ":SIGIN{channel}:RANG?"
+    setter: ":SIGIN{channel}:RANG {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      value:
+        type: float
+        unit: V
+        options: ["0.001", "0.003", "0.01", "0.03", "0.1", "0.3", "1.0", "3.0"]
+    returns:
+      type: float
+      unit: V
+    description: "Voltage input range (AC ranges: 1mV, 3mV, 10mV, 30mV, 100mV, 300mV, 1V, 3V)"
+
+  signal_input_ac_coupling:
+    getter: ":SIGIN{channel}:AC?"
+    setter: ":SIGIN{channel}:AC {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable AC coupling (1.6 Hz cutoff)"
+
+  signal_input_impedance:
+    getter: ":SIGIN{channel}:IMP?"
+    setter: ":SIGIN{channel}:IMP {mode}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      mode:
+        type: enum
+        options: ["50", "1M"]
+    returns:
+      type: string
+    description: "Input impedance: 50 Ohm or 10 MOhm (approx)"
+
+  signal_input_differential:
+    getter: ":SIGIN{channel}:DIFF?"
+    setter: ":SIGIN{channel}:DIFF {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable differential input mode"
+
+  signal_input_float:
+    getter: ":SIGIN{channel}:FLOA?"
+    setter: ":SIGIN{channel}:FLOA {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable floating ground mode"
+
+  signal_input_scaling:
+    getter: ":SIGIN{channel}:SCAL?"
+    setter: ":SIGIN{channel}:SCAL {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Input scaling factor to account for external amplifier gain"
+
+  current_input_range:
+    getter: ":CURRIN:RANG?"
+    setter: ":CURRIN:RANG {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: A
+        options: ["1e-9", "1e-8", "1e-7", "1e-6", "1e-5", "1e-4", "1e-3", "0.01"]
+    returns:
+      type: float
+      unit: A
+    description: "Current input range (1nA to 10mA)"
+
+  current_input_float:
+    getter: ":CURRIN:FLOA?"
+    setter: ":CURRIN:FLOA {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable floating ground mode for current input"
+
+  signal_output_on:
+    getter: ":SIGOUT{channel}:ON?"
+    setter: ":SIGOUT{channel}:ON {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable signal output"
+
+  signal_output_range:
+    getter: ":SIGOUT{channel}:RANG?"
+    setter: ":SIGOUT{channel}:RANG {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      value:
+        type: float
+        unit: V
+        options: ["0.01", "0.1", "1.0", "10.0"]
+    returns:
+      type: float
+      unit: V
+    description: "Signal output range (10mV, 100mV, 1V, 10V)"
+
+  signal_output_offset:
+    getter: ":SIGOUT{channel}:OFFS?"
+    setter: ":SIGOUT{channel}:OFFS {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DC offset voltage on signal output"
+
+  signal_output_amplitude:
+    getter: ":SIGOUT{channel}:AMPL{osc}?"
+    setter: ":SIGOUT{channel}:AMPL{osc} {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      osc:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Output amplitude for specified oscillator (Vrms)"
+
+  signal_output_enable_oscillator:
+    getter: ":SIGOUT{channel}:AMPL{osc}:EN?"
+    setter: ":SIGOUT{channel}:AMPL{osc}:EN {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+      osc:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable oscillator contribution to output"
+
+  oscillator_frequency:
+    getter: ":OSC{osc}:FREQ?"
+    setter: ":OSC{osc}:FREQ {value}"
+    type: property
+    params:
+      osc:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+        min: 0
+        max: 5000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Oscillator frequency (DC to 500 kHz base, 5 MHz with MF-F5M option)"
+
+  demodulator_rate:
+    getter: ":DEMOD{demod}:RATE?"
+    setter: ":DEMOD{demod}:RATE {value}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+        min: 1.83
+        max: 60000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Demodulator sampling rate (up to 60 MSa/s)"
+
+  demodulator_order:
+    getter: ":DEMOD{demod}:ORD?"
+    setter: ":DEMOD{demod}:ORD {order}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      order:
+        type: int
+        min: 1
+        max: 8
+    returns:
+      type: int
+    description: "Demodulator filter order (1-8, corresponding to 6-48 dB/oct)"
+
+  demodulator_timeconstant:
+    getter: ":DEMOD{demod}:TC?"
+    setter: ":DEMOD{demod}:TC {value}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: s
+        min: 3.37e-7
+        max: 83.0
+    returns:
+      type: float
+      unit: s
+    description: "Demodulator filter time constant (337 ns to 83 s)"
+
+  demodulator_bandwidth:
+    getter: ":DEMOD{demod}:BW?"
+    setter: ":DEMOD{demod}:BW {value}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+        min: 2.76e-4
+        max: 206000
+    returns:
+      type: float
+      unit: Hz
+    description: "Demodulator filter 3dB bandwidth (276 uHz to 206 kHz for 4th order)"
+
+  demodulator_phase:
+    getter: ":DEMOD{demod}:PHAS?"
+    setter: ":DEMOD{demod}:PHAS {value}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: deg
+        min: -180
+        max: 180
+    returns:
+      type: float
+      unit: deg
+    description: "Demodulator phase offset"
+
+  demodulator_harmonic:
+    getter: ":DEMOD{demod}:HARM?"
+    setter: ":DEMOD{demod}:HARM {value}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: int
+        min: 1
+        max: 1023
+    returns:
+      type: int
+    description: "Demodulator harmonic multiplier (1-1023)"
+
+  demodulator_sinc_enable:
+    getter: ":DEMOD{demod}:SINC?"
+    setter: ":DEMOD{demod}:SINC {state}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable sinc filter for omega suppression"
+
+  demodulator_oscillator:
+    getter: ":DEMOD{demod}:OSC?"
+    setter: ":DEMOD{demod}:OSC {osc}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      osc:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: int
+    description: "Select oscillator for demodulator reference"
+
+  demodulator_enable:
+    getter: ":DEMOD{demod}:ENAB?"
+    setter: ":DEMOD{demod}:ENAB {state}"
+    type: property
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable demodulator data streaming"
+
+  demodulator_sample_x:
+    scpi: ":DEMOD{demod}:SAMP:X?"
+    type: query
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Read demodulator X component"
+    streamable: true
+
+  demodulator_sample_y:
+    scpi: ":DEMOD{demod}:SAMP:Y?"
+    type: query
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Read demodulator Y component"
+    streamable: true
+
+  demodulator_sample_r:
+    scpi: ":DEMOD{demod}:SAMP:R?"
+    type: query
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: V
+    description: "Read demodulator amplitude (R)"
+    streamable: true
+
+  demodulator_sample_theta:
+    scpi: ":DEMOD{demod}:SAMP:THET?"
+    type: query
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: deg
+    description: "Read demodulator phase (Theta)"
+    streamable: true
+
+  demodulator_sample_frequency:
+    scpi: ":DEMOD{demod}:SAMP:FREQ?"
+    type: query
+    params:
+      demod:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: Hz
+    description: "Read demodulator reference frequency"
+    streamable: true
+
+  aux_output_offset:
+    getter: ":AUXOUT{channel}:OFFS?"
+    setter: ":AUXOUT{channel}:OFFS {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "Auxiliary output offset voltage"
+
+  aux_output_signal:
+    getter: ":AUXOUT{channel}:SIG?"
+    setter: ":AUXOUT{channel}:SIG {signal}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      signal:
+        type: enum
+        options: ["MAN", "DEMOD1X", "DEMOD1Y", "DEMOD1R", "DEMOD1THETA"]
+    returns:
+      type: string
+    description: "Select signal source for auxiliary output"
+
+  aux_output_scale:
+    getter: ":AUXOUT{channel}:SCAL?"
+    setter: ":AUXOUT{channel}:SCAL {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Auxiliary output scaling factor"
+
+  aux_input_sample:
+    scpi: ":AUXIN{channel}:SAMP?"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: float
+      unit: V
+    description: "Read auxiliary input voltage"
+    streamable: true
+
+  impedance_enable:
+    getter: ":IMP:ENAB?"
+    setter: ":IMP:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable impedance measurement"
+
+  impedance_frequency:
+    getter: ":IMP:FREQ?"
+    setter: ":IMP:FREQ {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 0
+        max: 5000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Impedance measurement frequency"
+
+  impedance_mode:
+    getter: ":IMP:MODE?"
+    setter: ":IMP:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["4T", "2T"]
+    returns:
+      type: string
+    description: "Impedance measurement mode (2-terminal or 4-terminal)"
+
+  impedance_model:
+    getter: ":IMP:MOD?"
+    setter: ":IMP:MOD {model}"
+    type: property
+    params:
+      model:
+        type: enum
+        options: ["RpCp", "RsCs", "RsLs", "GB", "DCs", "QCs", "DLs", "QLs", "RpLp", "DCp", "DIEL"]
+    returns:
+      type: string
+    description: "Circuit representation model"
+
+  impedance_amplitude:
+    getter: ":IMP:AMPL?"
+    setter: ":IMP:AMPL {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 2.1
+    returns:
+      type: float
+      unit: V
+    description: "Drive amplitude for impedance measurement (Vrms)"
+
+  impedance_bias_enable:
+    getter: ":IMP:BIAS:ENAB?"
+    setter: ":IMP:BIAS:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable DC bias voltage"
+
+  impedance_bias_voltage:
+    getter: ":IMP:BIAS:VOLT?"
+    setter: ":IMP:BIAS:VOLT {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: "DC bias voltage for impedance measurement"
+
+  impedance_autorange:
+    getter: ":IMP:AUTO:RANG?"
+    setter: ":IMP:AUTO:RANG {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MAN", "AUTO", "ZONE"]
+    returns:
+      type: string
+    description: "Impedance range control mode"
+
+  impedance_autooutput:
+    getter: ":IMP:AUTO:OUTP?"
+    setter: ":IMP:AUTO:OUTP {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic output amplitude control"
+
+  impedance_autobandwidth:
+    getter: ":IMP:AUTO:BW?"
+    setter: ":IMP:AUTO:BW {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable automatic bandwidth control"
+
+  impedance_measure_absz:
+    scpi: ":IMP:MEAS:ABSZ?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure absolute impedance |Z|"
+    streamable: true
+
+  impedance_measure_phasez:
+    scpi: ":IMP:MEAS:PHAS?"
+    type: query
+    returns:
+      type: float
+      unit: deg
+    description: "Measure impedance phase"
+    streamable: true
+
+  impedance_measure_realz:
+    scpi: ":IMP:MEAS:REAL?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure real part of impedance"
+    streamable: true
+
+  impedance_measure_imagz:
+    scpi: ":IMP:MEAS:IMAG?"
+    type: query
+    returns:
+      type: float
+      unit: Ohm
+    description: "Measure imaginary part of impedance"
+    streamable: true
+
+  impedance_measure_param1:
+    scpi: ":IMP:MEAS:PAR1?"
+    type: query
+    returns:
+      type: float
+    description: "Measure representation parameter 1"
+    streamable: true
+
+  impedance_measure_param2:
+    scpi: ":IMP:MEAS:PAR2?"
+    type: query
+    returns:
+      type: float
+    description: "Measure representation parameter 2"
+    streamable: true
+
+  trigger_input_level:
+    getter: ":TRIG{channel}:IN:LEV?"
+    setter: ":TRIG{channel}:IN:LEV {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Trigger input threshold level"
+
+  trigger_output_source:
+    getter: ":TRIG{channel}:OUT:SOUR?"
+    setter: ":TRIG{channel}:OUT:SOUR {source}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      source:
+        type: enum
+        options: ["OSC1", "OSC2", "OSC3", "OSC4", "TRIG1", "TRIG2", "MAN"]
+    returns:
+      type: string
+    description: "Select trigger output source"
+
+  pid_enable:
+    getter: ":PID{pid}:ENAB?"
+    setter: ":PID{pid}:ENAB {state}"
+    type: property
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable PID controller"
+
+  pid_setpoint:
+    getter: ":PID{pid}:SETP?"
+    setter: ":PID{pid}:SETP {value}"
+    type: property
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID controller setpoint value"
+
+  pid_p_gain:
+    getter: ":PID{pid}:P?"
+    setter: ":PID{pid}:P {value}"
+    type: property
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID proportional gain"
+
+  pid_i_gain:
+    getter: ":PID{pid}:I?"
+    setter: ":PID{pid}:I {value}"
+    type: property
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID integral gain"
+
+  pid_d_gain:
+    getter: ":PID{pid}:D?"
+    setter: ":PID{pid}:D {value}"
+    type: property
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+    returns:
+      type: float
+    description: "PID derivative gain"
+
+  pid_error:
+    scpi: ":PID{pid}:ERR?"
+    type: query
+    params:
+      pid:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+    description: "Read PID error value"
+    streamable: true
+
+  pll_enable:
+    getter: ":PLL{pll}:ENAB?"
+    setter: ":PLL{pll}:ENAB {state}"
+    type: property
+    params:
+      pll:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable phase-locked loop"
+
+  pll_center_frequency:
+    getter: ":PLL{pll}:CENT?"
+    setter: ":PLL{pll}:CENT {value}"
+    type: property
+    params:
+      pll:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "PLL center frequency"
+
+  pll_frequency_range:
+    getter: ":PLL{pll}:RANG?"
+    setter: ":PLL{pll}:RANG {value}"
+    type: property
+    params:
+      pll:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: "PLL frequency range (bandwidth)"
+
+  scope_length:
+    getter: ":SCOP:LENG?"
+    setter: ":SCOP:LENG {value}"
+    type: property
+    params:
+      value:
+        type: int
+        min: 1
+        max: 5000000
+    returns:
+      type: int
+    description: "Scope shot length in samples"
+
+  scope_sampling_rate:
+    getter: ":SCOP:RATE?"
+    setter: ":SCOP:RATE {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: Hz
+        min: 916
+        max: 60000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Scope sampling rate (916 Sa/s to 60 MSa/s)"
+
+  scope_trigger_enable:
+    getter: ":SCOP:TRIG:ENAB?"
+    setter: ":SCOP:TRIG:ENAB {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable scope triggering"
+
+  scope_trigger_level:
+    getter: ":SCOP:TRIG:LEV?"
+    setter: ":SCOP:TRIG:LEV {value}"
+    type: property
+    params:
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Scope trigger level"
+
+  scope_trigger_slope:
+    getter: ":SCOP:TRIG:SLOP?"
+    setter: ":SCOP:TRIG:SLOP {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["RISE", "FALL"]
+    returns:
+      type: string
+    description: "Scope trigger slope (rising or falling edge)"
+
+  scope_run:
+    scpi: ":SCOP:RUN"
+    type: write
+    description: "Start scope continuous acquisition"
+
+  scope_stop:
+    scpi: ":SCOP:STOP"
+    type: write
+    description: "Stop scope acquisition"
+
+  scope_single:
+    scpi: ":SCOP:SING"
+    type: write
+    description: "Acquire single scope shot"
+
+  boxcar_enable:
+    getter: ":BOXC{channel}:ENAB?"
+    setter: ":BOXC{channel}:ENAB {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable boxcar averager"
+
+  boxcar_start:
+    getter: ":BOXC{channel}:STAR?"
+    setter: ":BOXC{channel}:STAR {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Boxcar gate start position"
+
+  boxcar_width:
+    getter: ":BOXC{channel}:WIDT?"
+    setter: ":BOXC{channel}:WIDT {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+    returns:
+      type: float
+    description: "Boxcar gate width"
+
+  boxcar_periods:
+    getter: ":BOXC{channel}:PER?"
+    setter: ":BOXC{channel}:PER {value}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: "Number of periods to average"
+
+  boxcar_baseline_enable:
+    getter: ":BOXC{channel}:BASE:ENAB?"
+    setter: ":BOXC{channel}:BASE:ENAB {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable baseline subtraction"
+
+  error_query:
+    scpi: ":SYST:ERR?"
+    type: query
+    returns:
+      type: string
+    description: "Read and clear oldest error message"
+
+  error_count:
+    scpi: ":SYST:ERR:COUN?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of errors in queue"
+
+  status_byte:
+    scpi: "*STB?"
+    type: query
+    returns:
+      type: int
+    description: "Read status byte register"
+
+  event_status_register:
+    scpi: "*ESR?"
+    type: query
+    returns:
+      type: int
+    description: "Read and clear event status register"
+
+  service_request_enable:
+    getter: "*SRE?"
+    setter: "*SRE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Service request enable register"
+
+  event_status_enable:
+    getter: "*ESE?"
+    setter: "*ESE {mask}"
+    type: property
+    params:
+      mask:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: "Event status enable register"
+
+sequences:
+  measure_impedance:
+    description: "Configure and perform impedance measurement"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      amplitude:
+        type: float
+        unit: V
+        default: 0.1
+      mode:
+        type: string
+        default: "4T"
+    steps:
+      - command: impedance_mode
+        args:
+          mode: "{mode}"
+      - command: impedance_frequency
+        args:
+          value: "{frequency}"
+      - command: impedance_amplitude
+        args:
+          value: "{amplitude}"
+      - command: impedance_autorange
+        args:
+          mode: "AUTO"
+      - command: impedance_autobandwidth
+        args:
+          state: "ON"
+      - command: impedance_enable
+        args:
+          state: "ON"
+      - scpi: "*WAI"
+      - command: impedance_measure_absz
+        capture: abs_z
+      - command: impedance_measure_phasez
+        capture: phase_z
+    returns: abs_z
+
+  frequency_sweep:
+    description: "Perform frequency sweep measurement"
+    params:
+      start_freq:
+        type: float
+        unit: Hz
+      stop_freq:
+        type: float
+        unit: Hz
+      points:
+        type: int
+        default: 100
+      demod:
+        type: int
+        default: 1
+    steps:
+      - command: oscillator_frequency
+        args:
+          osc: "1"
+          value: "{start_freq}"
+      - command: signal_output_on
+        args:
+          channel: "1"
+          state: "ON"
+      - command: demodulator_enable
+        args:
+          demod: "{demod}"
+          state: "ON"
+      - scpi: "*WAI"
+    returns: null
+
+  configure_lockin:
+    description: "Configure basic lock-in amplifier measurement"
+    params:
+      frequency:
+        type: float
+        unit: Hz
+      amplitude:
+        type: float
+        unit: V
+      input_range:
+        type: float
+        unit: V
+        default: 1.0
+      time_constant:
+        type: float
+        unit: s
+        default: 0.01
+    steps:
+      - command: reset
+      - command: oscillator_frequency
+        args:
+          osc: "1"
+          value: "{frequency}"
+      - command: signal_output_amplitude
+        args:
+          channel: "1"
+          osc: "1"
+          value: "{amplitude}"
+      - command: signal_output_enable_oscillator
+        args:
+          channel: "1"
+          osc: "1"
+          state: "ON"
+      - command: signal_output_on
+        args:
+          channel: "1"
+          state: "ON"
+      - command: signal_input_range
+        args:
+          channel: "1"
+          value: "{input_range}"
+      - command: demodulator_timeconstant
+        args:
+          demod: "1"
+          value: "{time_constant}"
+      - command: demodulator_oscillator
+        args:
+          demod: "1"
+          osc: "1"
+      - command: demodulator_enable
+        args:
+          demod: "1"
+          state: "ON"
+      - scpi: "*WAI"
+
+  measure_demodulator:
+    description: "Read all demodulator output values"
+    params:
+      demod:
+        type: int
+        default: 1
+    steps:
+      - command: demodulator_sample_x
+        args:
+          demod: "{demod}"
+        capture: x
+      - command: demodulator_sample_y
+        args:
+          demod: "{demod}"
+        capture: y
+      - command: demodulator_sample_r
+        args:
+          demod: "{demod}"
+        capture: r
+      - command: demodulator_sample_theta
+        args:
+          demod: "{demod}"
+        capture: theta
+    returns: r
+
+  pid_control_setup:
+    description: "Configure PID controller"
+    params:
+      pid:
+        type: int
+        default: 1
+      setpoint:
+        type: float
+      p_gain:
+        type: float
+      i_gain:
+        type: float
+      d_gain:
+        type: float
+        default: 0.0
+    steps:
+      - command: pid_setpoint
+        args:
+          pid: "{pid}"
+          value: "{setpoint}"
+      - command: pid_p_gain
+        args:
+          pid: "{pid}"
+          value: "{p_gain}"
+      - command: pid_i_gain
+        args:
+          pid: "{pid}"
+          value: "{i_gain}"
+      - command: pid_d_gain
+        args:
+          pid: "{pid}"
+          value: "{d_gain}"
+      - command: pid_enable
+        args:
+          pid: "{pid}"
+          state: "ON"
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON
