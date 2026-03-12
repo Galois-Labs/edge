@@ -97,6 +97,41 @@ class CommandHandler:
                 scpi_cmd, instrument_id, timeout_ms, command_id, force_query
             )
 
+    def execute_binary_query(
+        self,
+        scpi_cmd: str,
+        instrument_id: str,
+        datatype: str = 'd',
+        is_big_endian: bool = False,
+        timeout_ms: int = DEFAULT_TIMEOUT_MS,
+    ) -> Dict[str, Any]:
+        """Execute a SCPI query that returns IEEE 488.2 binary block data.
+
+        Uses the same per-instrument locking as ``execute_command()``.
+
+        Args:
+            scpi_cmd: The SCPI query string (e.g. ``":WAV:DATA?"``).
+            instrument_id: Target instrument identifier (VISA address).
+            datatype: Format character for ``struct``: ``'d'`` = float64,
+                ``'f'`` = float32, ``'h'`` = int16, etc.
+            is_big_endian: If True, data is big-endian.
+            timeout_ms: Maximum time (in ms) to wait.
+
+        Returns:
+            A dict with keys:
+
+            * ``success`` (bool) -- whether the query succeeded.
+            * ``data`` (list) -- the decoded numeric values, or ``[]``
+              on failure.
+            * ``error`` (str) -- an error message, or empty on success.
+            * ``execution_time_ms`` (float) -- wall-clock time spent.
+        """
+        lock = self._get_lock(instrument_id)
+        with lock:
+            return self._execute_binary_locked(
+                scpi_cmd, instrument_id, datatype, is_big_endian, timeout_ms,
+            )
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -167,6 +202,79 @@ class CommandHandler:
             return self._error_result(
                 f"Command error: {exc}", start
             )
+
+    def _execute_binary_locked(
+        self,
+        scpi_cmd: str,
+        instrument_id: str,
+        datatype: str,
+        is_big_endian: bool,
+        timeout_ms: int,
+    ) -> Dict[str, Any]:
+        """Run a binary query while holding the per-instrument lock."""
+        logger.info(
+            "Binary query '%s' on %s (dtype=%s, big_endian=%s, timeout=%dms)",
+            scpi_cmd, instrument_id, datatype, is_big_endian, timeout_ms,
+        )
+
+        start = time.monotonic()
+
+        try:
+            # Ensure the instrument is connected.
+            if not self._instruments.is_connected(instrument_id):
+                connected = self._instruments.connect(
+                    instrument_id, timeout=timeout_ms
+                )
+                if not connected:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": f"Cannot connect to instrument: {instrument_id}",
+                        "execution_time_ms": round(
+                            (time.monotonic() - start) * 1000, 2
+                        ),
+                    }
+
+            data = self._instruments.query_binary_values(
+                instrument_id,
+                scpi_cmd,
+                datatype=datatype,
+                is_big_endian=is_big_endian,
+                timeout_ms=timeout_ms,
+            )
+
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            logger.info(
+                "Binary query completed in %.1fms: %d values",
+                elapsed_ms, len(data),
+            )
+
+            return {
+                "success": True,
+                "data": data,
+                "error": "",
+                "execution_time_ms": round(elapsed_ms, 2),
+            }
+
+        except TimeoutError as exc:
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            logger.error("Binary query timeout after %dms: %s", timeout_ms, exc)
+            return {
+                "success": False,
+                "data": [],
+                "error": f"Timeout after {timeout_ms}ms: {exc}",
+                "execution_time_ms": round(elapsed_ms, 2),
+            }
+
+        except Exception as exc:
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            logger.error("Binary query error: %s", exc)
+            return {
+                "success": False,
+                "data": [],
+                "error": f"Binary query error: {exc}",
+                "execution_time_ms": round(elapsed_ms, 2),
+            }
 
     def _get_lock(self, instrument_id: str) -> threading.Lock:
         """Return (or create) a per-instrument lock."""

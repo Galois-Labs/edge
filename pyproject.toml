@@ -33,8 +33,21 @@ streaming = [
     "pyzmq>=25.0.0",
     "msgpack>=1.0.0",
 ]
+# SDK instrument optional dependencies
+ocean-optics = [
+    "seabreeze>=2.0.0",
+]
+ni-daq = [
+    "nidaqmx>=0.9.0",
+]
+qd-ppms = [
+    "MultiPyVu>=1.0.0; sys_platform == 'win32'",
+]
+digitizers = [
+    "numpy>=1.20.0",
+]
 all = [
-    "galois-edge[gpib,usb,discovery,streaming]",
+    "galois-edge[gpib,usb,discovery,streaming,ocean-optics,ni-daq,qd-ppms,digitizers]",
 ]
 dev = [
     "pytest>=7.0.0",

@@ -112,6 +112,7 @@ class EdgeDaemon:
             gpib_enabled=self._cfg.gpib_enabled,
             gpib_scan_on_init=False,  # defer GPIB scan to background
             lan_instruments=self._cfg.lan_instruments,
+            include_serial_ports=self._cfg.include_serial_ports,
         )
 
         # Quick resource discovery (non-GPIB transports -- fast)
@@ -120,15 +121,15 @@ class EdgeDaemon:
             "Initial resource discovery: %d instrument(s)", len(resources)
         )
 
-        # 2. Load profiles and match to instruments
+        # 2. Initialise SDK executor (before profile matching so connect works)
+        self._sdk_executor = SDKExecutor(self._instrument_manager)
+
+        # 3. Load profiles and match to instruments
         self._capability_manager = CapabilityManager()
         self._load_profiles()
 
-        # 3. Initialise command handler
+        # 4. Initialise command handler
         self._command_handler = CommandHandler(self._instrument_manager)
-
-        # 4. Initialise SDK executor
-        self._sdk_executor = SDKExecutor(self._instrument_manager)
 
         # 5. Start gRPC server
         self._grpc_server = GRPCServer(
@@ -201,11 +202,24 @@ class EdgeDaemon:
         if self._grpc_server is not None:
             await self._grpc_server.stop()
 
-        # 4. Disconnect SDK clients
+        # 4. Send cleanup commands for all registered instruments
+        if self._capability_manager and self._command_handler:
+            for inst_id, caps in self._capability_manager.all_instruments.items():
+                if caps.has_profile and caps.profile.settings.cleanup_commands:
+                    for cmd in caps.profile.settings.cleanup_commands:
+                        try:
+                            self._command_handler.execute_command(
+                                cmd, inst_id,
+                                timeout_ms=caps.profile.settings.timeout_ms,
+                            )
+                        except Exception:
+                            pass  # Best-effort on shutdown
+
+        # 5. Disconnect SDK clients
         if self._sdk_executor is not None:
             self._sdk_executor.disconnect_all()
 
-        # 5. Disconnect all instruments
+        # 6. Disconnect all instruments
         if self._instrument_manager is not None:
             self._instrument_manager.disconnect_all()
 
@@ -247,6 +261,24 @@ class EdgeDaemon:
         for visa_addr in self._instrument_manager.list_resources():
             self._try_match_profile(visa_addr)
 
+    def _find_serial_config(self, visa_addr: str):
+        """Find a serial InterfaceConfig for an ASRL address from loaded profiles.
+
+        Scans all loaded profiles for a serial interface whose baud_rate
+        or other serial fields are set.  Returns the first matching
+        InterfaceConfig, or None.
+        """
+        if not visa_addr.startswith("ASRL"):
+            return None
+        if self._profile_loader is None:
+            return None
+        profiles = getattr(self._profile_loader, "profiles", {})
+        for profile in profiles.values():
+            for iface in profile.interfaces:
+                if iface.type == "serial" and iface.baud_rate is not None:
+                    return iface
+        return None
+
     def _try_match_profile(self, visa_addr: str) -> None:
         """Attempt to connect, identify, and match a profile."""
         if self._instrument_manager is None:
@@ -257,8 +289,11 @@ class EdgeDaemon:
             return
 
         try:
+            # For ASRL addresses, look up a serial config to apply
+            serial_config = self._find_serial_config(visa_addr)
             connected = self._instrument_manager.connect(
                 visa_addr, max_attempts=3, retry_delay=2.0,
+                serial_config=serial_config,
             )
             if not connected:
                 return
@@ -269,12 +304,48 @@ class EdgeDaemon:
             # Find matching profile
             profile = self._profile_loader.match_instrument(idn) if idn else None
 
+            # Re-apply serial settings from the *matched* profile if it
+            # differs from the initial guess (e.g. different baud rate).
+            if profile and visa_addr.startswith("ASRL"):
+                matched_serial = None
+                for iface in profile.interfaces:
+                    if iface.type == "serial":
+                        matched_serial = iface
+                        break
+                if matched_serial and matched_serial is not serial_config:
+                    resource = self._instrument_manager.get_instrument(canon)
+                    if resource is not None:
+                        InstrumentManager._apply_serial_settings(
+                            resource, matched_serial,
+                        )
+
             self._capability_manager.register_instrument(
                 instrument_id=canon,
                 visa_address=canon,
                 idn_response=idn or "",
                 profile=profile,
             )
+
+            # Connect SDK if profile has SDK config
+            if profile and profile.sdk and profile.sdk.import_path and self._sdk_executor:
+                try:
+                    runtime_args = {"address": canon}
+                    self._sdk_executor.connect(canon, profile.sdk, runtime_args)
+                except Exception as exc:
+                    logger.warning("SDK connect failed for %s: %s", canon, exc)
+
+            # Send init commands if profile defines them
+            if profile and profile.settings.init_commands and self._command_handler:
+                for cmd in profile.settings.init_commands:
+                    try:
+                        self._command_handler.execute_command(
+                            cmd, canon, timeout_ms=profile.settings.timeout_ms
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Init command '%s' failed for %s: %s",
+                            cmd, canon, exc,
+                        )
 
             if profile is not None:
                 logger.info(

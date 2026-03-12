@@ -35,6 +35,9 @@ const (
 	EdgeDaemonService_Heartbeat_FullMethodName         = "/galois.edge.v1.EdgeDaemonService/Heartbeat"
 	EdgeDaemonService_GetWebcamSnapshot_FullMethodName = "/galois.edge.v1.EdgeDaemonService/GetWebcamSnapshot"
 	EdgeDaemonService_ProxySDKCall_FullMethodName      = "/galois.edge.v1.EdgeDaemonService/ProxySDKCall"
+	EdgeDaemonService_StartSweep_FullMethodName        = "/galois.edge.v1.EdgeDaemonService/StartSweep"
+	EdgeDaemonService_GetSweepStatus_FullMethodName    = "/galois.edge.v1.EdgeDaemonService/GetSweepStatus"
+	EdgeDaemonService_StopSweep_FullMethodName         = "/galois.edge.v1.EdgeDaemonService/StopSweep"
 )
 
 // EdgeDaemonServiceClient is the client API for EdgeDaemonService service.
@@ -80,6 +83,13 @@ type EdgeDaemonServiceClient interface {
 	// Used by the backend to relay calls from pyvisa-galois when an instrument
 	// has no YAML profile or when the researcher needs the full SDK surface.
 	ProxySDKCall(ctx context.Context, in *ProxySDKCallRequest, opts ...grpc.CallOption) (*ProxySDKCallResponse, error)
+	// StartSweep begins a long-running sweep/ramp on the edge daemon.
+	// The sweep runs autonomously even if the network drops.
+	StartSweep(ctx context.Context, in *StartSweepRequest, opts ...grpc.CallOption) (*StartSweepResponse, error)
+	// GetSweepStatus polls the current state of an active sweep.
+	GetSweepStatus(ctx context.Context, in *GetSweepStatusRequest, opts ...grpc.CallOption) (*SweepStatusResponse, error)
+	// StopSweep aborts or holds an active sweep.
+	StopSweep(ctx context.Context, in *StopSweepRequest, opts ...grpc.CallOption) (*StopSweepResponse, error)
 }
 
 type edgeDaemonServiceClient struct {
@@ -262,6 +272,36 @@ func (c *edgeDaemonServiceClient) ProxySDKCall(ctx context.Context, in *ProxySDK
 	return out, nil
 }
 
+func (c *edgeDaemonServiceClient) StartSweep(ctx context.Context, in *StartSweepRequest, opts ...grpc.CallOption) (*StartSweepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartSweepResponse)
+	err := c.cc.Invoke(ctx, EdgeDaemonService_StartSweep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *edgeDaemonServiceClient) GetSweepStatus(ctx context.Context, in *GetSweepStatusRequest, opts ...grpc.CallOption) (*SweepStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SweepStatusResponse)
+	err := c.cc.Invoke(ctx, EdgeDaemonService_GetSweepStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *edgeDaemonServiceClient) StopSweep(ctx context.Context, in *StopSweepRequest, opts ...grpc.CallOption) (*StopSweepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StopSweepResponse)
+	err := c.cc.Invoke(ctx, EdgeDaemonService_StopSweep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EdgeDaemonServiceServer is the server API for EdgeDaemonService service.
 // All implementations must embed UnimplementedEdgeDaemonServiceServer
 // for forward compatibility.
@@ -305,6 +345,13 @@ type EdgeDaemonServiceServer interface {
 	// Used by the backend to relay calls from pyvisa-galois when an instrument
 	// has no YAML profile or when the researcher needs the full SDK surface.
 	ProxySDKCall(context.Context, *ProxySDKCallRequest) (*ProxySDKCallResponse, error)
+	// StartSweep begins a long-running sweep/ramp on the edge daemon.
+	// The sweep runs autonomously even if the network drops.
+	StartSweep(context.Context, *StartSweepRequest) (*StartSweepResponse, error)
+	// GetSweepStatus polls the current state of an active sweep.
+	GetSweepStatus(context.Context, *GetSweepStatusRequest) (*SweepStatusResponse, error)
+	// StopSweep aborts or holds an active sweep.
+	StopSweep(context.Context, *StopSweepRequest) (*StopSweepResponse, error)
 	mustEmbedUnimplementedEdgeDaemonServiceServer()
 }
 
@@ -362,6 +409,15 @@ func (UnimplementedEdgeDaemonServiceServer) GetWebcamSnapshot(context.Context, *
 }
 func (UnimplementedEdgeDaemonServiceServer) ProxySDKCall(context.Context, *ProxySDKCallRequest) (*ProxySDKCallResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProxySDKCall not implemented")
+}
+func (UnimplementedEdgeDaemonServiceServer) StartSweep(context.Context, *StartSweepRequest) (*StartSweepResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartSweep not implemented")
+}
+func (UnimplementedEdgeDaemonServiceServer) GetSweepStatus(context.Context, *GetSweepStatusRequest) (*SweepStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSweepStatus not implemented")
+}
+func (UnimplementedEdgeDaemonServiceServer) StopSweep(context.Context, *StopSweepRequest) (*StopSweepResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StopSweep not implemented")
 }
 func (UnimplementedEdgeDaemonServiceServer) mustEmbedUnimplementedEdgeDaemonServiceServer() {}
 func (UnimplementedEdgeDaemonServiceServer) testEmbeddedByValue()                           {}
@@ -654,6 +710,60 @@ func _EdgeDaemonService_ProxySDKCall_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EdgeDaemonService_StartSweep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartSweepRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EdgeDaemonServiceServer).StartSweep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EdgeDaemonService_StartSweep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EdgeDaemonServiceServer).StartSweep(ctx, req.(*StartSweepRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EdgeDaemonService_GetSweepStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSweepStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EdgeDaemonServiceServer).GetSweepStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EdgeDaemonService_GetSweepStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EdgeDaemonServiceServer).GetSweepStatus(ctx, req.(*GetSweepStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EdgeDaemonService_StopSweep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopSweepRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EdgeDaemonServiceServer).StopSweep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EdgeDaemonService_StopSweep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EdgeDaemonServiceServer).StopSweep(ctx, req.(*StopSweepRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EdgeDaemonService_ServiceDesc is the grpc.ServiceDesc for EdgeDaemonService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -716,6 +826,18 @@ var EdgeDaemonService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ProxySDKCall",
 			Handler:    _EdgeDaemonService_ProxySDKCall_Handler,
+		},
+		{
+			MethodName: "StartSweep",
+			Handler:    _EdgeDaemonService_StartSweep_Handler,
+		},
+		{
+			MethodName: "GetSweepStatus",
+			Handler:    _EdgeDaemonService_GetSweepStatus_Handler,
+		},
+		{
+			MethodName: "StopSweep",
+			Handler:    _EdgeDaemonService_StopSweep_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

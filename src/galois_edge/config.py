@@ -94,6 +94,11 @@ class Config:
         )
     )
 
+    # --- Serial ports ---
+    include_serial_ports: bool = field(
+        default_factory=lambda: _bool_env("INCLUDE_SERIAL_PORTS", False)
+    )
+
     # --- LAN instruments ---
     lan_instruments: str = field(
         default_factory=lambda: _str_env("LAN_INSTRUMENTS", "")

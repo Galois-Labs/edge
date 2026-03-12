@@ -318,6 +318,7 @@ class InstrumentManager:
         timeout: int = 5000,
         max_attempts: int = 1,
         retry_delay: float = 2.0,
+        serial_config: Optional[object] = None,
     ) -> Optional[str]:
         """Connect to an instrument by VISA address.
 
@@ -333,6 +334,10 @@ class InstrumentManager:
             Number of connection attempts (for busy VISA resources).
         retry_delay:
             Seconds between retry attempts.
+        serial_config:
+            Optional ``InterfaceConfig`` with serial settings (baud_rate,
+            parity, data_bits, stop_bits) to apply after opening an
+            ``ASRL`` resource.
 
         Returns
         -------
@@ -377,6 +382,9 @@ class InstrumentManager:
                 if is_tcpip_socket_resource(visa_address):
                     instrument.read_termination = "\n"
                     instrument.write_termination = "\n"
+                # Apply serial settings for ASRL resources
+                if visa_address.startswith("ASRL") and serial_config is not None:
+                    self._apply_serial_settings(instrument, serial_config)
                 self._instruments[visa_address] = instrument
                 logger.info("Connected to VISA instrument: %s", visa_address)
                 return visa_address
@@ -396,6 +404,62 @@ class InstrumentManager:
                     logger.error("Failed to connect to %s: %s", visa_address, exc)
 
         return None
+
+    @staticmethod
+    def _apply_serial_settings(resource: object, serial_config: object) -> None:
+        """Apply serial communication settings to a VISA resource.
+
+        Parameters
+        ----------
+        resource:
+            An opened ``pyvisa.Resource`` for an ASRL address.
+        serial_config:
+            An ``InterfaceConfig`` instance with optional serial fields
+            (baud_rate, parity, data_bits, stop_bits).
+        """
+        if getattr(serial_config, "baud_rate", None) is not None:
+            resource.baud_rate = serial_config.baud_rate
+            logger.debug("Serial baud_rate set to %d", serial_config.baud_rate)
+
+        parity_val = getattr(serial_config, "parity", None)
+        if parity_val is not None:
+            try:
+                import pyvisa.constants as vi_const
+                parity_map = {
+                    "none": vi_const.Parity.none,
+                    "even": vi_const.Parity.even,
+                    "odd": vi_const.Parity.odd,
+                }
+                mapped = parity_map.get(parity_val.lower())
+                if mapped is not None:
+                    resource.parity = mapped
+                    logger.debug("Serial parity set to %s", parity_val)
+                else:
+                    logger.warning("Unknown parity value: %s", parity_val)
+            except ImportError:
+                logger.warning("pyvisa.constants not available; cannot set parity")
+
+        if getattr(serial_config, "data_bits", None) is not None:
+            resource.data_bits = serial_config.data_bits
+            logger.debug("Serial data_bits set to %d", serial_config.data_bits)
+
+        stop_val = getattr(serial_config, "stop_bits", None)
+        if stop_val is not None:
+            try:
+                import pyvisa.constants as vi_const
+                stop_map = {
+                    1: vi_const.StopBits.one,
+                    1.5: vi_const.StopBits.one_and_a_half,
+                    2: vi_const.StopBits.two,
+                }
+                mapped = stop_map.get(stop_val)
+                if mapped is not None:
+                    resource.stop_bits = mapped
+                    logger.debug("Serial stop_bits set to %s", stop_val)
+                else:
+                    logger.warning("Unknown stop_bits value: %s", stop_val)
+            except ImportError:
+                logger.warning("pyvisa.constants not available; cannot set stop_bits")
 
     def disconnect(self, instrument_id: str) -> None:
         """Disconnect from an instrument."""
@@ -562,6 +626,77 @@ class InstrumentManager:
         if self._is_usb(instrument_id):
             return self._usb.identify(instrument_id)
         return self.query(instrument_id, "*IDN?")
+
+    def query_binary_values(
+        self,
+        instrument_id: str,
+        command: str,
+        datatype: str = 'd',  # 'd' = float64, 'f' = float32, 'h' = int16
+        is_big_endian: bool = False,
+        container: type = list,
+        timeout_ms: Optional[int] = None,
+    ) -> list:
+        """Send a query and read the response as IEEE 488.2 binary block data.
+
+        Uses pyvisa's query_binary_values() which handles the #N header parsing.
+
+        Only supported for PyVISA instruments; GPIB and raw USB instruments
+        will raise ValueError.
+
+        Parameters
+        ----------
+        instrument_id:
+            VISA resource string identifying the instrument.
+        command:
+            SCPI query command (e.g. ``":WAV:DATA?"``).
+        datatype:
+            Format character for ``struct``: ``'d'`` = float64,
+            ``'f'`` = float32, ``'h'`` = int16, etc.
+        is_big_endian:
+            If True, data is big-endian; otherwise little-endian.
+        container:
+            Container type for the result (default ``list``).
+        timeout_ms:
+            Optional per-call timeout override in milliseconds.
+
+        Returns
+        -------
+        list
+            The decoded numeric values.
+
+        Raises
+        ------
+        ValueError
+            If the instrument is not connected or the backend does not
+            support binary queries.
+        """
+        if self._is_gpib(instrument_id):
+            raise ValueError(
+                f"Binary queries not supported for GPIB instrument: {instrument_id}"
+            )
+        if self._is_usb(instrument_id):
+            raise ValueError(
+                f"Binary queries not supported for raw USB instrument: {instrument_id}"
+            )
+
+        resource = self._instruments.get(instrument_id)
+        if resource is None:
+            raise ValueError(f"Instrument not connected: {instrument_id}")
+
+        if timeout_ms is not None:
+            original_timeout = resource.timeout
+            resource.timeout = timeout_ms
+
+        try:
+            return resource.query_binary_values(
+                command,
+                datatype=datatype,
+                is_big_endian=is_big_endian,
+                container=container,
+            )
+        finally:
+            if timeout_ms is not None:
+                resource.timeout = original_timeout
 
     def read_binary(self, instrument_id: str, num_bytes: int) -> bytes:
         """Read raw binary data from an instrument.

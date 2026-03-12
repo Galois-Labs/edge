@@ -119,6 +119,21 @@ class EdgeDaemonServiceStub(object):
                 request_serializer=edge_dot_v1_dot_edge__pb2.ProxySDKCallRequest.SerializeToString,
                 response_deserializer=edge_dot_v1_dot_edge__pb2.ProxySDKCallResponse.FromString,
                 _registered_method=True)
+        self.StartSweep = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/StartSweep',
+                request_serializer=edge_dot_v1_dot_edge__pb2.StartSweepRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.StartSweepResponse.FromString,
+                _registered_method=True)
+        self.GetSweepStatus = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/GetSweepStatus',
+                request_serializer=edge_dot_v1_dot_edge__pb2.GetSweepStatusRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.SweepStatusResponse.FromString,
+                _registered_method=True)
+        self.StopSweep = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/StopSweep',
+                request_serializer=edge_dot_v1_dot_edge__pb2.StopSweepRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.StopSweepResponse.FromString,
+                _registered_method=True)
 
 
 class EdgeDaemonServiceServicer(object):
@@ -257,6 +272,30 @@ class EdgeDaemonServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def StartSweep(self, request, context):
+        """--- Sweep / Ramp (safety-critical for magnets, temperature controllers) --
+
+        StartSweep begins a long-running sweep/ramp on the edge daemon.
+        The sweep runs autonomously even if the network drops.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSweepStatus(self, request, context):
+        """GetSweepStatus polls the current state of an active sweep.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StopSweep(self, request, context):
+        """StopSweep aborts or holds an active sweep.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_EdgeDaemonServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -339,6 +378,21 @@ def add_EdgeDaemonServiceServicer_to_server(servicer, server):
                     servicer.ProxySDKCall,
                     request_deserializer=edge_dot_v1_dot_edge__pb2.ProxySDKCallRequest.FromString,
                     response_serializer=edge_dot_v1_dot_edge__pb2.ProxySDKCallResponse.SerializeToString,
+            ),
+            'StartSweep': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartSweep,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.StartSweepRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.StartSweepResponse.SerializeToString,
+            ),
+            'GetSweepStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSweepStatus,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.GetSweepStatusRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.SweepStatusResponse.SerializeToString,
+            ),
+            'StopSweep': grpc.unary_unary_rpc_method_handler(
+                    servicer.StopSweep,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.StopSweepRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.StopSweepResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -778,6 +832,87 @@ class EdgeDaemonService(object):
             '/galois.edge.v1.EdgeDaemonService/ProxySDKCall',
             edge_dot_v1_dot_edge__pb2.ProxySDKCallRequest.SerializeToString,
             edge_dot_v1_dot_edge__pb2.ProxySDKCallResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StartSweep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/StartSweep',
+            edge_dot_v1_dot_edge__pb2.StartSweepRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.StartSweepResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSweepStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/GetSweepStatus',
+            edge_dot_v1_dot_edge__pb2.GetSweepStatusRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.SweepStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StopSweep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/StopSweep',
+            edge_dot_v1_dot_edge__pb2.StopSweepRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.StopSweepResponse.FromString,
             options,
             channel_credentials,
             insecure,
