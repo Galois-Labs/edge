@@ -14,7 +14,7 @@ identity:
   pattern: "Triton.*Triton"
 
 interfaces:
-  - type: gpib
+  - type: ethernet
 
 settings:
   timeout_ms: 5000
@@ -58,110 +58,187 @@ commands:
   t1:
     scpi: "READ:DEV:T1:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T1"
   t2:
     scpi: "READ:DEV:T2:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T2"
   t3:
     scpi: "READ:DEV:T3:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T3"
   t4:
     scpi: "READ:DEV:T4:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T4"
   t5:
     scpi: "READ:DEV:T5:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T5"
   t6:
     scpi: "READ:DEV:T6:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T6"
   t7:
     scpi: "READ:DEV:T7:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T7"
   t8:
     scpi: "READ:DEV:T8:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T8"
   t9:
     scpi: "READ:DEV:T9:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T9"
   t10:
     scpi: "READ:DEV:T10:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T10"
   t11:
     scpi: "READ:DEV:T11:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T11"
   t12:
     scpi: "READ:DEV:T12:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T12"
   t13:
     scpi: "READ:DEV:T13:TEMP:SIG:TEMP"
     type: query
+    force_query: true
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "T13"
   controlloop:
-    getter: "READ:DEV:T<c>:TEMP:LOOP:MODE"
-    setter: "SET:DEV:T<c>:TEMP:LOOP:MODE:{value}"
+    getter: "READ:DEV:T{channel}:TEMP:LOOP:MODE"
+    setter: "SET:DEV:T{channel}:TEMP:LOOP:MODE:{value}"
     type: property
+    force_query: true
     params:
+      channel:
+        type: string
+        description: "Temperature channel (e.g., 5, 8)"
       value:
         type: enum
         options: ["ON", "OFF"]
     returns:
-      type: bool
+      type: string
+      parser:
+        type: regex
+        pattern: ".*:([\\d.A-Za-z]+)$"
+        group: 1
     description: "ControlLoop"
   tset:
-    getter: "READ:DEV:T<c>:TEMP:LOOP:TSET"
-    setter: "SET:DEV:T<c>:TEMP:LOOP:TSET:{value}"
+    getter: "READ:DEV:T{channel}:TEMP:LOOP:TSET"
+    setter: "SET:DEV:T{channel}:TEMP:LOOP:TSET:{value}"
     type: property
+    force_query: true
     params:
+      channel:
+        type: string
+        description: "Temperature channel (e.g., 5, 8)"
       value:
         type: float
         unit: K
@@ -169,33 +246,73 @@ commands:
     returns:
       type: float
       unit: K
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "TSet"
   heaterrange:
-    getter: "READ:DEV:T<c>:TEMP:LOOP:RANGE"
-    setter: "SET:DEV:T<c>:TEMP:LOOP:RANGE:{value}"
+    getter: "READ:DEV:T{channel}:TEMP:LOOP:RANGE"
+    setter: "SET:DEV:T{channel}:TEMP:LOOP:RANGE:{value}"
     type: property
+    force_query: true
     params:
+      channel:
+        type: string
+        description: "Temperature channel (e.g., 5, 8)"
       value:
         type: enum
-        options: ["0.0", "0.0316", "0.1", "0.316", "1.0", "3.16", "10.0", "31.6", "100.0"]
+        options: ["Off", "31.6 uA", "100 uA", "316 uA", "1 mA", "3.16 mA", "10 mA", "31.6 mA", "100 mA"]
+        map:
+          "Off": "0.0"
+          "31.6 uA": "0.0316"
+          "100 uA": "0.1"
+          "316 uA": "0.316"
+          "1 mA": "1.0"
+          "3.16 mA": "3.16"
+          "10 mA": "10.0"
+          "31.6 mA": "31.6"
+          "100 mA": "100.0"
     returns:
       type: string
+      parser:
+        type: regex
+        pattern: ".*:([\\d.]+)[A-Za-z]*$"
+        group: 1
     description: "HeaterRange"
   coordsys:
     getter: "READ:SYS:VRM:COO"
     setter: "SET:SYS:VRM:COO:{value}"
     type: property
+    force_query: true
     params:
       value:
         type: enum
-        options: ["CART", "CYL", "SPH"]
+        options: ["Cartesian", "Cylindrical", "Spherical"]
+        map:
+          "Cartesian": "CART"
+          "Cylindrical": "CYL"
+          "Spherical": "SPH"
     returns:
       type: string
+      parser:
+        type: regex
+        pattern: ".*:([\\d.A-Za-z]+)$"
+        group: 1
     description: "CoordSys"
   bx:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SET:SYS:VRM:RVST:MODE:RATE:RATE:{sweep_rate}:VSET:[{value}]"
+      check_command: "READ:SYS:VRM:ACTN"
+      check_idle_match: "IDLE"
+      stop_command: "SET:SYS:VRM:ACTN:HOLD"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -208,6 +325,15 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SET:SYS:VRM:RVST:MODE:RATE:RATE:{sweep_rate}:VSET:[{value}]"
+      check_command: "READ:SYS:VRM:ACTN"
+      check_idle_match: "IDLE"
+      stop_command: "SET:SYS:VRM:ACTN:HOLD"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -220,6 +346,15 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SET:SYS:VRM:RVST:MODE:RATE:RATE:{sweep_rate}:VSET:[{value}]"
+      check_command: "READ:SYS:VRM:ACTN"
+      check_idle_match: "IDLE"
+      stop_command: "SET:SYS:VRM:ACTN:HOLD"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -232,6 +367,15 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SET:SYS:VRM:RVST:MODE:RATE:RATE:{sweep_rate}:VSET:[{value}]"
+      check_command: "READ:SYS:VRM:ACTN"
+      check_idle_match: "IDLE"
+      stop_command: "SET:SYS:VRM:ACTN:HOLD"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -244,6 +388,7 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
     params:
       value:
         type: float
@@ -256,6 +401,15 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SET:SYS:VRM:RVST:MODE:RATE:RATE:{sweep_rate}:VSET:[{value}]"
+      check_command: "READ:SYS:VRM:ACTN"
+      check_idle_match: "IDLE"
+      stop_command: "SET:SYS:VRM:ACTN:HOLD"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -268,6 +422,7 @@ commands:
     getter: "READ:SYS:VRM:VECT"
     setter: "SET:SYS:VRM:RVST:MODE:ASAP:VSET:[{value}]"
     type: property
+    force_query: true
     params:
       value:
         type: float
@@ -280,6 +435,7 @@ commands:
     getter: "READ:SYS:VRM:POC"
     setter: "SET:SYS:VRM:POC:{value}"
     type: property
+    force_query: true
     params:
       value:
         type: enum
@@ -287,4 +443,3 @@ commands:
     returns:
       type: bool
     description: "PoC"
-

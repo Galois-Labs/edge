@@ -19,10 +19,12 @@ import importlib
 import json
 import logging
 import platform
+import re
 import socket
 import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional, Set
 
 import grpc
 from grpc import aio as grpc_aio
@@ -36,10 +38,29 @@ from .capability_manager import (
     InstrumentCapabilities,
     SDKCommandRequest,
 )
+from .profile_schema import SweepConfig
 from .command_handler import CommandHandler
 from .sdk_executor import SDKExecutor
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# ProxySDKCall module allowlist — only these prefixes may be dynamically
+# imported via the fallback path.  The connected-client path (which calls
+# methods on already-instantiated SDK objects) is NOT affected.
+# ---------------------------------------------------------------------------
+_PROXY_SDK_ALLOWED_MODULE_PREFIXES: tuple[str, ...] = (
+    "galois_edge.sdk_wrappers.",
+    "galois_edge.vendor.",
+)
+
+
+def _is_module_allowed(module_name: str) -> bool:
+    """Return True if *module_name* matches the ProxySDKCall allowlist."""
+    return any(
+        module_name.startswith(prefix)
+        for prefix in _PROXY_SDK_ALLOWED_MODULE_PREFIXES
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +298,12 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
         # Active measurement streams: stream_id -> asyncio.Task
         self._active_streams: Dict[str, asyncio.Task] = {}
+
+        # Sweep state tracking
+        self._active_sweeps: Dict[str, asyncio.Task] = {}
+        self._sweep_states: Dict[str, dict] = {}  # sweep_id -> state dict
+        self._sweeping_instruments: Set[str] = set()  # instrument reservation gate
+        self._sweep_cancel_flags: Dict[str, asyncio.Event] = {}
 
     # ------------------------------------------------------------------
     # Core SCPI
@@ -565,6 +592,152 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             edge_id=self._edge_id,
         )
 
+    async def _execute_vector_command(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        dispatch: str,
+        instrument_id: str,
+        command_id: str,
+        timeout_ms: int,
+        cmd_config: Any,
+        start: float,
+    ) -> edge_pb2.ExecuteCommandResponse:
+        """Handle a vector/binary query command and return a VectorData response.
+
+        This is called from ``ExecuteCommand`` when ``returns.type == "vector"``.
+        It reads IEEE 488.2 binary block data, optionally fetches x-axis
+        metadata via separate SCPI queries, and packs everything into a
+        ``VectorData`` protobuf message.
+        """
+        import struct as _struct
+
+        returns = cmd_config.returns
+        format_str = returns.format or "ieee_binary"
+
+        # Determine datatype from format hint
+        if "float32" in format_str:
+            datatype = 'f'
+            dtype_label = "float32"
+            struct_fmt_char = 'f'
+        elif "int16" in format_str:
+            datatype = 'h'
+            dtype_label = "int16"
+            struct_fmt_char = 'h'
+        else:
+            # Default: float64
+            datatype = 'd'
+            dtype_label = "float64"
+            struct_fmt_char = 'd'
+
+        is_big_endian = "big_endian" in format_str
+
+        # Execute the binary query
+        result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_binary_query(
+                scpi_cmd=dispatch,
+                instrument_id=instrument_id,
+                datatype=datatype,
+                is_big_endian=is_big_endian,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        if not result["success"]:
+            elapsed_ms = int((time.time() - start) * 1000)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=result.get("error", "Binary query failed"),
+                execution_time_ms=elapsed_ms,
+                scpi_command=dispatch,
+            )
+
+        y_values = result["data"]
+
+        # Fetch x-axis metadata if queries are defined
+        x_start = 0.0
+        x_increment = 1.0
+
+        if returns.x_start_query:
+            x_result = await loop.run_in_executor(
+                self._executor,
+                lambda: self._handler.execute_command(
+                    scpi_cmd=returns.x_start_query,
+                    instrument_id=instrument_id,
+                    force_query=True,
+                    timeout_ms=timeout_ms,
+                ),
+            )
+            if x_result.get("success"):
+                try:
+                    x_start = float(x_result["response"])
+                except (ValueError, KeyError):
+                    pass
+
+        if returns.x_increment_query:
+            x_result = await loop.run_in_executor(
+                self._executor,
+                lambda: self._handler.execute_command(
+                    scpi_cmd=returns.x_increment_query,
+                    instrument_id=instrument_id,
+                    force_query=True,
+                    timeout_ms=timeout_ms,
+                ),
+            )
+            if x_result.get("success"):
+                try:
+                    x_increment = float(x_result["response"])
+                except (ValueError, KeyError):
+                    pass
+
+        # Pack y-values into bytes
+        endian_prefix = '>' if is_big_endian else '<'
+        y_data = _struct.pack(
+            f'{endian_prefix}{len(y_values)}{struct_fmt_char}',
+            *y_values,
+        )
+
+        vector_data = edge_pb2.VectorData(
+            y_data=y_data,
+            y_dtype=dtype_label,
+            y_length=len(y_values),
+            x_start=x_start,
+            x_increment=x_increment,
+            x_unit=returns.x_unit or "",
+            y_unit=returns.unit or "",
+            x_name=returns.x_name or "",
+        )
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        return edge_pb2.ExecuteCommandResponse(
+            command_id=command_id,
+            success=True,
+            data="",
+            vector_data=vector_data,
+            error_message="",
+            execution_time_ms=elapsed_ms,
+            scpi_command=dispatch,
+        )
+
+    def _apply_response_processing(
+        self,
+        raw_response: str,
+        instrument_id: str,
+        command_name: str,
+    ) -> str:
+        """Apply response_parser from profile ReturnConfig to raw instrument response."""
+        if not self._capability_manager:
+            return raw_response
+        caps = self._capability_manager.get_instrument_caps(instrument_id)
+        if not caps:
+            return raw_response
+        cmd = caps.get_command(command_name)
+        if cmd and cmd.returns:
+            return cmd.returns.parse_response(raw_response)
+        return raw_response
+
     async def ExecuteCommand(
         self,
         request: edge_pb2.ExecuteCommandRequest,
@@ -616,6 +789,46 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 scpi_command="",
             )
 
+        # Look up force_query from profile
+        caps = self._capability_manager.get_instrument_caps(instrument_id)
+        cmd_config = caps.get_command(command_name) if caps else None
+        profile_force_query = cmd_config.force_query if cmd_config else False
+
+        # Safety interlock: reject commands that require sweep
+        if cmd_config and cmd_config.requires_sweep:
+            elapsed_ms = int((time.time() - start) * 1000)
+            context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            msg = (
+                f"Command '{command_name}' requires sweep for safety. "
+                f"Use StartSweep RPC with an explicit sweep_rate instead of ExecuteCommand."
+            )
+            context.set_details(msg)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=msg,
+                execution_time_ms=elapsed_ms,
+                scpi_command="",
+            )
+
+        # Reservation gate: reject writes if instrument is sweeping
+        if instrument_id in self._sweeping_instruments:
+            is_query = request.is_query or (cmd_config.force_query if cmd_config else False)
+            if not is_query:
+                elapsed_ms = int((time.time() - start) * 1000)
+                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+                msg = f"Instrument '{instrument_id}' is currently sweeping. Write commands are blocked."
+                context.set_details(msg)
+                return edge_pb2.ExecuteCommandResponse(
+                    command_id=command_id,
+                    success=False,
+                    data="",
+                    error_message=msg,
+                    execution_time_ms=elapsed_ms,
+                    scpi_command="",
+                )
+
         try:
             loop = asyncio.get_running_loop()
 
@@ -642,6 +855,24 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             else:
                 # SCPI path -- dispatch is the formatted SCPI string
                 scpi_label = dispatch
+
+                # --- Vector / binary query path ---
+                if (
+                    cmd_config
+                    and cmd_config.returns
+                    and cmd_config.returns.type == "vector"
+                ):
+                    return await self._execute_vector_command(
+                        loop=loop,
+                        dispatch=dispatch,
+                        instrument_id=instrument_id,
+                        command_id=command_id,
+                        timeout_ms=timeout_ms,
+                        cmd_config=cmd_config,
+                        start=start,
+                    )
+
+                # --- Normal scalar SCPI path ---
                 result = await loop.run_in_executor(
                     self._executor,
                     lambda: self._handler.execute_command(
@@ -649,17 +880,21 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                         instrument_id=instrument_id,
                         timeout_ms=timeout_ms,
                         command_id=command_id,
-                        force_query=request.is_query,
+                        force_query=request.is_query or profile_force_query,
                     ),
                 )
 
             elapsed_ms = int((time.time() - start) * 1000)
 
             if result["success"]:
+                # Apply response parser from profile
+                response_data = self._apply_response_processing(
+                    result["response"], instrument_id, command_name
+                )
                 return edge_pb2.ExecuteCommandResponse(
                     command_id=command_id,
                     success=True,
-                    data=result["response"],
+                    data=response_data,
                     error_message="",
                     execution_time_ms=elapsed_ms,
                     scpi_command=str(scpi_label),
@@ -982,6 +1217,10 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
                     if result["success"]:
                         raw = result["response"].strip()
+                        # Apply response parser before float conversion
+                        raw = self._apply_response_processing(
+                            raw, instrument_id, command_name
+                        )
                         values_map: Dict[str, float] = {}
 
                         if has_fields:
@@ -1274,6 +1513,43 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 )
 
         # Fallback: dynamic import for instruments not managed by executor
+        # ---  Security: validate module and method names  ---
+        if not _is_module_allowed(module_name):
+            elapsed_ms = int((time.time() - start) * 1000)
+            logger.warning(
+                "ProxySDKCall %s BLOCKED: module '%s' is not in the "
+                "allowed modules list",
+                call_id, module_name,
+            )
+            return edge_pb2.ProxySDKCallResponse(
+                call_id=call_id,
+                success=False,
+                error_message=(
+                    f"Module '{module_name}' is not in the allowed modules "
+                    f"list. Only galois_edge.sdk_wrappers.* and "
+                    f"galois_edge.vendor.* modules are permitted."
+                ),
+                execution_time_ms=elapsed_ms,
+            )
+
+        if method_name.startswith("_"):
+            elapsed_ms = int((time.time() - start) * 1000)
+            logger.warning(
+                "ProxySDKCall %s BLOCKED: private method '%s' is not "
+                "callable via RPC",
+                call_id, method_name,
+            )
+            return edge_pb2.ProxySDKCallResponse(
+                call_id=call_id,
+                success=False,
+                error_message=(
+                    f"Method '{method_name}' is private and cannot be "
+                    f"called via ProxySDKCall. Only public methods are "
+                    f"permitted."
+                ),
+                execution_time_ms=elapsed_ms,
+            )
+
         try:
             loop = asyncio.get_running_loop()
             args = [_value_to_python(a) for a in request.args]
@@ -1308,6 +1584,270 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 error_message=str(exc),
                 execution_time_ms=elapsed_ms,
             )
+
+    # ------------------------------------------------------------------
+    # Sweep / Ramp RPCs
+    # ------------------------------------------------------------------
+
+    async def StartSweep(
+        self,
+        request: edge_pb2.StartSweepRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> edge_pb2.StartSweepResponse:
+        """Begin a long-running sweep/ramp on the edge daemon."""
+        instrument_id = request.instrument_id
+        command_name = request.command_name
+        target_value = request.target_value
+        sweep_rate = request.sweep_rate
+
+        logger.info(
+            "StartSweep: '%s' on %s -> target=%f rate=%f",
+            command_name, instrument_id, target_value, sweep_rate,
+        )
+
+        # Validate: capability manager must exist
+        if not self._capability_manager:
+            return edge_pb2.StartSweepResponse(
+                accepted=False,
+                error="Profile system not available",
+            )
+
+        # Validate: instrument and command must exist with sweep config
+        caps = self._capability_manager.get_instrument_caps(instrument_id)
+        if not caps:
+            return edge_pb2.StartSweepResponse(
+                accepted=False,
+                error=f"Instrument not found: {instrument_id}",
+            )
+
+        cmd = caps.get_command(command_name)
+        if not cmd or not cmd.sweep:
+            return edge_pb2.StartSweepResponse(
+                accepted=False,
+                error=f"Command '{command_name}' has no sweep configuration",
+            )
+
+        # Check if instrument is already sweeping
+        if instrument_id in self._sweeping_instruments:
+            return edge_pb2.StartSweepResponse(
+                accepted=False,
+                error=f"Instrument '{instrument_id}' is already sweeping",
+            )
+
+        # Generate sweep_id
+        sweep_id = f"{instrument_id}:{command_name}:{uuid.uuid4().hex[:8]}"
+
+        # Set up state
+        self._sweep_states[sweep_id] = {
+            "status": "sweeping",
+            "current_value": 0.0,
+            "target_value": target_value,
+            "sweep_rate": sweep_rate,
+            "error": "",
+            "instrument_id": instrument_id,
+            "command_name": command_name,
+        }
+        self._sweeping_instruments.add(instrument_id)
+        cancel_event = asyncio.Event()
+        self._sweep_cancel_flags[sweep_id] = cancel_event
+
+        # Build and send the sweep command
+        sweep_cfg = cmd.sweep
+        params = {"value": str(target_value), "sweep_rate": str(sweep_rate)}
+        # Add any extra parameters from request
+        if request.extra_parameters:
+            params.update(dict(request.extra_parameters))
+        sweep_scpi = sweep_cfg.command
+        for k, v in params.items():
+            sweep_scpi = sweep_scpi.replace(f"{{{k}}}", v)
+
+        timeout_ms = (
+            caps.profile.settings.timeout_ms if caps.profile else 5000
+        )
+
+        try:
+            # Send the sweep start command
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                self._executor,
+                lambda: self._handler.execute_command(
+                    sweep_scpi,
+                    instrument_id,
+                    timeout_ms=timeout_ms,
+                ),
+            )
+        except Exception as exc:
+            self._sweep_states[sweep_id]["status"] = "error"
+            self._sweep_states[sweep_id]["error"] = str(exc)
+            self._sweeping_instruments.discard(instrument_id)
+            self._sweep_cancel_flags.pop(sweep_id, None)
+            return edge_pb2.StartSweepResponse(
+                sweep_id=sweep_id,
+                accepted=False,
+                error=str(exc),
+            )
+
+        # Launch the polling task
+        task = asyncio.create_task(
+            self._sweep_poll_loop(
+                sweep_id, sweep_cfg, instrument_id, timeout_ms, cancel_event,
+            )
+        )
+        self._active_sweeps[sweep_id] = task
+
+        return edge_pb2.StartSweepResponse(
+            sweep_id=sweep_id,
+            accepted=True,
+        )
+
+    async def _sweep_poll_loop(
+        self,
+        sweep_id: str,
+        sweep_cfg: SweepConfig,
+        instrument_id: str,
+        timeout_ms: int,
+        cancel_event: asyncio.Event,
+    ) -> None:
+        """Poll the instrument until sweep completes, errors, or is cancelled."""
+        poll_interval = sweep_cfg.poll_interval_ms / 1000.0
+
+        try:
+            while True:
+                # Check for cancellation
+                if cancel_event.is_set():
+                    # Fire stop command
+                    if sweep_cfg.stop_command:
+                        try:
+                            loop = asyncio.get_running_loop()
+                            await loop.run_in_executor(
+                                self._executor,
+                                lambda: self._handler.execute_command(
+                                    sweep_cfg.stop_command,
+                                    instrument_id,
+                                    timeout_ms=timeout_ms,
+                                ),
+                            )
+                        except Exception:
+                            pass
+                    self._sweep_states[sweep_id]["status"] = "aborted"
+                    return
+
+                # Poll check_command
+                try:
+                    loop = asyncio.get_running_loop()
+                    result = await loop.run_in_executor(
+                        self._executor,
+                        lambda: self._handler.execute_command(
+                            sweep_cfg.check_command,
+                            instrument_id,
+                            force_query=True,
+                            timeout_ms=timeout_ms,
+                        ),
+                    )
+                    response_str = (
+                        result.get("response", "")
+                        if isinstance(result, dict)
+                        else str(result)
+                    )
+
+                    # Check if sweep is complete
+                    if sweep_cfg.check_idle_match:
+                        if re.search(sweep_cfg.check_idle_match, response_str):
+                            self._sweep_states[sweep_id]["status"] = "completed"
+                            return
+
+                except Exception as exc:
+                    self._sweep_states[sweep_id]["status"] = "error"
+                    self._sweep_states[sweep_id]["error"] = str(exc)
+                    return
+
+                # Wait before next poll
+                await asyncio.sleep(poll_interval)
+
+        except asyncio.CancelledError:
+            # Task was cancelled externally -- fire stop command
+            if sweep_cfg.stop_command:
+                try:
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(
+                        self._executor,
+                        lambda: self._handler.execute_command(
+                            sweep_cfg.stop_command,
+                            instrument_id,
+                            timeout_ms=timeout_ms,
+                        ),
+                    )
+                except Exception:
+                    pass
+            self._sweep_states[sweep_id]["status"] = "aborted"
+            raise
+
+        finally:
+            # Clean up reservation
+            self._sweeping_instruments.discard(instrument_id)
+            self._active_sweeps.pop(sweep_id, None)
+            self._sweep_cancel_flags.pop(sweep_id, None)
+
+    async def GetSweepStatus(
+        self,
+        request: edge_pb2.GetSweepStatusRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> edge_pb2.SweepStatusResponse:
+        """Return the current state of a sweep."""
+        state = self._sweep_states.get(request.sweep_id)
+        if not state:
+            return edge_pb2.SweepStatusResponse(
+                sweep_id=request.sweep_id,
+                status="not_found",
+                error="Sweep not found",
+            )
+        return edge_pb2.SweepStatusResponse(
+            sweep_id=request.sweep_id,
+            status=state["status"],
+            current_value=state.get("current_value", 0.0),
+            target_value=state.get("target_value", 0.0),
+            sweep_rate=state.get("sweep_rate", 0.0),
+            error=state.get("error", ""),
+        )
+
+    async def StopSweep(
+        self,
+        request: edge_pb2.StopSweepRequest,
+        context: grpc.aio.ServicerContext,
+    ) -> edge_pb2.StopSweepResponse:
+        """Abort or hold an active sweep."""
+        sweep_id = request.sweep_id
+
+        # Support wildcard "*" to stop all sweeps
+        if sweep_id == "*":
+            for sid, cancel_event in list(self._sweep_cancel_flags.items()):
+                cancel_event.set()
+            return edge_pb2.StopSweepResponse(
+                success=True,
+                status="stopping_all",
+            )
+
+        cancel_event = self._sweep_cancel_flags.get(sweep_id)
+        if not cancel_event:
+            return edge_pb2.StopSweepResponse(
+                success=False,
+                status="not_found",
+            )
+
+        cancel_event.set()
+
+        # Wait briefly for the poll loop to process the cancellation
+        task = self._active_sweeps.get(sweep_id)
+        if task:
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                pass
+
+        return edge_pb2.StopSweepResponse(
+            success=True,
+            status="holding",
+        )
 
 
 # ---------------------------------------------------------------------------

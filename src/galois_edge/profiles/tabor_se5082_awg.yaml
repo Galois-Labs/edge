@@ -270,12 +270,12 @@ commands:
     params:
       value:
         type: float
-        unit: %
+        unit: "%"
         min: 0.0
         max: 99.99
     returns:
       type: float
-      unit: %
+      unit: "%"
     description: "Ch1 - Duty cycle"
   ch1_range:
     getter: ":INST 1;:VOLT?"
@@ -370,12 +370,12 @@ commands:
     params:
       value:
         type: float
-        unit: %
+        unit: "%"
         min: 0.0
         max: 99.99
     returns:
       type: float
-      unit: %
+      unit: "%"
     description: "Ch2 - Duty cycle"
   ch2_range:
     getter: ":INST 2;:VOLT?"

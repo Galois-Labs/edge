@@ -77,6 +77,18 @@ service EdgeDaemonService {
   // Used by the backend to relay calls from pyvisa-galois when an instrument
   // has no YAML profile or when the researcher needs the full SDK surface.
   rpc ProxySDKCall(ProxySDKCallRequest) returns (ProxySDKCallResponse);
+
+  // --- Sweep / Ramp (safety-critical for magnets, temperature controllers) --
+
+  // StartSweep begins a long-running sweep/ramp on the edge daemon.
+  // The sweep runs autonomously even if the network drops.
+  rpc StartSweep(StartSweepRequest) returns (StartSweepResponse);
+
+  // GetSweepStatus polls the current state of an active sweep.
+  rpc GetSweepStatus(GetSweepStatusRequest) returns (SweepStatusResponse);
+
+  // StopSweep aborts or holds an active sweep.
+  rpc StopSweep(StopSweepRequest) returns (StopSweepResponse);
 }
 
 // ===========================================================================
@@ -250,6 +262,23 @@ message ExecuteCommandRequest {
   int32 timeout_ms = 6;
 }
 
+// VectorData carries oscilloscope traces, spectrum data, and other array results.
+// The y_data field contains raw binary values (IEEE 754 little-endian by default).
+// For integer formats (e.g. int16 from oscilloscopes), use y_scale and y_offset:
+//   actual_value = raw_value * y_scale + y_offset
+message VectorData {
+  bytes y_data = 1;            // Raw data bytes (IEEE 754 doubles LE by default)
+  string y_dtype = 2;          // "float64", "float32", "int16" etc.
+  int32 y_length = 3;          // Number of points
+  double x_start = 4;
+  double x_increment = 5;
+  string x_unit = 6;
+  string y_unit = 7;
+  string x_name = 8;
+  double y_scale = 9;          // For int16 data: actual = raw * y_scale + y_offset
+  double y_offset = 10;
+}
+
 message ExecuteCommandResponse {
   string command_id = 1;
   bool success = 2;
@@ -257,6 +286,7 @@ message ExecuteCommandResponse {
   string error_message = 4;
   int64 execution_time_ms = 5;
   string scpi_command = 6;                 // The actual SCPI command that was sent
+  VectorData vector_data = 7;             // Populated if the command returns a vector
 }
 
 // ===========================================================================
@@ -422,4 +452,44 @@ message ProxySDKCallResponse {
   google.protobuf.Value result = 3;        // Return value (JSON-typed)
   string error_message = 4;
   int64 execution_time_ms = 5;
+}
+
+// ===========================================================================
+// Sweep RPCs (safety-critical for magnets, temperature controllers)
+// ===========================================================================
+
+message StartSweepRequest {
+  string instrument_id = 1;
+  string command_name = 2;
+  double target_value = 3;
+  double sweep_rate = 4;
+  map<string, string> extra_parameters = 5;
+}
+
+message StartSweepResponse {
+  string sweep_id = 1;
+  bool accepted = 2;
+  string error = 3;
+}
+
+message GetSweepStatusRequest {
+  string sweep_id = 1;
+}
+
+message SweepStatusResponse {
+  string sweep_id = 1;
+  string status = 2;         // "sweeping", "completed", "error", "aborted"
+  double current_value = 3;
+  double target_value = 4;
+  double sweep_rate = 5;
+  string error = 6;
+}
+
+message StopSweepRequest {
+  string sweep_id = 1;
+}
+
+message StopSweepResponse {
+  bool success = 1;
+  string status = 2;  // "holding", "stopped"
 }

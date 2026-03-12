@@ -1,0 +1,122 @@
+# Aeroflex 302x Signal Generator Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: PXI_Aeroflex302x
+# SDK wrapper: galois_edge.sdk_wrappers.aeroflex_wrapper
+
+instrument:
+  manufacturer: "Aeroflex"
+  model: "302x Signal Generator"
+  class: signal_generator
+  description: "Aeroflex 302x PXI signal generator via NI-RFSG"
+
+sdk:
+  package: "nirfsg"
+  import_path: "galois_edge.sdk_wrappers.aeroflex_wrapper"
+  class_name: "Aeroflex302xClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot2"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Aeroflex.*302"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Aeroflex.*302"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_frequency:
+    sdk_call:
+      method: "set_frequency"
+      args_map:
+        frequency: "frequency"
+    type: write
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 250e3
+        max: 6e9
+        default: 1e9
+        description: "RF output frequency in Hz"
+    description: "Set RF output frequency"
+
+  get_frequency:
+    sdk_call:
+      method: "get_frequency"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    streamable: true
+    description: "Read current RF output frequency"
+
+  set_power:
+    sdk_call:
+      method: "set_power"
+      args_map:
+        power: "power"
+    type: write
+    params:
+      power:
+        type: float
+        unit: dBm
+        min: -130
+        max: 20
+        default: -10
+        description: "RF output power in dBm"
+    description: "Set RF output power level"
+
+  get_power:
+    sdk_call:
+      method: "get_power"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    streamable: true
+    description: "Read current RF output power"
+
+  set_output_enabled:
+    sdk_call:
+      method: "set_output_enabled"
+      args_map:
+        enabled: "enabled"
+    type: write
+    params:
+      enabled:
+        type: bool
+        default: true
+        description: "True to enable RF output, False to disable"
+    description: "Enable or disable RF output"
+
+  start:
+    sdk_call:
+      method: "start"
+    type: write
+    description: "Initiate signal generation"
+
+  stop:
+    sdk_call:
+      method: "stop"
+    type: write
+    description: "Abort signal generation"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

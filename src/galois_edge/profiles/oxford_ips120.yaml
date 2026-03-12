@@ -20,6 +20,8 @@ settings:
   timeout_ms: 5000
   terminator: "\r"
   opc_query: false
+  init_commands: ["Q4"]
+  cleanup_commands: ["C0"]
 
 commands:
   # IEEE-488.2 Common Commands
@@ -59,6 +61,15 @@ commands:
     getter: "R7"
     setter: "J{value}"
     type: property
+    force_query: true
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "T{sweep_rate}\nJ{value}\nA1"
+      check_command: "X"
+      check_idle_match: "X0"
+      stop_command: "A0"
+      poll_interval_ms: 1000
     params:
       value:
         type: float
@@ -66,11 +77,15 @@ commands:
     returns:
       type: float
       unit: T
+      parser:
+        type: strip
+        prefix: "R"
     description: "B"
   sweeprate:
     getter: "R9"
     setter: "T{value}"
     type: property
+    force_query: true
     params:
       value:
         type: float
@@ -78,5 +93,7 @@ commands:
     returns:
       type: float
       unit: T/min
+      parser:
+        type: strip
+        prefix: "R"
     description: "SweepRate"
-

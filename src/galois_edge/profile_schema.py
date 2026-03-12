@@ -32,6 +32,7 @@ class ParameterConfig:
     default: Optional[Any] = None
     description: Optional[str] = None
     options: Optional[List[str]] = None  # for enum type
+    map: Optional[Dict[str, Any]] = None  # label → wire-value mapping
 
     def validate(self) -> None:
         """Check internal consistency."""
@@ -49,15 +50,49 @@ class ParameterConfig:
 class ReturnConfig:
     """Return value description for a query command."""
 
-    type: str = "string"  # float | int | string | array | binary | bool
+    type: str = "string"  # float | int | string | array | binary | bool | vector
     unit: Optional[str] = None
     element_type: Optional[str] = None  # for array
     separator: Optional[str] = None     # for array
-    format: Optional[str] = None        # for binary
+    format: Optional[str] = None        # "ieee_binary", "ascii" — how to read trace data
     fields: Optional[List[Dict[str, Any]]] = None  # named multi-value fields
+    parser: Optional[Dict[str, Any]] = None  # response parser config
+    # Vector/trace fields
+    x_name: Optional[str] = None          # e.g. "Time"
+    x_unit: Optional[str] = None          # e.g. "s"
+    x_start_query: Optional[str] = None   # SCPI query to fetch x-axis start
+    x_increment_query: Optional[str] = None  # SCPI query to fetch x-axis increment
+
+    def parse_response(self, raw: str) -> str:
+        """Apply parser rules to raw instrument response. Falls back to raw on no match."""
+        if not self.parser:
+            return raw
+        ptype = self.parser.get("type", "regex")
+        if ptype == "regex":
+            pattern = self.parser.get("pattern", "")
+            group = self.parser.get("group", 0)
+            m = re.search(pattern, raw)
+            if m:
+                return m.group(group)
+        elif ptype == "strip":
+            result = raw
+            prefix = self.parser.get("prefix", "")
+            suffix = self.parser.get("suffix", "")
+            if prefix and result.startswith(prefix):
+                result = result[len(prefix):]
+            if suffix and result.endswith(suffix):
+                result = result[:-len(suffix)]
+            return result
+        elif ptype == "split":
+            delimiter = self.parser.get("delimiter", ",")
+            index = self.parser.get("index", 0)
+            parts = raw.split(delimiter)
+            if index < len(parts):
+                return parts[index].strip()
+        return raw
 
     def validate(self) -> None:
-        allowed = ("float", "int", "string", "array", "binary", "bool")
+        allowed = ("float", "int", "string", "array", "binary", "bool", "vector")
         if self.type not in allowed:
             raise ValueError(
                 f"Invalid return type '{self.type}'. "
@@ -82,6 +117,22 @@ class SDKCallConfig:
 
 
 # ---------------------------------------------------------------------------
+# Sweep config (for hardware ramp/sweep on a command)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SweepConfig:
+    """Configuration for hardware sweep/ramp on a command."""
+
+    rate_param: str = "sweep_rate"
+    command: str = ""           # SCPI template with {value} and {sweep_rate}
+    check_command: str = ""     # SCPI query to poll status
+    check_idle_match: str = ""  # Exact string or regex that means "sweep done"
+    stop_command: str = ""      # Emergency abort SCPI
+    poll_interval_ms: int = 1000
+
+
+# ---------------------------------------------------------------------------
 # Command config
 # ---------------------------------------------------------------------------
 
@@ -100,6 +151,9 @@ class CommandConfig:
     params: Optional[Dict[str, ParameterConfig]] = None
     returns: Optional[ReturnConfig] = None
     sdk_call: Optional[SDKCallConfig] = None
+    force_query: bool = False  # send getter as-is (no trailing '?')
+    requires_sweep: bool = False  # safety interlock: must use StartSweep RPC
+    sweep: Optional[SweepConfig] = None  # sweep/ramp configuration
 
     # ---- helpers -----------------------------------------------------------
 
@@ -122,7 +176,15 @@ class CommandConfig:
         scpi = self.get_scpi_string(is_query)
         if scpi is None:
             raise ValueError("No SCPI string available for this command")
-        if params:
+        if params and self.params:
+            for key, value in params.items():
+                # Apply map transformation if available (forward-map only:
+                # label -> wire value on writes)
+                pc = self.params.get(key)
+                if pc and pc.map and str(value) in pc.map:
+                    value = pc.map[str(value)]
+                scpi = scpi.replace(f"{{{key}}}", str(value))
+        elif params:
             for key, value in params.items():
                 scpi = scpi.replace(f"{{{key}}}", str(value))
         return scpi
@@ -196,6 +258,8 @@ class SettingsConfig:
     timeout_ms: int = 5000
     terminator: str = "\n"
     opc_query: bool = False
+    init_commands: Optional[List[str]] = None
+    cleanup_commands: Optional[List[str]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -262,11 +326,42 @@ class InterfaceConfig:
     type: str = "gpib"  # gpib | usb | ethernet | serial
     port: Optional[int] = None
     default_address: Optional[int] = None
+    # Serial-specific fields (only meaningful when type == "serial")
+    baud_rate: Optional[int] = None
+    parity: Optional[str] = None       # "none", "even", "odd"
+    data_bits: Optional[int] = None
+    stop_bits: Optional[float] = None   # 1, 1.5, 2
 
 
 # ---------------------------------------------------------------------------
 # SDK driver config (top-level, for non-SCPI instruments)
 # ---------------------------------------------------------------------------
+
+@dataclass
+class SDKConnectConfig:
+    """Connection parameters for SDK instruments."""
+
+    method: Optional[str] = None
+    args: Optional[Dict[str, str]] = None
+    defaults: Optional[Dict[str, Any]] = None
+    constructor_args: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class SDKDisconnectConfig:
+    """Disconnection parameters for SDK instruments."""
+
+    method: Optional[str] = None
+
+
+@dataclass
+class SDKIdentityConfig:
+    """Identity query parameters for SDK instruments."""
+
+    method: Optional[str] = None
+    property: Optional[str] = None
+    pattern: Optional[str] = None
+
 
 @dataclass
 class SDKConfig:
@@ -276,6 +371,9 @@ class SDKConfig:
     import_path: str = ""
     class_name: str = ""
     is_async: bool = False
+    connect: SDKConnectConfig = field(default_factory=SDKConnectConfig)
+    disconnect: SDKDisconnectConfig = field(default_factory=SDKDisconnectConfig)
+    identity: Optional[SDKIdentityConfig] = None
 
 
 # ---------------------------------------------------------------------------
@@ -440,6 +538,7 @@ def _build_parameter_config(data: Dict[str, Any]) -> ParameterConfig:
         default=data.get("default"),
         description=data.get("description"),
         options=data.get("options"),
+        map=data.get("map"),
     )
 
 
@@ -451,6 +550,11 @@ def _build_return_config(data: Dict[str, Any]) -> ReturnConfig:
         separator=data.get("separator"),
         format=data.get("format"),
         fields=data.get("fields"),
+        parser=data.get("parser"),
+        x_name=data.get("x_name"),
+        x_unit=data.get("x_unit"),
+        x_start_query=data.get("x_start_query"),
+        x_increment_query=data.get("x_increment_query"),
     )
 
 
@@ -481,6 +585,10 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
     if "sdk_call" in data and data["sdk_call"]:
         sdk_call = _build_sdk_call(data["sdk_call"])
 
+    sweep = None
+    if "sweep" in data and data["sweep"]:
+        sweep = SweepConfig(**data["sweep"])
+
     return CommandConfig(
         scpi=data.get("scpi"),
         getter=data.get("getter"),
@@ -493,6 +601,9 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
         params=params,
         returns=returns,
         sdk_call=sdk_call,
+        force_query=data.get("force_query", False),
+        requires_sweep=data.get("requires_sweep", False),
+        sweep=sweep,
     )
 
 
@@ -555,6 +666,10 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
             type=iface.get("type", "gpib"),
             port=iface.get("port"),
             default_address=iface.get("default_address"),
+            baud_rate=iface.get("baud_rate"),
+            parity=iface.get("parity"),
+            data_bits=iface.get("data_bits"),
+            stop_bits=iface.get("stop_bits"),
         ))
 
     # -- settings ------------------------------------------------------------
@@ -563,6 +678,8 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
         timeout_ms=s_data.get("timeout_ms", 5000),
         terminator=s_data.get("terminator", "\n"),
         opc_query=s_data.get("opc_query", False),
+        init_commands=s_data.get("init_commands"),
+        cleanup_commands=s_data.get("cleanup_commands"),
     )
 
     # -- commands ------------------------------------------------------------
@@ -583,11 +700,29 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
     sdk = None
     if "sdk" in data and data["sdk"]:
         sdk_data = data["sdk"]
+        connect_data = sdk_data.get("connect", {}) or {}
+        disconnect_data = sdk_data.get("disconnect", {}) or {}
+        identity_data = sdk_data.get("identity")
+
         sdk = SDKConfig(
             package=sdk_data.get("package", ""),
             import_path=sdk_data.get("import_path", ""),
             class_name=sdk_data.get("class_name", ""),
             is_async=sdk_data.get("is_async", False),
+            connect=SDKConnectConfig(
+                method=connect_data.get("method"),
+                args=connect_data.get("args"),
+                defaults=connect_data.get("defaults"),
+                constructor_args=connect_data.get("constructor_args"),
+            ),
+            disconnect=SDKDisconnectConfig(
+                method=disconnect_data.get("method"),
+            ),
+            identity=SDKIdentityConfig(
+                method=identity_data.get("method"),
+                property=identity_data.get("property"),
+                pattern=identity_data.get("pattern"),
+            ) if identity_data else None,
         )
 
     profile = InstrumentProfile(

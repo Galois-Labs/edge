@@ -1,0 +1,94 @@
+# Keysight PXI HVI Trigger Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_PXI_HVI_Trigger
+# SDK wrapper: galois_edge.sdk_wrappers.keysight_pxi_wrapper
+
+instrument:
+  manufacturer: "Keysight"
+  model: "PXI HVI Trigger"
+  class: instrument
+  description: "Keysight PXI Hard Virtual Instrument trigger engine via SD1 SDK"
+
+sdk:
+  package: "keysightSD1"
+  import_path: "galois_edge.sdk_wrappers.keysight_pxi_wrapper"
+  class_name: "KeysightPxiHvi"
+  connect:
+    constructor_args:
+      hvi_file: "{hvi_file}"
+    method: "connect"
+    defaults:
+      hvi_file: ""
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Keysight.*PXI HVI"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Keysight.*PXI HVI"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  compile:
+    sdk_call:
+      method: "compile"
+    type: write
+    description: "Compile the HVI sequence"
+
+  start:
+    sdk_call:
+      method: "start"
+    type: write
+    description: "Start the HVI trigger sequence"
+
+  stop:
+    sdk_call:
+      method: "stop"
+    type: write
+    description: "Stop the HVI trigger sequence"
+
+  configure_trigger:
+    sdk_call:
+      method: "configure_trigger"
+      args_map:
+        trigger_period_ns: "trigger_period_ns"
+    type: write
+    params:
+      trigger_period_ns:
+        type: int
+        unit: ns
+        min: 10
+        max: 1000000000
+        default: 1000
+        description: "Trigger period in nanoseconds"
+    description: "Configure trigger timing"
+
+  set_iterations:
+    sdk_call:
+      method: "set_iterations"
+      args_map:
+        count: "count"
+    type: write
+    params:
+      count:
+        type: int
+        min: 0
+        max: 1000000
+        default: 1
+        description: "Number of HVI loop iterations (0 = infinite)"
+    description: "Set number of HVI loop iterations"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

@@ -1,0 +1,91 @@
+# MiniCircuits USB-8SPDT-A18 Switch Matrix Instrument Profile
+# 8-channel SPDT switch matrix controllable via HTTP API
+
+instrument:
+  manufacturer: "MiniCircuits"
+  model: "USB-8SPDT-A18 Switch Matrix"
+  class: switch
+  description: "MiniCircuits USB-8SPDT-A18 8-channel SPDT switch matrix via HTTP API"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.minicircuits_wrapper"
+  class_name: "MiniCircuitsClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "MiniCircuits.*USB-8SPDT"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "MiniCircuits.*USB-8SPDT"
+
+interfaces:
+  - type: ethernet
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_switch:
+    sdk_call:
+      method: "set_matrix_switch"
+      args_map:
+        switch_number: "switch_number"
+        state: "state"
+    type: write
+    params:
+      switch_number:
+        type: int
+        min: 1
+        max: 8
+        description: "Switch number (1-8)"
+      state:
+        type: int
+        min: 0
+        max: 1
+        description: "Switch state (0 or 1)"
+    description: "Set a numbered switch in the matrix"
+
+  get_switch:
+    sdk_call:
+      method: "get_matrix_switch"
+      args_map:
+        switch_number: "switch_number"
+    type: query
+    params:
+      switch_number:
+        type: int
+        min: 1
+        max: 8
+        description: "Switch number (1-8)"
+    returns:
+      type: string
+    description: "Read the state of a numbered switch"
+
+  set_all_switches:
+    sdk_call:
+      method: "set_all_switches"
+      args_map:
+        state: "state"
+    type: write
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+        description: "State to apply to all switches (0 or 1)"
+    description: "Set all 8 switches to the same state"
+
+  get_all_switches:
+    sdk_call:
+      method: "get_all_switches"
+    type: query
+    returns:
+      type: string
+    description: "Read all switch states (JSON)"

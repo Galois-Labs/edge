@@ -1,0 +1,59 @@
+# Vaunix Lab Brick Digital Attenuator Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Vaunix_Attenuator
+# Controlled via Vaunix vnx_atten.dll (ctypes)
+
+instrument:
+  manufacturer: "Vaunix"
+  model: "Lab Brick Digital Attenuator"
+  class: attenuator
+  description: "Vaunix Lab Brick USB Digital Attenuator"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.labbrick_wrapper"
+  class_name: "LabBrickAttenuator"
+  connect:
+    method: "connect"
+    constructor_args:
+      serial_number: "{serial_number}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Vaunix.*Lab Brick"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Vaunix.*Lab Brick"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_attenuation:
+    sdk_call:
+      method: "set_attenuation"
+      args_map:
+        attenuation_db: "attenuation_db"
+    type: write
+    params:
+      attenuation_db:
+        type: float
+        unit: dB
+        min: 0
+        max: 63
+        description: "Attenuation level in dB (0.25 dB resolution)"
+    description: "Set the attenuation level"
+
+  get_attenuation:
+    sdk_call:
+      method: "get_attenuation"
+    type: query
+    returns:
+      type: float
+      unit: dB
+    description: "Read the current attenuation level"

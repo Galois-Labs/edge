@@ -1,0 +1,104 @@
+# Ocean Optics Spectrometer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Ocean_Optics_Spectrometer
+# SDK wrapper: galois_edge.sdk_wrappers.ocean_optics_wrapper
+
+instrument:
+  manufacturer: "Ocean Optics"
+  model: "Spectrometer"
+  class: spectrometer
+  description: "Ocean Optics USB Spectrometer (USB2000, USB4000, HR2000, HR4000, QE65000, etc.) via seabreeze SDK"
+
+sdk:
+  package: "seabreeze"
+  import_path: "galois_edge.sdk_wrappers.ocean_optics_wrapper"
+  class_name: "OceanOpticsSpectrometer"
+  connect:
+    method: "connect"
+    constructor_args:
+      serial_number: "{serial_number}"
+    defaults:
+      serial_number: null
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Ocean Optics.*"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Ocean Optics.*"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  get_wavelengths:
+    sdk_call:
+      method: "get_wavelengths"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      unit: nm
+      separator: ","
+    description: "Read wavelength calibration array (nm)"
+
+  get_intensities:
+    sdk_call:
+      method: "get_intensities"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      unit: counts
+      separator: ","
+    streamable: true
+    description: "Read intensity spectrum (counts)"
+
+  get_spectrum:
+    sdk_call:
+      method: "get_spectrum"
+    type: query
+    returns:
+      type: string
+    description: "Read full spectrum (wavelengths;intensities as two CSV rows)"
+
+  set_integration_time:
+    sdk_call:
+      method: "set_integration_time"
+      args_map:
+        time_us: "time_us"
+    type: write
+    params:
+      time_us:
+        type: int
+        unit: us
+        min: 1
+        description: "Integration time in microseconds"
+    description: "Set the detector integration time"
+
+  get_integration_time_limits:
+    sdk_call:
+      method: "get_integration_time_limits"
+    type: query
+    returns:
+      type: string
+    description: "Get min and max supported integration time (us)"
+
+sequences:
+  acquire_spectrum:
+    description: "Set integration time then acquire a full spectrum"
+    params:
+      time_us:
+        type: int
+        unit: us
+        default: 100000
+    steps:
+      - command: set_integration_time
+        args:
+          time_us: "{time_us}"
+      - command: get_spectrum

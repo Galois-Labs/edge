@@ -1,0 +1,122 @@
+instrument:
+  manufacturer: "BlueFors"
+  model: "Logging"
+  class: cryostat
+  description: "BlueFors dilution refrigerator temperature/pressure logging via file reads"
+
+sdk:
+  package: "galois-edge"
+  import_path: "galois_edge.sdk_wrappers.bluefors_wrapper"
+  class_name: "BlueForsClient"
+  connect:
+    constructor_args:
+      log_dir: "{log_dir}"
+    method: "connect"
+    defaults:
+      log_dir: "/var/log/bluefors"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "BlueFors.*Logging"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "BlueFors.*Logging"
+
+interfaces:
+  - type: ethernet
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  mxc_temperature:
+    sdk_call:
+      method: "get_temperature"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 6
+        description: "Temperature channel (1=50K, 2=4K, 5=Still, 6=MXC)"
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read mixing chamber temperature"
+
+  still_temperature:
+    sdk_call:
+      method: "get_temperature"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 5
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read still plate temperature"
+
+  fourk_temperature:
+    sdk_call:
+      method: "get_temperature"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 2
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read 4K plate temperature"
+
+  fiftyk_temperature:
+    sdk_call:
+      method: "get_temperature"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read 50K plate temperature"
+
+  pressure:
+    sdk_call:
+      method: "get_pressure"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+        description: "Pressure gauge channel"
+    returns:
+      type: float
+      unit: mbar
+    streamable: true
+    description: "Read pressure gauge"
+
+  all_temperatures:
+    sdk_call:
+      method: "get_all_temperatures"
+    type: query
+    returns:
+      type: string
+    description: "Read all available temperature channels"

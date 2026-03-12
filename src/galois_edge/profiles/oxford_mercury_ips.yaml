@@ -1,0 +1,147 @@
+# Oxford Mercury IPS (Intelligent Power Supply) Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Oxford_Mercury_IPS
+# Uses Oxford ISOBUS protocol via SDK wrapper
+
+instrument:
+  manufacturer: "Oxford"
+  model: "Mercury IPS"
+  class: magnet_controller
+  description: "Oxford Mercury IPS superconducting magnet power supply"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.oxford_mercury_wrapper"
+  class_name: "OxfordMercuryIPSClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Oxford.*Mercury.*IPS"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Oxford.*Mercury.*IPS"
+
+interfaces:
+  - type: gpib
+  - type: ethernet
+    port: 7020
+  - type: serial
+    baud_rate: 9600
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+
+settings:
+  timeout_ms: 10000
+  terminator: "\r"
+  opc_query: false
+
+commands:
+  get_field:
+    sdk_call:
+      method: "get_field"
+    type: query
+    returns:
+      type: float
+      unit: T
+    streamable: true
+    description: "Read current magnetic field"
+
+  set_field:
+    sdk_call:
+      method: "set_field"
+      args_map:
+        value: "value"
+        rate: "rate"
+    type: write
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "SDK_SWEEP"
+      check_command: "SDK_STATUS"
+      check_idle_match: "HOLD"
+      stop_command: "SDK_HOLD"
+      poll_interval_ms: 1000
+    params:
+      value:
+        type: float
+        unit: T
+        description: "Target magnetic field in Tesla"
+      rate:
+        type: float
+        unit: T/min
+        default: 0.1
+        description: "Sweep rate in Tesla per minute"
+    description: "Set target magnetic field with sweep rate"
+
+  get_field_sweep_rate:
+    sdk_call:
+      method: "get_field_sweep_rate"
+    type: query
+    returns:
+      type: float
+      unit: T/min
+    description: "Read current field sweep rate"
+
+  set_field_sweep_rate:
+    sdk_call:
+      method: "set_field_sweep_rate"
+      args_map:
+        rate: "rate"
+    type: write
+    params:
+      rate:
+        type: float
+        unit: T/min
+        description: "Sweep rate in Tesla per minute"
+    description: "Set the field sweep rate"
+
+  get_status:
+    sdk_call:
+      method: "get_status"
+    type: query
+    returns:
+      type: string
+    streamable: true
+    description: "Read magnet status (HOLD, RTOS, RTOZ, CLMP)"
+
+  hold:
+    sdk_call:
+      method: "hold"
+    type: write
+    description: "Pause sweep and hold at current field"
+
+  ramp_to_zero:
+    sdk_call:
+      method: "ramp_to_zero"
+    type: write
+    is_dangerous: true
+    description: "Ramp the magnetic field to zero"
+
+  get_switch_heater:
+    sdk_call:
+      method: "get_switch_heater"
+    type: query
+    returns:
+      type: string
+    description: "Read persistent switch heater status (ON/OFF)"
+
+  raw_query:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    params:
+      command:
+        type: string
+        description: "Raw Mercury ISOBUS command to send"
+    returns:
+      type: string
+    description: "Send a raw command and read the response"

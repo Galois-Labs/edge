@@ -1,0 +1,103 @@
+# Lab Brick LMS Signal Synthesizer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: LabBrick_LMS_Synthesizer
+# Controlled via Vaunix vnx_fsynth.dll (ctypes)
+
+instrument:
+  manufacturer: "Vaunix"
+  model: "Lab Brick LMS Synthesizer"
+  class: signal_generator
+  description: "Vaunix Lab Brick LMS USB Signal Synthesizer (100 MHz - 20 GHz)"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.labbrick_wrapper"
+  class_name: "LabBrickSynthesizer"
+  connect:
+    method: "connect"
+    constructor_args:
+      serial_number: "{serial_number}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Vaunix.*LMS"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Vaunix.*LMS"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_frequency:
+    sdk_call:
+      method: "set_frequency"
+      args_map:
+        frequency_hz: "frequency_hz"
+    type: write
+    params:
+      frequency_hz:
+        type: float
+        unit: Hz
+        min: 100000000
+        max: 20000000000
+        description: "Output frequency in Hz"
+    description: "Set the output frequency"
+
+  get_frequency:
+    sdk_call:
+      method: "get_frequency"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Read the current output frequency"
+
+  set_power:
+    sdk_call:
+      method: "set_power"
+      args_map:
+        power_dbm: "power_dbm"
+    type: write
+    params:
+      power_dbm:
+        type: float
+        unit: dBm
+        min: -40
+        max: 10
+        description: "Output power in dBm"
+    description: "Set the output power level"
+
+  get_power:
+    sdk_call:
+      method: "get_power"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    description: "Read the current output power level"
+
+  set_rf_on:
+    sdk_call:
+      method: "set_rf_on"
+      args_map:
+        on: "on"
+    type: write
+    params:
+      on:
+        type: bool
+        description: "True to enable RF output, False to disable"
+    description: "Enable or disable the RF output"
+
+  get_rf_on:
+    sdk_call:
+      method: "get_rf_on"
+    type: query
+    returns:
+      type: bool
+    description: "Read whether the RF output is enabled"

@@ -1,0 +1,90 @@
+# MiniCircuits MW Switch Instrument Profile
+# RF/microwave programmable switch (RC-xSPxT series) via HTTP API
+# Supports RC-1SP4T-A18, RC-2SP4T-A18, RC-4SPDT-A18, RC-1SP6T-A12, RC-2SP6T-A12
+
+instrument:
+  manufacturer: "MiniCircuits"
+  model: "MW Switch"
+  class: switch
+  description: "MiniCircuits programmable RF/microwave switch via HTTP API"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.minicircuits_wrapper"
+  class_name: "MiniCircuitsClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "MiniCircuits.*(RC-1SP4T|RC-2SP4T|RC-4SPDT|RC-1SP6T|RC-2SP6T)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "MiniCircuits.*(RC-1SP4T|RC-2SP4T|RC-4SPDT|RC-1SP6T|RC-2SP6T)"
+
+interfaces:
+  - type: ethernet
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_switch:
+    sdk_call:
+      method: "set_switch"
+      args_map:
+        switch_id: "switch_id"
+        state: "state"
+    type: write
+    params:
+      switch_id:
+        type: string
+        default: "A"
+        description: "Switch identifier (A, B, C, D)"
+      state:
+        type: int
+        min: 0
+        max: 6
+        description: "Switch position (0=COM, 1-6=port)"
+    description: "Set a single switch to the given position"
+
+  get_switch:
+    sdk_call:
+      method: "get_switch"
+      args_map:
+        switch_id: "switch_id"
+    type: query
+    params:
+      switch_id:
+        type: string
+        default: "A"
+        description: "Switch identifier (A, B, C, D)"
+    returns:
+      type: string
+    description: "Read the current position of a switch"
+
+  set_all_switches:
+    sdk_call:
+      method: "set_all_switches"
+      args_map:
+        state: "state"
+    type: write
+    params:
+      state:
+        type: int
+        min: 0
+        max: 6
+        description: "Switch position to apply to all switches"
+    description: "Set all switches to the same position"
+
+  get_all_switches:
+    sdk_call:
+      method: "get_all_switches"
+    type: query
+    returns:
+      type: string
+    description: "Read all switch positions (JSON)"

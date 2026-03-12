@@ -1,0 +1,135 @@
+# QDevil QDAC Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: QDevil_QDAC
+# Uses SDK wrapper — not SCPI-controlled
+
+instrument:
+  manufacturer: "QDevil"
+  model: "QDAC"
+  class: dac
+  description: "QDevil QDAC — 24/48 channel precision DC voltage source for quantum device biasing"
+
+sdk:
+  package: "qdac"
+  import_path: "galois_edge.sdk_wrappers.qdac_wrapper"
+  class_name: "QDACClient"
+  connect:
+    method: "connect"
+    args:
+      port: "{port}"
+    defaults:
+      port: "/dev/ttyUSB0"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "QDevil.*QDAC"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "QDevil.*QDAC"
+
+interfaces:
+  - type: serial
+    baud_rate: 460800
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  set_voltage:
+    sdk_call:
+      method: "set_voltage"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 48
+        description: "Channel number (1-24 or 1-48)"
+      voltage:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+        description: "Target DC voltage"
+    description: "Set DC voltage on a channel"
+
+  get_voltage:
+    sdk_call:
+      method: "get_voltage"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 48
+        description: "Channel number (1-24 or 1-48)"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read current voltage on a channel"
+
+  set_voltage_range:
+    sdk_call:
+      method: "set_voltage_range"
+      args_map:
+        channel: "channel"
+        range_v: "range_v"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 48
+        description: "Channel number (1-24 or 1-48)"
+      range_v:
+        type: float
+        unit: V
+        description: "Voltage range (1.0 for +/-1V low range, 10.0 for +/-10V high range)"
+        default: 10.0
+    description: "Set voltage range on a channel"
+
+  ramp_voltage:
+    sdk_call:
+      method: "ramp_voltage"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+        rate: "rate"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 48
+        description: "Channel number (1-24 or 1-48)"
+      voltage:
+        type: float
+        unit: V
+        min: -10.0
+        max: 10.0
+        description: "Target voltage"
+      rate:
+        type: float
+        unit: V/s
+        default: 0.1
+        description: "Ramp rate in volts per second"
+    description: "Ramp voltage on a channel at a specified rate"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

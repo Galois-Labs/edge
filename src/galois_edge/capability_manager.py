@@ -80,7 +80,7 @@ class InstrumentCapabilities:
     def instrument_class(self) -> str:
         """Instrument class from profile (e.g. 'smu', 'dmm')."""
         if self.profile is not None:
-            return self.profile.instrument.instrument_class.value
+            return self.profile.instrument.instrument_class
         return ""
 
     # -- Enabled / disabled tracking ---
@@ -320,6 +320,11 @@ class CapabilityManager:
         return [caps.to_capability_dict() for caps in self._instruments.values()]
 
     @property
+    def all_instruments(self) -> Dict[str, InstrumentCapabilities]:
+        """Return the full map of instrument_id -> InstrumentCapabilities."""
+        return self._instruments
+
+    @property
     def instrument_count(self) -> int:
         return len(self._instruments)
 
@@ -380,7 +385,7 @@ class CapabilityManager:
             )
 
         try:
-            return cmd.format_command(params, is_query)
+            return cmd.format_scpi(params, is_query)
         except Exception as exc:
             logger.error("Failed to format command '%s': %s", command_name, exc)
             return None

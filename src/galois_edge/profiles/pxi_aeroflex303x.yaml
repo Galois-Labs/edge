@@ -1,0 +1,151 @@
+# Aeroflex 303x Digitizer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: PXI_Aeroflex303x
+# SDK wrapper: galois_edge.sdk_wrappers.aeroflex_wrapper
+
+instrument:
+  manufacturer: "Aeroflex"
+  model: "303x Digitizer"
+  class: digitizer
+  description: "Aeroflex 303x PXI digitizer via NI-RFSA"
+
+sdk:
+  package: "nirfsa"
+  import_path: "galois_edge.sdk_wrappers.aeroflex_wrapper"
+  class_name: "Aeroflex303xClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot3"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Aeroflex.*303"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Aeroflex.*303"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_frequency:
+    sdk_call:
+      method: "set_frequency"
+      args_map:
+        frequency: "frequency"
+    type: write
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 250e3
+        max: 6e9
+        default: 1e9
+        description: "Center frequency in Hz"
+    description: "Set center frequency for acquisition"
+
+  get_frequency:
+    sdk_call:
+      method: "get_frequency"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    streamable: true
+    description: "Read current center frequency"
+
+  set_reference_level:
+    sdk_call:
+      method: "set_reference_level"
+      args_map:
+        level: "level"
+    type: write
+    params:
+      level:
+        type: float
+        unit: dBm
+        min: -130
+        max: 30
+        default: 0
+        description: "Reference level in dBm"
+    description: "Set reference level for acquisition"
+
+  get_reference_level:
+    sdk_call:
+      method: "get_reference_level"
+    type: query
+    returns:
+      type: float
+      unit: dBm
+    streamable: true
+    description: "Read current reference level"
+
+  read_iq:
+    sdk_call:
+      method: "read_iq"
+      args_map:
+        samples: "samples"
+    type: query
+    params:
+      samples:
+        type: int
+        min: 1
+        max: 1000000
+        default: 1000
+        description: "Number of IQ samples to read"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    streamable: true
+    description: "Acquire IQ data samples"
+
+  read_power_spectrum:
+    sdk_call:
+      method: "read_power_spectrum"
+      args_map:
+        samples: "samples"
+    type: query
+    params:
+      samples:
+        type: int
+        min: 1
+        max: 1000000
+        default: 1000
+        description: "Number of frequency bins"
+    returns:
+      type: vector
+      unit: dBm
+      x_name: "Frequency"
+      x_unit: "Hz"
+    streamable: true
+    description: "Acquire power spectrum"
+
+  start_acquisition:
+    sdk_call:
+      method: "start_acquisition"
+    type: write
+    description: "Start continuous acquisition"
+
+  stop_acquisition:
+    sdk_call:
+      method: "stop_acquisition"
+    type: write
+    description: "Stop acquisition"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

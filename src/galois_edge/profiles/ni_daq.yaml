@@ -1,0 +1,152 @@
+# NI DAQ Instrument Profile
+# Generic profile for National Instruments Data Acquisition devices
+# Uses nidaqmx Python package (wraps NI-DAQmx C driver)
+# Original stub converted from Labber driver (MIT licensed)
+
+instrument:
+  manufacturer: "NI"
+  model: "DAQ"
+  class: daq
+  description: "National Instruments Data Acquisition device via nidaqmx SDK"
+
+sdk:
+  package: "nidaqmx"
+  import_path: "galois_edge.sdk_wrappers.ni_daq_wrapper"
+  class_name: "NiDaqClient"
+  connect:
+    constructor_args:
+      device_name: "{device_name}"
+    method: "connect"
+    defaults:
+      device_name: "Dev1"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "NI,.*"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "NI,.*DAQ"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  read_analog:
+    sdk_call:
+      method: "read_analog"
+      args_map:
+        channel: "channel"
+        samples: "samples"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "ai0"
+        description: "Analog input channel (e.g. ai0, ai1, ...)"
+      samples:
+        type: int
+        default: 1
+        description: "Number of samples to average"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read voltage from an analog input channel"
+
+  get_ai_voltage:
+    sdk_call:
+      method: "get_ai_voltage"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "ai0"
+        description: "Analog input channel (e.g. ai0, ai1, ...)"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read single-sample voltage from analog input (convenience)"
+
+  write_analog:
+    sdk_call:
+      method: "write_analog"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "ao0"
+        description: "Analog output channel (e.g. ao0, ao1)"
+      voltage:
+        type: float
+        unit: V
+        description: "Voltage to output"
+    description: "Write voltage to an analog output channel"
+
+  read_digital:
+    sdk_call:
+      method: "read_digital"
+      args_map:
+        port: "port"
+        line: "line"
+    type: query
+    params:
+      port:
+        type: string
+        default: "port0"
+        description: "Digital port (e.g. port0, port1)"
+      line:
+        type: string
+        default: "line0"
+        description: "Digital line (e.g. line0, line1, ...)"
+    returns:
+      type: bool
+    description: "Read digital input line state"
+
+  write_digital:
+    sdk_call:
+      method: "write_digital"
+      args_map:
+        port: "port"
+        line: "line"
+        value: "value"
+    type: write
+    params:
+      port:
+        type: string
+        default: "port0"
+        description: "Digital port (e.g. port0, port1)"
+      line:
+        type: string
+        default: "line0"
+        description: "Digital line (e.g. line0, line1, ...)"
+      value:
+        type: bool
+        default: false
+        description: "Logic state to write"
+    description: "Write digital output line state"
+
+  get_ai_all_voltages:
+    sdk_call:
+      method: "get_ai_all_voltages"
+      args_map:
+        num_channels: "num_channels"
+    type: query
+    params:
+      num_channels:
+        type: int
+        default: 8
+        description: "Number of AI channels to read (ai0 through ai<n-1>)"
+    returns:
+      type: string
+    description: "Read voltage from multiple analog input channels (JSON dict)"

@@ -1245,6 +1245,127 @@ func (x *ExecuteCommandRequest) GetTimeoutMs() int32 {
 	return 0
 }
 
+// VectorData carries oscilloscope traces, spectrum data, and other array results.
+// The y_data field contains raw binary values (IEEE 754 little-endian by default).
+// For integer formats (e.g. int16 from oscilloscopes), use y_scale and y_offset:
+//
+//	actual_value = raw_value * y_scale + y_offset
+type VectorData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	YData         []byte                 `protobuf:"bytes,1,opt,name=y_data,json=yData,proto3" json:"y_data,omitempty"`        // Raw data bytes (IEEE 754 doubles LE by default)
+	YDtype        string                 `protobuf:"bytes,2,opt,name=y_dtype,json=yDtype,proto3" json:"y_dtype,omitempty"`     // "float64", "float32", "int16" etc.
+	YLength       int32                  `protobuf:"varint,3,opt,name=y_length,json=yLength,proto3" json:"y_length,omitempty"` // Number of points
+	XStart        float64                `protobuf:"fixed64,4,opt,name=x_start,json=xStart,proto3" json:"x_start,omitempty"`
+	XIncrement    float64                `protobuf:"fixed64,5,opt,name=x_increment,json=xIncrement,proto3" json:"x_increment,omitempty"`
+	XUnit         string                 `protobuf:"bytes,6,opt,name=x_unit,json=xUnit,proto3" json:"x_unit,omitempty"`
+	YUnit         string                 `protobuf:"bytes,7,opt,name=y_unit,json=yUnit,proto3" json:"y_unit,omitempty"`
+	XName         string                 `protobuf:"bytes,8,opt,name=x_name,json=xName,proto3" json:"x_name,omitempty"`
+	YScale        float64                `protobuf:"fixed64,9,opt,name=y_scale,json=yScale,proto3" json:"y_scale,omitempty"` // For int16 data: actual = raw * y_scale + y_offset
+	YOffset       float64                `protobuf:"fixed64,10,opt,name=y_offset,json=yOffset,proto3" json:"y_offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VectorData) Reset() {
+	*x = VectorData{}
+	mi := &file_edge_v1_edge_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VectorData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VectorData) ProtoMessage() {}
+
+func (x *VectorData) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VectorData.ProtoReflect.Descriptor instead.
+func (*VectorData) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *VectorData) GetYData() []byte {
+	if x != nil {
+		return x.YData
+	}
+	return nil
+}
+
+func (x *VectorData) GetYDtype() string {
+	if x != nil {
+		return x.YDtype
+	}
+	return ""
+}
+
+func (x *VectorData) GetYLength() int32 {
+	if x != nil {
+		return x.YLength
+	}
+	return 0
+}
+
+func (x *VectorData) GetXStart() float64 {
+	if x != nil {
+		return x.XStart
+	}
+	return 0
+}
+
+func (x *VectorData) GetXIncrement() float64 {
+	if x != nil {
+		return x.XIncrement
+	}
+	return 0
+}
+
+func (x *VectorData) GetXUnit() string {
+	if x != nil {
+		return x.XUnit
+	}
+	return ""
+}
+
+func (x *VectorData) GetYUnit() string {
+	if x != nil {
+		return x.YUnit
+	}
+	return ""
+}
+
+func (x *VectorData) GetXName() string {
+	if x != nil {
+		return x.XName
+	}
+	return ""
+}
+
+func (x *VectorData) GetYScale() float64 {
+	if x != nil {
+		return x.YScale
+	}
+	return 0
+}
+
+func (x *VectorData) GetYOffset() float64 {
+	if x != nil {
+		return x.YOffset
+	}
+	return 0
+}
+
 type ExecuteCommandResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	CommandId       string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
@@ -1253,13 +1374,14 @@ type ExecuteCommandResponse struct {
 	ErrorMessage    string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	ExecutionTimeMs int64                  `protobuf:"varint,5,opt,name=execution_time_ms,json=executionTimeMs,proto3" json:"execution_time_ms,omitempty"`
 	ScpiCommand     string                 `protobuf:"bytes,6,opt,name=scpi_command,json=scpiCommand,proto3" json:"scpi_command,omitempty"` // The actual SCPI command that was sent
+	VectorData      *VectorData            `protobuf:"bytes,7,opt,name=vector_data,json=vectorData,proto3" json:"vector_data,omitempty"`    // Populated if the command returns a vector
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ExecuteCommandResponse) Reset() {
 	*x = ExecuteCommandResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[15]
+	mi := &file_edge_v1_edge_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1271,7 +1393,7 @@ func (x *ExecuteCommandResponse) String() string {
 func (*ExecuteCommandResponse) ProtoMessage() {}
 
 func (x *ExecuteCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[15]
+	mi := &file_edge_v1_edge_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1284,7 +1406,7 @@ func (x *ExecuteCommandResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteCommandResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteCommandResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{15}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ExecuteCommandResponse) GetCommandId() string {
@@ -1329,6 +1451,13 @@ func (x *ExecuteCommandResponse) GetScpiCommand() string {
 	return ""
 }
 
+func (x *ExecuteCommandResponse) GetVectorData() *VectorData {
+	if x != nil {
+		return x.VectorData
+	}
+	return nil
+}
+
 type ExecuteSequenceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SequenceId    string                 `protobuf:"bytes,1,opt,name=sequence_id,json=sequenceId,proto3" json:"sequence_id,omitempty"`
@@ -1342,7 +1471,7 @@ type ExecuteSequenceRequest struct {
 
 func (x *ExecuteSequenceRequest) Reset() {
 	*x = ExecuteSequenceRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[16]
+	mi := &file_edge_v1_edge_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1354,7 +1483,7 @@ func (x *ExecuteSequenceRequest) String() string {
 func (*ExecuteSequenceRequest) ProtoMessage() {}
 
 func (x *ExecuteSequenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[16]
+	mi := &file_edge_v1_edge_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1367,7 +1496,7 @@ func (x *ExecuteSequenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteSequenceRequest.ProtoReflect.Descriptor instead.
 func (*ExecuteSequenceRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{16}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ExecuteSequenceRequest) GetSequenceId() string {
@@ -1419,7 +1548,7 @@ type ExecuteSequenceResponse struct {
 
 func (x *ExecuteSequenceResponse) Reset() {
 	*x = ExecuteSequenceResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[17]
+	mi := &file_edge_v1_edge_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1431,7 +1560,7 @@ func (x *ExecuteSequenceResponse) String() string {
 func (*ExecuteSequenceResponse) ProtoMessage() {}
 
 func (x *ExecuteSequenceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[17]
+	mi := &file_edge_v1_edge_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1444,7 +1573,7 @@ func (x *ExecuteSequenceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteSequenceResponse.ProtoReflect.Descriptor instead.
 func (*ExecuteSequenceResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{17}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ExecuteSequenceResponse) GetSequenceId() string {
@@ -1503,7 +1632,7 @@ type StreamMeasurementRequest struct {
 
 func (x *StreamMeasurementRequest) Reset() {
 	*x = StreamMeasurementRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[18]
+	mi := &file_edge_v1_edge_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1515,7 +1644,7 @@ func (x *StreamMeasurementRequest) String() string {
 func (*StreamMeasurementRequest) ProtoMessage() {}
 
 func (x *StreamMeasurementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[18]
+	mi := &file_edge_v1_edge_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1528,7 +1657,7 @@ func (x *StreamMeasurementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamMeasurementRequest.ProtoReflect.Descriptor instead.
 func (*StreamMeasurementRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{18}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *StreamMeasurementRequest) GetStreamId() string {
@@ -1588,7 +1717,7 @@ type MeasurementDataPoint struct {
 
 func (x *MeasurementDataPoint) Reset() {
 	*x = MeasurementDataPoint{}
-	mi := &file_edge_v1_edge_proto_msgTypes[19]
+	mi := &file_edge_v1_edge_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1600,7 +1729,7 @@ func (x *MeasurementDataPoint) String() string {
 func (*MeasurementDataPoint) ProtoMessage() {}
 
 func (x *MeasurementDataPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[19]
+	mi := &file_edge_v1_edge_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1613,7 +1742,7 @@ func (x *MeasurementDataPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MeasurementDataPoint.ProtoReflect.Descriptor instead.
 func (*MeasurementDataPoint) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{19}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *MeasurementDataPoint) GetStreamId() string {
@@ -1674,7 +1803,7 @@ type StopStreamRequest struct {
 
 func (x *StopStreamRequest) Reset() {
 	*x = StopStreamRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[20]
+	mi := &file_edge_v1_edge_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1686,7 +1815,7 @@ func (x *StopStreamRequest) String() string {
 func (*StopStreamRequest) ProtoMessage() {}
 
 func (x *StopStreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[20]
+	mi := &file_edge_v1_edge_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1699,7 +1828,7 @@ func (x *StopStreamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopStreamRequest.ProtoReflect.Descriptor instead.
 func (*StopStreamRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{20}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *StopStreamRequest) GetStreamId() string {
@@ -1718,7 +1847,7 @@ type StopStreamResponse struct {
 
 func (x *StopStreamResponse) Reset() {
 	*x = StopStreamResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[21]
+	mi := &file_edge_v1_edge_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1730,7 +1859,7 @@ func (x *StopStreamResponse) String() string {
 func (*StopStreamResponse) ProtoMessage() {}
 
 func (x *StopStreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[21]
+	mi := &file_edge_v1_edge_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1743,7 +1872,7 @@ func (x *StopStreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopStreamResponse.ProtoReflect.Descriptor instead.
 func (*StopStreamResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{21}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *StopStreamResponse) GetSuccess() bool {
@@ -1761,7 +1890,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[22]
+	mi := &file_edge_v1_edge_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1773,7 +1902,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[22]
+	mi := &file_edge_v1_edge_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1786,7 +1915,7 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{22}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{23}
 }
 
 type EdgeStatus struct {
@@ -1806,7 +1935,7 @@ type EdgeStatus struct {
 
 func (x *EdgeStatus) Reset() {
 	*x = EdgeStatus{}
-	mi := &file_edge_v1_edge_proto_msgTypes[23]
+	mi := &file_edge_v1_edge_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1818,7 +1947,7 @@ func (x *EdgeStatus) String() string {
 func (*EdgeStatus) ProtoMessage() {}
 
 func (x *EdgeStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[23]
+	mi := &file_edge_v1_edge_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1831,7 +1960,7 @@ func (x *EdgeStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeStatus.ProtoReflect.Descriptor instead.
 func (*EdgeStatus) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{23}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *EdgeStatus) GetEdgeId() string {
@@ -1906,7 +2035,7 @@ type PingRequest struct {
 
 func (x *PingRequest) Reset() {
 	*x = PingRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[24]
+	mi := &file_edge_v1_edge_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1918,7 +2047,7 @@ func (x *PingRequest) String() string {
 func (*PingRequest) ProtoMessage() {}
 
 func (x *PingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[24]
+	mi := &file_edge_v1_edge_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1931,7 +2060,7 @@ func (x *PingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
 func (*PingRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{24}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PingRequest) GetTimestamp() *timestamppb.Timestamp {
@@ -1950,7 +2079,7 @@ type PingResponse struct {
 
 func (x *PingResponse) Reset() {
 	*x = PingResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[25]
+	mi := &file_edge_v1_edge_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1962,7 +2091,7 @@ func (x *PingResponse) String() string {
 func (*PingResponse) ProtoMessage() {}
 
 func (x *PingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[25]
+	mi := &file_edge_v1_edge_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1975,7 +2104,7 @@ func (x *PingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
 func (*PingResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{25}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PingResponse) GetTimestamp() *timestamppb.Timestamp {
@@ -2000,7 +2129,7 @@ type RegisterEdgeRequest struct {
 
 func (x *RegisterEdgeRequest) Reset() {
 	*x = RegisterEdgeRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[26]
+	mi := &file_edge_v1_edge_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2012,7 +2141,7 @@ func (x *RegisterEdgeRequest) String() string {
 func (*RegisterEdgeRequest) ProtoMessage() {}
 
 func (x *RegisterEdgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[26]
+	mi := &file_edge_v1_edge_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2025,7 +2154,7 @@ func (x *RegisterEdgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterEdgeRequest.ProtoReflect.Descriptor instead.
 func (*RegisterEdgeRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{26}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RegisterEdgeRequest) GetEdgeId() string {
@@ -2088,7 +2217,7 @@ type RegisterEdgeResponse struct {
 
 func (x *RegisterEdgeResponse) Reset() {
 	*x = RegisterEdgeResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[27]
+	mi := &file_edge_v1_edge_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2100,7 +2229,7 @@ func (x *RegisterEdgeResponse) String() string {
 func (*RegisterEdgeResponse) ProtoMessage() {}
 
 func (x *RegisterEdgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[27]
+	mi := &file_edge_v1_edge_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2113,7 +2242,7 @@ func (x *RegisterEdgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterEdgeResponse.ProtoReflect.Descriptor instead.
 func (*RegisterEdgeResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{27}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *RegisterEdgeResponse) GetSuccess() bool {
@@ -2149,7 +2278,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[28]
+	mi := &file_edge_v1_edge_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2161,7 +2290,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[28]
+	mi := &file_edge_v1_edge_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2174,7 +2303,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{28}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HeartbeatRequest) GetEdgeId() string {
@@ -2216,7 +2345,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[29]
+	mi := &file_edge_v1_edge_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2228,7 +2357,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[29]
+	mi := &file_edge_v1_edge_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2241,7 +2370,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{29}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *HeartbeatResponse) GetAcknowledged() bool {
@@ -2274,7 +2403,7 @@ type GetWebcamSnapshotRequest struct {
 
 func (x *GetWebcamSnapshotRequest) Reset() {
 	*x = GetWebcamSnapshotRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[30]
+	mi := &file_edge_v1_edge_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2286,7 +2415,7 @@ func (x *GetWebcamSnapshotRequest) String() string {
 func (*GetWebcamSnapshotRequest) ProtoMessage() {}
 
 func (x *GetWebcamSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[30]
+	mi := &file_edge_v1_edge_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2299,7 +2428,7 @@ func (x *GetWebcamSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWebcamSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetWebcamSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{30}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetWebcamSnapshotRequest) GetCameraUrl() string {
@@ -2321,7 +2450,7 @@ type GetWebcamSnapshotResponse struct {
 
 func (x *GetWebcamSnapshotResponse) Reset() {
 	*x = GetWebcamSnapshotResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[31]
+	mi := &file_edge_v1_edge_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2333,7 +2462,7 @@ func (x *GetWebcamSnapshotResponse) String() string {
 func (*GetWebcamSnapshotResponse) ProtoMessage() {}
 
 func (x *GetWebcamSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[31]
+	mi := &file_edge_v1_edge_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2346,7 +2475,7 @@ func (x *GetWebcamSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWebcamSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*GetWebcamSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{31}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetWebcamSnapshotResponse) GetImageData() []byte {
@@ -2397,7 +2526,7 @@ type ProxySDKCallRequest struct {
 
 func (x *ProxySDKCallRequest) Reset() {
 	*x = ProxySDKCallRequest{}
-	mi := &file_edge_v1_edge_proto_msgTypes[32]
+	mi := &file_edge_v1_edge_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2409,7 +2538,7 @@ func (x *ProxySDKCallRequest) String() string {
 func (*ProxySDKCallRequest) ProtoMessage() {}
 
 func (x *ProxySDKCallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[32]
+	mi := &file_edge_v1_edge_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2422,7 +2551,7 @@ func (x *ProxySDKCallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxySDKCallRequest.ProtoReflect.Descriptor instead.
 func (*ProxySDKCallRequest) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{32}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ProxySDKCallRequest) GetCallId() string {
@@ -2487,7 +2616,7 @@ type ProxySDKCallResponse struct {
 
 func (x *ProxySDKCallResponse) Reset() {
 	*x = ProxySDKCallResponse{}
-	mi := &file_edge_v1_edge_proto_msgTypes[33]
+	mi := &file_edge_v1_edge_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2499,7 +2628,7 @@ func (x *ProxySDKCallResponse) String() string {
 func (*ProxySDKCallResponse) ProtoMessage() {}
 
 func (x *ProxySDKCallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_v1_edge_proto_msgTypes[33]
+	mi := &file_edge_v1_edge_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2512,7 +2641,7 @@ func (x *ProxySDKCallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxySDKCallResponse.ProtoReflect.Descriptor instead.
 func (*ProxySDKCallResponse) Descriptor() ([]byte, []int) {
-	return file_edge_v1_edge_proto_rawDescGZIP(), []int{33}
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ProxySDKCallResponse) GetCallId() string {
@@ -2548,6 +2677,366 @@ func (x *ProxySDKCallResponse) GetExecutionTimeMs() int64 {
 		return x.ExecutionTimeMs
 	}
 	return 0
+}
+
+type StartSweepRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InstrumentId    string                 `protobuf:"bytes,1,opt,name=instrument_id,json=instrumentId,proto3" json:"instrument_id,omitempty"`
+	CommandName     string                 `protobuf:"bytes,2,opt,name=command_name,json=commandName,proto3" json:"command_name,omitempty"`
+	TargetValue     float64                `protobuf:"fixed64,3,opt,name=target_value,json=targetValue,proto3" json:"target_value,omitempty"`
+	SweepRate       float64                `protobuf:"fixed64,4,opt,name=sweep_rate,json=sweepRate,proto3" json:"sweep_rate,omitempty"`
+	ExtraParameters map[string]string      `protobuf:"bytes,5,rep,name=extra_parameters,json=extraParameters,proto3" json:"extra_parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *StartSweepRequest) Reset() {
+	*x = StartSweepRequest{}
+	mi := &file_edge_v1_edge_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartSweepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartSweepRequest) ProtoMessage() {}
+
+func (x *StartSweepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartSweepRequest.ProtoReflect.Descriptor instead.
+func (*StartSweepRequest) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *StartSweepRequest) GetInstrumentId() string {
+	if x != nil {
+		return x.InstrumentId
+	}
+	return ""
+}
+
+func (x *StartSweepRequest) GetCommandName() string {
+	if x != nil {
+		return x.CommandName
+	}
+	return ""
+}
+
+func (x *StartSweepRequest) GetTargetValue() float64 {
+	if x != nil {
+		return x.TargetValue
+	}
+	return 0
+}
+
+func (x *StartSweepRequest) GetSweepRate() float64 {
+	if x != nil {
+		return x.SweepRate
+	}
+	return 0
+}
+
+func (x *StartSweepRequest) GetExtraParameters() map[string]string {
+	if x != nil {
+		return x.ExtraParameters
+	}
+	return nil
+}
+
+type StartSweepResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SweepId       string                 `protobuf:"bytes,1,opt,name=sweep_id,json=sweepId,proto3" json:"sweep_id,omitempty"`
+	Accepted      bool                   `protobuf:"varint,2,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartSweepResponse) Reset() {
+	*x = StartSweepResponse{}
+	mi := &file_edge_v1_edge_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartSweepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartSweepResponse) ProtoMessage() {}
+
+func (x *StartSweepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartSweepResponse.ProtoReflect.Descriptor instead.
+func (*StartSweepResponse) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *StartSweepResponse) GetSweepId() string {
+	if x != nil {
+		return x.SweepId
+	}
+	return ""
+}
+
+func (x *StartSweepResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *StartSweepResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type GetSweepStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SweepId       string                 `protobuf:"bytes,1,opt,name=sweep_id,json=sweepId,proto3" json:"sweep_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSweepStatusRequest) Reset() {
+	*x = GetSweepStatusRequest{}
+	mi := &file_edge_v1_edge_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSweepStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSweepStatusRequest) ProtoMessage() {}
+
+func (x *GetSweepStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSweepStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetSweepStatusRequest) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *GetSweepStatusRequest) GetSweepId() string {
+	if x != nil {
+		return x.SweepId
+	}
+	return ""
+}
+
+type SweepStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SweepId       string                 `protobuf:"bytes,1,opt,name=sweep_id,json=sweepId,proto3" json:"sweep_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // "sweeping", "completed", "error", "aborted"
+	CurrentValue  float64                `protobuf:"fixed64,3,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"`
+	TargetValue   float64                `protobuf:"fixed64,4,opt,name=target_value,json=targetValue,proto3" json:"target_value,omitempty"`
+	SweepRate     float64                `protobuf:"fixed64,5,opt,name=sweep_rate,json=sweepRate,proto3" json:"sweep_rate,omitempty"`
+	Error         string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SweepStatusResponse) Reset() {
+	*x = SweepStatusResponse{}
+	mi := &file_edge_v1_edge_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SweepStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SweepStatusResponse) ProtoMessage() {}
+
+func (x *SweepStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SweepStatusResponse.ProtoReflect.Descriptor instead.
+func (*SweepStatusResponse) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *SweepStatusResponse) GetSweepId() string {
+	if x != nil {
+		return x.SweepId
+	}
+	return ""
+}
+
+func (x *SweepStatusResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *SweepStatusResponse) GetCurrentValue() float64 {
+	if x != nil {
+		return x.CurrentValue
+	}
+	return 0
+}
+
+func (x *SweepStatusResponse) GetTargetValue() float64 {
+	if x != nil {
+		return x.TargetValue
+	}
+	return 0
+}
+
+func (x *SweepStatusResponse) GetSweepRate() float64 {
+	if x != nil {
+		return x.SweepRate
+	}
+	return 0
+}
+
+func (x *SweepStatusResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type StopSweepRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SweepId       string                 `protobuf:"bytes,1,opt,name=sweep_id,json=sweepId,proto3" json:"sweep_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopSweepRequest) Reset() {
+	*x = StopSweepRequest{}
+	mi := &file_edge_v1_edge_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopSweepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopSweepRequest) ProtoMessage() {}
+
+func (x *StopSweepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopSweepRequest.ProtoReflect.Descriptor instead.
+func (*StopSweepRequest) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *StopSweepRequest) GetSweepId() string {
+	if x != nil {
+		return x.SweepId
+	}
+	return ""
+}
+
+type StopSweepResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // "holding", "stopped"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopSweepResponse) Reset() {
+	*x = StopSweepResponse{}
+	mi := &file_edge_v1_edge_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopSweepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopSweepResponse) ProtoMessage() {}
+
+func (x *StopSweepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_v1_edge_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopSweepResponse.ProtoReflect.Descriptor instead.
+func (*StopSweepResponse) Descriptor() ([]byte, []int) {
+	return file_edge_v1_edge_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *StopSweepResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *StopSweepResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
 }
 
 var File_edge_v1_edge_proto protoreflect.FileDescriptor
@@ -2655,7 +3144,21 @@ const file_edge_v1_edge_proto_rawDesc = "" +
 	"timeout_ms\x18\x06 \x01(\x05R\ttimeoutMs\x1a=\n" +
 	"\x0fParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd9\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8a\x02\n" +
+	"\n" +
+	"VectorData\x12\x15\n" +
+	"\x06y_data\x18\x01 \x01(\fR\x05yData\x12\x17\n" +
+	"\ay_dtype\x18\x02 \x01(\tR\x06yDtype\x12\x19\n" +
+	"\by_length\x18\x03 \x01(\x05R\ayLength\x12\x17\n" +
+	"\ax_start\x18\x04 \x01(\x01R\x06xStart\x12\x1f\n" +
+	"\vx_increment\x18\x05 \x01(\x01R\n" +
+	"xIncrement\x12\x15\n" +
+	"\x06x_unit\x18\x06 \x01(\tR\x05xUnit\x12\x15\n" +
+	"\x06y_unit\x18\a \x01(\tR\x05yUnit\x12\x15\n" +
+	"\x06x_name\x18\b \x01(\tR\x05xName\x12\x17\n" +
+	"\ay_scale\x18\t \x01(\x01R\x06yScale\x12\x19\n" +
+	"\by_offset\x18\n" +
+	" \x01(\x01R\ayOffset\"\x96\x02\n" +
 	"\x16ExecuteCommandResponse\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x18\n" +
@@ -2663,7 +3166,9 @@ const file_edge_v1_edge_proto_rawDesc = "" +
 	"\x04data\x18\x03 \x01(\tR\x04data\x12#\n" +
 	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\x12*\n" +
 	"\x11execution_time_ms\x18\x05 \x01(\x03R\x0fexecutionTimeMs\x12!\n" +
-	"\fscpi_command\x18\x06 \x01(\tR\vscpiCommand\"\xb9\x02\n" +
+	"\fscpi_command\x18\x06 \x01(\tR\vscpiCommand\x12;\n" +
+	"\vvector_data\x18\a \x01(\v2\x1a.galois.edge.v1.VectorDataR\n" +
+	"vectorData\"\xb9\x02\n" +
 	"\x16ExecuteSequenceRequest\x12\x1f\n" +
 	"\vsequence_id\x18\x01 \x01(\tR\n" +
 	"sequenceId\x12#\n" +
@@ -2783,7 +3288,36 @@ const file_edge_v1_edge_proto_rawDesc = "" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12.\n" +
 	"\x06result\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\x06result\x12#\n" +
 	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\x12*\n" +
-	"\x11execution_time_ms\x18\x05 \x01(\x03R\x0fexecutionTimeMs*\x99\x01\n" +
+	"\x11execution_time_ms\x18\x05 \x01(\x03R\x0fexecutionTimeMs\"\xc4\x02\n" +
+	"\x11StartSweepRequest\x12#\n" +
+	"\rinstrument_id\x18\x01 \x01(\tR\finstrumentId\x12!\n" +
+	"\fcommand_name\x18\x02 \x01(\tR\vcommandName\x12!\n" +
+	"\ftarget_value\x18\x03 \x01(\x01R\vtargetValue\x12\x1d\n" +
+	"\n" +
+	"sweep_rate\x18\x04 \x01(\x01R\tsweepRate\x12a\n" +
+	"\x10extra_parameters\x18\x05 \x03(\v26.galois.edge.v1.StartSweepRequest.ExtraParametersEntryR\x0fextraParameters\x1aB\n" +
+	"\x14ExtraParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"a\n" +
+	"\x12StartSweepResponse\x12\x19\n" +
+	"\bsweep_id\x18\x01 \x01(\tR\asweepId\x12\x1a\n" +
+	"\baccepted\x18\x02 \x01(\bR\baccepted\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"2\n" +
+	"\x15GetSweepStatusRequest\x12\x19\n" +
+	"\bsweep_id\x18\x01 \x01(\tR\asweepId\"\xc5\x01\n" +
+	"\x13SweepStatusResponse\x12\x19\n" +
+	"\bsweep_id\x18\x01 \x01(\tR\asweepId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12#\n" +
+	"\rcurrent_value\x18\x03 \x01(\x01R\fcurrentValue\x12!\n" +
+	"\ftarget_value\x18\x04 \x01(\x01R\vtargetValue\x12\x1d\n" +
+	"\n" +
+	"sweep_rate\x18\x05 \x01(\x01R\tsweepRate\x12\x14\n" +
+	"\x05error\x18\x06 \x01(\tR\x05error\"-\n" +
+	"\x10StopSweepRequest\x12\x19\n" +
+	"\bsweep_id\x18\x01 \x01(\tR\asweepId\"E\n" +
+	"\x11StopSweepResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status*\x99\x01\n" +
 	"\x0eConnectionType\x12\x1f\n" +
 	"\x1bCONNECTION_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14CONNECTION_TYPE_GPIB\x10\x01\x12\x17\n" +
@@ -2800,7 +3334,7 @@ const file_edge_v1_edge_proto_rawDesc = "" +
 	"\x1cEDGE_STATUS_CODE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17EDGE_STATUS_CODE_ONLINE\x10\x01\x12\x1c\n" +
 	"\x18EDGE_STATUS_CODE_OFFLINE\x10\x02\x12\x1d\n" +
-	"\x19EDGE_STATUS_CODE_DEGRADED\x10\x032\xca\v\n" +
+	"\x19EDGE_STATUS_CODE_DEGRADED\x10\x032\xcf\r\n" +
 	"\x11EdgeDaemonService\x12V\n" +
 	"\vSendCommand\x12\".galois.edge.v1.SendCommandRequest\x1a#.galois.edge.v1.SendCommandResponse\x12]\n" +
 	"\x0eStreamCommands\x12\".galois.edge.v1.SendCommandRequest\x1a#.galois.edge.v1.SendCommandResponse(\x010\x01\x12b\n" +
@@ -2818,7 +3352,11 @@ const file_edge_v1_edge_proto_rawDesc = "" +
 	"\fRegisterEdge\x12#.galois.edge.v1.RegisterEdgeRequest\x1a$.galois.edge.v1.RegisterEdgeResponse\x12P\n" +
 	"\tHeartbeat\x12 .galois.edge.v1.HeartbeatRequest\x1a!.galois.edge.v1.HeartbeatResponse\x12h\n" +
 	"\x11GetWebcamSnapshot\x12(.galois.edge.v1.GetWebcamSnapshotRequest\x1a).galois.edge.v1.GetWebcamSnapshotResponse\x12Y\n" +
-	"\fProxySDKCall\x12#.galois.edge.v1.ProxySDKCallRequest\x1a$.galois.edge.v1.ProxySDKCallResponseB4Z2github.com/galois-labs/edge/proto/gen/go/edge/v1b\x06proto3"
+	"\fProxySDKCall\x12#.galois.edge.v1.ProxySDKCallRequest\x1a$.galois.edge.v1.ProxySDKCallResponse\x12S\n" +
+	"\n" +
+	"StartSweep\x12!.galois.edge.v1.StartSweepRequest\x1a\".galois.edge.v1.StartSweepResponse\x12\\\n" +
+	"\x0eGetSweepStatus\x12%.galois.edge.v1.GetSweepStatusRequest\x1a#.galois.edge.v1.SweepStatusResponse\x12P\n" +
+	"\tStopSweep\x12 .galois.edge.v1.StopSweepRequest\x1a!.galois.edge.v1.StopSweepResponseB4Z2github.com/galois-labs/daemon/proto/gen/go/edge/v1b\x06proto3"
 
 var (
 	file_edge_v1_edge_proto_rawDescOnce sync.Once
@@ -2833,7 +3371,7 @@ func file_edge_v1_edge_proto_rawDescGZIP() []byte {
 }
 
 var file_edge_v1_edge_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_edge_v1_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
+var file_edge_v1_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
 var file_edge_v1_edge_proto_goTypes = []any{
 	(ConnectionType)(0),               // 0: galois.edge.v1.ConnectionType
 	(ParameterType)(0),                // 1: galois.edge.v1.ParameterType
@@ -2853,35 +3391,43 @@ var file_edge_v1_edge_proto_goTypes = []any{
 	(*GetCapabilitiesRequest)(nil),    // 15: galois.edge.v1.GetCapabilitiesRequest
 	(*GetCapabilitiesResponse)(nil),   // 16: galois.edge.v1.GetCapabilitiesResponse
 	(*ExecuteCommandRequest)(nil),     // 17: galois.edge.v1.ExecuteCommandRequest
-	(*ExecuteCommandResponse)(nil),    // 18: galois.edge.v1.ExecuteCommandResponse
-	(*ExecuteSequenceRequest)(nil),    // 19: galois.edge.v1.ExecuteSequenceRequest
-	(*ExecuteSequenceResponse)(nil),   // 20: galois.edge.v1.ExecuteSequenceResponse
-	(*StreamMeasurementRequest)(nil),  // 21: galois.edge.v1.StreamMeasurementRequest
-	(*MeasurementDataPoint)(nil),      // 22: galois.edge.v1.MeasurementDataPoint
-	(*StopStreamRequest)(nil),         // 23: galois.edge.v1.StopStreamRequest
-	(*StopStreamResponse)(nil),        // 24: galois.edge.v1.StopStreamResponse
-	(*GetStatusRequest)(nil),          // 25: galois.edge.v1.GetStatusRequest
-	(*EdgeStatus)(nil),                // 26: galois.edge.v1.EdgeStatus
-	(*PingRequest)(nil),               // 27: galois.edge.v1.PingRequest
-	(*PingResponse)(nil),              // 28: galois.edge.v1.PingResponse
-	(*RegisterEdgeRequest)(nil),       // 29: galois.edge.v1.RegisterEdgeRequest
-	(*RegisterEdgeResponse)(nil),      // 30: galois.edge.v1.RegisterEdgeResponse
-	(*HeartbeatRequest)(nil),          // 31: galois.edge.v1.HeartbeatRequest
-	(*HeartbeatResponse)(nil),         // 32: galois.edge.v1.HeartbeatResponse
-	(*GetWebcamSnapshotRequest)(nil),  // 33: galois.edge.v1.GetWebcamSnapshotRequest
-	(*GetWebcamSnapshotResponse)(nil), // 34: galois.edge.v1.GetWebcamSnapshotResponse
-	(*ProxySDKCallRequest)(nil),       // 35: galois.edge.v1.ProxySDKCallRequest
-	(*ProxySDKCallResponse)(nil),      // 36: galois.edge.v1.ProxySDKCallResponse
-	nil,                               // 37: galois.edge.v1.InstrumentCapabilities.SettingsEntry
-	nil,                               // 38: galois.edge.v1.ExecuteCommandRequest.ParametersEntry
-	nil,                               // 39: galois.edge.v1.ExecuteSequenceRequest.ParametersEntry
-	nil,                               // 40: galois.edge.v1.StreamMeasurementRequest.ParametersEntry
-	nil,                               // 41: galois.edge.v1.MeasurementDataPoint.ValuesEntry
-	nil,                               // 42: galois.edge.v1.RegisterEdgeRequest.MetadataEntry
-	nil,                               // 43: galois.edge.v1.HeartbeatResponse.ConfigUpdatesEntry
-	nil,                               // 44: galois.edge.v1.ProxySDKCallRequest.KwargsEntry
-	(*timestamppb.Timestamp)(nil),     // 45: google.protobuf.Timestamp
-	(*structpb.Value)(nil),            // 46: google.protobuf.Value
+	(*VectorData)(nil),                // 18: galois.edge.v1.VectorData
+	(*ExecuteCommandResponse)(nil),    // 19: galois.edge.v1.ExecuteCommandResponse
+	(*ExecuteSequenceRequest)(nil),    // 20: galois.edge.v1.ExecuteSequenceRequest
+	(*ExecuteSequenceResponse)(nil),   // 21: galois.edge.v1.ExecuteSequenceResponse
+	(*StreamMeasurementRequest)(nil),  // 22: galois.edge.v1.StreamMeasurementRequest
+	(*MeasurementDataPoint)(nil),      // 23: galois.edge.v1.MeasurementDataPoint
+	(*StopStreamRequest)(nil),         // 24: galois.edge.v1.StopStreamRequest
+	(*StopStreamResponse)(nil),        // 25: galois.edge.v1.StopStreamResponse
+	(*GetStatusRequest)(nil),          // 26: galois.edge.v1.GetStatusRequest
+	(*EdgeStatus)(nil),                // 27: galois.edge.v1.EdgeStatus
+	(*PingRequest)(nil),               // 28: galois.edge.v1.PingRequest
+	(*PingResponse)(nil),              // 29: galois.edge.v1.PingResponse
+	(*RegisterEdgeRequest)(nil),       // 30: galois.edge.v1.RegisterEdgeRequest
+	(*RegisterEdgeResponse)(nil),      // 31: galois.edge.v1.RegisterEdgeResponse
+	(*HeartbeatRequest)(nil),          // 32: galois.edge.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),         // 33: galois.edge.v1.HeartbeatResponse
+	(*GetWebcamSnapshotRequest)(nil),  // 34: galois.edge.v1.GetWebcamSnapshotRequest
+	(*GetWebcamSnapshotResponse)(nil), // 35: galois.edge.v1.GetWebcamSnapshotResponse
+	(*ProxySDKCallRequest)(nil),       // 36: galois.edge.v1.ProxySDKCallRequest
+	(*ProxySDKCallResponse)(nil),      // 37: galois.edge.v1.ProxySDKCallResponse
+	(*StartSweepRequest)(nil),         // 38: galois.edge.v1.StartSweepRequest
+	(*StartSweepResponse)(nil),        // 39: galois.edge.v1.StartSweepResponse
+	(*GetSweepStatusRequest)(nil),     // 40: galois.edge.v1.GetSweepStatusRequest
+	(*SweepStatusResponse)(nil),       // 41: galois.edge.v1.SweepStatusResponse
+	(*StopSweepRequest)(nil),          // 42: galois.edge.v1.StopSweepRequest
+	(*StopSweepResponse)(nil),         // 43: galois.edge.v1.StopSweepResponse
+	nil,                               // 44: galois.edge.v1.InstrumentCapabilities.SettingsEntry
+	nil,                               // 45: galois.edge.v1.ExecuteCommandRequest.ParametersEntry
+	nil,                               // 46: galois.edge.v1.ExecuteSequenceRequest.ParametersEntry
+	nil,                               // 47: galois.edge.v1.StreamMeasurementRequest.ParametersEntry
+	nil,                               // 48: galois.edge.v1.MeasurementDataPoint.ValuesEntry
+	nil,                               // 49: galois.edge.v1.RegisterEdgeRequest.MetadataEntry
+	nil,                               // 50: galois.edge.v1.HeartbeatResponse.ConfigUpdatesEntry
+	nil,                               // 51: galois.edge.v1.ProxySDKCallRequest.KwargsEntry
+	nil,                               // 52: galois.edge.v1.StartSweepRequest.ExtraParametersEntry
+	(*timestamppb.Timestamp)(nil),     // 53: google.protobuf.Timestamp
+	(*structpb.Value)(nil),            // 54: google.protobuf.Value
 }
 var file_edge_v1_edge_proto_depIdxs = []int32{
 	0,  // 0: galois.edge.v1.Instrument.connection_type:type_name -> galois.edge.v1.ConnectionType
@@ -2890,61 +3436,69 @@ var file_edge_v1_edge_proto_depIdxs = []int32{
 	1,  // 3: galois.edge.v1.CommandParameter.type:type_name -> galois.edge.v1.ParameterType
 	4,  // 4: galois.edge.v1.InstrumentCapabilities.commands:type_name -> galois.edge.v1.CommandCapability
 	6,  // 5: galois.edge.v1.InstrumentCapabilities.sequences:type_name -> galois.edge.v1.SequenceCapability
-	37, // 6: galois.edge.v1.InstrumentCapabilities.settings:type_name -> galois.edge.v1.InstrumentCapabilities.SettingsEntry
+	44, // 6: galois.edge.v1.InstrumentCapabilities.settings:type_name -> galois.edge.v1.InstrumentCapabilities.SettingsEntry
 	3,  // 7: galois.edge.v1.ListInstrumentsResponse.instruments:type_name -> galois.edge.v1.Instrument
 	3,  // 8: galois.edge.v1.ScanInstrumentsResponse.instruments:type_name -> galois.edge.v1.Instrument
 	7,  // 9: galois.edge.v1.GetCapabilitiesResponse.capabilities:type_name -> galois.edge.v1.InstrumentCapabilities
-	38, // 10: galois.edge.v1.ExecuteCommandRequest.parameters:type_name -> galois.edge.v1.ExecuteCommandRequest.ParametersEntry
-	39, // 11: galois.edge.v1.ExecuteSequenceRequest.parameters:type_name -> galois.edge.v1.ExecuteSequenceRequest.ParametersEntry
-	40, // 12: galois.edge.v1.StreamMeasurementRequest.parameters:type_name -> galois.edge.v1.StreamMeasurementRequest.ParametersEntry
-	41, // 13: galois.edge.v1.MeasurementDataPoint.values:type_name -> galois.edge.v1.MeasurementDataPoint.ValuesEntry
-	2,  // 14: galois.edge.v1.EdgeStatus.status:type_name -> galois.edge.v1.EdgeStatusCode
-	45, // 15: galois.edge.v1.PingRequest.timestamp:type_name -> google.protobuf.Timestamp
-	45, // 16: galois.edge.v1.PingResponse.timestamp:type_name -> google.protobuf.Timestamp
-	3,  // 17: galois.edge.v1.RegisterEdgeRequest.instruments:type_name -> galois.edge.v1.Instrument
-	42, // 18: galois.edge.v1.RegisterEdgeRequest.metadata:type_name -> galois.edge.v1.RegisterEdgeRequest.MetadataEntry
-	43, // 19: galois.edge.v1.HeartbeatResponse.config_updates:type_name -> galois.edge.v1.HeartbeatResponse.ConfigUpdatesEntry
-	46, // 20: galois.edge.v1.ProxySDKCallRequest.args:type_name -> google.protobuf.Value
-	44, // 21: galois.edge.v1.ProxySDKCallRequest.kwargs:type_name -> galois.edge.v1.ProxySDKCallRequest.KwargsEntry
-	46, // 22: galois.edge.v1.ProxySDKCallResponse.result:type_name -> google.protobuf.Value
-	46, // 23: galois.edge.v1.ProxySDKCallRequest.KwargsEntry.value:type_name -> google.protobuf.Value
-	8,  // 24: galois.edge.v1.EdgeDaemonService.SendCommand:input_type -> galois.edge.v1.SendCommandRequest
-	8,  // 25: galois.edge.v1.EdgeDaemonService.StreamCommands:input_type -> galois.edge.v1.SendCommandRequest
-	10, // 26: galois.edge.v1.EdgeDaemonService.ListInstruments:input_type -> galois.edge.v1.ListInstrumentsRequest
-	12, // 27: galois.edge.v1.EdgeDaemonService.GetInstrument:input_type -> galois.edge.v1.GetInstrumentRequest
-	13, // 28: galois.edge.v1.EdgeDaemonService.ScanInstruments:input_type -> galois.edge.v1.ScanInstrumentsRequest
-	15, // 29: galois.edge.v1.EdgeDaemonService.GetCapabilities:input_type -> galois.edge.v1.GetCapabilitiesRequest
-	17, // 30: galois.edge.v1.EdgeDaemonService.ExecuteCommand:input_type -> galois.edge.v1.ExecuteCommandRequest
-	19, // 31: galois.edge.v1.EdgeDaemonService.ExecuteSequence:input_type -> galois.edge.v1.ExecuteSequenceRequest
-	21, // 32: galois.edge.v1.EdgeDaemonService.StreamMeasurement:input_type -> galois.edge.v1.StreamMeasurementRequest
-	23, // 33: galois.edge.v1.EdgeDaemonService.StopStream:input_type -> galois.edge.v1.StopStreamRequest
-	25, // 34: galois.edge.v1.EdgeDaemonService.GetStatus:input_type -> galois.edge.v1.GetStatusRequest
-	27, // 35: galois.edge.v1.EdgeDaemonService.Ping:input_type -> galois.edge.v1.PingRequest
-	29, // 36: galois.edge.v1.EdgeDaemonService.RegisterEdge:input_type -> galois.edge.v1.RegisterEdgeRequest
-	31, // 37: galois.edge.v1.EdgeDaemonService.Heartbeat:input_type -> galois.edge.v1.HeartbeatRequest
-	33, // 38: galois.edge.v1.EdgeDaemonService.GetWebcamSnapshot:input_type -> galois.edge.v1.GetWebcamSnapshotRequest
-	35, // 39: galois.edge.v1.EdgeDaemonService.ProxySDKCall:input_type -> galois.edge.v1.ProxySDKCallRequest
-	9,  // 40: galois.edge.v1.EdgeDaemonService.SendCommand:output_type -> galois.edge.v1.SendCommandResponse
-	9,  // 41: galois.edge.v1.EdgeDaemonService.StreamCommands:output_type -> galois.edge.v1.SendCommandResponse
-	11, // 42: galois.edge.v1.EdgeDaemonService.ListInstruments:output_type -> galois.edge.v1.ListInstrumentsResponse
-	3,  // 43: galois.edge.v1.EdgeDaemonService.GetInstrument:output_type -> galois.edge.v1.Instrument
-	14, // 44: galois.edge.v1.EdgeDaemonService.ScanInstruments:output_type -> galois.edge.v1.ScanInstrumentsResponse
-	16, // 45: galois.edge.v1.EdgeDaemonService.GetCapabilities:output_type -> galois.edge.v1.GetCapabilitiesResponse
-	18, // 46: galois.edge.v1.EdgeDaemonService.ExecuteCommand:output_type -> galois.edge.v1.ExecuteCommandResponse
-	20, // 47: galois.edge.v1.EdgeDaemonService.ExecuteSequence:output_type -> galois.edge.v1.ExecuteSequenceResponse
-	22, // 48: galois.edge.v1.EdgeDaemonService.StreamMeasurement:output_type -> galois.edge.v1.MeasurementDataPoint
-	24, // 49: galois.edge.v1.EdgeDaemonService.StopStream:output_type -> galois.edge.v1.StopStreamResponse
-	26, // 50: galois.edge.v1.EdgeDaemonService.GetStatus:output_type -> galois.edge.v1.EdgeStatus
-	28, // 51: galois.edge.v1.EdgeDaemonService.Ping:output_type -> galois.edge.v1.PingResponse
-	30, // 52: galois.edge.v1.EdgeDaemonService.RegisterEdge:output_type -> galois.edge.v1.RegisterEdgeResponse
-	32, // 53: galois.edge.v1.EdgeDaemonService.Heartbeat:output_type -> galois.edge.v1.HeartbeatResponse
-	34, // 54: galois.edge.v1.EdgeDaemonService.GetWebcamSnapshot:output_type -> galois.edge.v1.GetWebcamSnapshotResponse
-	36, // 55: galois.edge.v1.EdgeDaemonService.ProxySDKCall:output_type -> galois.edge.v1.ProxySDKCallResponse
-	40, // [40:56] is the sub-list for method output_type
-	24, // [24:40] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	45, // 10: galois.edge.v1.ExecuteCommandRequest.parameters:type_name -> galois.edge.v1.ExecuteCommandRequest.ParametersEntry
+	18, // 11: galois.edge.v1.ExecuteCommandResponse.vector_data:type_name -> galois.edge.v1.VectorData
+	46, // 12: galois.edge.v1.ExecuteSequenceRequest.parameters:type_name -> galois.edge.v1.ExecuteSequenceRequest.ParametersEntry
+	47, // 13: galois.edge.v1.StreamMeasurementRequest.parameters:type_name -> galois.edge.v1.StreamMeasurementRequest.ParametersEntry
+	48, // 14: galois.edge.v1.MeasurementDataPoint.values:type_name -> galois.edge.v1.MeasurementDataPoint.ValuesEntry
+	2,  // 15: galois.edge.v1.EdgeStatus.status:type_name -> galois.edge.v1.EdgeStatusCode
+	53, // 16: galois.edge.v1.PingRequest.timestamp:type_name -> google.protobuf.Timestamp
+	53, // 17: galois.edge.v1.PingResponse.timestamp:type_name -> google.protobuf.Timestamp
+	3,  // 18: galois.edge.v1.RegisterEdgeRequest.instruments:type_name -> galois.edge.v1.Instrument
+	49, // 19: galois.edge.v1.RegisterEdgeRequest.metadata:type_name -> galois.edge.v1.RegisterEdgeRequest.MetadataEntry
+	50, // 20: galois.edge.v1.HeartbeatResponse.config_updates:type_name -> galois.edge.v1.HeartbeatResponse.ConfigUpdatesEntry
+	54, // 21: galois.edge.v1.ProxySDKCallRequest.args:type_name -> google.protobuf.Value
+	51, // 22: galois.edge.v1.ProxySDKCallRequest.kwargs:type_name -> galois.edge.v1.ProxySDKCallRequest.KwargsEntry
+	54, // 23: galois.edge.v1.ProxySDKCallResponse.result:type_name -> google.protobuf.Value
+	52, // 24: galois.edge.v1.StartSweepRequest.extra_parameters:type_name -> galois.edge.v1.StartSweepRequest.ExtraParametersEntry
+	54, // 25: galois.edge.v1.ProxySDKCallRequest.KwargsEntry.value:type_name -> google.protobuf.Value
+	8,  // 26: galois.edge.v1.EdgeDaemonService.SendCommand:input_type -> galois.edge.v1.SendCommandRequest
+	8,  // 27: galois.edge.v1.EdgeDaemonService.StreamCommands:input_type -> galois.edge.v1.SendCommandRequest
+	10, // 28: galois.edge.v1.EdgeDaemonService.ListInstruments:input_type -> galois.edge.v1.ListInstrumentsRequest
+	12, // 29: galois.edge.v1.EdgeDaemonService.GetInstrument:input_type -> galois.edge.v1.GetInstrumentRequest
+	13, // 30: galois.edge.v1.EdgeDaemonService.ScanInstruments:input_type -> galois.edge.v1.ScanInstrumentsRequest
+	15, // 31: galois.edge.v1.EdgeDaemonService.GetCapabilities:input_type -> galois.edge.v1.GetCapabilitiesRequest
+	17, // 32: galois.edge.v1.EdgeDaemonService.ExecuteCommand:input_type -> galois.edge.v1.ExecuteCommandRequest
+	20, // 33: galois.edge.v1.EdgeDaemonService.ExecuteSequence:input_type -> galois.edge.v1.ExecuteSequenceRequest
+	22, // 34: galois.edge.v1.EdgeDaemonService.StreamMeasurement:input_type -> galois.edge.v1.StreamMeasurementRequest
+	24, // 35: galois.edge.v1.EdgeDaemonService.StopStream:input_type -> galois.edge.v1.StopStreamRequest
+	26, // 36: galois.edge.v1.EdgeDaemonService.GetStatus:input_type -> galois.edge.v1.GetStatusRequest
+	28, // 37: galois.edge.v1.EdgeDaemonService.Ping:input_type -> galois.edge.v1.PingRequest
+	30, // 38: galois.edge.v1.EdgeDaemonService.RegisterEdge:input_type -> galois.edge.v1.RegisterEdgeRequest
+	32, // 39: galois.edge.v1.EdgeDaemonService.Heartbeat:input_type -> galois.edge.v1.HeartbeatRequest
+	34, // 40: galois.edge.v1.EdgeDaemonService.GetWebcamSnapshot:input_type -> galois.edge.v1.GetWebcamSnapshotRequest
+	36, // 41: galois.edge.v1.EdgeDaemonService.ProxySDKCall:input_type -> galois.edge.v1.ProxySDKCallRequest
+	38, // 42: galois.edge.v1.EdgeDaemonService.StartSweep:input_type -> galois.edge.v1.StartSweepRequest
+	40, // 43: galois.edge.v1.EdgeDaemonService.GetSweepStatus:input_type -> galois.edge.v1.GetSweepStatusRequest
+	42, // 44: galois.edge.v1.EdgeDaemonService.StopSweep:input_type -> galois.edge.v1.StopSweepRequest
+	9,  // 45: galois.edge.v1.EdgeDaemonService.SendCommand:output_type -> galois.edge.v1.SendCommandResponse
+	9,  // 46: galois.edge.v1.EdgeDaemonService.StreamCommands:output_type -> galois.edge.v1.SendCommandResponse
+	11, // 47: galois.edge.v1.EdgeDaemonService.ListInstruments:output_type -> galois.edge.v1.ListInstrumentsResponse
+	3,  // 48: galois.edge.v1.EdgeDaemonService.GetInstrument:output_type -> galois.edge.v1.Instrument
+	14, // 49: galois.edge.v1.EdgeDaemonService.ScanInstruments:output_type -> galois.edge.v1.ScanInstrumentsResponse
+	16, // 50: galois.edge.v1.EdgeDaemonService.GetCapabilities:output_type -> galois.edge.v1.GetCapabilitiesResponse
+	19, // 51: galois.edge.v1.EdgeDaemonService.ExecuteCommand:output_type -> galois.edge.v1.ExecuteCommandResponse
+	21, // 52: galois.edge.v1.EdgeDaemonService.ExecuteSequence:output_type -> galois.edge.v1.ExecuteSequenceResponse
+	23, // 53: galois.edge.v1.EdgeDaemonService.StreamMeasurement:output_type -> galois.edge.v1.MeasurementDataPoint
+	25, // 54: galois.edge.v1.EdgeDaemonService.StopStream:output_type -> galois.edge.v1.StopStreamResponse
+	27, // 55: galois.edge.v1.EdgeDaemonService.GetStatus:output_type -> galois.edge.v1.EdgeStatus
+	29, // 56: galois.edge.v1.EdgeDaemonService.Ping:output_type -> galois.edge.v1.PingResponse
+	31, // 57: galois.edge.v1.EdgeDaemonService.RegisterEdge:output_type -> galois.edge.v1.RegisterEdgeResponse
+	33, // 58: galois.edge.v1.EdgeDaemonService.Heartbeat:output_type -> galois.edge.v1.HeartbeatResponse
+	35, // 59: galois.edge.v1.EdgeDaemonService.GetWebcamSnapshot:output_type -> galois.edge.v1.GetWebcamSnapshotResponse
+	37, // 60: galois.edge.v1.EdgeDaemonService.ProxySDKCall:output_type -> galois.edge.v1.ProxySDKCallResponse
+	39, // 61: galois.edge.v1.EdgeDaemonService.StartSweep:output_type -> galois.edge.v1.StartSweepResponse
+	41, // 62: galois.edge.v1.EdgeDaemonService.GetSweepStatus:output_type -> galois.edge.v1.SweepStatusResponse
+	43, // 63: galois.edge.v1.EdgeDaemonService.StopSweep:output_type -> galois.edge.v1.StopSweepResponse
+	45, // [45:64] is the sub-list for method output_type
+	26, // [26:45] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_edge_v1_edge_proto_init() }
@@ -2958,7 +3512,7 @@ func file_edge_v1_edge_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_edge_v1_edge_proto_rawDesc), len(file_edge_v1_edge_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   42,
+			NumMessages:   50,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

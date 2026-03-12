@@ -1,0 +1,115 @@
+# Leiden Cryogenics Pressure Monitor Instrument Profile
+# Pressure monitoring for Leiden dilution refrigerators via Ethernet/serial
+
+instrument:
+  manufacturer: "Leiden"
+  model: "Pressure"
+  class: pressure_monitor
+  description: "Leiden Cryogenics pressure monitoring system"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.leiden_wrapper"
+  class_name: "LeidenClient"
+  connect:
+    method: "connect"
+    constructor_args:
+      host: "{host}"
+      port: "{port}"
+    defaults:
+      host: "192.168.0.100"
+      port: 9001
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Leiden.*Pressure"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Leiden.*Pressure"
+
+interfaces:
+  - type: ethernet
+    port: 9001
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  get_pressure:
+    sdk_call:
+      method: "get_pressure"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+        min: 1
+        max: 6
+        description: "Pressure gauge channel number"
+    returns:
+      type: float
+      unit: mbar
+    streamable: true
+    description: "Read pressure from a specific channel"
+
+  get_all_pressures:
+    sdk_call:
+      method: "get_all_pressures"
+    type: query
+    returns:
+      type: string
+    description: "Read pressure from all channels (returns JSON)"
+
+  get_temperature:
+    sdk_call:
+      method: "get_temperature"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+        min: 1
+        description: "Temperature sensor channel"
+    returns:
+      type: float
+      unit: K
+    streamable: true
+    description: "Read temperature from a specific channel"
+
+  get_status:
+    sdk_call:
+      method: "get_status"
+    type: query
+    returns:
+      type: string
+    description: "Query system status"
+
+  get_valve_state:
+    sdk_call:
+      method: "get_valve_state"
+      args_map:
+        valve: "valve"
+    type: query
+    params:
+      valve:
+        type: int
+        default: 1
+        min: 1
+        description: "Valve number"
+    returns:
+      type: string
+    description: "Read valve open/closed state"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Get instrument identity string"

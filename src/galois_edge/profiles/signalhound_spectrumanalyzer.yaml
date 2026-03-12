@@ -1,0 +1,183 @@
+# SignalHound SA124B Spectrum Analyzer Instrument Profile
+# USB spectrum analyzer (100 kHz - 12.4 GHz) controlled via signalhound SDK
+
+instrument:
+  manufacturer: "SignalHound"
+  model: "SA124B"
+  class: spectrum_analyzer
+  description: "SignalHound SA124B USB spectrum analyzer"
+
+sdk:
+  package: "signal_hound"
+  import_path: "galois_edge.sdk_wrappers.signalhound_wrapper"
+  class_name: "SignalHoundClient"
+  connect:
+    method: "connect"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "SignalHound.*SA124B"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "SignalHound.*SA124B"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 30000
+
+commands:
+  sweep:
+    sdk_call:
+      method: "sweep"
+      args_map:
+        center_freq: "center_freq"
+        span: "span"
+    type: query
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+        min: 100000
+        max: 12400000000
+        description: "Center frequency in Hz"
+      span:
+        type: float
+        unit: Hz
+        min: 1
+        max: 12400000000
+        description: "Frequency span in Hz"
+    returns:
+      type: vector
+      unit: dBm
+      x_name: "Frequency"
+      x_unit: "Hz"
+    description: "Perform a sweep and return trace data"
+
+  get_trace:
+    sdk_call:
+      method: "get_trace"
+    type: query
+    returns:
+      type: vector
+      unit: dBm
+      x_name: "Frequency"
+      x_unit: "Hz"
+    description: "Get the most recent sweep trace (re-sweeps if needed)"
+
+  set_center_freq:
+    sdk_call:
+      method: "set_center_freq"
+      args_map:
+        hz: "hz"
+    type: write
+    params:
+      hz:
+        type: float
+        unit: Hz
+        min: 100000
+        max: 12400000000
+        description: "Center frequency in Hz"
+    description: "Set the center frequency"
+
+  get_center_freq:
+    sdk_call:
+      method: "get_center_freq"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Get current center frequency"
+
+  set_span:
+    sdk_call:
+      method: "set_span"
+      args_map:
+        hz: "hz"
+    type: write
+    params:
+      hz:
+        type: float
+        unit: Hz
+        min: 1
+        max: 12400000000
+        description: "Span in Hz"
+    description: "Set the frequency span"
+
+  get_span:
+    sdk_call:
+      method: "get_span"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Get current frequency span"
+
+  set_rbw:
+    sdk_call:
+      method: "set_rbw"
+      args_map:
+        hz: "hz"
+    type: write
+    params:
+      hz:
+        type: float
+        unit: Hz
+        min: 0.1
+        max: 6000000
+        description: "Resolution bandwidth in Hz"
+    description: "Set the resolution bandwidth"
+
+  get_rbw:
+    sdk_call:
+      method: "get_rbw"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Get current resolution bandwidth"
+
+  set_ref_level:
+    sdk_call:
+      method: "set_ref_level"
+      args_map:
+        dbm: "dbm"
+    type: write
+    params:
+      dbm:
+        type: float
+        unit: dBm
+        min: -130
+        max: 20
+        description: "Reference level in dBm"
+    description: "Set the reference level"
+
+  get_status:
+    sdk_call:
+      method: "get_status"
+    type: query
+    returns:
+      type: string
+    description: "Get device connection status"
+
+sequences:
+  quick_sweep:
+    description: "Set center/span and perform a sweep"
+    params:
+      center_freq:
+        type: float
+        unit: Hz
+      span:
+        type: float
+        unit: Hz
+    steps:
+      - command: set_center_freq
+        args:
+          hz: "{center_freq}"
+      - command: set_span
+        args:
+          hz: "{span}"
+      - command: get_trace

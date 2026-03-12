@@ -10,7 +10,7 @@ instrument:
 
 identity:
   query: "*IDN?"
-  pattern: "Hameg.*(Hameg\ HM8133\-0|HM8133\-0|Hameg\ HM8131\-2|HM8131\-2)"
+  pattern: 'Hameg.*(Hameg HM8133\-0|HM8133\-0|Hameg HM8131\-2|HM8131\-2)'
 
 interfaces:
   - type: gpib

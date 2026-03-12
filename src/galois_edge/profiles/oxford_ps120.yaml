@@ -1,0 +1,174 @@
+# Oxford PS 120 (Power Supply) Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Oxford_PS120
+# Uses Oxford serial protocol via SDK wrapper (similar to IPS120)
+
+instrument:
+  manufacturer: "Oxford"
+  model: "PS120"
+  class: magnet_controller
+  description: "Oxford PS120 magnet power supply"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.oxford_serial_wrapper"
+  class_name: "OxfordSerialClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Oxford.*PS.?120"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Oxford.*PS.?120"
+
+interfaces:
+  - type: gpib
+  - type: serial
+    baud_rate: 9600
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+
+settings:
+  timeout_ms: 5000
+  terminator: "\r"
+  opc_query: false
+
+commands:
+  get_field:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    returns:
+      type: float
+      unit: T
+      parser:
+        type: strip
+        prefix: "R"
+    streamable: true
+    description: "Read current magnetic field"
+
+  get_sweep_rate:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    returns:
+      type: float
+      unit: T/min
+      parser:
+        type: strip
+        prefix: "R"
+    description: "Read current sweep rate"
+
+  get_current:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    returns:
+      type: float
+      unit: A
+      parser:
+        type: strip
+        prefix: "R"
+    description: "Read output current"
+
+  get_voltage:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    returns:
+      type: float
+      unit: V
+      parser:
+        type: strip
+        prefix: "R"
+    description: "Read output voltage"
+
+  get_status:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    returns:
+      type: string
+    description: "Read instrument status register"
+
+  set_field:
+    sdk_call:
+      method: "write"
+      args_map:
+        command: "command"
+    type: write
+    requires_sweep: true
+    sweep:
+      rate_param: sweep_rate
+      command: "T{sweep_rate}\nJ{value}\nA1"
+      check_command: "X"
+      check_idle_match: "X0"
+      stop_command: "A0"
+      poll_interval_ms: 1000
+    params:
+      value:
+        type: float
+        unit: T
+        description: "Target magnetic field in Tesla"
+    description: "Set target magnetic field (use via sweep)"
+
+  set_sweep_rate:
+    sdk_call:
+      method: "write"
+      args_map:
+        command: "command"
+    type: write
+    params:
+      value:
+        type: float
+        unit: T/min
+        description: "Sweep rate in Tesla per minute"
+    description: "Set the sweep rate"
+
+  set_activity:
+    sdk_call:
+      method: "write"
+      args_map:
+        command: "command"
+    type: write
+    params:
+      value:
+        type: enum
+        options: ["hold", "to_setpoint", "to_zero"]
+        map:
+          "hold": "A0"
+          "to_setpoint": "A1"
+          "to_zero": "A2"
+        description: "Activity mode"
+    description: "Set activity mode (hold, to_setpoint, to_zero)"
+
+  raw_query:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    params:
+      command:
+        type: string
+        description: "Raw Oxford serial command to send"
+    returns:
+      type: string
+    description: "Send a raw command and read the response"

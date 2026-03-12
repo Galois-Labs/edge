@@ -1,0 +1,139 @@
+# AlazarTech Digitizer Instrument Profile
+# PCIe high-speed digitizers (ATS9870, ATS9373, ATS9360)
+# SDK-controlled via atsapi Python ctypes bindings
+
+instrument:
+  manufacturer: "AlazarTech"
+  model: "Digitizer"
+  class: digitizer
+  description: "AlazarTech PCIe high-speed digitizer (ATS9870/ATS9373/ATS9360)"
+
+sdk:
+  package: "atsapi"
+  import_path: "galois_edge.sdk_wrappers.alazartech_wrapper"
+  class_name: "AlazarTechClient"
+  connect:
+    method: "connect"
+    constructor_args:
+      board_id: 1
+      system_id: 1
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "AlazarTech.*(9870|9373|9360)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "AlazarTech.*(9870|9373|9360)"
+
+interfaces:
+  - type: pcie
+
+settings:
+  timeout_ms: 30000
+
+commands:
+  configure:
+    sdk_call:
+      method: "configure"
+      args_map:
+        sample_rate: "sample_rate"
+        channel_mask: "channel_mask"
+        trigger_source: "trigger_source"
+    type: write
+    params:
+      sample_rate:
+        type: int
+        unit: Hz
+        default: 1000000000
+        description: "Sample rate in samples per second"
+      channel_mask:
+        type: int
+        default: 3
+        description: "Bitmask of enabled channels (1=ChA, 2=ChB, 3=both)"
+      trigger_source:
+        type: enum
+        options: ["external", "channel_a"]
+        default: "external"
+        description: "Trigger source selection"
+    description: "Configure digitizer clock, channels, and trigger"
+
+  acquire:
+    sdk_call:
+      method: "acquire"
+      args_map:
+        samples_per_record: "samples_per_record"
+        records: "records"
+    type: write
+    params:
+      samples_per_record:
+        type: int
+        default: 1024
+        min: 64
+        description: "Samples per record (must be multiple of 64)"
+      records:
+        type: int
+        default: 1
+        min: 1
+        description: "Number of records to acquire"
+    description: "Start acquisition and wait for completion"
+
+  get_data:
+    sdk_call:
+      method: "get_data"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: enum
+        options: ["A", "B"]
+        default: "A"
+        description: "Channel to read data from"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    description: "Read acquired waveform data from a channel"
+
+  get_status:
+    sdk_call:
+      method: "get_status"
+    type: query
+    returns:
+      type: string
+    description: "Get board busy/idle status"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Get board model and serial number"
+
+sequences:
+  acquire_channel_a:
+    description: "Configure, acquire, and read channel A data"
+    params:
+      samples_per_record:
+        type: int
+        default: 1024
+      records:
+        type: int
+        default: 1
+    steps:
+      - command: configure
+        args:
+          sample_rate: "1000000000"
+          channel_mask: "1"
+          trigger_source: "external"
+      - command: acquire
+        args:
+          samples_per_record: "{samples_per_record}"
+          records: "{records}"
+      - command: get_data
+        args:
+          channel: "A"

@@ -1,0 +1,100 @@
+# MuSwitch Instrument Profile
+# Single-channel RF switch via serial/USB interface
+
+instrument:
+  manufacturer: "MuSwitch"
+  model: "MuSwitch"
+  class: switch
+  description: "MuSwitch single-channel RF switch via serial interface"
+
+sdk:
+  package: "pyserial"
+  import_path: "galois_edge.sdk_wrappers.muswitch_wrapper"
+  class_name: "MuSwitchClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+      num_channels: "{num_channels}"
+    defaults:
+      num_channels: 1
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "MuSwitch"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "MuSwitch"
+
+interfaces:
+  - type: serial
+    baud_rate: 115200
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_switch:
+    sdk_call:
+      method: "set_switch"
+      args_map:
+        channel: "channel"
+        state: "state"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+        default: 1
+        description: "Switch channel number"
+      state:
+        type: int
+        min: 0
+        max: 1
+        description: "Switch state (0 or 1)"
+    description: "Set the switch to the given state"
+
+  get_switch:
+    sdk_call:
+      method: "get_switch"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 1
+        default: 1
+        description: "Switch channel number"
+    returns:
+      type: string
+    description: "Read the current switch state"
+
+  set_all_switches:
+    sdk_call:
+      method: "set_all_switches"
+      args_map:
+        state: "state"
+    type: write
+    params:
+      state:
+        type: int
+        min: 0
+        max: 1
+        description: "State to apply to all switches"
+    description: "Set all switch channels to the same state"
+
+  get_all_switches:
+    sdk_call:
+      method: "get_all_switches"
+    type: query
+    returns:
+      type: string
+    description: "Read all switch channel states (JSON)"

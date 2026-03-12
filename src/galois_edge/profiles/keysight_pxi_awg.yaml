@@ -1,0 +1,213 @@
+# Keysight PXI AWG Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Keysight_PXI_AWG
+# SDK wrapper: galois_edge.sdk_wrappers.keysight_pxi_wrapper
+
+instrument:
+  manufacturer: "Keysight"
+  model: "PXI AWG"
+  class: signal_generator
+  description: "Keysight PXI AWG (M3201A/M3202A/M3300A/M3302A) via SD1 SDK"
+
+sdk:
+  package: "keysightSD1"
+  import_path: "galois_edge.sdk_wrappers.keysight_pxi_wrapper"
+  class_name: "KeysightPxiAwg"
+  connect:
+    constructor_args:
+      slot: "{slot}"
+      chassis: "{chassis}"
+    method: "connect"
+    defaults:
+      slot: 0
+      chassis: 0
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Keysight.*(M3201|M3202|M3300|M3302|PXI AWG)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Keysight.*(M3201|M3202|M3300|M3302|PXI AWG)"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_waveform:
+    sdk_call:
+      method: "set_waveform"
+      args_map:
+        channel: "channel"
+        data: "data"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+      data:
+        type: string
+        description: "JSON-encoded list of float samples normalised to [-1.0, 1.0]"
+    description: "Load arbitrary waveform data into a channel"
+
+  set_amplitude:
+    sdk_call:
+      method: "set_amplitude"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+      voltage:
+        type: float
+        unit: V
+        min: 0.0
+        max: 1.5
+        default: 1.0
+        description: "Peak amplitude in volts"
+    description: "Set output amplitude for a channel"
+
+  set_frequency:
+    sdk_call:
+      method: "set_frequency"
+      args_map:
+        channel: "channel"
+        hz: "hz"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+      hz:
+        type: float
+        unit: Hz
+        min: 0
+        max: 400e6
+        default: 1e6
+        description: "Waveform frequency in Hz"
+    description: "Set waveform frequency for a channel"
+
+  set_offset:
+    sdk_call:
+      method: "set_offset"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+      voltage:
+        type: float
+        unit: V
+        min: -1.5
+        max: 1.5
+        default: 0.0
+        description: "DC offset in volts"
+    description: "Set DC offset for a channel"
+
+  set_wave_shape:
+    sdk_call:
+      method: "set_wave_shape"
+      args_map:
+        channel: "channel"
+        shape: "shape"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+      shape:
+        type: enum
+        options: ["0", "1", "2", "4", "5", "6", "8"]
+        default: "6"
+        description: "Waveform shape: 0=HiZ, 1=NoSignal, 2=Sine, 4=Triangle, 5=Square, 6=DC, 8=AWG"
+    description: "Set output waveform shape"
+
+  start:
+    sdk_call:
+      method: "start"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+    description: "Start AWG output on a channel"
+
+  stop:
+    sdk_call:
+      method: "stop"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+    description: "Stop AWG output on a channel"
+
+  start_all:
+    sdk_call:
+      method: "start_all"
+    type: write
+    description: "Start AWG output on all channels"
+
+  stop_all:
+    sdk_call:
+      method: "stop_all"
+    type: write
+    description: "Stop AWG output on all channels"
+
+  flush_queue:
+    sdk_call:
+      method: "flush_queue"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Output channel number (0-based)"
+    description: "Flush the waveform queue on a channel"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

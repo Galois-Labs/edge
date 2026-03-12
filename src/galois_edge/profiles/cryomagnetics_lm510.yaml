@@ -11,7 +11,7 @@ instrument:
 
 identity:
   query: "*IDN?"
-  pattern: "Cryomagnetics.*(LM\-510|Cryomagnetics\ LM510)"
+  pattern: 'Cryomagnetics.*(LM\-510|Cryomagnetics LM510)'
 
 interfaces:
   - type: gpib

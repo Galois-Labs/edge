@@ -1,0 +1,152 @@
+# Acqiris U1084A Digitizer Instrument Profile
+# Keysight/Agilent high-speed digitizer controlled via acqiris SDK
+
+instrument:
+  manufacturer: "Acqiris"
+  model: "U1084A Digitizer"
+  class: digitizer
+  description: "Acqiris U1084A high-speed digitizer"
+
+sdk:
+  package: "acqiris"
+  import_path: "galois_edge.sdk_wrappers.acqiris_wrapper"
+  class_name: "AcqirisClient"
+  connect:
+    method: "connect"
+    constructor_args:
+      resource_name: "PCI::INSTR0"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Acqiris.*U1084A"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Acqiris.*U1084A"
+
+interfaces:
+  - type: pcie
+
+settings:
+  timeout_ms: 30000
+
+commands:
+  configure:
+    sdk_call:
+      method: "configure"
+      args_map:
+        sample_rate: "sample_rate"
+        num_samples: "num_samples"
+        num_segments: "num_segments"
+        full_scale: "full_scale"
+        trigger_source: "trigger_source"
+        trigger_level: "trigger_level"
+    type: write
+    params:
+      sample_rate:
+        type: float
+        unit: Hz
+        default: 1000000000
+        description: "Sample rate in Hz"
+      num_samples:
+        type: int
+        default: 1024
+        min: 1
+        description: "Number of samples per segment"
+      num_segments:
+        type: int
+        default: 1
+        min: 1
+        description: "Number of segments (multi-record mode)"
+      full_scale:
+        type: float
+        unit: V
+        default: 1.0
+        description: "Input range full scale in volts"
+      trigger_source:
+        type: enum
+        options: ["external", "channel_1", "channel_2"]
+        default: "external"
+        description: "Trigger source"
+      trigger_level:
+        type: float
+        unit: V
+        default: 0.0
+        description: "Trigger level in volts"
+    description: "Configure digitizer timebase, channels, and trigger"
+
+  acquire:
+    sdk_call:
+      method: "acquire"
+    type: write
+    description: "Start acquisition and wait for completion"
+
+  get_data:
+    sdk_call:
+      method: "get_data"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 1
+        min: 1
+        max: 2
+        description: "Channel number to read"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    description: "Read acquired waveform data from a channel"
+
+  get_status:
+    sdk_call:
+      method: "get_status"
+    type: query
+    returns:
+      type: string
+    description: "Get digitizer busy/idle status"
+
+  get_sample_rate:
+    sdk_call:
+      method: "get_sample_rate"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Get current configured sample rate"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Get instrument identity string"
+
+sequences:
+  acquire_waveform:
+    description: "Configure, acquire, and read waveform from channel 1"
+    params:
+      sample_rate:
+        type: float
+        default: 1000000000
+      num_samples:
+        type: int
+        default: 1024
+    steps:
+      - command: configure
+        args:
+          sample_rate: "{sample_rate}"
+          num_samples: "{num_samples}"
+          num_segments: "1"
+          full_scale: "1.0"
+          trigger_source: "external"
+          trigger_level: "0.0"
+      - command: acquire
+      - command: get_data
+        args:
+          channel: "1"

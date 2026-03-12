@@ -1,0 +1,194 @@
+# Signadyne Digitizer Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Signadyne_Digitizer
+# Signadyne was acquired by Keysight — uses the same keysightSD1 SDK
+# SDK wrapper: galois_edge.sdk_wrappers.keysight_pxi_wrapper
+
+instrument:
+  manufacturer: "Signadyne"
+  model: "Digitizer"
+  class: digitizer
+  description: "Signadyne Digitizer (M3100/M3102/M3300/M3302) via Keysight SD1 SDK"
+
+sdk:
+  package: "keysightSD1"
+  import_path: "galois_edge.sdk_wrappers.keysight_pxi_wrapper"
+  class_name: "KeysightPxiDigitizer"
+  connect:
+    constructor_args:
+      slot: "{slot}"
+      chassis: "{chassis}"
+    method: "connect"
+    defaults:
+      slot: 0
+      chassis: 0
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Signadyne.*(M3100|M3102|M3300|M3302)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Signadyne.*(M3100|M3102|M3300|M3302)"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  read:
+    sdk_call:
+      method: "read"
+      args_map:
+        channel: "channel"
+        samples: "samples"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Input channel number (0-based)"
+      samples:
+        type: int
+        min: 1
+        max: 1000000
+        default: 1000
+        description: "Number of samples to acquire"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    streamable: true
+    description: "Read samples from a digitizer channel"
+
+  set_trigger:
+    sdk_call:
+      method: "set_trigger"
+      args_map:
+        source: "source"
+        level: "level"
+    type: write
+    params:
+      source:
+        type: int
+        min: 0
+        max: 7
+        default: 0
+        description: "Trigger source: 0=Immediate, 1=ExtTrig, 2=DigTrig, etc."
+      level:
+        type: float
+        unit: V
+        min: -3.0
+        max: 3.0
+        default: 0.0
+        description: "Trigger level in volts"
+    description: "Configure trigger source and level"
+
+  set_input_config:
+    sdk_call:
+      method: "set_input_config"
+      args_map:
+        channel: "channel"
+        full_scale: "full_scale"
+        impedance: "impedance"
+        coupling: "coupling"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Input channel number (0-based)"
+      full_scale:
+        type: float
+        unit: V
+        min: 0.01
+        max: 10.0
+        default: 1.0
+        description: "Full-scale voltage range"
+      impedance:
+        type: enum
+        options: ["0", "1"]
+        default: "0"
+        description: "Input impedance: 0=HiZ, 1=50 ohm"
+      coupling:
+        type: enum
+        options: ["0", "1"]
+        default: "0"
+        description: "Input coupling: 0=DC, 1=AC"
+    description: "Configure analog input channel"
+
+  set_sample_rate:
+    sdk_call:
+      method: "set_sample_rate"
+      args_map:
+        prescaler: "prescaler"
+    type: write
+    params:
+      prescaler:
+        type: int
+        min: 0
+        max: 4095
+        default: 0
+        description: "Prescaler value. Sample rate = clock / (prescaler + 1)"
+    description: "Set DAQ prescaler for sample rate control"
+
+  start_acquisition:
+    sdk_call:
+      method: "start_acquisition"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Input channel number (0-based)"
+    description: "Start data acquisition on a channel"
+
+  stop_acquisition:
+    sdk_call:
+      method: "stop_acquisition"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Input channel number (0-based)"
+    description: "Stop data acquisition on a channel"
+
+  flush_buffer:
+    sdk_call:
+      method: "flush_buffer"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "Input channel number (0-based)"
+    description: "Flush acquisition buffer on a channel"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

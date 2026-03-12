@@ -1,0 +1,95 @@
+# Oxford ILM (Intelligent Level Meter) Instrument Profile
+# Converted from Labber driver (MIT licensed, (c) 2015 Lab Control Software Scandinavia AB)
+# Original driver: Oxford_ILM
+# Uses Oxford serial protocol via SDK wrapper
+
+instrument:
+  manufacturer: "Oxford"
+  model: "ILM"
+  class: level_meter
+  description: "Oxford Intelligent Level Meter — reads liquid helium/nitrogen levels in cryostats"
+
+sdk:
+  package: "galois_edge"
+  import_path: "galois_edge.sdk_wrappers.oxford_ilm_wrapper"
+  class_name: "OxfordILMClient"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Oxford.*ILM"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Oxford.*ILM"
+
+interfaces:
+  - type: gpib
+  - type: serial
+    baud_rate: 9600
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+
+settings:
+  timeout_ms: 5000
+  terminator: "\r"
+  opc_query: false
+
+commands:
+  get_helium_level:
+    sdk_call:
+      method: "get_helium_level"
+    type: query
+    returns:
+      type: float
+      unit: "%"
+    streamable: true
+    description: "Read liquid helium level (channel 1)"
+
+  get_nitrogen_level:
+    sdk_call:
+      method: "get_nitrogen_level"
+    type: query
+    returns:
+      type: float
+      unit: "%"
+    streamable: true
+    description: "Read liquid nitrogen level (channel 2)"
+
+  get_level:
+    sdk_call:
+      method: "get_level"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 2
+        default: 1
+        description: "Channel number (1=He, 2=N2)"
+    returns:
+      type: float
+      unit: "%"
+    streamable: true
+    description: "Read cryogen level for a given channel"
+
+  raw_query:
+    sdk_call:
+      method: "query"
+      args_map:
+        command: "command"
+    type: query
+    params:
+      command:
+        type: string
+        description: "Raw Oxford serial command to send"
+    returns:
+      type: string
+    description: "Send a raw command and read the response"
