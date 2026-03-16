@@ -15,7 +15,7 @@ import (
 
 // DefaultTimeout is applied to every gRPC call if the caller's context does
 // not already carry a deadline.
-const DefaultTimeout = 5 * time.Second
+const DefaultTimeout = 15 * time.Second
 
 // Client wraps a gRPC connection to the Python daemon running on localhost.
 type Client struct {

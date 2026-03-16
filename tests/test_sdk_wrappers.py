@@ -182,6 +182,10 @@ WRAPPER_MODULES = [
     ("galois_edge.sdk_wrappers.oxford_serial_wrapper", "OxfordSerialClient"),
     ("galois_edge.sdk_wrappers.leiden_wrapper", "LeidenClient"),
     ("galois_edge.sdk_wrappers.qdac_wrapper", "QDACClient"),
+    ("galois_edge.sdk_wrappers.ni_scope_wrapper", "NiScopeClient"),
+    ("galois_edge.sdk_wrappers.ni_fgen_wrapper", "NiFgenClient"),
+    ("galois_edge.sdk_wrappers.ni_dcpower_wrapper", "NiDCPowerClient"),
+    ("galois_edge.sdk_wrappers.ni_dmm_wrapper", "NiDmmClient"),
 ]
 
 
@@ -195,6 +199,68 @@ def _discover_ppms():
 
 
 WRAPPER_MODULES += _discover_ppms()
+
+
+# ---------------------------------------------------------------------------
+# NI PXI tests (niscope, nifgen, nidcpower, nidmm)
+# ---------------------------------------------------------------------------
+
+
+class TestNiPxiImportErrors:
+    """NI PXI wrappers should raise descriptive ImportErrors when SDK missing."""
+
+    def test_niscope_import_error_message(self, monkeypatch):
+        from galois_edge.sdk_wrappers.ni_scope_wrapper import NiScopeClient
+
+        monkeypatch.setattr(builtins, "__import__", _block_import("niscope"))
+        client = NiScopeClient(resource="PXI1Slot2")
+
+        with pytest.raises(ImportError) as exc_info:
+            client.connect()
+
+        msg = str(exc_info.value)
+        assert "pip install niscope" in msg
+
+    def test_nifgen_import_error_message(self, monkeypatch):
+        from galois_edge.sdk_wrappers.ni_fgen_wrapper import NiFgenClient
+
+        monkeypatch.setattr(builtins, "__import__", _block_import("nifgen"))
+        client = NiFgenClient(resource="PXI1Slot3")
+
+        with pytest.raises(ImportError) as exc_info:
+            client.connect()
+
+        msg = str(exc_info.value)
+        assert "pip install nifgen" in msg
+
+    def test_nidcpower_import_error_message(self, monkeypatch):
+        from galois_edge.sdk_wrappers.ni_dcpower_wrapper import NiDCPowerClient
+
+        monkeypatch.setattr(builtins, "__import__", _block_import("nidcpower"))
+        client = NiDCPowerClient(resource="PXI1Slot4")
+
+        with pytest.raises(ImportError) as exc_info:
+            client.connect()
+
+        msg = str(exc_info.value)
+        assert "pip install nidcpower" in msg
+
+    def test_nidmm_import_error_message(self, monkeypatch):
+        from galois_edge.sdk_wrappers.ni_dmm_wrapper import NiDmmClient
+
+        monkeypatch.setattr(builtins, "__import__", _block_import("nidmm"))
+        client = NiDmmClient(resource="PXI1Slot5")
+
+        with pytest.raises(ImportError) as exc_info:
+            client.connect()
+
+        msg = str(exc_info.value)
+        assert "pip install nidmm" in msg
+
+
+# ---------------------------------------------------------------------------
+# Wrapper module import & instantiation tests
+# ---------------------------------------------------------------------------
 
 
 class TestWrapperModuleImports:

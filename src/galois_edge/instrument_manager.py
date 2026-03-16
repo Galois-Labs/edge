@@ -20,6 +20,7 @@ Key design points:
 """
 
 import logging
+import os
 import time
 from typing import Optional, Union
 
@@ -37,6 +38,27 @@ except ImportError:
 from .gpib_manager import GPIBManager, GPIB_AVAILABLE
 from .usb_transport import USBTransport, USB_AVAILABLE
 from .lan_discovery import LANDiscovery, is_tcpip_resource, is_tcpip_socket_resource
+
+
+class _suppress_native_stderr:
+    """Redirect fd 2 to /dev/null to silence C library stderr noise.
+
+    libgpib writes 'invalid descriptor' to stderr for every GPIB address
+    that does not respond during pyvisa-py enumeration.  This context
+    manager suppresses that output at the file-descriptor level so
+    Python logging is unaffected.
+    """
+
+    def __enter__(self):
+        self._old = os.dup(2)
+        self._devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(self._devnull, 2)
+        return self
+
+    def __exit__(self, *args):
+        os.dup2(self._old, 2)
+        os.close(self._old)
+        os.close(self._devnull)
 
 
 class InstrumentManager:
@@ -189,7 +211,8 @@ class InstrumentManager:
         # avoid control-transfer side effects on vendor-specific devices.
         if self._rm is not None and self._usb is None:
             try:
-                visa_resources = list(self._rm.list_resources("?*"))
+                with _suppress_native_stderr():
+                    visa_resources = list(self._rm.list_resources("?*"))
                 for res in visa_resources:
                     # Skip GPIB if handled by GPIBManager
                     if self._gpib and self._gpib.is_gpib_address(res):
