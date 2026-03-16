@@ -1,0 +1,243 @@
+# NI-SCOPE Instrument Profile
+# NI PXI oscilloscopes/digitizers (PXIe-5162, PXIe-5164, etc.)
+# Uses niscope Python package (NI nimi-python project)
+# Supports local (Windows + NI-SCOPE driver) and remote (NI gRPC Device Server)
+
+instrument:
+  manufacturer: "NI"
+  model: "PXIe Scope"
+  class: digitizer
+  description: "NI PXI oscilloscope/digitizer via niscope SDK"
+
+sdk:
+  package: "niscope"
+  import_path: "galois_edge.sdk_wrappers.ni_scope_wrapper"
+  class_name: "NiScopeClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+      grpc_address: "{grpc_address}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot2"
+      grpc_address: null
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "NI.*(Scope|PXIe-51)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "NI.*(Scope|PXIe-51)"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  configure_horizontal:
+    sdk_call:
+      method: "configure_horizontal"
+      args_map:
+        sample_rate: "sample_rate"
+        record_length: "record_length"
+        num_records: "num_records"
+    type: write
+    params:
+      sample_rate:
+        type: float
+        unit: Sa/s
+        min: 1.0
+        max: 5e9
+        default: 1e9
+        description: "Sample rate in samples per second"
+      record_length:
+        type: int
+        min: 1
+        max: 100000000
+        default: 1000
+        description: "Number of samples per record"
+      num_records:
+        type: int
+        min: 1
+        max: 10000
+        default: 1
+        description: "Number of records to acquire"
+    description: "Configure horizontal timing (sample rate, record length)"
+
+  configure_vertical:
+    sdk_call:
+      method: "configure_vertical"
+      args_map:
+        channel: "channel"
+        range_v: "range_v"
+        coupling: "coupling"
+        offset: "offset"
+        enabled: "enabled"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name (e.g. '0', '0,1')"
+      range_v:
+        type: float
+        unit: V
+        min: 0.01
+        max: 100.0
+        default: 10.0
+        description: "Vertical range in volts (peak-to-peak)"
+      coupling:
+        type: enum
+        options: ["DC", "AC", "GND"]
+        default: "DC"
+        description: "Input coupling mode"
+      offset:
+        type: float
+        unit: V
+        min: -100.0
+        max: 100.0
+        default: 0.0
+        description: "Vertical offset in volts"
+      enabled:
+        type: bool
+        default: true
+        description: "Whether the channel is enabled"
+    description: "Configure vertical settings for a channel"
+
+  read:
+    sdk_call:
+      method: "read"
+      args_map:
+        channel: "channel"
+        num_samples: "num_samples"
+        timeout: "timeout"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel to read from"
+      num_samples:
+        type: int
+        min: 1
+        max: 100000000
+        default: 1000
+        description: "Number of samples to read"
+      timeout:
+        type: float
+        unit: s
+        min: 0.0
+        max: 60.0
+        default: 5.0
+        description: "Timeout in seconds"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    streamable: true
+    description: "Initiate acquisition and read waveform data"
+
+  fetch:
+    sdk_call:
+      method: "fetch"
+      args_map:
+        channel: "channel"
+        num_samples: "num_samples"
+        timeout: "timeout"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel to fetch from"
+      num_samples:
+        type: int
+        min: 1
+        max: 100000000
+        default: 1000
+        description: "Number of samples to fetch"
+      timeout:
+        type: float
+        unit: s
+        min: 0.0
+        max: 60.0
+        default: 5.0
+        description: "Timeout in seconds"
+    returns:
+      type: vector
+      unit: V
+      x_name: "Time"
+      x_unit: "s"
+    streamable: true
+    description: "Fetch waveform data from a previously initiated acquisition"
+
+  get_sample_rate:
+    sdk_call:
+      method: "get_sample_rate"
+    type: query
+    returns:
+      type: float
+      unit: Sa/s
+    streamable: true
+    description: "Read actual horizontal sample rate"
+
+  get_record_length:
+    sdk_call:
+      method: "get_record_length"
+    type: query
+    returns:
+      type: int
+    streamable: true
+    description: "Read actual record length in samples"
+
+  set_trigger:
+    sdk_call:
+      method: "set_trigger"
+      args_map:
+        source: "source"
+        level: "level"
+        slope: "slope"
+    type: write
+    params:
+      source:
+        type: string
+        default: "0"
+        description: "Trigger source channel"
+      level:
+        type: float
+        unit: V
+        min: -100.0
+        max: 100.0
+        default: 0.0
+        description: "Trigger level in volts"
+      slope:
+        type: enum
+        options: ["POSITIVE", "NEGATIVE"]
+        default: "POSITIVE"
+        description: "Trigger slope"
+    description: "Configure edge trigger"
+
+  start:
+    sdk_call:
+      method: "start"
+    type: write
+    description: "Initiate acquisition"
+
+  abort:
+    sdk_call:
+      method: "abort"
+    type: write
+    description: "Abort acquisition"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

@@ -1,0 +1,186 @@
+# NI-DMM Instrument Profile
+# NI PXI digital multimeters (PXIe-4081, PXIe-4082, etc.)
+# Uses nidmm Python package (NI nimi-python project)
+# Supports local (Windows + NI-DMM driver) and remote (NI gRPC Device Server)
+
+instrument:
+  manufacturer: "NI"
+  model: "PXIe DMM"
+  class: dmm
+  description: "NI PXI digital multimeter via nidmm SDK"
+
+sdk:
+  package: "nidmm"
+  import_path: "galois_edge.sdk_wrappers.ni_dmm_wrapper"
+  class_name: "NiDmmClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+      grpc_address: "{grpc_address}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot5"
+      grpc_address: null
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "NI.*(DMM|PXIe-40[89])"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "NI.*(DMM|PXIe-40[89])"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  read:
+    sdk_call:
+      method: "read"
+    type: query
+    returns:
+      type: float
+    streamable: true
+    description: "Initiate measurement and read a single value"
+
+  fetch:
+    sdk_call:
+      method: "fetch"
+      args_map:
+        max_time: "max_time"
+    type: query
+    params:
+      max_time:
+        type: float
+        unit: s
+        min: 0.0
+        max: 60.0
+        default: 5.0
+        description: "Maximum time to wait in seconds"
+    returns:
+      type: float
+    streamable: true
+    description: "Fetch a measurement from a previously initiated acquisition"
+
+  configure_measurement:
+    sdk_call:
+      method: "configure_measurement"
+      args_map:
+        function: "function"
+        range_val: "range_val"
+        resolution: "resolution"
+    type: write
+    params:
+      function:
+        type: enum
+        options: ["DC_VOLTS", "AC_VOLTS", "DC_CURRENT", "AC_CURRENT", "RESISTANCE", "TWO_WIRE_RES", "FOUR_WIRE_RES", "FREQ", "PERIOD", "TEMPERATURE", "DIODE"]
+        default: "DC_VOLTS"
+        description: "Measurement function"
+      range_val:
+        type: float
+        min: -1.0
+        max: 1000.0
+        default: 10.0
+        description: "Measurement range (-1 for auto-range)"
+      resolution:
+        type: float
+        min: 3.5
+        max: 7.5
+        default: 6.5
+        description: "Resolution in digits"
+    description: "Configure measurement function, range, and resolution"
+
+  set_function:
+    sdk_call:
+      method: "set_function"
+      args_map:
+        function: "function"
+    type: write
+    params:
+      function:
+        type: enum
+        options: ["DC_VOLTS", "AC_VOLTS", "DC_CURRENT", "AC_CURRENT", "RESISTANCE", "TWO_WIRE_RES", "FOUR_WIRE_RES", "FREQ", "PERIOD", "TEMPERATURE", "DIODE"]
+        default: "DC_VOLTS"
+        description: "Measurement function"
+    description: "Set the measurement function"
+
+  get_function:
+    sdk_call:
+      method: "get_function"
+    type: query
+    returns:
+      type: string
+    streamable: true
+    description: "Read the current measurement function name"
+
+  set_range:
+    sdk_call:
+      method: "set_range"
+      args_map:
+        range_val: "range_val"
+    type: write
+    params:
+      range_val:
+        type: float
+        min: -1.0
+        max: 1000.0
+        default: 10.0
+        description: "Measurement range (-1 for auto-range)"
+    description: "Set the measurement range"
+
+  get_range:
+    sdk_call:
+      method: "get_range"
+    type: query
+    returns:
+      type: float
+    streamable: true
+    description: "Read the current measurement range"
+
+  set_resolution:
+    sdk_call:
+      method: "set_resolution"
+      args_map:
+        digits: "digits"
+    type: write
+    params:
+      digits:
+        type: float
+        min: 3.5
+        max: 7.5
+        default: 6.5
+        description: "Resolution in digits"
+    description: "Set the resolution in digits"
+
+  get_resolution:
+    sdk_call:
+      method: "get_resolution"
+    type: query
+    returns:
+      type: float
+    streamable: true
+    description: "Read the current resolution in digits"
+
+  start:
+    sdk_call:
+      method: "start"
+    type: write
+    description: "Initiate a measurement acquisition"
+
+  abort:
+    sdk_call:
+      method: "abort"
+    type: write
+    description: "Abort the current measurement"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

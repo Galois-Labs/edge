@@ -1,0 +1,236 @@
+# NI-FGEN Instrument Profile
+# NI PXI function generators (PXIe-5433, PXIe-5442, etc.)
+# Uses nifgen Python package (NI nimi-python project)
+# Supports local (Windows + NI-FGEN driver) and remote (NI gRPC Device Server)
+
+instrument:
+  manufacturer: "NI"
+  model: "PXIe FGen"
+  class: function_generator
+  description: "NI PXI function generator via nifgen SDK"
+
+sdk:
+  package: "nifgen"
+  import_path: "galois_edge.sdk_wrappers.ni_fgen_wrapper"
+  class_name: "NiFgenClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+      grpc_address: "{grpc_address}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot3"
+      grpc_address: null
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "NI.*(FGen|PXIe-54)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "NI.*(FGen|PXIe-54)"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  configure_standard_waveform:
+    sdk_call:
+      method: "configure_standard_waveform"
+      args_map:
+        channel: "channel"
+        waveform: "waveform"
+        amplitude: "amplitude"
+        frequency: "frequency"
+        dc_offset: "dc_offset"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      waveform:
+        type: enum
+        options: ["SINE", "SQUARE", "TRIANGLE", "RAMP_UP", "RAMP_DOWN", "DC", "NOISE"]
+        default: "SINE"
+        description: "Waveform type"
+      amplitude:
+        type: float
+        unit: V
+        min: 0.0
+        max: 24.0
+        default: 1.0
+        description: "Peak-to-peak amplitude in volts"
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 80e6
+        default: 1e6
+        description: "Waveform frequency in Hz"
+      dc_offset:
+        type: float
+        unit: V
+        min: -12.0
+        max: 12.0
+        default: 0.0
+        description: "DC offset in volts"
+    description: "Configure a standard waveform on a channel"
+
+  set_amplitude:
+    sdk_call:
+      method: "set_amplitude"
+      args_map:
+        channel: "channel"
+        amplitude: "amplitude"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      amplitude:
+        type: float
+        unit: V
+        min: 0.0
+        max: 24.0
+        default: 1.0
+        description: "Peak-to-peak amplitude in volts"
+    description: "Set output amplitude for a channel"
+
+  get_amplitude:
+    sdk_call:
+      method: "get_amplitude"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read output amplitude for a channel"
+
+  set_frequency:
+    sdk_call:
+      method: "set_frequency"
+      args_map:
+        channel: "channel"
+        frequency: "frequency"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.0
+        max: 80e6
+        default: 1e6
+        description: "Output frequency in Hz"
+    description: "Set output frequency for a channel"
+
+  get_frequency:
+    sdk_call:
+      method: "get_frequency"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+    returns:
+      type: float
+      unit: Hz
+    streamable: true
+    description: "Read output frequency for a channel"
+
+  set_dc_offset:
+    sdk_call:
+      method: "set_dc_offset"
+      args_map:
+        channel: "channel"
+        offset: "offset"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      offset:
+        type: float
+        unit: V
+        min: -12.0
+        max: 12.0
+        default: 0.0
+        description: "DC offset in volts"
+    description: "Set DC offset for a channel"
+
+  set_waveform_type:
+    sdk_call:
+      method: "set_waveform_type"
+      args_map:
+        channel: "channel"
+        waveform: "waveform"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      waveform:
+        type: enum
+        options: ["SINE", "SQUARE", "TRIANGLE", "RAMP_UP", "RAMP_DOWN", "DC", "NOISE"]
+        default: "SINE"
+        description: "Waveform type"
+    description: "Set waveform type for a channel"
+
+  set_output_enabled:
+    sdk_call:
+      method: "set_output_enabled"
+      args_map:
+        channel: "channel"
+        enabled: "enabled"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Output channel name"
+      enabled:
+        type: bool
+        default: true
+        description: "True to enable, False to disable"
+    description: "Enable or disable output on a channel"
+
+  start:
+    sdk_call:
+      method: "start"
+    type: write
+    description: "Initiate waveform generation"
+
+  abort:
+    sdk_call:
+      method: "abort"
+    type: write
+    description: "Abort waveform generation"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"

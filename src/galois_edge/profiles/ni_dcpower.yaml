@@ -1,0 +1,246 @@
+# NI-DCPower Instrument Profile
+# NI PXI source measure units / power supplies (PXIe-4141, PXIe-4145, etc.)
+# Uses nidcpower Python package (NI nimi-python project)
+# Supports local (Windows + NI-DCPower driver) and remote (NI gRPC Device Server)
+
+instrument:
+  manufacturer: "NI"
+  model: "PXIe SMU"
+  class: smu
+  description: "NI PXI source measure unit via nidcpower SDK"
+
+sdk:
+  package: "nidcpower"
+  import_path: "galois_edge.sdk_wrappers.ni_dcpower_wrapper"
+  class_name: "NiDCPowerClient"
+  connect:
+    constructor_args:
+      resource: "{resource}"
+      channels: "{channels}"
+      grpc_address: "{grpc_address}"
+    method: "connect"
+    defaults:
+      resource: "PXI1Slot4"
+      channels: ""
+      grpc_address: null
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "NI.*(SMU|DCPower|PXIe-41)"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "NI.*(SMU|DCPower|PXIe-41)"
+
+interfaces:
+  - type: pxi
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  set_voltage:
+    sdk_call:
+      method: "set_voltage"
+      args_map:
+        channel: "channel"
+        voltage: "voltage"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+      voltage:
+        type: float
+        unit: V
+        min: -300.0
+        max: 300.0
+        default: 0.0
+        description: "Output voltage level in volts"
+    description: "Set output voltage level on a channel"
+
+  get_voltage:
+    sdk_call:
+      method: "get_voltage"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read configured voltage level for a channel"
+
+  set_current_limit:
+    sdk_call:
+      method: "set_current_limit"
+      args_map:
+        channel: "channel"
+        current: "current"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+      current:
+        type: float
+        unit: A
+        min: 0.0
+        max: 3.0
+        default: 0.01
+        description: "Current limit in amps"
+    description: "Set current limit on a channel"
+
+  get_current_limit:
+    sdk_call:
+      method: "get_current_limit"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Read configured current limit for a channel"
+
+  set_output_function:
+    sdk_call:
+      method: "set_output_function"
+      args_map:
+        channel: "channel"
+        function: "function"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+      function:
+        type: enum
+        options: ["DC_VOLTAGE", "DC_CURRENT"]
+        default: "DC_VOLTAGE"
+        description: "Output function mode"
+    description: "Set the output function (voltage or current source mode)"
+
+  set_source_mode:
+    sdk_call:
+      method: "set_source_mode"
+      args_map:
+        mode: "mode"
+    type: write
+    params:
+      mode:
+        type: enum
+        options: ["SINGLE_POINT", "SEQUENCE"]
+        default: "SINGLE_POINT"
+        description: "Source mode"
+    description: "Set the source mode for the session"
+
+  measure:
+    sdk_call:
+      method: "measure"
+      args_map:
+        channel: "channel"
+        measurement_type: "measurement_type"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+      measurement_type:
+        type: enum
+        options: ["VOLTAGE", "CURRENT"]
+        default: "VOLTAGE"
+        description: "Measurement type"
+    returns:
+      type: float
+    streamable: true
+    description: "Take a measurement on a channel"
+
+  measure_voltage:
+    sdk_call:
+      method: "measure_voltage"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Measure voltage on a channel"
+
+  measure_current:
+    sdk_call:
+      method: "measure_current"
+      args_map:
+        channel: "channel"
+    type: query
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Measure current on a channel"
+
+  start:
+    sdk_call:
+      method: "start"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    description: "Initiate output on a channel"
+
+  abort:
+    sdk_call:
+      method: "abort"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: string
+        default: "0"
+        description: "Channel name"
+    description: "Abort output on a channel"
+
+  commit:
+    sdk_call:
+      method: "commit"
+    type: write
+    description: "Commit session configuration changes"
+
+  get_identity:
+    sdk_call:
+      method: "get_identity"
+    type: query
+    returns:
+      type: string
+    description: "Read device identification"
