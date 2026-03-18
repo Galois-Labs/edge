@@ -268,6 +268,42 @@ class LANDiscovery:
         return instruments
 
     # ------------------------------------------------------------------
+    # Targeted probe
+    # ------------------------------------------------------------------
+
+    def probe_reachable(self, visa_address: str) -> bool:
+        """Quick TCP connect probe for a specific VISA address.
+
+        Extracts IP and port from the VISA string and performs a
+        connect-only probe. Used by the periodic reconciler to verify
+        known LAN instruments are still reachable without running
+        the full discover() pipeline.
+
+        Returns True if the instrument is reachable, False otherwise.
+        """
+        # Parse TCPIP VISA string to extract IP and port
+        # Format: TCPIP::ip::port::SOCKET or TCPIP::ip::INSTR
+        upper = visa_address.upper()
+        if not upper.startswith("TCPIP"):
+            return False
+
+        parts = visa_address.split("::")
+        if len(parts) < 2:
+            return False
+
+        ip = parts[1]
+        port = self._default_port
+
+        # Try to extract port from the VISA string
+        if len(parts) >= 3:
+            try:
+                port = int(parts[2])
+            except ValueError:
+                pass  # Not a port (e.g. "INSTR" or "hislip0")
+
+        return self._probe_tcp(ip, port)
+
+    # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
 

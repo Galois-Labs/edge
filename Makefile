@@ -59,14 +59,8 @@ build-python: ## Install Python package in editable mode
 # -----------------------------------------------------------------------
 # Freeze Python into a standalone binary via PyInstaller
 # -----------------------------------------------------------------------
-freeze: ## Freeze Python engine via PyInstaller
-	$(PYINSTALLER) \
-		--name galois-edge-daemon \
-		--onefile \
-		--hidden-import galois_edge.edge_pb2 \
-		--hidden-import galois_edge.edge_pb2_grpc \
-		--add-data "src/galois_edge/profiles:galois_edge/profiles" \
-		src/galois_edge/__main__.py
+freeze: ## Freeze Python engine via PyInstaller (uses .spec for full hidden imports)
+	$(PYINSTALLER) galois-edge-daemon.spec
 	@echo "Frozen binary: dist/galois-edge-daemon"
 
 # -----------------------------------------------------------------------

@@ -361,6 +361,173 @@ class GPIBManager:
             )
             return found
 
+    def scan_single_address(
+        self,
+        board: int,
+        addr: int,
+        timeout_code: int = _Timeout.T1s,
+    ) -> Optional[str]:
+        """Probe a single GPIB address and return VISA string if found.
+
+        Unlike scan_bus(), this acquires the lock for only ONE address probe
+        (~500ms worst case), making it suitable for trickle scanning between
+        command jobs.
+
+        Parameters
+        ----------
+        board:
+            GPIB board index to probe.
+        addr:
+            Primary address to probe (1-30).
+        timeout_code:
+            linux-gpib timeout code for the probe. Default T1s (shorter
+            than scan_bus's T3s) to limit worst-case blocking to ~1s.
+
+        Returns
+        -------
+        str or None
+            The VISA address string if a new instrument was found,
+            or None if no listener, already known, or probe failed.
+        """
+        if not self.is_available:
+            return None
+        if board not in self._boards:
+            return None
+
+        visa_addr = f"GPIB{board}::{addr}::INSTR"
+
+        # Already known -- skip
+        if visa_addr in self._devices:
+            return None
+
+        with self._lock:
+            try:
+                bd = self._boards[board].descriptor
+
+                # Fast listener check
+                if not gpib.listener(bd, addr):
+                    return None
+
+                logger.debug(
+                    "Trickle: listener at GPIB%d::%d, probing identity",
+                    board, addr,
+                )
+
+                # Open device with shorter timeout
+                dev = gpib.dev(board, addr, 0, timeout_code, 1, 0x140A)
+
+                # Build probe list: standard *IDN? first, then profile-driven
+                probes = [(b"*IDN?\n", "SCPI")] + self._identity_probes
+
+                response: Optional[str] = None
+                for cmd, label in probes:
+                    try:
+                        gpib.write(dev, cmd)
+                        raw = gpib.read(dev, _READ_BUF).decode().strip()
+                        if not raw:
+                            continue
+                        # For standard SCPI, reject pure-numeric garbage
+                        if label == "SCPI" and not any(c.isalpha() for c in raw):
+                            continue
+                        response = raw
+                        break
+                    except gpib.GpibError:
+                        continue
+
+                if response:
+                    self._devices[visa_addr] = GPIBDevice(
+                        board=board,
+                        address=addr,
+                        descriptor=dev,
+                        idn=response,
+                    )
+                    logger.info(
+                        "Trickle scan found instrument at %s: %s",
+                        visa_addr, response,
+                    )
+                    return visa_addr
+                else:
+                    logger.debug(
+                        "Trickle: GPIB%d::%d listener but no ID response",
+                        board, addr,
+                    )
+                    gpib.close(dev)
+                    return None
+
+            except gpib.GpibError as exc:
+                logger.debug(
+                    "Trickle: GPIB%d::%d probe error: %s", board, addr, exc
+                )
+                return None
+
+    def remove_devices_on_board(self, board: int) -> list[str]:
+        """Remove all devices associated with a board (adapter unplugged).
+
+        Does NOT attempt gpib.close() on device descriptors (the USB
+        device is already gone; calling close() would hang or SIGABRT).
+
+        Returns list of VISA addresses that were removed.
+        """
+        removed: list[str] = []
+        with self._lock:
+            to_remove = [
+                addr for addr, dev in self._devices.items()
+                if dev.board == board
+            ]
+            for addr in to_remove:
+                del self._devices[addr]
+                removed.append(addr)
+                logger.info(
+                    "Removed device %s (board %d adapter unplugged)", addr, board
+                )
+
+            # Remove the board entry itself
+            if board in self._boards:
+                del self._boards[board]
+                logger.info("Removed GPIB board %d (adapter unplugged)", board)
+
+        return removed
+
+    def reinit_board(self, board_index: int) -> bool:
+        """Re-initialise a single GPIB board after adapter re-plug.
+
+        Calls gpib.find(), gpib.config(IbcSC), gpib.interface_clear(),
+        gpib.remote_enable() for the specified board only.
+
+        Returns True if the board was successfully initialised.
+        """
+        if not GPIB_AVAILABLE:
+            return False
+
+        with self._lock:
+            try:
+                bd = gpib.find(f"gpib{board_index}")
+                if bd < 0:
+                    logger.warning(
+                        "reinit_board: gpib%d not found", board_index
+                    )
+                    return False
+
+                gpib.config(bd, gpib.IbcSC, 1)
+                gpib.interface_clear(bd)
+                gpib.remote_enable(bd, 1)
+
+                self._boards[board_index] = GPIBBoard(
+                    index=board_index, descriptor=bd
+                )
+                logger.info(
+                    "GPIB board %d re-initialised as CIC (descriptor %d)",
+                    board_index, bd,
+                )
+                return True
+
+            except gpib.GpibError as exc:
+                logger.error(
+                    "Failed to re-initialise GPIB board %d: %s",
+                    board_index, exc,
+                )
+                return False
+
     # ------------------------------------------------------------------
     # Resource listing
     # ------------------------------------------------------------------
@@ -368,6 +535,11 @@ class GPIBManager:
     def list_resources(self) -> list[str]:
         """Return VISA addresses for all discovered GPIB devices."""
         return list(self._devices.keys())
+
+    @property
+    def boards(self) -> dict[int, GPIBBoard]:
+        """Return the dict of initialised boards (read-only access)."""
+        return self._boards
 
     # ------------------------------------------------------------------
     # Connection lifecycle
