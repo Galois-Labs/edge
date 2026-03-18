@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package galois.edge.v1;
 
+// NOTE: go_package is overridden here for the cloud backend's import path.
+// The canonical source of truth is daemon-clean/proto/edge/v1/edge.proto.
+// See proto/README.md in daemon-clean for the regeneration workflow.
 option go_package = "github.com/galois-labs/daemon/proto/gen/go/edge/v1";
 
 import "google/protobuf/timestamp.proto";
@@ -100,6 +103,12 @@ service EdgeDaemonService {
 
   // ListProfiles returns all driver profiles installed on the daemon.
   rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
+
+  // ConnectModbusInstrument deploys a profile AND connects an instrument in one step.
+  rpc ConnectModbusInstrument(ConnectModbusInstrumentRequest) returns (ConnectModbusInstrumentResponse);
+
+  // DisconnectInstrument disconnects a protocol-driver instrument.
+  rpc DisconnectInstrument(DisconnectInstrumentRequest) returns (DisconnectInstrumentResponse);
 }
 
 // ===========================================================================
@@ -273,23 +282,6 @@ message ExecuteCommandRequest {
   int32 timeout_ms = 6;
 }
 
-// VectorData carries oscilloscope traces, spectrum data, and other array results.
-// The y_data field contains raw binary values (IEEE 754 little-endian by default).
-// For integer formats (e.g. int16 from oscilloscopes), use y_scale and y_offset:
-//   actual_value = raw_value * y_scale + y_offset
-message VectorData {
-  bytes y_data = 1;            // Raw data bytes (IEEE 754 doubles LE by default)
-  string y_dtype = 2;          // "float64", "float32", "int16" etc.
-  int32 y_length = 3;          // Number of points
-  double x_start = 4;
-  double x_increment = 5;
-  string x_unit = 6;
-  string y_unit = 7;
-  string x_name = 8;
-  double y_scale = 9;          // For int16 data: actual = raw * y_scale + y_offset
-  double y_offset = 10;
-}
-
 message ExecuteCommandResponse {
   string command_id = 1;
   bool success = 2;
@@ -297,7 +289,7 @@ message ExecuteCommandResponse {
   string error_message = 4;
   int64 execution_time_ms = 5;
   string scpi_command = 6;                 // The actual SCPI command that was sent
-  VectorData vector_data = 7;             // Populated if the command returns a vector
+  VectorData vector_data = 7;              // Waveform/curve data (if applicable)
 }
 
 // ===========================================================================
@@ -334,6 +326,19 @@ message StreamMeasurementRequest {
   map<string, string> parameters = 6;      // Optional command parameters
 }
 
+message VectorData {
+  bytes y_data = 1;           // Raw binary waveform samples
+  string y_dtype = 2;         // Data type (e.g. "float32", "int16")
+  int32 y_length = 3;         // Number of samples
+  double x_start = 4;         // X-axis start value
+  double x_increment = 5;     // X-axis step size
+  string x_unit = 6;          // X-axis unit (e.g. "s")
+  string y_unit = 7;          // Y-axis unit (e.g. "V")
+  string x_name = 8;          // X-axis label
+  double y_scale = 9;         // Y-axis scale factor
+  double y_offset = 10;       // Y-axis offset
+}
+
 message MeasurementDataPoint {
   string stream_id = 1;
   double value = 2;                        // Primary measured value
@@ -342,6 +347,7 @@ message MeasurementDataPoint {
   string error = 5;                        // Error message if reading failed
   string status = 6;                       // "ok", "error", "stopped"
   map<string, double> values = 7;          // Named fields for multi-value measurements
+  VectorData vector_data = 8;              // Waveform/curve data (oscilloscopes, etc.)
 }
 
 // ===========================================================================
@@ -510,9 +516,9 @@ message StopSweepResponse {
 // ===========================================================================
 
 message DeployProfileRequest {
-  string profile_name = 1;
-  string profile_yaml = 2;
-  string protocol = 3;
+  string profile_name = 1;    // unique key, e.g. "eurotherm_3504"
+  string profile_yaml = 2;    // full YAML content
+  string protocol = 3;        // "modbus", "hart", etc.
 }
 
 message DeployProfileResponse {
@@ -545,4 +551,31 @@ message DriverProfileSummary {
   string description = 5;
   int32 register_count = 6;
   bool active = 7;
+}
+
+// Deploy profile + connect instrument in one step
+message ConnectModbusInstrumentRequest {
+  string profile_name = 1;    // which profile to use (must already be deployed)
+  string profile_yaml = 2;    // OR send the YAML directly (deploy + connect)
+  string protocol = 3;
+  string instrument_id = 4;   // user-chosen ID, e.g. "energy-meter-1"
+  string transport_uri = 5;   // "rtu:///dev/ttyUSB0" or "tcp://192.168.1.10:502"
+  int32 slave_id = 6;
+}
+
+message ConnectModbusInstrumentResponse {
+  bool success = 1;
+  string error_message = 2;
+  string instrument_id = 3;
+  int32 register_count = 4;
+  repeated string commands = 5;
+}
+
+message DisconnectInstrumentRequest {
+  string instrument_id = 1;
+}
+
+message DisconnectInstrumentResponse {
+  bool success = 1;
+  string error_message = 2;
 }

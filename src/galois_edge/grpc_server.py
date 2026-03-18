@@ -1980,6 +1980,120 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 ))
         return edge_pb2.ListProfilesResponse(profiles=profiles)
 
+    async def ConnectModbusInstrument(self, request, context):
+        """Deploy profile (if YAML provided) and connect instrument in one step."""
+        import os
+        import yaml
+
+        profile_name = request.profile_name
+        profile_yaml = request.profile_yaml
+        protocol = request.protocol or "modbus"
+        instrument_id = request.instrument_id
+        transport_uri = request.transport_uri
+        slave_id = request.slave_id or 1
+
+        if not instrument_id or not transport_uri:
+            return edge_pb2.ConnectModbusInstrumentResponse(
+                success=False,
+                error_message="instrument_id and transport_uri are required",
+            )
+
+        if self._driver_registry is None:
+            return edge_pb2.ConnectModbusInstrumentResponse(
+                success=False,
+                error_message="Driver registry not available",
+            )
+
+        # Step 1: Deploy profile if YAML provided
+        if profile_yaml and profile_name:
+            profile_dir = self._driver_registry.profiles_dir
+            protocol_dir = os.path.join(profile_dir, protocol)
+            os.makedirs(protocol_dir, exist_ok=True)
+            file_path = os.path.join(protocol_dir, f"{profile_name}.yaml")
+            try:
+                with open(file_path, "w") as f:
+                    f.write(profile_yaml)
+                self._driver_registry.reload()
+                logger.info("Deployed profile %s for ConnectModbusInstrument", profile_name)
+            except Exception as exc:
+                return edge_pb2.ConnectModbusInstrumentResponse(
+                    success=False,
+                    error_message=f"Failed to deploy profile: {exc}",
+                )
+
+        # Step 2: Instantiate and connect the driver
+        if not profile_name:
+            return edge_pb2.ConnectModbusInstrumentResponse(
+                success=False,
+                error_message="profile_name is required",
+            )
+
+        try:
+            driver = self._driver_registry.instantiate(
+                profile_name=profile_name,
+                instrument_id=instrument_id,
+                transport_uri=transport_uri,
+                slave_id=slave_id,
+            )
+            driver.connect()
+
+            # Register with capability manager
+            if self._capability_manager is not None:
+                self._capability_manager.register_protocol_driver(
+                    instrument_id, driver
+                )
+
+            caps = driver.get_capabilities()
+            logger.info(
+                "Connected Modbus instrument: %s (%s @ %s, slave %d, %d registers)",
+                instrument_id, profile_name, transport_uri, slave_id,
+                caps.get("registers", 0),
+            )
+
+            return edge_pb2.ConnectModbusInstrumentResponse(
+                success=True,
+                instrument_id=instrument_id,
+                register_count=caps.get("registers", 0),
+                commands=caps.get("commands", []),
+            )
+
+        except Exception as exc:
+            logger.error("ConnectModbusInstrument failed: %s", exc)
+            return edge_pb2.ConnectModbusInstrumentResponse(
+                success=False,
+                error_message=str(exc),
+            )
+
+    async def DisconnectInstrument(self, request, context):
+        """Disconnect a protocol-driver instrument."""
+        instrument_id = request.instrument_id
+        if not instrument_id:
+            return edge_pb2.DisconnectInstrumentResponse(
+                success=False, error_message="instrument_id required"
+            )
+
+        if self._driver_registry is None:
+            return edge_pb2.DisconnectInstrumentResponse(
+                success=False, error_message="Driver registry not available"
+            )
+
+        driver = self._driver_registry.get_instance(instrument_id)
+        if driver is None:
+            return edge_pb2.DisconnectInstrumentResponse(
+                success=False, error_message=f"Instrument not found: {instrument_id}"
+            )
+
+        try:
+            driver.disconnect()
+            if self._capability_manager is not None:
+                self._capability_manager.unregister_instrument(instrument_id)
+            logger.info("Disconnected instrument: %s", instrument_id)
+            return edge_pb2.DisconnectInstrumentResponse(success=True)
+        except Exception as exc:
+            return edge_pb2.DisconnectInstrumentResponse(
+                success=False, error_message=str(exc)
+            )
+
 
 # ---------------------------------------------------------------------------
 # Server lifecycle wrapper
