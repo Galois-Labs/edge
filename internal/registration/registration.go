@@ -13,6 +13,8 @@ package registration
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +23,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -79,6 +82,21 @@ type InstrumentInfo struct {
 	Manufacturer string `json:"manufacturer"`
 	Model        string `json:"model"`
 	Status       string `json:"status"`
+}
+
+// instrumentHash returns a deterministic hash of the instrument list.
+// Used to detect changes between heartbeat cycles.
+func instrumentHash(instruments []InstrumentInfo) string {
+	if len(instruments) == 0 {
+		return ""
+	}
+	ids := make([]string, len(instruments))
+	for i, inst := range instruments {
+		ids[i] = inst.VisaAddress + "|" + inst.Name
+	}
+	sort.Strings(ids)
+	h := sha256.Sum256([]byte(fmt.Sprintf("%v", ids)))
+	return hex.EncodeToString(h[:8])
 }
 
 // ---------------------------------------------------------------------------
@@ -188,6 +206,11 @@ type Manager struct {
 	state    State
 	edgeID   string // assigned by the backend on first registration
 	attempts int    // consecutive failure counter
+
+	// lastInstrumentHash tracks the last instrument set successfully
+	// acked by the backend.  When the current set differs, the next
+	// heartbeat includes the full instrument list ("full state on change").
+	lastInstrumentHash string
 
 	cancel context.CancelFunc
 	done   chan struct{}
@@ -380,8 +403,9 @@ type RegisterResult struct {
 }
 
 type heartbeatPayload struct {
-	TailnetIP string `json:"tailnet_ip,omitempty"`
-	Status    string `json:"status"`
+	TailnetIP   string           `json:"tailnet_ip,omitempty"`
+	Status      string           `json:"status"`
+	Instruments []InstrumentInfo `json:"instruments,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -506,6 +530,20 @@ func (m *Manager) heartbeat(ctx context.Context) error {
 		Status:    "online",
 	}
 
+	// Include instruments when the set has changed since last ack.
+	// This ensures the cloud stays in sync without sending redundant
+	// data on every heartbeat ("full state on change").
+	instruments, err := m.getter.GetInstruments(ctx)
+	if err == nil {
+		hash := instrumentHash(instruments)
+		m.mu.Lock()
+		changed := hash != m.lastInstrumentHash
+		m.mu.Unlock()
+		if changed {
+			payload.Instruments = instruments
+		}
+	}
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal heartbeat: %w", err)
@@ -528,7 +566,12 @@ func (m *Manager) heartbeat(ctx context.Context) error {
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		// Success — reset failure counter.
+		// Success — update instrument hash and reset failure counter.
+		if payload.Instruments != nil {
+			m.mu.Lock()
+			m.lastInstrumentHash = instrumentHash(payload.Instruments)
+			m.mu.Unlock()
+		}
 		m.mu.Lock()
 		m.attempts = 0
 		m.mu.Unlock()

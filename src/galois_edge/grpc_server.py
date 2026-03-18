@@ -287,13 +287,16 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         capability_manager: Optional[CapabilityManager] = None,
         sdk_executor: Optional[SDKExecutor] = None,
         max_workers: int = 10,
+        io_executor: Optional[ThreadPoolExecutor] = None,
     ) -> None:
         self._instruments = instrument_manager
         self._handler = command_handler
         self._edge_id = edge_id
         self._capability_manager = capability_manager
         self._sdk_executor = sdk_executor
-        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        # Use shared single-thread executor for instrument I/O if provided
+        # (serializes all GPIB/VISA access — linux-gpib is not thread-safe).
+        self._executor = io_executor or ThreadPoolExecutor(max_workers=max_workers)
         self._start_time = time.time()
 
         # Active measurement streams: stream_id -> asyncio.Task
@@ -387,50 +390,29 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         request: edge_pb2.ListInstrumentsRequest,
         context: grpc.aio.ServicerContext,
     ) -> edge_pb2.ListInstrumentsResponse:
-        """Return all instruments currently known to the daemon."""
+        """Return all instruments currently known to the daemon.
+
+        Returns cached state only — does NOT trigger a fresh resource scan.
+        This avoids blocking on the single-thread I/O executor while
+        background discovery is running.
+        """
         logger.info("ListInstruments request (filter=%s)", request.filter)
 
         try:
-            loop = asyncio.get_running_loop()
-            resources = await loop.run_in_executor(
-                self._executor,
-                self._instruments.list_resources,
-            )
-
+            # Read cached capability records (pure Python dict — no C library calls)
             instruments = []
-            for visa_address in resources:
-                # Attempt identification
-                idn = ""
-                connected = self._instruments.is_connected(visa_address)
-
-                if connected:
-                    try:
-                        idn = await loop.run_in_executor(
-                            self._executor,
-                            self._instruments.identify,
-                            visa_address,
+            if self._capability_manager:
+                for visa_address, caps in self._capability_manager.all_instruments.items():
+                    idn = caps.idn_response if caps else ""
+                    instruments.append(
+                        _build_instrument_proto(
+                            instrument_id=visa_address,
+                            visa_address=visa_address,
+                            idn_response=idn or "",
+                            is_connected=self._instruments.is_connected(visa_address),
+                            caps=caps,
                         )
-                    except Exception as exc:
-                        logger.debug(
-                            "Could not identify %s: %s", visa_address, exc
-                        )
-
-                # Get capability record if available
-                caps = None
-                if self._capability_manager:
-                    caps = self._capability_manager.get_instrument_caps(
-                        visa_address
                     )
-
-                instruments.append(
-                    _build_instrument_proto(
-                        instrument_id=visa_address,
-                        visa_address=visa_address,
-                        idn_response=idn,
-                        is_connected=connected,
-                        caps=caps,
-                    )
-                )
 
             logger.info("ListInstruments: %d instrument(s)", len(instruments))
             return edge_pb2.ListInstrumentsResponse(
@@ -1866,6 +1848,7 @@ class GRPCServer:
         max_workers: int = 10,
         capability_manager: Optional[CapabilityManager] = None,
         sdk_executor: Optional[SDKExecutor] = None,
+        io_executor: Optional[ThreadPoolExecutor] = None,
     ) -> None:
         self._port = port
         self._edge_id = edge_id
@@ -1877,6 +1860,7 @@ class GRPCServer:
             capability_manager=capability_manager,
             sdk_executor=sdk_executor,
             max_workers=max_workers,
+            io_executor=io_executor,
         )
 
         self._server: Optional[grpc_aio.Server] = None

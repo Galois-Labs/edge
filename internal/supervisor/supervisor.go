@@ -71,7 +71,7 @@ func (s State) String() string {
 const (
 	// defaultStartupTimeout is the maximum time to wait for the child to
 	// become healthy after spawning.
-	defaultStartupTimeout = 30 * time.Second
+	defaultStartupTimeout = 120 * time.Second
 
 	// defaultHealthInterval is the time between TCP health probes during
 	// startup.
