@@ -109,6 +109,19 @@ class Config:
         default_factory=lambda: _int_env("SCAN_INTERVAL_S", 60)
     )
 
+    # --- GPIB trickle scanning ---
+    gpib_trickle_interval_s: float = field(
+        default_factory=lambda: _float_env("GPIB_TRICKLE_INTERVAL_S", 2.0)
+    )
+    gpib_trickle_probe_timeout_ms: int = field(
+        default_factory=lambda: _int_env("GPIB_TRICKLE_PROBE_TIMEOUT_MS", 1000)
+    )
+
+    # --- USB hotplug monitoring ---
+    usb_monitor_enabled: bool = field(
+        default_factory=lambda: _bool_env("USB_MONITOR_ENABLED", not _is_windows())
+    )
+
     # --- ZMQ streaming ---
     zmq_enabled: bool = field(
         default_factory=lambda: _bool_env("ZMQ_ENABLED", False)
@@ -117,8 +130,28 @@ class Config:
         default_factory=lambda: _int_env("ZMQ_PUB_PORT", 5556)
     )
 
+    # --- Modbus / protocol drivers ---
+    modbus_instruments: str = field(
+        default_factory=lambda: _str_env("MODBUS_INSTRUMENTS", "")
+    )
+
     # --- Config directory (platform-aware) ---
     config_dir: str = field(default_factory=_default_config_dir)
+
+    @property
+    def modbus_instrument_list(self) -> list[dict]:
+        """Parse MODBUS_INSTRUMENTS JSON string into a list of configs.
+
+        Each entry: {"profile": "eurotherm_3504", "id": "oven-1",
+                     "uri": "rtu:///dev/ttyUSB0", "slave_id": 1}
+        """
+        if not self.modbus_instruments:
+            return []
+        import json
+        try:
+            return json.loads(self.modbus_instruments)
+        except (json.JSONDecodeError, TypeError):
+            return []
 
     @property
     def lan_instrument_list(self) -> list[str]:
