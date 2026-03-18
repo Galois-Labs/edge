@@ -288,12 +288,14 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         sdk_executor: Optional[SDKExecutor] = None,
         max_workers: int = 10,
         io_executor: Optional[ThreadPoolExecutor] = None,
+        driver_registry: Optional[Any] = None,
     ) -> None:
         self._instruments = instrument_manager
         self._handler = command_handler
         self._edge_id = edge_id
         self._capability_manager = capability_manager
         self._sdk_executor = sdk_executor
+        self._driver_registry = driver_registry
         # Use shared single-thread executor for instrument I/O if provided
         # (serializes all GPIB/VISA access — linux-gpib is not thread-safe).
         self._executor = io_executor or ThreadPoolExecutor(max_workers=max_workers)
@@ -747,6 +749,43 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 execution_time_ms=0,
                 scpi_command="",
             )
+
+        # Check if this is a protocol driver instrument (Modbus, etc.)
+        if self._capability_manager:
+            protocol_driver = self._capability_manager.get_protocol_driver(instrument_id)
+            if protocol_driver is not None:
+                try:
+                    params = dict(request.parameters) if request.parameters else {}
+                    loop = asyncio.get_running_loop()
+                    result = await loop.run_in_executor(
+                        self._executor,
+                        protocol_driver.execute_command,
+                        command_name,
+                        params,
+                    )
+                    elapsed_ms = int((time.time() - start) * 1000)
+                    return edge_pb2.ExecuteCommandResponse(
+                        command_id=command_id,
+                        success=True,
+                        data=json.dumps(result) if not isinstance(result, str) else result,
+                        error_message="",
+                        execution_time_ms=elapsed_ms,
+                        scpi_command=f"[modbus:{command_name}]",
+                    )
+                except Exception as exc:
+                    elapsed_ms = int((time.time() - start) * 1000)
+                    logger.error(
+                        "Protocol driver command '%s' failed for %s: %s",
+                        command_name, instrument_id, exc,
+                    )
+                    return edge_pb2.ExecuteCommandResponse(
+                        command_id=command_id,
+                        success=False,
+                        data="",
+                        error_message=str(exc),
+                        execution_time_ms=elapsed_ms,
+                        scpi_command="",
+                    )
 
         # Resolve the command to SCPI string or SDKCommandRequest
         params = dict(request.parameters) if request.parameters else None
@@ -1849,6 +1888,7 @@ class GRPCServer:
         capability_manager: Optional[CapabilityManager] = None,
         sdk_executor: Optional[SDKExecutor] = None,
         io_executor: Optional[ThreadPoolExecutor] = None,
+        driver_registry: Optional[Any] = None,
     ) -> None:
         self._port = port
         self._edge_id = edge_id
@@ -1861,6 +1901,7 @@ class GRPCServer:
             sdk_executor=sdk_executor,
             max_workers=max_workers,
             io_executor=io_executor,
+            driver_registry=driver_registry,
         )
 
         self._server: Optional[grpc_aio.Server] = None

@@ -248,6 +248,44 @@ class CapabilityManager:
 
     # -- Registration ---
 
+    # -- Protocol driver registration ---
+
+    def register_protocol_driver(
+        self,
+        instrument_id: str,
+        driver: Any,
+    ) -> InstrumentCapabilities:
+        """Register a protocol driver (Modbus, HART, etc.).
+
+        Creates an InstrumentCapabilities record that advertises the
+        driver's capabilities alongside SCPI instruments.
+        """
+        caps = InstrumentCapabilities(
+            instrument_id=instrument_id,
+            visa_address=driver.transport_uri,
+            idn_response=driver.identify(),
+        )
+        # Attach the driver to the caps object for dispatch
+        caps._protocol_driver = driver  # type: ignore[attr-defined]
+        self._instruments[instrument_id] = caps
+        driver_caps = driver.get_capabilities()
+        logger.info(
+            "Registered protocol driver %s (%s, %d commands)",
+            instrument_id,
+            driver_caps.get("protocol", "?"),
+            len(driver_caps.get("commands", [])),
+        )
+        return caps
+
+    def get_protocol_driver(self, instrument_id: str) -> Optional[Any]:
+        """Return the protocol driver for an instrument, or None."""
+        caps = self._instruments.get(instrument_id)
+        if caps is not None:
+            return getattr(caps, "_protocol_driver", None)
+        return None
+
+    # -- SCPI instrument registration ---
+
     def register_instrument(
         self,
         instrument_id: str,

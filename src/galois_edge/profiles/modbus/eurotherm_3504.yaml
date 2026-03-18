@@ -1,0 +1,151 @@
+protocol: modbus
+identity:
+  manufacturer: "Eurotherm"
+  model: "3504"
+  description: "PID Temperature Controller"
+  source_pdf: "eurotherm_3504_comms_manual.pdf"
+
+connection:
+  transport: rtu
+  default_baudrate: 9600
+  default_parity: even
+  default_stopbits: 1
+  default_slave_id: 1
+  default_timeout: 1.0
+  default_retries: 3
+  addressing_mode: one_based
+  byte_order: big
+  word_order: big
+
+registers:
+  process_value:
+    address: 1
+    raw_address_text: "40002"
+    register_type: holding
+    access: read
+    data_type: int16
+    length_words: 1
+    scale: 0.1
+    unit: "°C"
+    description: "Current process temperature"
+
+  setpoint:
+    address: 2
+    raw_address_text: "40003"
+    register_type: holding
+    access: read_write
+    data_type: int16
+    length_words: 1
+    scale: 0.1
+    unit: "°C"
+    range: [0, 1200]
+    write_function_code: 6
+    description: "Target temperature setpoint"
+
+  output_power:
+    address: 4
+    raw_address_text: "40005"
+    register_type: holding
+    access: read
+    data_type: int16
+    length_words: 1
+    scale: 0.1
+    unit: "%"
+    description: "Current output power percentage"
+
+  pid_proportional:
+    address: 6
+    raw_address_text: "40007"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    unit: ""
+    description: "PID proportional band"
+
+  auto_manual:
+    address: 273
+    raw_address_text: "40274"
+    register_type: holding
+    access: read_write
+    data_type: uint16
+    length_words: 1
+    enum:
+      0: "auto"
+      1: "manual"
+    description: "Control mode"
+
+  status_word:
+    address: 20
+    raw_address_text: "40021"
+    register_type: holding
+    access: read
+    data_type: uint16
+    length_words: 1
+    bitfield:
+      heater_break:
+        bit: 0
+        description: "Heater break alarm"
+      sensor_break:
+        bit: 1
+        description: "Sensor break alarm"
+      loop_break:
+        bit: 2
+        description: "Control loop alarm"
+      manual_mode:
+        bit: 7
+        description: "Manual mode active"
+    description: "Device status word"
+
+  heater_alarm:
+    address: 10
+    register_type: coil
+    access: read
+    data_type: bool
+    length_words: 0
+    description: "Heater break alarm status"
+
+register_groups:
+  temperature:
+    registers: [process_value, setpoint]
+    description: "Temperature monitoring and control"
+  output:
+    registers: [output_power, auto_manual]
+    description: "Output control"
+  alarms:
+    registers: [heater_alarm, status_word]
+    description: "Alarm status"
+  tuning:
+    registers: [pid_proportional]
+    description: "PID tuning parameters"
+
+commands:
+  get_temperature:
+    type: query
+    reads: [process_value]
+    returns:
+      type: float
+      unit: "°C"
+
+  set_temperature:
+    type: action
+    writes:
+      - register: setpoint
+        value: "{temperature}"
+    params:
+      temperature:
+        type: number
+        unit: "°C"
+        range: [0, 1200]
+
+  get_status:
+    type: query
+    reads: [process_value, setpoint, output_power, auto_manual, status_word]
+    returns:
+      type: object
+
+  get_alarms:
+    type: query
+    reads: [status_word]
+    returns:
+      type: object
