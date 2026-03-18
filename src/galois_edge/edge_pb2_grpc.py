@@ -149,6 +149,16 @@ class EdgeDaemonServiceStub(object):
                 request_serializer=edge_dot_v1_dot_edge__pb2.ListProfilesRequest.SerializeToString,
                 response_deserializer=edge_dot_v1_dot_edge__pb2.ListProfilesResponse.FromString,
                 _registered_method=True)
+        self.ConnectModbusInstrument = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/ConnectModbusInstrument',
+                request_serializer=edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentResponse.FromString,
+                _registered_method=True)
+        self.DisconnectInstrument = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/DisconnectInstrument',
+                request_serializer=edge_dot_v1_dot_edge__pb2.DisconnectInstrumentRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.DisconnectInstrumentResponse.FromString,
+                _registered_method=True)
 
 
 class EdgeDaemonServiceServicer(object):
@@ -334,6 +344,20 @@ class EdgeDaemonServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ConnectModbusInstrument(self, request, context):
+        """ConnectModbusInstrument deploys a profile AND connects an instrument in one step.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DisconnectInstrument(self, request, context):
+        """DisconnectInstrument disconnects a protocol-driver instrument.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_EdgeDaemonServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -446,6 +470,16 @@ def add_EdgeDaemonServiceServicer_to_server(servicer, server):
                     servicer.ListProfiles,
                     request_deserializer=edge_dot_v1_dot_edge__pb2.ListProfilesRequest.FromString,
                     response_serializer=edge_dot_v1_dot_edge__pb2.ListProfilesResponse.SerializeToString,
+            ),
+            'ConnectModbusInstrument': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConnectModbusInstrument,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentResponse.SerializeToString,
+            ),
+            'DisconnectInstrument': grpc.unary_unary_rpc_method_handler(
+                    servicer.DisconnectInstrument,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.DisconnectInstrumentRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.DisconnectInstrumentResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -1047,6 +1081,60 @@ class EdgeDaemonService(object):
             '/galois.edge.v1.EdgeDaemonService/ListProfiles',
             edge_dot_v1_dot_edge__pb2.ListProfilesRequest.SerializeToString,
             edge_dot_v1_dot_edge__pb2.ListProfilesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ConnectModbusInstrument(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/ConnectModbusInstrument',
+            edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.ConnectModbusInstrumentResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DisconnectInstrument(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/DisconnectInstrument',
+            edge_dot_v1_dot_edge__pb2.DisconnectInstrumentRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.DisconnectInstrumentResponse.FromString,
             options,
             channel_credentials,
             insecure,
