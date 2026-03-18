@@ -60,10 +60,8 @@ LockPersonality=yes
 ReadWritePaths={{.ConfigDir}} {{.TsnetStateDir}}
 
 # Device access for USB/GPIB/serial instruments
-SupplementaryGroups=plugdev dialout
-DeviceAllow=/dev/ttyUSB* rw
-DeviceAllow=/dev/ttyACM* rw
-DeviceAllow=/dev/usbtmc* rw
+SupplementaryGroups=plugdev dialout gpib
+DevicePolicy=auto
 
 [Install]
 WantedBy=multi-user.target
@@ -282,7 +280,7 @@ func ensureUser(user string) error {
 	cmd := exec.Command("useradd",
 		"--system",
 		"--shell", "/usr/sbin/nologin",
-		"--groups", "plugdev,dialout",
+		"--groups", "plugdev,dialout,gpib",
 		"--no-create-home",
 		user,
 	)

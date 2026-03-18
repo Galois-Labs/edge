@@ -211,12 +211,13 @@ class InstrumentManager:
         # avoid control-transfer side effects on vendor-specific devices.
         if self._rm is not None and self._usb is None:
             try:
+                # When GPIBManager handles GPIB, tell PyVISA to skip the
+                # GPIB bus entirely.  This prevents pyvisa-py from calling
+                # into linux-gpib C library concurrently (not thread-safe).
+                query = "(USB|TCPIP|ASRL)?*" if self._gpib else "?*"
                 with _suppress_native_stderr():
-                    visa_resources = list(self._rm.list_resources("?*"))
+                    visa_resources = list(self._rm.list_resources(query))
                 for res in visa_resources:
-                    # Skip GPIB if handled by GPIBManager
-                    if self._gpib and self._gpib.is_gpib_address(res):
-                        continue
                     # Optionally skip serial ports
                     if res.startswith("ASRL") and not self._include_serial_ports:
                         continue

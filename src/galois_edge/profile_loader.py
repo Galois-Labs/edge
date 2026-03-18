@@ -8,7 +8,9 @@ for a given ``*IDN?`` response string.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import pickle
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -69,8 +71,9 @@ class ProfileLoader:
     def load_all(self) -> int:
         """Load every YAML profile from ``profiles_dir``.
 
-        Clears the cache first, then scans for ``*.yaml`` and ``*.yml``
-        files.  Invalid files are logged and skipped.
+        Uses a pickle cache to avoid re-parsing 130+ YAML files on
+        every startup (saves ~60s on Raspberry Pi SD cards).  The cache
+        is invalidated when any YAML file is added, removed, or modified.
 
         Returns:
             Number of profiles successfully loaded.
@@ -82,13 +85,8 @@ class ProfileLoader:
 
         self._profiles.clear()
 
-        if not self._profiles_dir.exists():
-            logger.warning("Profiles directory does not exist: %s", self._profiles_dir)
-            self._loaded = True
-            return 0
-
-        if not self._profiles_dir.is_dir():
-            logger.warning("Profiles path is not a directory: %s", self._profiles_dir)
+        if not self._profiles_dir.exists() or not self._profiles_dir.is_dir():
+            logger.warning("Profiles directory not found: %s", self._profiles_dir)
             self._loaded = True
             return 0
 
@@ -96,11 +94,29 @@ class ProfileLoader:
             list(self._profiles_dir.glob("*.yaml"))
             + list(self._profiles_dir.glob("*.yml"))
         )
+        yaml_files = [f for f in yaml_files if not f.name.startswith("_")]
 
+        # Try loading from pickle cache (keyed by file list + mtimes)
+        cache_path = self._profiles_dir / "_cache.pkl"
+        cache_key = self._compute_cache_key(yaml_files)
+
+        if cache_path.exists():
+            try:
+                with open(cache_path, "rb") as fh:
+                    cached = pickle.load(fh)
+                if cached.get("key") == cache_key:
+                    self._profiles = cached["profiles"]
+                    self._loaded = True
+                    logger.info(
+                        "Loaded %d profile(s) from cache", len(self._profiles)
+                    )
+                    return len(self._profiles)
+            except Exception:
+                logger.debug("Profile cache invalid, rebuilding")
+
+        # Cache miss — parse all YAML files
         loaded = 0
         for path in yaml_files:
-            if path.name.startswith("_"):
-                continue
             try:
                 profile = self._load_file(path)
                 if profile is not None:
@@ -114,11 +130,28 @@ class ProfileLoader:
             except Exception:
                 logger.exception("Failed to load profile %s", path)
 
+        # Write cache for next startup
+        try:
+            with open(cache_path, "wb") as fh:
+                pickle.dump({"key": cache_key, "profiles": self._profiles}, fh)
+            logger.info("Profile cache written (%d profiles)", loaded)
+        except Exception as exc:
+            logger.debug("Could not write profile cache: %s", exc)
+
         self._loaded = True
         logger.info(
             "Loaded %d profile(s) from %s", loaded, self._profiles_dir
         )
         return loaded
+
+    @staticmethod
+    def _compute_cache_key(yaml_files: list[Path]) -> str:
+        """Hash file names + mtimes to detect changes."""
+        h = hashlib.md5()
+        for f in yaml_files:
+            h.update(f.name.encode())
+            h.update(str(f.stat().st_mtime_ns).encode())
+        return h.hexdigest()
 
     def _load_file(self, path: Path) -> Optional[InstrumentProfile]:
         """Parse and validate a single YAML profile file."""

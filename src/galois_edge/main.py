@@ -14,6 +14,7 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 import signal
 import socket
@@ -65,6 +66,13 @@ class EdgeDaemon:
         # Edge identity
         self._edge_id = socket.gethostname() + "-" + uuid.uuid4().hex[:8]
 
+        # Single-thread executor for all instrument I/O.
+        # linux-gpib is NOT thread-safe — all PyVISA/GPIB calls must be
+        # serialized through one thread to prevent SIGABRT.
+        self._io_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="instrument-io"
+        )
+
         # Subsystem references (populated during start)
         self._instrument_manager: Optional[InstrumentManager] = None
         self._profile_loader: Optional[object] = None
@@ -107,7 +115,7 @@ class EdgeDaemon:
             self._cfg.scan_interval_s,
         )
 
-        # 1. Initialise instrument manager
+        # 1. Initialise instrument manager (no scanning yet)
         self._instrument_manager = InstrumentManager(
             gpib_enabled=self._cfg.gpib_enabled,
             gpib_scan_on_init=False,  # defer GPIB scan to background
@@ -115,23 +123,14 @@ class EdgeDaemon:
             include_serial_ports=self._cfg.include_serial_ports,
         )
 
-        # Quick resource discovery (non-GPIB transports -- fast)
-        resources = self._instrument_manager.list_resources()
-        logger.info(
-            "Initial resource discovery: %d instrument(s)", len(resources)
-        )
-
-        # 2. Initialise SDK executor (before profile matching so connect works)
+        # 2. Initialise SDK executor, command handler, capability manager
+        #    (all empty until background discovery runs)
         self._sdk_executor = SDKExecutor(self._instrument_manager)
-
-        # 3. Load profiles and match to instruments
         self._capability_manager = CapabilityManager()
-        self._load_profiles()
-
-        # 4. Initialise command handler
         self._command_handler = CommandHandler(self._instrument_manager)
 
-        # 5. Start gRPC server
+        # 3. Start gRPC server FIRST (so Go supervisor health check passes immediately)
+        #    Instrument discovery + profile matching happen in background AFTER this.
         self._grpc_server = GRPCServer(
             instrument_manager=self._instrument_manager,
             command_handler=self._command_handler,
@@ -140,12 +139,13 @@ class EdgeDaemon:
             max_workers=self._cfg.grpc_max_workers,
             capability_manager=self._capability_manager,
             sdk_executor=self._sdk_executor,
+            io_executor=self._io_executor,
         )
         if not await self._grpc_server.start():
             logger.error("Failed to start gRPC server -- aborting")
             return
 
-        # 6. Start WebSocket server
+        # 5. Start WebSocket server
         self._ws_server = WebSocketServer(
             instrument_manager=self._instrument_manager,
             command_handler=self._command_handler,
@@ -156,15 +156,18 @@ class EdgeDaemon:
         except Exception as exc:
             logger.warning("WebSocket server failed to start: %s", exc)
 
-        # 7. Start background GPIB scan (slow -- runs in thread)
+        # 6. Load profiles + match instruments in background (slow — YAML I/O + instrument connect)
+        asyncio.create_task(self._background_profile_match())
+
+        # 8. Start background GPIB scan (slow -- runs in thread)
         asyncio.create_task(self._background_gpib_scan())
 
-        # 8. Start periodic rescan task
+        # 9. Start periodic rescan task
         self._rescan_task = asyncio.create_task(
             self._periodic_rescan()
         )
 
-        # 9. Start stdin watcher (Go supervisor shutdown)
+        # 10. Start stdin watcher (Go supervisor shutdown)
         self._stdin_task = asyncio.create_task(self._watch_stdin())
 
         logger.info("Edge daemon is running. Waiting for shutdown signal.")
@@ -223,6 +226,9 @@ class EdgeDaemon:
         if self._instrument_manager is not None:
             self._instrument_manager.disconnect_all()
 
+        # 7. Shut down the instrument I/O executor
+        self._io_executor.shutdown(wait=False)
+
         logger.info("Edge daemon stopped.")
 
     # ------------------------------------------------------------------
@@ -257,9 +263,7 @@ class EdgeDaemon:
                 "Configured %d non-standard identity probe(s)", len(probes)
             )
 
-        # Match connected instruments to profiles
-        for visa_addr in self._instrument_manager.list_resources():
-            self._try_match_profile(visa_addr)
+        # Profile matching deferred to _background_profile_match (after gRPC starts)
 
     def _find_serial_config(self, visa_addr: str):
         """Find a serial InterfaceConfig for an ASRL address from loaded profiles.
@@ -362,6 +366,36 @@ class EdgeDaemon:
     # Background tasks
     # ------------------------------------------------------------------
 
+    async def _background_profile_match(self) -> None:
+        """Load profiles and match to instruments in a background thread.
+
+        Deferred from start() so the gRPC server can listen immediately
+        (passing the Go supervisor health check).  Instruments and
+        capabilities populate asynchronously.
+        """
+        if self._instrument_manager is None:
+            return
+
+        loop = asyncio.get_running_loop()
+
+        def _discover_and_match():
+            # Discover instruments (LAN/USB/serial scan — can be slow)
+            resources = self._instrument_manager.list_resources()
+            logger.info("Resource discovery: %d instrument(s)", len(resources))
+            # Load YAML profiles (slow on SD card — 129 files)
+            self._load_profiles()
+            # Match connected instruments to profiles
+            if self._profile_loader is not None:
+                logger.info("Matching %d resource(s) to profiles...", len(resources))
+                for visa_addr in resources:
+                    self._try_match_profile(visa_addr)
+
+        try:
+            await loop.run_in_executor(self._io_executor, _discover_and_match)
+            logger.info("Background discovery and profile matching complete")
+        except Exception as exc:
+            logger.warning("Background discovery/matching failed: %s", exc)
+
     async def _background_gpib_scan(self) -> None:
         """Run the slow GPIB bus scan in a thread pool.
 
@@ -376,12 +410,8 @@ class EdgeDaemon:
         logger.info("Starting background GPIB bus scan...")
         loop = asyncio.get_running_loop()
 
-        try:
-            gpib_resources = await loop.run_in_executor(
-                None,
-                self._instrument_manager.rescan_gpib,
-            )
-
+        def _scan_and_match():
+            gpib_resources = self._instrument_manager.rescan_gpib()
             if gpib_resources:
                 logger.info(
                     "Background GPIB scan found %d instrument(s)",
@@ -392,6 +422,8 @@ class EdgeDaemon:
             else:
                 logger.info("Background GPIB scan: no instruments found")
 
+        try:
+            await loop.run_in_executor(self._io_executor, _scan_and_match)
         except Exception as exc:
             logger.warning("Background GPIB scan failed: %s", exc)
 
@@ -411,7 +443,8 @@ class EdgeDaemon:
         if self._instrument_manager is None:
             return
 
-        known: set[str] = set(self._instrument_manager.list_resources())
+        loop = asyncio.get_running_loop()
+        known: set[str] = set()
 
         while self._running:
             await asyncio.sleep(interval)
@@ -420,29 +453,31 @@ class EdgeDaemon:
                 break
 
             try:
-                current = set(self._instrument_manager.list_resources())
+                def _rescan_diff():
+                    nonlocal known
+                    current = set(self._instrument_manager.list_resources())
 
-                new_resources = current - known
-                lost_resources = known - current
+                    new_resources = current - known
+                    lost_resources = known - current
 
-                if not new_resources and not lost_resources:
-                    continue
+                    if not new_resources and not lost_resources:
+                        return
 
-                # Connect and match new instruments
-                for visa_addr in new_resources:
-                    logger.info("New instrument detected: %s", visa_addr)
-                    self._try_match_profile(visa_addr)
+                    for visa_addr in new_resources:
+                        logger.info("New instrument detected: %s", visa_addr)
+                        self._try_match_profile(visa_addr)
 
-                # Clean up lost instruments
-                for visa_addr in lost_resources:
-                    logger.warning("Instrument removed: %s", visa_addr)
-                    self._instrument_manager.disconnect(visa_addr)
-                    if self._capability_manager:
-                        self._capability_manager.unregister_instrument(
-                            visa_addr
-                        )
+                    for visa_addr in lost_resources:
+                        logger.warning("Instrument removed: %s", visa_addr)
+                        self._instrument_manager.disconnect(visa_addr)
+                        if self._capability_manager:
+                            self._capability_manager.unregister_instrument(
+                                visa_addr
+                            )
 
-                known = current
+                    known = current
+
+                await loop.run_in_executor(self._io_executor, _rescan_diff)
 
             except Exception as exc:
                 logger.warning("Periodic rescan error: %s", exc)
