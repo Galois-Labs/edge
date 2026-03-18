@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-from . import edge_pb2 as edge_dot_v1_dot_edge__pb2
+from edge.v1 import edge_pb2 as edge_dot_v1_dot_edge__pb2
 
-GRPC_GENERATED_VERSION = '1.76.0'
+GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -133,6 +133,21 @@ class EdgeDaemonServiceStub(object):
                 '/galois.edge.v1.EdgeDaemonService/StopSweep',
                 request_serializer=edge_dot_v1_dot_edge__pb2.StopSweepRequest.SerializeToString,
                 response_deserializer=edge_dot_v1_dot_edge__pb2.StopSweepResponse.FromString,
+                _registered_method=True)
+        self.DeployProfile = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/DeployProfile',
+                request_serializer=edge_dot_v1_dot_edge__pb2.DeployProfileRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.DeployProfileResponse.FromString,
+                _registered_method=True)
+        self.RemoveProfile = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/RemoveProfile',
+                request_serializer=edge_dot_v1_dot_edge__pb2.RemoveProfileRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.RemoveProfileResponse.FromString,
+                _registered_method=True)
+        self.ListProfiles = channel.unary_unary(
+                '/galois.edge.v1.EdgeDaemonService/ListProfiles',
+                request_serializer=edge_dot_v1_dot_edge__pb2.ListProfilesRequest.SerializeToString,
+                response_deserializer=edge_dot_v1_dot_edge__pb2.ListProfilesResponse.FromString,
                 _registered_method=True)
 
 
@@ -296,6 +311,29 @@ class EdgeDaemonServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DeployProfile(self, request, context):
+        """--- Driver profile management ------------------------------------------
+
+        DeployProfile pushes a YAML driver profile to the daemon's profile directory.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RemoveProfile(self, request, context):
+        """RemoveProfile deletes a deployed driver profile from the daemon.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListProfiles(self, request, context):
+        """ListProfiles returns all driver profiles installed on the daemon.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_EdgeDaemonServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -393,6 +431,21 @@ def add_EdgeDaemonServiceServicer_to_server(servicer, server):
                     servicer.StopSweep,
                     request_deserializer=edge_dot_v1_dot_edge__pb2.StopSweepRequest.FromString,
                     response_serializer=edge_dot_v1_dot_edge__pb2.StopSweepResponse.SerializeToString,
+            ),
+            'DeployProfile': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeployProfile,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.DeployProfileRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.DeployProfileResponse.SerializeToString,
+            ),
+            'RemoveProfile': grpc.unary_unary_rpc_method_handler(
+                    servicer.RemoveProfile,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.RemoveProfileRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.RemoveProfileResponse.SerializeToString,
+            ),
+            'ListProfiles': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListProfiles,
+                    request_deserializer=edge_dot_v1_dot_edge__pb2.ListProfilesRequest.FromString,
+                    response_serializer=edge_dot_v1_dot_edge__pb2.ListProfilesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -913,6 +966,87 @@ class EdgeDaemonService(object):
             '/galois.edge.v1.EdgeDaemonService/StopSweep',
             edge_dot_v1_dot_edge__pb2.StopSweepRequest.SerializeToString,
             edge_dot_v1_dot_edge__pb2.StopSweepResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeployProfile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/DeployProfile',
+            edge_dot_v1_dot_edge__pb2.DeployProfileRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.DeployProfileResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RemoveProfile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/RemoveProfile',
+            edge_dot_v1_dot_edge__pb2.RemoveProfileRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.RemoveProfileResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListProfiles(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/galois.edge.v1.EdgeDaemonService/ListProfiles',
+            edge_dot_v1_dot_edge__pb2.ListProfilesRequest.SerializeToString,
+            edge_dot_v1_dot_edge__pb2.ListProfilesResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -131,6 +131,13 @@ class Config:
     )
 
     # --- Modbus / protocol drivers ---
+    driver_profile_dir: str = field(
+        default_factory=lambda: _str_env(
+            "DRIVER_PROFILE_DIR",
+            os.path.join(_default_config_dir(), "profiles") if not _is_windows()
+            else os.path.join(os.environ.get("PROGRAMDATA", r"C:\ProgramData"), "galois-edge", "profiles"),
+        )
+    )
     modbus_instruments: str = field(
         default_factory=lambda: _str_env("MODBUS_INSTRUMENTS", "")
     )

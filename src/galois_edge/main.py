@@ -153,7 +153,7 @@ class EdgeDaemon:
 
         # 2b. Initialise protocol driver registry (Modbus, etc.)
         if DriverRegistry is not None:
-            self._driver_registry = DriverRegistry(self._cfg.profile_dir)
+            self._driver_registry = DriverRegistry(self._cfg.driver_profile_dir)
             profile_count = self._driver_registry.discover()
             if profile_count:
                 logger.info("Discovered %d protocol driver profile(s)", profile_count)
