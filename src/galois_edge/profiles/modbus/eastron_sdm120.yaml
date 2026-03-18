@@ -1,0 +1,345 @@
+# Eastron SDM120 Single-Phase Energy Meter
+# Source: SDM120-Modbus RTU Protocol Implementation V2.4
+# Hand-written ground truth for pipeline validation
+protocol: modbus
+identity:
+  manufacturer: "Eastron"
+  model: "SDM120"
+  description: "Single-Phase Multifunction DIN Rail Meter"
+  source_pdf: "SDM120-MODBUS_Protocol.pdf"
+
+connection:
+  transport: rtu
+  default_baudrate: 2400
+  default_parity: none
+  default_stopbits: 1
+  default_slave_id: 1
+  default_timeout: 1.0
+  addressing_mode: modicon_3x  # PDF uses 3xxxx for input, 4xxxx for holding
+  byte_order: big
+  word_order: big
+
+registers:
+  # --- Input Registers (FC04, read-only measurements) ---
+  voltage:
+    address: 0x0000
+    raw_address_text: "30001"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "V"
+    description: "Line voltage"
+
+  current:
+    address: 0x0006
+    raw_address_text: "30007"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "A"
+    description: "Line current"
+
+  power_active:
+    address: 0x000C
+    raw_address_text: "30013"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Active power"
+
+  power_apparent:
+    address: 0x0012
+    raw_address_text: "30019"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "VA"
+    description: "Apparent power"
+
+  power_reactive:
+    address: 0x0018
+    raw_address_text: "30025"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "VAr"
+    description: "Reactive power"
+
+  power_factor:
+    address: 0x001E
+    raw_address_text: "30031"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    description: "Power factor"
+
+  frequency:
+    address: 0x0046
+    raw_address_text: "30071"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "Hz"
+    description: "Frequency"
+
+  import_energy_active:
+    address: 0x0048
+    raw_address_text: "30073"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kWh"
+    description: "Import active energy"
+
+  export_energy_active:
+    address: 0x004A
+    raw_address_text: "30075"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kWh"
+    description: "Export active energy"
+
+  import_energy_reactive:
+    address: 0x004C
+    raw_address_text: "30077"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kVArh"
+    description: "Import reactive energy"
+
+  export_energy_reactive:
+    address: 0x004E
+    raw_address_text: "30079"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kVArh"
+    description: "Export reactive energy"
+
+  total_demand_power_active:
+    address: 0x0054
+    raw_address_text: "30085"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Total system power demand"
+
+  maximum_total_demand_power_active:
+    address: 0x0056
+    raw_address_text: "30087"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Maximum total system power demand"
+
+  import_demand_power_active:
+    address: 0x0058
+    raw_address_text: "30089"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Import system power demand"
+
+  maximum_import_demand_power_active:
+    address: 0x005A
+    raw_address_text: "30091"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Maximum import system power demand"
+
+  export_demand_power_active:
+    address: 0x005C
+    raw_address_text: "30093"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Export system power demand"
+
+  maximum_export_demand_power_active:
+    address: 0x005E
+    raw_address_text: "30095"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "W"
+    description: "Maximum export system power demand"
+
+  current_demand:
+    address: 0x0102
+    raw_address_text: "30259"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "A"
+    description: "Current demand"
+
+  maximum_current_demand:
+    address: 0x0108
+    raw_address_text: "30265"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "A"
+    description: "Maximum current demand"
+
+  total_energy_active:
+    address: 0x0156
+    raw_address_text: "30343"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kWh"
+    description: "Total active energy"
+
+  total_energy_reactive:
+    address: 0x0158
+    raw_address_text: "30345"
+    register_type: input
+    access: read
+    data_type: float32
+    length_words: 2
+    unit: "kVArh"
+    description: "Total reactive energy"
+
+  # --- Holding Registers (FC03/FC16, read-write configuration) ---
+  relay_pulse_width:
+    address: 0x000C
+    raw_address_text: "40013"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    unit: "ms"
+    write_function_code: 16
+    description: "Relay pulse width (60, 100, or 200 ms)"
+
+  network_parity_stop:
+    address: 0x0012
+    raw_address_text: "40019"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    write_function_code: 16
+    enum:
+      0: "N-1"
+      1: "E-1"
+      2: "O-1"
+      3: "N-2"
+    description: "Network parity and stop bits"
+
+  meter_id:
+    address: 0x0014
+    raw_address_text: "40021"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    write_function_code: 16
+    range: [1, 247]
+    description: "Modbus slave address"
+
+  baud_rate:
+    address: 0x001C
+    raw_address_text: "40029"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    write_function_code: 16
+    enum:
+      0: "2400"
+      1: "4800"
+      2: "9600"
+      5: "1200"
+    description: "Baud rate setting"
+
+  pulse_1_output_mode:
+    address: 0x0056
+    raw_address_text: "40087"
+    register_type: holding
+    access: read_write
+    data_type: float32
+    length_words: 2
+    write_function_code: 16
+    enum:
+      1: "import_active"
+      2: "import_export_active"
+      4: "export_active"
+      5: "import_reactive"
+      6: "import_export_reactive"
+      8: "export_reactive"
+    description: "Pulse 1 output mode"
+
+register_groups:
+  measurement:
+    registers: [voltage, current, power_active, power_apparent, power_reactive, power_factor, frequency]
+    description: "Real-time electrical measurements"
+  energy:
+    registers: [import_energy_active, export_energy_active, import_energy_reactive, export_energy_reactive, total_energy_active, total_energy_reactive]
+    description: "Accumulated energy readings"
+  demand:
+    registers: [total_demand_power_active, maximum_total_demand_power_active, import_demand_power_active, maximum_import_demand_power_active, export_demand_power_active, maximum_export_demand_power_active, current_demand, maximum_current_demand]
+    description: "Power and current demand"
+  configuration:
+    registers: [relay_pulse_width, network_parity_stop, meter_id, baud_rate, pulse_1_output_mode]
+    description: "Meter configuration"
+
+commands:
+  get_voltage:
+    type: query
+    reads: [voltage]
+  get_current:
+    type: query
+    reads: [current]
+  get_power:
+    type: query
+    reads: [power_active]
+  get_measurements:
+    type: query
+    reads: [voltage, current, power_active, power_apparent, power_reactive, power_factor, frequency]
+  get_energy:
+    type: query
+    reads: [import_energy_active, export_energy_active, total_energy_active, total_energy_reactive]
+  get_config:
+    type: query
+    reads: [meter_id, baud_rate, network_parity_stop, relay_pulse_width, pulse_1_output_mode]
+  set_meter_id:
+    type: action
+    writes:
+      - register: meter_id
+        value: "{meter_id}"
+  set_baud_rate:
+    type: action
+    writes:
+      - register: baud_rate
+        value: "{baud_rate}"
