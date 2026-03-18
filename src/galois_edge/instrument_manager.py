@@ -508,6 +508,31 @@ class InstrumentManager:
             del self._instruments[instrument_id]
             logger.info("Disconnected from VISA instrument: %s", instrument_id)
 
+    def mark_absent(self, visa_address: str) -> None:
+        """Mark an instrument as absent (USB device removed).
+
+        Disconnects the instrument and removes it from all backend
+        caches without attempting I/O (the device is already gone).
+        For GPIB instruments, uses remove_devices_on_board() which
+        skips gpib.close(). For other backends, uses normal disconnect.
+        """
+        if self._is_gpib(visa_address):
+            # GPIB removal is handled via GPIBManager.remove_devices_on_board()
+            # at the board level, not per-instrument. This method handles
+            # non-GPIB removal.
+            pass
+        elif self._is_usb(visa_address):
+            if self._usb:
+                self._usb.disconnect(visa_address)
+        elif visa_address in self._instruments:
+            try:
+                self._instruments[visa_address].close()
+            except Exception:
+                pass
+            del self._instruments[visa_address]
+
+        logger.info("Marked instrument absent: %s", visa_address)
+
     def disconnect_all(self) -> None:
         """Disconnect from every connected instrument across all backends."""
         if self._gpib:
