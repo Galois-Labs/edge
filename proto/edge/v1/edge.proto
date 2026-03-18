@@ -89,6 +89,17 @@ service EdgeDaemonService {
 
   // StopSweep aborts or holds an active sweep.
   rpc StopSweep(StopSweepRequest) returns (StopSweepResponse);
+
+  // --- Driver profile management ------------------------------------------
+
+  // DeployProfile pushes a YAML driver profile to the daemon's profile directory.
+  rpc DeployProfile(DeployProfileRequest) returns (DeployProfileResponse);
+
+  // RemoveProfile deletes a deployed driver profile from the daemon.
+  rpc RemoveProfile(RemoveProfileRequest) returns (RemoveProfileResponse);
+
+  // ListProfiles returns all driver profiles installed on the daemon.
+  rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
 }
 
 // ===========================================================================
@@ -492,4 +503,46 @@ message StopSweepRequest {
 message StopSweepResponse {
   bool success = 1;
   string status = 2;  // "holding", "stopped"
+}
+
+// ===========================================================================
+// Driver profile management
+// ===========================================================================
+
+message DeployProfileRequest {
+  string profile_name = 1;
+  string profile_yaml = 2;
+  string protocol = 3;
+}
+
+message DeployProfileResponse {
+  bool success = 1;
+  string error_message = 2;
+  int32 register_count = 3;
+}
+
+message RemoveProfileRequest {
+  string profile_name = 1;
+  string protocol = 2;
+}
+
+message RemoveProfileResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message ListProfilesRequest {}
+
+message ListProfilesResponse {
+  repeated DriverProfileSummary profiles = 1;
+}
+
+message DriverProfileSummary {
+  string name = 1;
+  string protocol = 2;
+  string manufacturer = 3;
+  string model = 4;
+  string description = 5;
+  int32 register_count = 6;
+  bool active = 7;
 }

@@ -1870,6 +1870,116 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             status="holding",
         )
 
+    # ------------------------------------------------------------------
+    # Driver profile management
+    # ------------------------------------------------------------------
+
+    async def DeployProfile(self, request, context):
+        """Write a YAML driver profile to disk and reload the registry."""
+        import os
+
+        profile_name = request.profile_name
+        profile_yaml = request.profile_yaml
+        protocol = request.protocol or "modbus"
+
+        if not profile_name or not profile_yaml:
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message="profile_name and profile_yaml are required",
+            )
+
+        # Determine target directory from config or driver_registry
+        if self._driver_registry is not None:
+            profile_dir = self._driver_registry.profiles_dir
+        else:
+            profile_dir = os.path.join(os.path.expanduser("~"), ".config", "galois-edge", "profiles")
+
+        protocol_dir = os.path.join(profile_dir, protocol)
+        os.makedirs(protocol_dir, exist_ok=True)
+
+        file_path = os.path.join(protocol_dir, f"{profile_name}.yaml")
+        try:
+            with open(file_path, "w") as f:
+                f.write(profile_yaml)
+            logger.info("Deployed driver profile: %s → %s", profile_name, file_path)
+        except Exception as exc:
+            logger.error("Failed to write profile %s: %s", profile_name, exc)
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message=f"Failed to write profile: {exc}",
+            )
+
+        # Reload driver registry
+        register_count = 0
+        if self._driver_registry is not None:
+            self._driver_registry.reload()
+            for p in self._driver_registry.list_profiles():
+                if p["name"] == profile_name:
+                    register_count = p.get("register_count", 0)
+                    break
+
+        return edge_pb2.DeployProfileResponse(
+            success=True,
+            register_count=register_count,
+        )
+
+    async def RemoveProfile(self, request, context):
+        """Remove a deployed driver profile from disk and reload."""
+        import os
+
+        profile_name = request.profile_name
+        protocol = request.protocol or "modbus"
+
+        if self._driver_registry is not None:
+            profile_dir = self._driver_registry.profiles_dir
+        else:
+            return edge_pb2.RemoveProfileResponse(
+                success=False,
+                error_message="No driver registry available",
+            )
+
+        file_path = os.path.join(profile_dir, protocol, f"{profile_name}.yaml")
+        if not os.path.exists(file_path):
+            return edge_pb2.RemoveProfileResponse(
+                success=False,
+                error_message=f"Profile not found: {profile_name}",
+            )
+
+        try:
+            os.remove(file_path)
+            logger.info("Removed driver profile: %s", file_path)
+        except Exception as exc:
+            return edge_pb2.RemoveProfileResponse(
+                success=False,
+                error_message=str(exc),
+            )
+
+        self._driver_registry.reload()
+        return edge_pb2.RemoveProfileResponse(success=True)
+
+    async def ListProfiles(self, request, context):
+        """Return all driver profiles installed on this daemon."""
+        profiles = []
+        if self._driver_registry is not None:
+            for p in self._driver_registry.list_profiles():
+                # Check if any instrument is using this profile
+                active = any(
+                    True
+                    for inst in self._driver_registry._instances.values()
+                    if hasattr(inst, "profile")
+                    and inst.profile.get("identity", {}).get("model") == p.get("model")
+                )
+                profiles.append(edge_pb2.DriverProfileSummary(
+                    name=p.get("name", ""),
+                    protocol=p.get("protocol", ""),
+                    manufacturer=p.get("manufacturer", ""),
+                    model=p.get("model", ""),
+                    description=p.get("description", ""),
+                    register_count=p.get("register_count", 0),
+                    active=active,
+                ))
+        return edge_pb2.ListProfilesResponse(profiles=profiles)
+
 
 # ---------------------------------------------------------------------------
 # Server lifecycle wrapper
