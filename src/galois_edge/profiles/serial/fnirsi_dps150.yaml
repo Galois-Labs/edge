@@ -1,0 +1,364 @@
+# FNIRSI DPS-150 Programmable DC Power Supply
+# USB-PD powered, USB CDC serial (custom binary register protocol, NOT SCPI)
+# VID 0x2E3C / PID 0x5740 (Artery AT32 Virtual COM Port)
+
+instrument:
+  manufacturer: "FNIRSI"
+  model: "DPS-150"
+  class: power_supply
+  description: "FNIRSI DPS-150 USB-PD programmable DC power supply (up to 150W)"
+
+sdk:
+  package: "galois-edge"
+  import_path: "galois_edge.sdk_wrappers.dps150_wrapper"
+  class_name: "DPS150Client"
+  connect:
+    method: "connect"
+    args:
+      address: "{address}"
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "FNIRSI.*DPS"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "FNIRSI.*DPS"
+
+interfaces:
+  - type: serial
+    baud_rate: 115200
+    parity: none
+    data_bits: 8
+    stop_bits: 1
+    usb_vid: "2E3C"
+    usb_pid: "5740"
+
+settings:
+  timeout_ms: 5000
+
+commands:
+  # -- Output control --------------------------------------------------------
+
+  output_enable:
+    sdk_call:
+      method: "enable_output"
+    type: write
+    is_dangerous: true
+    description: "Turn the output ON"
+
+  output_disable:
+    sdk_call:
+      method: "disable_output"
+    type: write
+    description: "Turn the output OFF"
+
+  # -- Setpoints -------------------------------------------------------------
+
+  set_voltage:
+    sdk_call:
+      method: "set_voltage"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 32
+        description: "Output voltage setpoint"
+    description: "Set output voltage"
+
+  set_current:
+    sdk_call:
+      method: "set_current"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 5.1
+        description: "Output current limit"
+    description: "Set output current limit"
+
+  # -- Readback (from cached telemetry, ~500ms update rate) ------------------
+
+  output_voltage:
+    sdk_call:
+      method: "get_output_voltage"
+    type: query
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read actual output voltage"
+
+  output_current:
+    sdk_call:
+      method: "get_output_current"
+    type: query
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Read actual output current"
+
+  output_power:
+    sdk_call:
+      method: "get_output_power"
+    type: query
+    returns:
+      type: float
+      unit: W
+    streamable: true
+    description: "Read actual output power"
+
+  input_voltage:
+    sdk_call:
+      method: "get_input_voltage"
+    type: query
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read USB-PD input voltage"
+
+  temperature:
+    sdk_call:
+      method: "get_temperature"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    streamable: true
+    description: "Read internal temperature"
+
+  voltage_setpoint:
+    sdk_call:
+      method: "get_voltage_setpoint"
+    type: query
+    returns:
+      type: float
+      unit: V
+    description: "Read current voltage setpoint"
+
+  current_setpoint:
+    sdk_call:
+      method: "get_current_setpoint"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Read current current limit setpoint"
+
+  output_state:
+    sdk_call:
+      method: "get_output_state"
+    type: query
+    returns:
+      type: string
+    streamable: true
+    description: "Read output relay state (ON/OFF)"
+
+  operating_mode:
+    sdk_call:
+      method: "get_operating_mode"
+    type: query
+    returns:
+      type: string
+    streamable: true
+    description: "Read operating mode (CC/CV)"
+
+  protection_state:
+    sdk_call:
+      method: "get_protection_state"
+    type: query
+    returns:
+      type: string
+    streamable: true
+    description: "Read protection status (OK, OVP, OCP, OPP, OTP, LVP, REP)"
+
+  output_capacity:
+    sdk_call:
+      method: "get_output_capacity"
+    type: query
+    returns:
+      type: float
+      unit: Ah
+    description: "Read accumulated output capacity"
+
+  output_energy:
+    sdk_call:
+      method: "get_output_energy"
+    type: query
+    returns:
+      type: float
+      unit: Wh
+    description: "Read accumulated output energy"
+
+  full_state:
+    sdk_call:
+      method: "get_state"
+    type: query
+    returns:
+      type: string
+    description: "Read full device state as JSON"
+
+  # -- Protection thresholds -------------------------------------------------
+
+  set_ovp:
+    sdk_call:
+      method: "set_ovp"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 33
+        description: "Over-voltage protection threshold"
+    description: "Set over-voltage protection threshold"
+
+  set_ocp:
+    sdk_call:
+      method: "set_ocp"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: A
+        min: 0
+        max: 5.5
+        description: "Over-current protection threshold"
+    description: "Set over-current protection threshold"
+
+  set_opp:
+    sdk_call:
+      method: "set_opp"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: W
+        min: 0
+        max: 160
+        description: "Over-power protection threshold"
+    description: "Set over-power protection threshold"
+
+  set_otp:
+    sdk_call:
+      method: "set_otp"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: "°C"
+        min: 0
+        max: 120
+        description: "Over-temperature protection threshold"
+    description: "Set over-temperature protection threshold"
+
+  set_lvp:
+    sdk_call:
+      method: "set_lvp"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 32
+        description: "Low-voltage protection threshold"
+    description: "Set low-voltage protection threshold"
+
+  # -- Metering --------------------------------------------------------------
+
+  start_metering:
+    sdk_call:
+      method: "start_metering"
+    type: write
+    description: "Enable Ah/Wh energy counters"
+
+  stop_metering:
+    sdk_call:
+      method: "stop_metering"
+    type: write
+    description: "Disable Ah/Wh energy counters"
+
+  # -- Display settings ------------------------------------------------------
+
+  set_brightness:
+    sdk_call:
+      method: "set_brightness"
+      args_map:
+        level: "level"
+    type: write
+    params:
+      level:
+        type: int
+        min: 0
+        max: 5
+        default: 5
+        description: "Display brightness level"
+    description: "Set display brightness"
+
+  set_volume:
+    sdk_call:
+      method: "set_volume"
+      args_map:
+        level: "level"
+    type: write
+    params:
+      level:
+        type: int
+        min: 0
+        max: 5
+        default: 5
+        description: "Beeper volume level"
+    description: "Set beeper volume"
+
+  # -- Presets ---------------------------------------------------------------
+
+  set_group_preset:
+    sdk_call:
+      method: "set_group_preset"
+      args_map:
+        group: "group"
+        voltage: "voltage"
+        current: "current"
+    type: write
+    params:
+      group:
+        type: int
+        min: 1
+        max: 6
+        default: 1
+        description: "Preset memory group (1-6)"
+      voltage:
+        type: float
+        unit: V
+        min: 0
+        max: 32
+        description: "Preset voltage"
+      current:
+        type: float
+        unit: A
+        min: 0
+        max: 5.1
+        description: "Preset current"
+    description: "Program a preset memory group"

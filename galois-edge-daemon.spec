@@ -27,17 +27,15 @@ pyvisa_datas, pyvisa_binaries, pyvisa_hiddenimports = collect_all("pyvisa")
 pyvisapy_datas, pyvisapy_binaries, pyvisapy_hiddenimports = collect_all("pyvisa_py")
 aiohttp_datas, aiohttp_binaries, aiohttp_hiddenimports = collect_all("aiohttp")
 
-# Collect YAML instrument profiles as data files
+# Collect YAML instrument profiles as data files (recurse into subdirs)
 profile_datas = []
 if PROFILES.is_dir():
-    for yaml_file in PROFILES.glob("*.yaml"):
-        profile_datas.append(
-            (str(yaml_file), os.path.join("galois_edge", "profiles"))
-        )
-    for yml_file in PROFILES.glob("*.yml"):
-        profile_datas.append(
-            (str(yml_file), os.path.join("galois_edge", "profiles"))
-        )
+    for yaml_file in PROFILES.rglob("*.yaml"):
+        rel_dir = yaml_file.parent.relative_to(SRC)
+        profile_datas.append((str(yaml_file), str(rel_dir)))
+    for yml_file in PROFILES.rglob("*.yml"):
+        rel_dir = yml_file.parent.relative_to(SRC)
+        profile_datas.append((str(yml_file), str(rel_dir)))
 
 a = Analysis(
     [str(SRC / "galois_edge" / "__main__.py")],
@@ -70,12 +68,26 @@ a = Analysis(
         "aiosignal",
         "frozenlist",
         "yaml",
+        # Vendored SDK drivers
+        "galois_edge.vendor.dps150",
+        "galois_edge.vendor.dps150.device",
+        "galois_edge.vendor.dps150.protocol",
+        "galois_edge.vendor.dps150.transport",
+        "galois_edge.vendor.dps150.discovery",
+        "galois_edge.vendor.dps150.types",
+        "galois_edge.vendor.dps150.exceptions",
+        # SDK wrappers (dynamically imported by SDKExecutor)
+        "galois_edge.sdk_wrappers.dps150_wrapper",
+        "serial",
+        "serial.tools",
+        "serial.tools.list_ports",
         # Optional (included if available, ignored if not)
         "gpib_ctypes",
         "usb",
         "zeroconf",
         "zmq",
         "msgpack",
+        "pyudev",
     ] + pyvisa_hiddenimports + pyvisapy_hiddenimports + aiohttp_hiddenimports,
     hookspath=[],
     hooksconfig={},

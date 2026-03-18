@@ -91,10 +91,14 @@ class ProfileLoader:
             return 0
 
         yaml_files = sorted(
-            list(self._profiles_dir.glob("*.yaml"))
-            + list(self._profiles_dir.glob("*.yml"))
+            list(self._profiles_dir.rglob("*.yaml"))
+            + list(self._profiles_dir.rglob("*.yml"))
         )
-        yaml_files = [f for f in yaml_files if not f.name.startswith("_")]
+        yaml_files = [
+            f for f in yaml_files
+            if not f.name.startswith("_")
+            and not any(part.startswith("_") for part in f.relative_to(self._profiles_dir).parts)
+        ]
 
         # Try loading from pickle cache (keyed by file list + mtimes)
         cache_path = self._profiles_dir / "_cache.pkl"

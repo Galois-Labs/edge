@@ -331,6 +331,9 @@ class InterfaceConfig:
     parity: Optional[str] = None       # "none", "even", "odd"
     data_bits: Optional[int] = None
     stop_bits: Optional[float] = None   # 1, 1.5, 2
+    # USB VID/PID for serial-over-USB auto-discovery (hex strings, e.g. "2E3C")
+    usb_vid: Optional[str] = None
+    usb_pid: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -670,6 +673,8 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
             parity=iface.get("parity"),
             data_bits=iface.get("data_bits"),
             stop_bits=iface.get("stop_bits"),
+            usb_vid=iface.get("usb_vid"),
+            usb_pid=iface.get("usb_pid"),
         ))
 
     # -- settings ------------------------------------------------------------
