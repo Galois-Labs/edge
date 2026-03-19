@@ -1,0 +1,360 @@
+# Digilent Analog Discovery
+# Multi-function USB instrument: oscilloscope, waveform generator,
+# power supply, digital I/O.  Driven via DWF SDK (dwfpy wrapper).
+
+instrument:
+  manufacturer: "Digilent"
+  model: "Analog Discovery"
+  class: oscilloscope
+  description: "Digilent Analog Discovery series — oscilloscope, waveform generator, power supply, digital I/O"
+
+sdk:
+  package: "dwfpy"
+  import_path: "galois_edge.sdk_wrappers.digilent_dwf_wrapper"
+  class_name: "DigilentDwfClient"
+  connect:
+    method: "connect"
+    args:
+      serial_number: "{serial_number}"
+    defaults:
+      serial_number: ""
+  disconnect:
+    method: "disconnect"
+  identity:
+    method: "get_identity"
+    pattern: "Digilent.*"
+
+identity:
+  query: "SDK_IDENTITY"
+  pattern: "Digilent.*"
+
+interfaces:
+  - type: usb
+
+settings:
+  timeout_ms: 10000
+
+commands:
+  # -- Power Supply Control ----------------------------------------------------
+
+  enable_positive_supply:
+    sdk_call:
+      method: "enable_positive_supply"
+    type: write
+    is_dangerous: true
+    description: "Enable positive power supply rail"
+
+  disable_positive_supply:
+    sdk_call:
+      method: "disable_positive_supply"
+    type: write
+    description: "Disable positive power supply rail"
+
+  set_positive_supply_voltage:
+    sdk_call:
+      method: "set_positive_supply_voltage"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: V
+        min: 0
+        max: 5
+        default: 5.0
+        description: "Positive supply voltage setpoint"
+    description: "Set positive supply voltage"
+
+  get_positive_supply_voltage:
+    sdk_call:
+      method: "get_positive_supply_voltage"
+    type: query
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read positive supply voltage"
+
+  get_positive_supply_current:
+    sdk_call:
+      method: "get_positive_supply_current"
+    type: query
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Read positive supply current"
+
+  enable_negative_supply:
+    sdk_call:
+      method: "enable_negative_supply"
+    type: write
+    is_dangerous: true
+    description: "Enable negative power supply rail"
+
+  disable_negative_supply:
+    sdk_call:
+      method: "disable_negative_supply"
+    type: write
+    description: "Disable negative power supply rail"
+
+  set_negative_supply_voltage:
+    sdk_call:
+      method: "set_negative_supply_voltage"
+      args_map:
+        value: "value"
+    type: write
+    params:
+      value:
+        type: float
+        unit: V
+        min: -5
+        max: 0
+        default: -5.0
+        description: "Negative supply voltage setpoint"
+    description: "Set negative supply voltage"
+
+  get_negative_supply_voltage:
+    sdk_call:
+      method: "get_negative_supply_voltage"
+    type: query
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read negative supply voltage"
+
+  get_negative_supply_current:
+    sdk_call:
+      method: "get_negative_supply_current"
+    type: query
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Read negative supply current"
+
+  enable_supplies:
+    sdk_call:
+      method: "enable_supplies"
+    type: write
+    is_dangerous: true
+    description: "Enable master supply switch"
+
+  disable_supplies:
+    sdk_call:
+      method: "disable_supplies"
+    type: write
+    description: "Disable master supply switch"
+
+  # -- System Monitor ----------------------------------------------------------
+
+  get_usb_voltage:
+    sdk_call:
+      method: "get_usb_voltage"
+    type: query
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read USB bus voltage"
+
+  get_usb_current:
+    sdk_call:
+      method: "get_usb_current"
+    type: query
+    returns:
+      type: float
+      unit: A
+    streamable: true
+    description: "Read USB bus current"
+
+  get_temperature:
+    sdk_call:
+      method: "get_temperature"
+    type: query
+    returns:
+      type: float
+      unit: "°C"
+    streamable: true
+    description: "Read device temperature"
+
+  # -- Oscilloscope ------------------------------------------------------------
+
+  read_analog:
+    sdk_call:
+      method: "read_analog"
+      args_map:
+        channel: "channel"
+        v_range: "v_range"
+        samples: "samples"
+        frequency: "frequency"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 1
+        default: 0
+        description: "Scope input channel"
+      v_range:
+        type: float
+        unit: V
+        default: 5.0
+        description: "Voltage range"
+      samples:
+        type: int
+        min: 1
+        max: 8192
+        default: 1000
+        description: "Number of samples to acquire"
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000000
+        description: "Sample rate"
+    returns:
+      type: string
+    description: "Acquire voltage samples from scope channel"
+
+  get_analog_voltage:
+    sdk_call:
+      method: "get_analog_voltage"
+      args_map:
+        channel: "channel"
+        v_range: "v_range"
+    type: query
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 1
+        default: 0
+        description: "Scope input channel"
+      v_range:
+        type: float
+        unit: V
+        default: 5.0
+        description: "Voltage range"
+    returns:
+      type: float
+      unit: V
+    streamable: true
+    description: "Read DC voltage on scope channel"
+
+  # -- Waveform Generator ------------------------------------------------------
+
+  set_waveform:
+    sdk_call:
+      method: "set_waveform"
+      args_map:
+        channel: "channel"
+        function: "function"
+        frequency: "frequency"
+        amplitude: "amplitude"
+        offset: "offset"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 1
+        default: 0
+        description: "Waveform generator channel"
+      function:
+        type: string
+        default: "sine"
+        options:
+          - "sine"
+          - "square"
+          - "triangle"
+          - "ramp_up"
+          - "ramp_down"
+          - "dc"
+          - "noise"
+          - "custom"
+        description: "Waveform function shape"
+      frequency:
+        type: float
+        unit: Hz
+        min: 0
+        max: 10000000
+        default: 1000
+        description: "Waveform frequency"
+      amplitude:
+        type: float
+        unit: V
+        min: 0
+        max: 5
+        default: 1.0
+        description: "Waveform amplitude"
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+        default: 0
+        description: "Waveform DC offset"
+    description: "Configure and enable waveform generator"
+
+  stop_waveform:
+    sdk_call:
+      method: "stop_waveform"
+      args_map:
+        channel: "channel"
+    type: write
+    params:
+      channel:
+        type: int
+        min: 0
+        max: 1
+        default: 0
+        description: "Waveform generator channel"
+    description: "Stop waveform generator output"
+
+  # -- Digital I/O -------------------------------------------------------------
+
+  set_digital_io:
+    sdk_call:
+      method: "set_digital_io"
+      args_map:
+        pin: "pin"
+        value: "value"
+    type: write
+    params:
+      pin:
+        type: int
+        min: 0
+        max: 15
+        description: "Digital I/O pin number"
+      value:
+        type: int
+        min: 0
+        max: 1
+        description: "Pin output value (0 or 1)"
+    description: "Set digital I/O pin output"
+
+  get_digital_io:
+    sdk_call:
+      method: "get_digital_io"
+    type: query
+    returns:
+      type: string
+    description: "Read all 16 digital I/O pins (hex)"
+
+  set_digital_bus:
+    sdk_call:
+      method: "set_digital_bus"
+      args_map:
+        mask: "mask"
+        value: "value"
+    type: write
+    params:
+      mask:
+        type: int
+        description: "16-bit pin mask"
+      value:
+        type: int
+        description: "16-bit pin values"
+    description: "Set multiple digital I/O pins"

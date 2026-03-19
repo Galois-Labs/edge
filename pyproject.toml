@@ -63,6 +63,9 @@ ni-dmm = [
 dps150 = [
     "pyserial>=3.5",
 ]
+digilent = [
+    "dwfpy>=1.1.0",
+]
 modbus = [
     "pymodbus>=3.6,<3.8",
 ]
@@ -70,7 +73,7 @@ hotplug = [
     "pyudev>=0.24.0; sys_platform == 'linux'",
 ]
 all = [
-    "galois-edge[gpib,usb,discovery,streaming,hotplug,ocean-optics,ni-daq,qd-ppms,digitizers,ni-scope,ni-fgen,ni-dcpower,ni-dmm,dps150]",
+    "galois-edge[gpib,usb,discovery,streaming,hotplug,ocean-optics,ni-daq,qd-ppms,digitizers,ni-scope,ni-fgen,ni-dcpower,ni-dmm,dps150,digilent]",
 ]
 dev = [
     "pytest>=7.0.0",

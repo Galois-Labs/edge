@@ -39,13 +39,21 @@ if PROFILES.is_dir():
 
 a = Analysis(
     [str(SRC / "galois_edge" / "__main__.py")],
-    pathex=[str(SRC)],
+    pathex=[str(SRC), str(SRC / "galois_edge")],
     binaries=pyvisa_binaries + pyvisapy_binaries + aiohttp_binaries,
     datas=profile_datas + pyvisa_datas + pyvisapy_datas + aiohttp_datas,
     hiddenimports=[
         # gRPC / protobuf stubs
         "galois_edge.edge_pb2",
         "galois_edge.edge_pb2_grpc",
+        "edge",
+        "edge.v1",
+        "edge.v1.edge_pb2",
+        "edge.v1.edge_pb2_grpc",
+        "galois_edge.edge",
+        "galois_edge.edge.v1",
+        "galois_edge.edge.v1.edge_pb2",
+        "galois_edge.edge.v1.edge_pb2_grpc",
         "grpc",
         "grpc._cython",
         "grpc._cython._cygrpc",
@@ -78,9 +86,22 @@ a = Analysis(
         "galois_edge.vendor.dps150.exceptions",
         # SDK wrappers (dynamically imported by SDKExecutor)
         "galois_edge.sdk_wrappers.dps150_wrapper",
+        "galois_edge.sdk_wrappers.digilent_dwf_wrapper",
         "serial",
         "serial.tools",
         "serial.tools.list_ports",
+        # Digilent WaveForms (optional — requires libdwf.so)
+        "dwfpy",
+        "dwfpy.bindings",
+        "dwfpy.device",
+        "dwfpy.analog_input",
+        "dwfpy.analog_output",
+        "dwfpy.analog_io",
+        "dwfpy.digital_io",
+        "dwfpy.digital_input",
+        "dwfpy.digital_output",
+        "dwfpy.constants",
+        "dwfpy.protocols",
         # Optional (included if available, ignored if not)
         "gpib_ctypes",
         "usb",

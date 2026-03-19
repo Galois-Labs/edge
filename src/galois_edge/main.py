@@ -415,6 +415,118 @@ class EdgeDaemon:
 
         return claimed
 
+    def _discover_dwf_instruments(self) -> None:
+        """Discover Digilent WaveForms instruments via DWF device enumeration.
+
+        Unlike serial SDK discovery (VID/PID matching via pyserial), Digilent
+        devices use FTDI D2XX (not serial) and are enumerated through libdwf.
+        The ftdi_sio kernel driver is auto-unbound by the Adept Runtime's
+        udev rules, so these devices don't appear as serial ports.
+        """
+        if (
+            self._profile_loader is None
+            or self._capability_manager is None
+            or self._sdk_executor is None
+        ):
+            return
+
+        # Find a profile whose SDK import_path references the DWF wrapper
+        dwf_profile = None
+        profiles = getattr(self._profile_loader, "profiles", {})
+        for profile in profiles.values():
+            if (
+                profile.sdk
+                and profile.sdk.import_path
+                and "digilent_dwf_wrapper" in profile.sdk.import_path
+            ):
+                dwf_profile = profile
+                break
+
+        if dwf_profile is None:
+            return  # No Digilent profile loaded — nothing to scan
+
+        # Enumerate devices via libdwf ctypes (lightweight, no full dwfpy open)
+        try:
+            import ctypes
+
+            try:
+                libdwf = ctypes.cdll.LoadLibrary("libdwf.so")
+            except OSError:
+                # Try macOS / alternative names
+                try:
+                    libdwf = ctypes.cdll.LoadLibrary("libdwf.dylib")
+                except OSError:
+                    logger.debug(
+                        "libdwf not installed — skipping DWF discovery"
+                    )
+                    return
+
+            count = ctypes.c_int()
+            libdwf.FDwfEnum(0, ctypes.byref(count))
+
+            if count.value == 0:
+                return
+
+            logger.info(
+                "DWF enumeration found %d device(s)", count.value
+            )
+
+            for i in range(count.value):
+                try:
+                    serial_buf = ctypes.create_string_buffer(64)
+                    name_buf = ctypes.create_string_buffer(64)
+                    libdwf.FDwfEnumSN(i, serial_buf)
+                    libdwf.FDwfEnumDeviceName(i, name_buf)
+
+                    sn = serial_buf.value.decode().replace("SN:", "")
+                    dev_name = name_buf.value.decode()
+
+                    if not sn:
+                        logger.debug("DWF device %d has no serial number, skipping", i)
+                        continue
+
+                    inst_id = f"DWF:{sn}"
+
+                    # Skip if already registered
+                    if self._capability_manager.get_instrument_caps(inst_id):
+                        continue
+
+                    logger.info(
+                        "DWF discovery: %s (%s) SN=%s",
+                        dev_name, inst_id, sn,
+                    )
+
+                    # Connect via SDK executor
+                    runtime_args = {"serial_number": sn}
+                    ok = self._sdk_executor.connect(
+                        inst_id, dwf_profile.sdk, runtime_args
+                    )
+                    if not ok:
+                        logger.warning("SDK connect failed for DWF %s", inst_id)
+                        continue
+
+                    # Get identity from SDK
+                    idn = self._sdk_executor.identify(inst_id, dwf_profile.sdk)
+
+                    # Register the instrument
+                    self._capability_manager.register_instrument(
+                        instrument_id=inst_id,
+                        visa_address=inst_id,
+                        idn_response=idn or "",
+                        profile=dwf_profile,
+                    )
+                    logger.info(
+                        "Registered DWF instrument: %s -> %s (IDN: %s)",
+                        inst_id, dwf_profile.profile_key, idn,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "DWF discovery failed for device index %d: %s", i, exc
+                    )
+
+        except Exception as exc:
+            logger.warning("DWF instrument discovery failed: %s", exc)
+
     def _find_serial_config(self, visa_addr: str):
         """Find a serial InterfaceConfig for an ASRL address from loaded profiles.
 
@@ -543,6 +655,10 @@ class EdgeDaemon:
                 # These use custom protocols (not SCPI) and must be claimed
                 # before the VISA loop tries to send *IDN? to them.
                 sdk_claimed_ports = self._discover_serial_sdk_instruments()
+
+                # Discover Digilent WaveForms instruments (FTDI D2XX,
+                # not serial — enumerated via libdwf ctypes).
+                self._discover_dwf_instruments()
 
                 # Match remaining instruments via VISA / *IDN?
                 logger.info("Matching %d resource(s) to profiles...", len(resources))
@@ -844,6 +960,9 @@ class EdgeDaemon:
 
                     # Re-run serial SDK discovery (catches hot-plugged USB-serial devices)
                     self._discover_serial_sdk_instruments()
+
+                    # Re-run DWF discovery (catches hot-plugged Digilent devices)
+                    self._discover_dwf_instruments()
 
                     # State reconciliation: check capability_manager
                     # entries against instrument_manager
