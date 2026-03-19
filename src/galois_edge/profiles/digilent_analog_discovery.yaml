@@ -1,12 +1,14 @@
 # Digilent Analog Discovery
 # Multi-function USB instrument: oscilloscope, waveform generator,
-# power supply, digital I/O.  Driven via DWF SDK (dwfpy wrapper).
+# power supply, logic analyzer, pattern generator, digital I/O,
+# protocol analyzers (UART, SPI, I2C).
+# Driven via DWF SDK (dwfpy wrapper over libdwf.so).
 
 instrument:
   manufacturer: "Digilent"
   model: "Analog Discovery"
   class: oscilloscope
-  description: "Digilent Analog Discovery series — oscilloscope, waveform generator, power supply, digital I/O"
+  description: "Digilent Analog Discovery — scope, AWG, PSU, logic analyzer, pattern gen, UART/SPI/I2C"
 
 sdk:
   package: "dwfpy"
@@ -35,20 +37,31 @@ settings:
   timeout_ms: 10000
 
 commands:
-  # -- Power Supply Control ----------------------------------------------------
+
+  # -- Device Info -----------------------------------------------------------
+
+  get_device_info:
+    sdk_call:
+      method: "get_device_info"
+    type: query
+    returns:
+      type: string
+    description: "Device capabilities as JSON (channels, buffer sizes, limits)"
+
+  # -- Power Supply ----------------------------------------------------------
 
   enable_positive_supply:
     sdk_call:
       method: "enable_positive_supply"
     type: write
     is_dangerous: true
-    description: "Enable positive power supply rail"
+    description: "Enable V+ supply rail"
 
   disable_positive_supply:
     sdk_call:
       method: "disable_positive_supply"
     type: write
-    description: "Disable positive power supply rail"
+    description: "Disable V+ supply rail"
 
   set_positive_supply_voltage:
     sdk_call:
@@ -63,8 +76,8 @@ commands:
         min: 0
         max: 5
         default: 5.0
-        description: "Positive supply voltage setpoint"
-    description: "Set positive supply voltage"
+        description: "Positive supply voltage"
+    description: "Set V+ supply voltage"
 
   get_positive_supply_voltage:
     sdk_call:
@@ -74,7 +87,7 @@ commands:
       type: float
       unit: V
     streamable: true
-    description: "Read positive supply voltage"
+    description: "Read V+ supply voltage"
 
   get_positive_supply_current:
     sdk_call:
@@ -84,20 +97,20 @@ commands:
       type: float
       unit: A
     streamable: true
-    description: "Read positive supply current"
+    description: "Read V+ supply current"
 
   enable_negative_supply:
     sdk_call:
       method: "enable_negative_supply"
     type: write
     is_dangerous: true
-    description: "Enable negative power supply rail"
+    description: "Enable V- supply rail"
 
   disable_negative_supply:
     sdk_call:
       method: "disable_negative_supply"
     type: write
-    description: "Disable negative power supply rail"
+    description: "Disable V- supply rail"
 
   set_negative_supply_voltage:
     sdk_call:
@@ -112,8 +125,8 @@ commands:
         min: -5
         max: 0
         default: -5.0
-        description: "Negative supply voltage setpoint"
-    description: "Set negative supply voltage"
+        description: "Negative supply voltage"
+    description: "Set V- supply voltage"
 
   get_negative_supply_voltage:
     sdk_call:
@@ -123,7 +136,7 @@ commands:
       type: float
       unit: V
     streamable: true
-    description: "Read negative supply voltage"
+    description: "Read V- supply voltage"
 
   get_negative_supply_current:
     sdk_call:
@@ -133,14 +146,14 @@ commands:
       type: float
       unit: A
     streamable: true
-    description: "Read negative supply current"
+    description: "Read V- supply current"
 
   enable_supplies:
     sdk_call:
       method: "enable_supplies"
     type: write
     is_dangerous: true
-    description: "Enable master supply switch"
+    description: "Enable master supply switch (both rails)"
 
   disable_supplies:
     sdk_call:
@@ -148,7 +161,7 @@ commands:
     type: write
     description: "Disable master supply switch"
 
-  # -- System Monitor ----------------------------------------------------------
+  # -- System Monitor --------------------------------------------------------
 
   get_usb_voltage:
     sdk_call:
@@ -180,16 +193,20 @@ commands:
     streamable: true
     description: "Read device temperature"
 
-  # -- Oscilloscope ------------------------------------------------------------
+  # -- Oscilloscope ----------------------------------------------------------
 
-  read_analog:
+  scope_acquire:
     sdk_call:
-      method: "read_analog"
+      method: "scope_acquire"
       args_map:
         channel: "channel"
         v_range: "v_range"
         samples: "samples"
-        frequency: "frequency"
+        sample_rate: "sample_rate"
+        trigger_level: "trigger_level"
+        trigger_channel: "trigger_channel"
+        offset: "offset"
+        coupling: "coupling"
     type: query
     params:
       channel:
@@ -197,30 +214,53 @@ commands:
         min: 0
         max: 1
         default: 0
-        description: "Scope input channel"
+        description: "Scope channel (0 or 1)"
       v_range:
         type: float
         unit: V
+        min: 0.01
+        max: 50
         default: 5.0
-        description: "Voltage range"
+        description: "Full-scale voltage range"
       samples:
         type: int
-        min: 1
+        min: 16
         max: 8192
-        default: 1000
+        default: 4096
         description: "Number of samples to acquire"
-      frequency:
+      sample_rate:
         type: float
         unit: Hz
+        min: 1
+        max: 100000000
         default: 1000000
         description: "Sample rate"
+      trigger_level:
+        type: float
+        unit: V
+        default: 0.0
+        description: "Trigger level voltage (-1 to disable)"
+      trigger_channel:
+        type: int
+        default: -1
+        description: "Trigger channel (-1 = auto trigger)"
+      offset:
+        type: float
+        unit: V
+        default: 0.0
+        description: "DC offset"
+      coupling:
+        type: string
+        default: "dc"
+        options: ["dc", "ac"]
+        description: "Input coupling"
     returns:
       type: string
-    description: "Acquire voltage samples from scope channel"
+    description: "Single-shot scope acquisition — returns JSON array of voltages"
 
-  get_analog_voltage:
+  scope_measure_dc:
     sdk_call:
-      method: "get_analog_voltage"
+      method: "scope_measure_dc"
       args_map:
         channel: "channel"
         v_range: "v_range"
@@ -231,29 +271,104 @@ commands:
         min: 0
         max: 1
         default: 0
-        description: "Scope input channel"
       v_range:
         type: float
         unit: V
         default: 5.0
-        description: "Voltage range"
     returns:
       type: float
       unit: V
     streamable: true
-    description: "Read DC voltage on scope channel"
+    description: "Measure DC voltage (mean of short acquisition)"
 
-  # -- Waveform Generator ------------------------------------------------------
-
-  set_waveform:
+  scope_measure_peak_to_peak:
     sdk_call:
-      method: "set_waveform"
+      method: "scope_measure_peak_to_peak"
+      args_map:
+        channel: "channel"
+        v_range: "v_range"
+        sample_rate: "sample_rate"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 0
+      v_range:
+        type: float
+        unit: V
+        default: 5.0
+      sample_rate:
+        type: float
+        unit: Hz
+        default: 1000000
+    returns:
+      type: float
+      unit: V
+    description: "Measure peak-to-peak voltage"
+
+  scope_measure_rms:
+    sdk_call:
+      method: "scope_measure_rms"
+      args_map:
+        channel: "channel"
+        v_range: "v_range"
+        sample_rate: "sample_rate"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 0
+      v_range:
+        type: float
+        unit: V
+        default: 5.0
+      sample_rate:
+        type: float
+        unit: Hz
+        default: 1000000
+    returns:
+      type: float
+      unit: V
+    description: "Measure RMS voltage"
+
+  scope_measure_frequency:
+    sdk_call:
+      method: "scope_measure_frequency"
+      args_map:
+        channel: "channel"
+        v_range: "v_range"
+        sample_rate: "sample_rate"
+    type: query
+    params:
+      channel:
+        type: int
+        default: 0
+      v_range:
+        type: float
+        unit: V
+        default: 5.0
+      sample_rate:
+        type: float
+        unit: Hz
+        default: 10000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Estimate signal frequency via zero-crossing analysis"
+
+  # -- Waveform Generator ----------------------------------------------------
+
+  wavegen_setup:
+    sdk_call:
+      method: "wavegen_setup"
       args_map:
         channel: "channel"
         function: "function"
         frequency: "frequency"
         amplitude: "amplitude"
         offset: "offset"
+        symmetry: "symmetry"
+        phase: "phase"
     type: write
     params:
       channel:
@@ -261,63 +376,226 @@ commands:
         min: 0
         max: 1
         default: 0
-        description: "Waveform generator channel"
       function:
         type: string
         default: "sine"
-        options:
-          - "sine"
-          - "square"
-          - "triangle"
-          - "ramp_up"
-          - "ramp_down"
-          - "dc"
-          - "noise"
-          - "custom"
-        description: "Waveform function shape"
+        options: ["dc", "sine", "square", "triangle", "ramp-up", "ramp-down", "noise", "pulse", "trapezium", "sine-power", "custom"]
       frequency:
         type: float
         unit: Hz
         min: 0
-        max: 10000000
+        max: 25000000
         default: 1000
-        description: "Waveform frequency"
       amplitude:
         type: float
         unit: V
         min: 0
         max: 5
         default: 1.0
-        description: "Waveform amplitude"
       offset:
         type: float
         unit: V
         min: -5
         max: 5
-        default: 0
-        description: "Waveform DC offset"
-    description: "Configure and enable waveform generator"
+        default: 0.0
+      symmetry:
+        type: float
+        min: 0
+        max: 100
+        default: 50.0
+        description: "Duty cycle / symmetry (%)"
+      phase:
+        type: float
+        min: 0
+        max: 360
+        default: 0.0
+        description: "Phase offset (degrees)"
+    description: "Configure and start waveform generator"
 
-  stop_waveform:
+  wavegen_dc:
     sdk_call:
-      method: "stop_waveform"
+      method: "wavegen_dc"
+      args_map:
+        channel: "channel"
+        offset: "offset"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 0
+      offset:
+        type: float
+        unit: V
+        min: -5
+        max: 5
+        default: 0.0
+    description: "Output a DC voltage on wavegen channel"
+
+  wavegen_stop:
+    sdk_call:
+      method: "wavegen_stop"
       args_map:
         channel: "channel"
     type: write
     params:
       channel:
         type: int
-        min: 0
-        max: 1
         default: 0
-        description: "Waveform generator channel"
     description: "Stop waveform generator output"
 
-  # -- Digital I/O -------------------------------------------------------------
-
-  set_digital_io:
+  wavegen_custom:
     sdk_call:
-      method: "set_digital_io"
+      method: "wavegen_custom"
+      args_map:
+        channel: "channel"
+        frequency: "frequency"
+        amplitude: "amplitude"
+        offset: "offset"
+        data: "data"
+    type: write
+    params:
+      channel:
+        type: int
+        default: 0
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      amplitude:
+        type: float
+        unit: V
+        default: 1.0
+      offset:
+        type: float
+        unit: V
+        default: 0.0
+      data:
+        type: string
+        description: "JSON array of normalized floats (-1 to 1)"
+    description: "Output arbitrary waveform from custom data"
+
+  # -- Logic Analyzer --------------------------------------------------------
+
+  la_acquire:
+    sdk_call:
+      method: "la_acquire"
+      args_map:
+        sample_rate: "sample_rate"
+        samples: "samples"
+        sample_format: "sample_format"
+        trigger_channel: "trigger_channel"
+        trigger_edge: "trigger_edge"
+    type: query
+    params:
+      sample_rate:
+        type: float
+        unit: Hz
+        default: 10000000
+        description: "Sample rate"
+      samples:
+        type: int
+        min: 16
+        max: 16384
+        default: 4096
+      sample_format:
+        type: int
+        default: 16
+        options: ["8", "16", "32"]
+        description: "Bits per sample (8, 16, or 32)"
+      trigger_channel:
+        type: int
+        default: -1
+        description: "Trigger on channel N (-1 = no trigger)"
+      trigger_edge:
+        type: string
+        default: "rising"
+        options: ["rising", "falling"]
+    returns:
+      type: string
+    description: "Logic analyzer acquisition — returns JSON with data bitmasks"
+
+  # -- Pattern Generator -----------------------------------------------------
+
+  patgen_clock:
+    sdk_call:
+      method: "patgen_clock"
+      args_map:
+        pin: "pin"
+        frequency: "frequency"
+        duty_cycle: "duty_cycle"
+    type: write
+    params:
+      pin:
+        type: int
+        min: 0
+        max: 15
+        default: 0
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000
+      duty_cycle:
+        type: float
+        min: 0
+        max: 100
+        default: 50.0
+        description: "Duty cycle (%)"
+    description: "Output clock signal on digital pin"
+
+  patgen_pulse:
+    sdk_call:
+      method: "patgen_pulse"
+      args_map:
+        pin: "pin"
+        low_time: "low_time"
+        high_time: "high_time"
+        count: "count"
+    type: write
+    params:
+      pin:
+        type: int
+        min: 0
+        max: 15
+        default: 0
+      low_time:
+        type: float
+        unit: s
+        default: 0.001
+      high_time:
+        type: float
+        unit: s
+        default: 0.001
+      count:
+        type: int
+        default: 0
+        description: "Pulse count (0 = infinite)"
+    description: "Output pulse pattern on digital pin"
+
+  patgen_stop:
+    sdk_call:
+      method: "patgen_stop"
+      args_map:
+        pin: "pin"
+    type: write
+    params:
+      pin:
+        type: int
+        min: 0
+        max: 15
+        default: 0
+    description: "Stop pattern generator on pin"
+
+  patgen_stop_all:
+    sdk_call:
+      method: "patgen_stop_all"
+    type: write
+    description: "Stop all pattern generator channels"
+
+  # -- Digital I/O -----------------------------------------------------------
+
+  dio_write:
+    sdk_call:
+      method: "dio_write"
       args_map:
         pin: "pin"
         value: "value"
@@ -327,25 +605,30 @@ commands:
         type: int
         min: 0
         max: 15
-        description: "Digital I/O pin number"
       value:
         type: int
         min: 0
         max: 1
-        description: "Pin output value (0 or 1)"
     description: "Set digital I/O pin output"
 
-  get_digital_io:
+  dio_read:
     sdk_call:
-      method: "get_digital_io"
+      method: "dio_read"
+      args_map:
+        pin: "pin"
     type: query
+    params:
+      pin:
+        type: int
+        default: -1
+        description: "Pin number (-1 = all pins as hex bitmask)"
     returns:
       type: string
-    description: "Read all 16 digital I/O pins (hex)"
+    description: "Read digital I/O pin(s)"
 
-  set_digital_bus:
+  dio_bus_write:
     sdk_call:
-      method: "set_digital_bus"
+      method: "dio_bus_write"
       args_map:
         mask: "mask"
         value: "value"
@@ -358,3 +641,204 @@ commands:
         type: int
         description: "16-bit pin values"
     description: "Set multiple digital I/O pins"
+
+  # -- UART Protocol ---------------------------------------------------------
+
+  uart_setup:
+    sdk_call:
+      method: "uart_setup"
+      args_map:
+        pin_rx: "pin_rx"
+        pin_tx: "pin_tx"
+        baud: "baud"
+        data_bits: "data_bits"
+        stop_bits: "stop_bits"
+        parity: "parity"
+    type: write
+    params:
+      pin_rx:
+        type: int
+        default: -1
+        description: "DIO pin for RX (-1 = skip)"
+      pin_tx:
+        type: int
+        default: -1
+        description: "DIO pin for TX (-1 = skip)"
+      baud:
+        type: int
+        default: 9600
+      data_bits:
+        type: int
+        default: 8
+      stop_bits:
+        type: int
+        default: 1
+      parity:
+        type: string
+        default: "n"
+        options: ["n", "o", "e"]
+    description: "Configure UART on digital I/O pins"
+
+  uart_write:
+    sdk_call:
+      method: "uart_write"
+      args_map:
+        data: "data"
+    type: write
+    params:
+      data:
+        type: string
+        description: "Hex-encoded bytes to transmit"
+    description: "Transmit data over UART"
+
+  uart_read:
+    sdk_call:
+      method: "uart_read"
+      args_map:
+        buffer_size: "buffer_size"
+    type: query
+    params:
+      buffer_size:
+        type: int
+        default: 8192
+    returns:
+      type: string
+    description: "Read received UART data (JSON: {data: hex, parity_errors: int})"
+
+  # -- SPI Protocol ----------------------------------------------------------
+
+  spi_setup:
+    sdk_call:
+      method: "spi_setup"
+      args_map:
+        pin_clock: "pin_clock"
+        pin_mosi: "pin_mosi"
+        pin_miso: "pin_miso"
+        pin_select: "pin_select"
+        frequency: "frequency"
+        mode: "mode"
+    type: write
+    params:
+      pin_clock:
+        type: int
+        default: 0
+      pin_mosi:
+        type: int
+        default: 1
+      pin_miso:
+        type: int
+        default: 2
+      pin_select:
+        type: int
+        default: 3
+      frequency:
+        type: float
+        unit: Hz
+        default: 1000000
+      mode:
+        type: int
+        min: 0
+        max: 3
+        default: 0
+        description: "SPI mode (0-3)"
+    description: "Configure SPI master on digital I/O pins"
+
+  spi_write_read:
+    sdk_call:
+      method: "spi_write_read"
+      args_map:
+        data: "data"
+        read_count: "read_count"
+    type: query
+    params:
+      data:
+        type: string
+        description: "Hex-encoded bytes to write"
+      read_count:
+        type: int
+        default: 0
+        description: "Bytes to read (0 = same as write length)"
+    returns:
+      type: string
+    description: "Full-duplex SPI transfer (JSON: {rx: hex})"
+
+  # -- I2C Protocol ----------------------------------------------------------
+
+  i2c_setup:
+    sdk_call:
+      method: "i2c_setup"
+      args_map:
+        pin_scl: "pin_scl"
+        pin_sda: "pin_sda"
+        rate: "rate"
+    type: write
+    params:
+      pin_scl:
+        type: int
+        default: 0
+      pin_sda:
+        type: int
+        default: 1
+      rate:
+        type: float
+        unit: Hz
+        default: 100000
+        description: "I2C clock rate"
+    description: "Configure I2C master on digital I/O pins"
+
+  i2c_write:
+    sdk_call:
+      method: "i2c_write"
+      args_map:
+        address: "address"
+        data: "data"
+    type: write
+    params:
+      address:
+        type: int
+        description: "7-bit I2C address"
+      data:
+        type: string
+        description: "Hex-encoded bytes to write"
+    description: "Write to I2C device"
+
+  i2c_read:
+    sdk_call:
+      method: "i2c_read"
+      args_map:
+        address: "address"
+        count: "count"
+    type: query
+    params:
+      address:
+        type: int
+        description: "7-bit I2C address"
+      count:
+        type: int
+        default: 1
+        description: "Bytes to read"
+    returns:
+      type: string
+    description: "Read from I2C device (JSON: {data: hex, nak: int})"
+
+  i2c_write_read:
+    sdk_call:
+      method: "i2c_write_read"
+      args_map:
+        address: "address"
+        data: "data"
+        count: "count"
+    type: query
+    params:
+      address:
+        type: int
+      data:
+        type: string
+        description: "Hex-encoded bytes to write first"
+      count:
+        type: int
+        default: 1
+        description: "Bytes to read after write"
+    returns:
+      type: string
+    description: "Write-then-read I2C transaction (JSON: {data: hex, nak: int})"
