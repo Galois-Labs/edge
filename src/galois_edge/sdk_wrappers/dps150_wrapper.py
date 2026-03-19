@@ -179,6 +179,32 @@ class DPS150Client:
         self._dev.set_group_preset(int(group), float(voltage), float(current))
         return "OK"
 
+    # -- sweeps --------------------------------------------------------------
+
+    def sweep_voltage(self, start: float = 0.0, stop: float = 5.0,
+                      step: float = 0.5, dwell: float = 0.5) -> str:
+        """Step voltage from start to stop, measuring at each point.
+        Returns JSON array of {voltage, current, power, temperature}."""
+        points = self._dev.sweep_voltage(
+            float(start), float(stop), float(step), dwell=float(dwell))
+        return json.dumps([
+            {"voltage": p.voltage, "current": p.current,
+             "power": p.power, "temperature": p.temperature}
+            for p in points
+        ])
+
+    def sweep_current(self, start: float = 0.0, stop: float = 1.0,
+                      step: float = 0.1, dwell: float = 0.5) -> str:
+        """Step current limit from start to stop, measuring at each point.
+        Returns JSON array of {voltage, current, power, temperature}."""
+        points = self._dev.sweep_current(
+            float(start), float(stop), float(step), dwell=float(dwell))
+        return json.dumps([
+            {"voltage": p.voltage, "current": p.current,
+             "power": p.power, "temperature": p.temperature}
+            for p in points
+        ])
+
     # -- internal ------------------------------------------------------------
 
     @property
