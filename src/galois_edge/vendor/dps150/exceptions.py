@@ -12,3 +12,7 @@ class ConnectionError(DPS150Error):
 
 class SessionError(DPS150Error):
     """Session lifecycle problems."""
+
+
+class ValueOutOfRange(DPS150Error, ValueError):
+    """A requested value exceeds device limits."""

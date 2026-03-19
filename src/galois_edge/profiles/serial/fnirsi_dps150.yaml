@@ -362,3 +362,89 @@ commands:
         max: 5.1
         description: "Preset current"
     description: "Program a preset memory group"
+
+  # -- Sweeps ----------------------------------------------------------------
+
+  sweep_voltage:
+    sdk_call:
+      method: "sweep_voltage"
+      args_map:
+        start: "start"
+        stop: "stop"
+        step: "step"
+        dwell: "dwell"
+    type: query
+    params:
+      start:
+        type: float
+        unit: V
+        min: 0
+        max: 30
+        default: 0.0
+        description: "Starting voltage"
+      stop:
+        type: float
+        unit: V
+        min: 0
+        max: 30
+        default: 5.0
+        description: "Ending voltage (inclusive)"
+      step:
+        type: float
+        unit: V
+        min: 0.01
+        max: 30
+        default: 0.5
+        description: "Voltage step size"
+      dwell:
+        type: float
+        unit: s
+        min: 0.1
+        max: 60
+        default: 0.5
+        description: "Dwell time at each step"
+    returns:
+      type: string
+    description: "Sweep voltage and measure at each step (JSON array of V/I/P/T)"
+
+  sweep_current:
+    sdk_call:
+      method: "sweep_current"
+      args_map:
+        start: "start"
+        stop: "stop"
+        step: "step"
+        dwell: "dwell"
+    type: query
+    params:
+      start:
+        type: float
+        unit: A
+        min: 0
+        max: 5.5
+        default: 0.0
+        description: "Starting current"
+      stop:
+        type: float
+        unit: A
+        min: 0
+        max: 5.5
+        default: 1.0
+        description: "Ending current (inclusive)"
+      step:
+        type: float
+        unit: A
+        min: 0.01
+        max: 5.5
+        default: 0.1
+        description: "Current step size"
+      dwell:
+        type: float
+        unit: s
+        min: 0.1
+        max: 60
+        default: 0.5
+        description: "Dwell time at each step"
+    returns:
+      type: string
+    description: "Sweep current limit and measure at each step (JSON array of V/I/P/T)"
