@@ -149,7 +149,8 @@ jobs:
         run: |
           dotnet tool install --global wix
           $stagingPath = (Resolve-Path staging).Path
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $ref = $env:GITHUB_REF_NAME
+          $version = if ($ref -match '^v\d') { $ref -replace '^v', '' } else { '0.0.1' }
           wix build -d "Version=$version" `
             -d "BinDir=$stagingPath" `
             -o galois-edge-windows-amd64.msi `
