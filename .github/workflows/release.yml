@@ -198,6 +198,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-go, build-python, build-windows]
     runs-on: ubuntu-24.04
     steps:
