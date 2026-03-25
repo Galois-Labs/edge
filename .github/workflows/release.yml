@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -93,6 +94,77 @@ jobs:
           path: dist/galois-edge-daemon-linux-${{ matrix.arch }}
 
   # ---------------------------------------------------------------------------
+  # Build Windows: Go + Tray + Python + MSI (single job, avoids artifact passing)
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Windows (amd64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Build Go supervisor
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          GIT_COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w \
+            -X github.com/galois-labs/edge/internal/cli.Version=${VERSION} \
+            -X github.com/galois-labs/edge/internal/cli.GitCommit=${GIT_COMMIT} \
+            -X github.com/galois-labs/edge/internal/cli.BuildDate=${BUILD_DATE}"
+          go build -ldflags "${LDFLAGS}" -o staging/galois-edge.exe ./cmd/galois-edge
+
+      - name: Build tray application
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          GIT_COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          LDFLAGS="-s -w \
+            -X github.com/galois-labs/edge/internal/cli.Version=${VERSION} \
+            -X github.com/galois-labs/edge/internal/cli.GitCommit=${GIT_COMMIT} \
+            -X github.com/galois-labs/edge/internal/cli.BuildDate=${BUILD_DATE} \
+            -H windowsgui"
+          go build -ldflags "${LDFLAGS}" -o staging/galois-edge-tray.exe ./cmd/galois-edge-tray
+
+      - name: Freeze Python with PyInstaller
+        shell: bash
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller galois-edge-daemon.spec
+          cp dist/galois-edge-daemon.exe staging/
+
+      - name: Build MSI with WiX
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix
+          $stagingPath = (Resolve-Path staging).Path
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          wix build -d "Version=$version" `
+            -d "BinDir=$stagingPath" `
+            -o galois-edge-windows-amd64.msi `
+            installer/galois-edge.wxs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: |
+            staging/galois-edge.exe
+            staging/galois-edge-tray.exe
+            staging/galois-edge-daemon.exe
+            galois-edge-windows-amd64.msi
+
+  # ---------------------------------------------------------------------------
   # Run tests before releasing
   # ---------------------------------------------------------------------------
   test:
@@ -123,7 +195,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Publish Release
-    needs: [build-go, build-python, test]
+    needs: [build-go, build-python, build-windows, test]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -145,6 +217,11 @@ jobs:
             sha256sum galois-edge-linux-${arch} galois-edge-daemon-linux-${arch} \
               > checksums-linux-${arch}.sha256
           done
+
+          # Windows checksum
+          if [ -f galois-edge-windows-amd64.msi ]; then
+            sha256sum galois-edge-windows-amd64.msi > checksums-windows-amd64.sha256
+          fi
 
           # Also generate a combined checksum file
           sha256sum galois-edge-* > checksums.sha256

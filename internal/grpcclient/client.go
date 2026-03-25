@@ -54,6 +54,32 @@ func (c *Client) GetInstruments(ctx context.Context) ([]*edgepb.Instrument, erro
 	return resp.GetInstruments(), nil
 }
 
+// GetStatus calls GetStatus on the Python daemon and returns the edge status.
+// A per-call timeout of DefaultTimeout is applied.
+func (c *Client) GetStatus(ctx context.Context) (*edgepb.EdgeStatus, error) {
+	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
+	defer cancel()
+
+	resp, err := c.svc.GetStatus(ctx, &edgepb.GetStatusRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("GetStatus: %w", err)
+	}
+	return resp, nil
+}
+
+// Ping checks if the Python daemon is responsive.
+// A per-call timeout of DefaultTimeout is applied.
+func (c *Client) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
+	defer cancel()
+
+	_, err := c.svc.Ping(ctx, &edgepb.PingRequest{})
+	if err != nil {
+		return fmt.Errorf("Ping: %w", err)
+	}
+	return nil
+}
+
 // Close releases the underlying gRPC connection.
 func (c *Client) Close() error {
 	if c.conn != nil {

@@ -24,7 +24,7 @@ BIN_DIR    := bin
 PROTO_DIR  := proto
 
 .PHONY: all proto build-go build-python test test-go test-python clean install \
-        freeze lint help
+        freeze lint help build-tray
 
 # -----------------------------------------------------------------------
 # Default
@@ -106,6 +106,11 @@ build-linux-arm64: ## Cross-compile Go for linux/arm64
 
 build-windows-amd64: ## Cross-compile Go for windows/amd64
 	GOOS=windows GOARCH=amd64 $(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/galois-edge-windows-amd64.exe ./cmd/galois-edge
+
+build-tray: ## Build Windows tray application (no console window)
+	GOOS=windows GOARCH=amd64 $(GO) build \
+		-ldflags "$(LDFLAGS) -H windowsgui" \
+		-o $(BIN_DIR)/galois-edge-tray.exe ./cmd/galois-edge-tray
 
 # -----------------------------------------------------------------------
 # Clean
