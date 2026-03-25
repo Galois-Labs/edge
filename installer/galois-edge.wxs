@@ -10,6 +10,7 @@
   The BinDir variable must point to a directory containing:
     - galois-edge.exe          (Go supervisor binary)
     - galois-edge-daemon.exe   (Python frozen binary via PyInstaller)
+    - galois-edge-tray.exe     (Windows tray application)
 -->
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
@@ -90,6 +91,21 @@
       </Component>
     </ComponentGroup>
 
+    <!-- Windows tray application (auto-starts on user login) -->
+    <ComponentGroup Id="TrayBinary" Directory="INSTALLFOLDER">
+      <Component Id="TrayExe" Guid="d6a1b9f4-8e37-4c2d-a150-4f9c6d2e8a73">
+        <File Id="galois_edge_tray_exe"
+              Source="$(var.BinDir)\galois-edge-tray.exe"
+              KeyPath="yes" />
+        <RegistryValue
+          Root="HKMU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Run"
+          Name="galois-edge-tray"
+          Type="string"
+          Value="&quot;[INSTALLFOLDER]galois-edge-tray.exe&quot;" />
+      </Component>
+    </ComponentGroup>
+
     <!-- Default configuration template -->
     <ComponentGroup Id="ConfigTemplate" Directory="CONFIGFOLDER">
       <Component Id="ConfigEnv" Guid="c5f0a8e3-7d69-4b1c-a04f-3e8b5c9d1f27">
@@ -120,6 +136,7 @@
     <Feature Id="Complete" Title="galois-edge" Level="1">
       <ComponentGroupRef Id="GoBinary" />
       <ComponentGroupRef Id="PythonBinary" />
+      <ComponentGroupRef Id="TrayBinary" />
       <ComponentGroupRef Id="ConfigTemplate" />
       <ComponentGroupRef Id="PathEntry" />
     </Feature>
