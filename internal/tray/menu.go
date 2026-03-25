@@ -104,7 +104,7 @@ func openBrowser(url string) {
 	if url == "" {
 		url = "https://cloud.galoislabs.ai"
 	}
-	cmd := exec.Command("cmd", "/c", "start", url)
+	cmd := exec.Command("cmd", "/c", "start", "", url)
 	if err := cmd.Start(); err != nil {
 		log.Printf("tray: failed to open browser: %v", err)
 	}
