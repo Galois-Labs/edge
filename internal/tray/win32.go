@@ -392,9 +392,9 @@ func CreateMessageWindow(className string, wndProc func(hwnd uintptr, msg uint32
 		0,                           // dwExStyle
 		uintptr(unsafe.Pointer(classNamePtr)), // lpClassName
 		0,                           // lpWindowName (no title)
-		0,                           // dwStyle
+		0,                           // dwStyle (hidden — no WS_VISIBLE)
 		0, 0, 0, 0,                  // x, y, w, h
-		hwndMessage,                 // hWndParent = HWND_MESSAGE
+		0,                           // hWndParent = NULL (desktop, not HWND_MESSAGE)
 		0,                           // hMenu
 		0,                           // hInstance
 		0,                           // lpParam

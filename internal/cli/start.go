@@ -286,8 +286,8 @@ func loadConfig(cliPath string) (*config.Config, string, error) {
 // resolvePythonBinary finds the frozen Python engine binary.
 // Search order:
 //  1. Explicit path from config (PYTHON_BIN).
-//  2. "galois-engine" next to the Go binary.
-//  3. "galois-engine" in PATH.
+//  2. Known binary names next to the Go binary.
+//  3. Known binary names in PATH.
 func resolvePythonBinary(configPath string) string {
 	if configPath != "" {
 		if _, err := os.Stat(configPath); err == nil {
@@ -295,17 +295,36 @@ func resolvePythonBinary(configPath string) string {
 		}
 	}
 
+	// Candidate names — try platform-specific (.exe) first on Windows.
+	names := []string{
+		"galois-edge-daemon",
+		"galois-engine",
+	}
+	if runtime.GOOS == "windows" {
+		names = []string{
+			"galois-edge-daemon.exe",
+			"galois-engine.exe",
+			"galois-edge-daemon",
+			"galois-engine",
+		}
+	}
+
 	// Look next to the Go binary.
 	if exe, err := os.Executable(); err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "galois-engine")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
+		dir := filepath.Dir(exe)
+		for _, name := range names {
+			candidate := filepath.Join(dir, name)
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate
+			}
 		}
 	}
 
 	// Look in PATH.
-	if p, err := exec.LookPath("galois-engine"); err == nil {
-		return p
+	for _, name := range names {
+		if p, err := exec.LookPath(name); err == nil {
+			return p
+		}
 	}
 
 	return ""
