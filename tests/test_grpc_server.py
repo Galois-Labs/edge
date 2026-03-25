@@ -162,9 +162,16 @@ class TestListInstruments:
     @pytest.mark.asyncio
     async def test_lists_instruments(
         self, mock_instrument_manager, mock_command_handler,
+        mock_capability_manager,
     ):
+        mock_capability_manager.register_instrument(
+            instrument_id="GPIB0::25::INSTR",
+            visa_address="GPIB0::25::INSTR",
+            idn_response="KEITHLEY INSTRUMENTS INC.,MODEL 2400,1234567,A01",
+        )
         servicer = _make_servicer(
             mock_instrument_manager, mock_command_handler,
+            mock_capability_manager=mock_capability_manager,
         )
         ctx = _make_context()
 
