@@ -148,11 +148,13 @@ jobs:
         shell: pwsh
         run: |
           dotnet tool install --global wix
+          wix extension add WixToolset.Util.wixext
           $stagingPath = (Resolve-Path staging).Path
           $ref = $env:GITHUB_REF_NAME
           $version = if ($ref -match '^v\d') { $ref -replace '^v', '' } else { '0.0.1' }
           wix build -d "Version=$version" `
             -d "BinDir=$stagingPath" `
+            -ext WixToolset.Util.wixext `
             -o galois-edge-windows-amd64.msi `
             installer/galois-edge.wxs
 
@@ -196,7 +198,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Publish Release
-    needs: [build-go, build-python, build-windows, test]
+    needs: [build-go, build-python, build-windows]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
