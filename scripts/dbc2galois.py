@@ -164,7 +164,7 @@ def write_yaml(data: dict[str, Any], path: str) -> None:
         lines.append("messages:")
         for msg_name, msg in messages.items():
             lines.append(f"  {msg_name}:")
-            lines.append(f"    can_id: {msg['can_id']}")
+            lines.append(f"    can_id: 0x{msg['can_id']:03X}")
             lines.append(f"    dlc: {msg['dlc']}")
             lines.append(f"    direction: {msg['direction']}")
             if msg.get("signals"):
@@ -259,7 +259,7 @@ def convert_dbc(dbc_path: str) -> dict[str, Any]:
                 }
 
         messages[msg_key] = {
-            "can_id": f"0x{message.frame_id:03X}",
+            "can_id": message.frame_id,
             "dlc": message.length,
             "direction": direction,
             "signals": signals,
