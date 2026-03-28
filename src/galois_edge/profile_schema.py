@@ -133,6 +133,55 @@ class SweepConfig:
 
 
 # ---------------------------------------------------------------------------
+# CAN signal / command config
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CANSignalConfig:
+    """Single signal packed inside a CAN frame."""
+    start_bit: int = 0
+    bit_length: int = 8
+    byte_order: str = "little_endian"  # little_endian | big_endian
+    signed: bool = False
+    scale: float = 1.0
+    offset: float = 0.0
+
+    def validate(self) -> None:
+        if self.start_bit < 0 or self.start_bit > 63:
+            raise ValueError(f"start_bit must be 0-63, got {self.start_bit}")
+        if self.bit_length < 1 or self.bit_length > 64:
+            raise ValueError(f"bit_length must be 1-64, got {self.bit_length}")
+        if self.byte_order not in ("little_endian", "big_endian"):
+            raise ValueError(f"byte_order must be 'little_endian' or 'big_endian', got '{self.byte_order}'")
+        if self.scale == 0:
+            raise ValueError("scale must not be zero")
+
+
+@dataclass
+class CANCommandConfig:
+    """CAN frame definition for a command."""
+    message_id: int = 0
+    direction: str = "rx"  # rx | tx | tx_rx
+    signals: Optional[Dict[str, CANSignalConfig]] = None
+    response_id: Optional[int] = None  # for tx_rx: expected response arbitration ID
+    payload: Optional[List[int]] = None  # for tx_rx: fixed request bytes (e.g. UDS)
+    dlc: int = 8  # data length code
+
+    def validate(self) -> None:
+        if self.message_id < 0 or self.message_id > 0x1FFFFFFF:
+            raise ValueError(f"message_id out of range: 0x{self.message_id:X}")
+        if self.direction not in ("rx", "tx", "tx_rx"):
+            raise ValueError(f"direction must be 'rx', 'tx', or 'tx_rx', got '{self.direction}'")
+        if self.dlc < 0 or self.dlc > 64:
+            raise ValueError(f"dlc must be 0-64, got {self.dlc}")
+        if self.direction == "tx_rx" and self.response_id is None:
+            raise ValueError("tx_rx direction requires response_id")
+        if self.signals:
+            for name, sig in self.signals.items():
+                sig.validate()
+
+
+# ---------------------------------------------------------------------------
 # Command config
 # ---------------------------------------------------------------------------
 
@@ -154,12 +203,17 @@ class CommandConfig:
     force_query: bool = False  # send getter as-is (no trailing '?')
     requires_sweep: bool = False  # safety interlock: must use StartSweep RPC
     sweep: Optional[SweepConfig] = None  # sweep/ramp configuration
+    can: Optional[CANCommandConfig] = None  # CAN frame definition
 
     # ---- helpers -----------------------------------------------------------
 
     @property
     def is_sdk_command(self) -> bool:
         return self.sdk_call is not None
+
+    @property
+    def is_can_command(self) -> bool:
+        return self.can is not None
 
     def get_scpi_string(self, is_query: bool = True) -> Optional[str]:
         """Return the SCPI string for this command."""
@@ -193,6 +247,9 @@ class CommandConfig:
         """Check internal consistency."""
         if self.sdk_call is not None:
             return  # SDK commands only need sdk_call
+        if self.can is not None:
+            self.can.validate()
+            return  # CAN commands only need the can field
         if self.type == "property":
             if not self.getter and not self.setter:
                 raise ValueError(
@@ -334,6 +391,10 @@ class InterfaceConfig:
     # USB VID/PID for serial-over-USB auto-discovery (hex strings, e.g. "2E3C")
     usb_vid: Optional[str] = None
     usb_pid: Optional[str] = None
+    # CAN-specific fields (only meaningful when type == "can")
+    bus: Optional[str] = None            # "can0", "vcan0"
+    bitrate: Optional[int] = None       # 500000
+    can_protocol: Optional[str] = None  # "can20a" | "can20b" | "canfd"
 
 
 # ---------------------------------------------------------------------------
@@ -592,6 +653,31 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
     if "sweep" in data and data["sweep"]:
         sweep = SweepConfig(**data["sweep"])
 
+    can = None
+    if "can" in data and data["can"]:
+        can_data = data["can"]
+        signals = None
+        if "signals" in can_data and can_data["signals"]:
+            signals = {}
+            for sig_name, sig_data in can_data["signals"].items():
+                if isinstance(sig_data, dict):
+                    signals[sig_name] = CANSignalConfig(
+                        start_bit=sig_data.get("start_bit", 0),
+                        bit_length=sig_data.get("bit_length", 8),
+                        byte_order=sig_data.get("byte_order", "little_endian"),
+                        signed=sig_data.get("signed", False),
+                        scale=sig_data.get("scale", 1.0),
+                        offset=sig_data.get("offset", 0.0),
+                    )
+        can = CANCommandConfig(
+            message_id=can_data.get("message_id", 0),
+            direction=can_data.get("direction", "rx"),
+            signals=signals,
+            response_id=can_data.get("response_id"),
+            payload=can_data.get("payload"),
+            dlc=can_data.get("dlc", 8),
+        )
+
     return CommandConfig(
         scpi=data.get("scpi"),
         getter=data.get("getter"),
@@ -607,6 +693,7 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
         force_query=data.get("force_query", False),
         requires_sweep=data.get("requires_sweep", False),
         sweep=sweep,
+        can=can,
     )
 
 
@@ -675,6 +762,9 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
             stop_bits=iface.get("stop_bits"),
             usb_vid=iface.get("usb_vid"),
             usb_pid=iface.get("usb_pid"),
+            bus=iface.get("bus"),
+            bitrate=iface.get("bitrate"),
+            can_protocol=iface.get("can_protocol"),
         ))
 
     # -- settings ------------------------------------------------------------
