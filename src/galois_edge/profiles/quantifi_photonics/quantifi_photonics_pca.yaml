@@ -1,0 +1,648 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: PCA
+  class: power_meter
+  description: Photocurrent Analyzer PXIe Module
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics.*PCA.*
+interfaces:
+- type: pxi
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  query_event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  query_event_status_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Enable Register (Mask)
+  set_event_status_enable:
+    scpi: '*ESE {value}'
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    description: Set the Standard Event Status Enable Register
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+    description: Query the self-test status of all modules
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset modules to default power-on settings
+  system_chassis_query:
+    scpi: :SYSTEM:CHASSIS?
+    type: query
+    returns:
+      type: string
+    description: Query the Chassis Mode configuration
+  system_chassis_query_list:
+    scpi: :SYSTEM:CHASSIS? LIST
+    type: query
+    returns:
+      type: string
+    description: Query list of valid chassis index numbers
+  system_chassis_query_mode:
+    scpi: :SYSTEM:CHASSIS? MODE
+    type: query
+    returns:
+      type: string
+    description: Query current Chassis Mode
+  system_chassis_set:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set the Chassis Mode configuration
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the slot identification
+  slot_self_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    description: Reset the module to default power-on settings
+  measure_current:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: float
+      unit: A
+    description: Query the measured current
+  measure_current_with_param:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - ACT
+        - ALL
+        - UNIT
+    returns:
+      type: string
+    description: Query the measured current with parameter
+  current_averaging_time:
+    getter: :SENSe{slot}:CHANnel{channel}:CURRent:AVERagingtime?
+    setter: :SENSe{slot}:CHANnel{channel}:CURRent:AVERagingtime {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: S
+        min: 0.0
+        max: 10.0
+    returns:
+      type: float
+      unit: S
+    description: Measurement averaging time
+  current_averaging_time_with_param:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent:AVERagingtime? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - UNIT
+    returns:
+      type: string
+    description: Query measurement averaging time with parameter
+  current_bias_voltage:
+    getter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS?
+    setter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: float
+        unit: V
+        min: 0.0
+        max: 10.0
+    returns:
+      type: float
+      unit: V
+    description: Bias voltage
+  current_bias_voltage_with_param:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - UNIT
+    returns:
+      type: string
+    description: Query bias voltage with parameter
+  current_bias_state:
+    getter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS:STATe?
+    setter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS:STATe {state}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Bias state
+  current_analog_filter:
+    getter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS:AnalogFILter?
+    setter: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS:AnalogFILter {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      value:
+        type: enum
+        options:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+        - DEF
+    returns:
+      type: string
+    description: Analog filter setting
+  current_analog_filter_with_param:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent:BIAS:AnalogFILter? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+      param:
+        type: enum
+        options:
+        - DEF
+        - LIST
+        - ALL
+        - INFO
+    returns:
+      type: string
+    description: Query analog filter with parameter
+  current_nulling:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent:NULLing
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+    description: Perform dark current nulling on the channel
+  current_time_nulling:
+    scpi: :SENSe{slot}:CHANnel{channel}:CURRent:TIMEnulling?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: float
+      unit: S
+    description: Query the amount of time remaining for dark current nulling to complete
+  trace_query:
+    scpi: :SENSe{slot}:TRACE{trace}?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      trace:
+        type: int
+        min: 1
+        max: 2
+    returns:
+      type: string
+      unit: A
+    description: Query the trace buffer
+  trace_points:
+    getter: :SENSe{slot}:TRACE:PoinTS?
+    setter: :SENSe{slot}:TRACE:PoinTS {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: int
+        min: 1
+        max: 1024
+    returns:
+      type: int
+    description: Number of trace buffer data elements
+  trace_points_with_param:
+    scpi: :SENSe{slot}:TRACE:PoinTS? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+    returns:
+      type: string
+    description: Query trace buffer data elements with parameter
+  trace_rate:
+    getter: :SENSe{slot}:TRACE:RATE?
+    setter: :SENSe{slot}:TRACE:RATE {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: float
+        unit: HZ
+        min: 0.183
+        max: 12000.0
+    returns:
+      type: float
+      unit: HZ
+    description: Trace buffer sampling rate in samples per second
+  trace_rate_with_param:
+    scpi: :SENSe{slot}:TRACE:RATE? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+    returns:
+      type: string
+    description: Query trace buffer sampling rate with parameter
+  trace_trigger:
+    getter: :SENSe{slot}:TRACE:TRIGger?
+    setter: :SENSe{slot}:TRACE:TRIGger {mode}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - '0'
+        - STOPped
+        - '1'
+        - IMMEDIATE
+        - FORCE
+        - '2'
+        - SWEXTERNAL
+        - SWEXT
+        - '3'
+        - HWINTERNAL
+        - HWINT
+        - '4'
+        - HWEXTERNAL
+        - HWEXT
+        - '5'
+        - HWCLOCK
+        - HWCLK
+    returns:
+      type: string
+    description: Trace trigger mode
+  trace_trigger_with_param:
+    scpi: :SENSe{slot}:TRACE:TRIGger? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - SET
+        - DEF
+        - INFO
+    returns:
+      type: string
+    description: Query trace trigger mode with parameter
+  trace_complete:
+    scpi: :SENSe{slot}:TRACE:CoMPlete?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the trace completion status
+  trigger_delay:
+    getter: :TRIGger{slot}:DELay?
+    setter: :TRIGger{slot}:DELay {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: float
+        unit: S
+        min: 0
+        max: 10
+    returns:
+      type: float
+      unit: S
+    description: Triggering delay for the slot
+  trigger_mode:
+    getter: :TRIGger{slot}:MODE?
+    setter: :TRIGger{slot}:MODE {mode}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - AND
+        - OR
+    returns:
+      type: string
+    description: Triggering Line detection Mode
+  trigger_source:
+    getter: :TRIGger{slot}:SOURce?
+    setter: :TRIGger{slot}:SOURce {source}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      source:
+        type: int
+        min: 0
+        max: 7
+    returns:
+      type: int
+    description: Triggering source PXI trigger lines
+  trigger_arm:
+    scpi: :TRIGger{slot}:ARM {state}
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      state:
+        type: enum
+        options:
+        - ENABLE
+        - DISABLE
+    description: Arm the triggering in preparation for the next event
+subsystems:
+  SENSe:
+    description: Sensor subsystem
+    commands:
+    - measure_current
+    - measure_current_with_param
+    - current_averaging_time
+    - current_averaging_time_with_param
+    - current_bias_voltage
+    - current_bias_voltage_with_param
+    - current_bias_state
+    - current_analog_filter
+    - current_analog_filter_with_param
+    - current_nulling
+    - current_time_nulling
+    - trace_query
+    - trace_points
+    - trace_points_with_param
+    - trace_rate
+    - trace_rate_with_param
+    - trace_trigger
+    - trace_trigger_with_param
+    - trace_complete
+  SLOT:
+    description: Slot subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+    - slot_self_test
+    - slot_reset
+  TRIGger:
+    description: Trigger subsystem
+    commands:
+    - trigger_delay
+    - trigger_mode
+    - trigger_source
+    - trigger_arm
+  SYSTem:
+    description: System subsystem
+    commands:
+    - system_chassis_query
+    - system_chassis_query_list
+    - system_chassis_query_mode
+    - system_chassis_set
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T22:58:52.787611+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 2312f72845f1b0f2909a556cfa4b94c2650ea9ef4737d1c49d1b25c063d429a4
+  confidence_score: 1.0

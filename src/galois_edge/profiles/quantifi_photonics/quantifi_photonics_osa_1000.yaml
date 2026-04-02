@@ -1,0 +1,505 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: OSA 1000
+  class: osa
+  description: Optical Spectrum Analyzer
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics,.*OSA.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_self_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    description: Reset the module to default power-on settings
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: string
+    description: Query installed modules
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: string
+    description: Query the module identification
+  channel_temperature:
+    scpi: :SLOT{slot}:CHANnel{channel}:TEMPerature? {param}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - ACT
+        - ALL
+        default: ACT
+    returns:
+      type: string
+      unit: "\xB0C"
+    description: Query the module temperature
+  initiate_sweep:
+    scpi: :INITiate{slot}:CHANnel{channel}:SWEep
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: Initiate the Sweep to populate the data buffer
+  sweep_mode:
+    getter: :INITiate{slot}:CHANnel{channel}:SMODe? {param}
+    setter: :INITiate{slot}:CHANnel{channel}:SMODe {mode}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - LIST
+        - SET
+        - ALL
+        default: SET
+      mode:
+        type: enum
+        options:
+        - DEF
+        - REPeat
+        - SINGLe
+    returns:
+      type: string
+    description: Query or set the sweep mode
+  wavelength_start:
+    getter: :SENSe{slot}:CHANnel{channel}:WAVelength:STARt? {param}
+    setter: :SENSe{slot}:CHANnel{channel}:WAVelength:STARt {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        default: SET
+      value:
+        type: float
+        unit: nm
+    returns:
+      type: float
+      unit: nm
+    description: Query or set the start wavelength for the wavelength sweep
+  wavelength_stop:
+    getter: :SENSe{slot}:CHANnel{channel}:WAVelength:STOP? {param}
+    setter: :SENSe{slot}:CHANnel{channel}:WAVelength:STOP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        default: SET
+      value:
+        type: float
+        unit: nm
+    returns:
+      type: float
+      unit: nm
+    description: Query or set the stop wavelength for the wavelength sweep
+  frequency_start:
+    getter: :SENSe{slot}:CHANnel{channel}:FREQuency:STARt? {param}
+    setter: :SENSe{slot}:CHANnel{channel}:FREQuency:STARt {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        default: SET
+      value:
+        type: float
+        unit: GHz
+    returns:
+      type: float
+      unit: GHz
+    description: Query or set the start frequency for the frequency sweep
+  frequency_stop:
+    getter: :SENSe{slot}:CHANnel{channel}:FREQuency:STOP? {param}
+    setter: :SENSe{slot}:CHANnel{channel}:FREQuency:STOP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        default: SET
+      value:
+        type: float
+        unit: GHz
+    returns:
+      type: float
+      unit: GHz
+    description: Query or set the stop frequency for the frequency sweep
+  sweep_wavelength_data:
+    scpi: :SENSe{slot}:CHANnel{channel}:SWEep:WAVelength? {data_type}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      data_type:
+        type: enum
+        options:
+        - X
+        - Y
+        - FULL
+        default: FULL
+    returns:
+      type: string
+    description: Query the wavelength sweep data
+  sweep_frequency_data:
+    scpi: :SENSe{slot}:CHANnel{channel}:SWEep:FREQuency? {data_type}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      data_type:
+        type: enum
+        options:
+        - X
+        - Y
+        - FULL
+        default: FULL
+    returns:
+      type: string
+    description: Query the frequency sweep data
+  sweep_points:
+    getter: :SENSe{slot}:CHANnel{channel}:SWEep:POINts? {param}
+    setter: :SENSe{slot}:CHANnel{channel}:SWEep:POINts {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        default: SET
+      value:
+        type: int
+    returns:
+      type: int
+    description: Query or set the number of sweep points
+  calculate_osnr:
+    scpi: :CALCulate{slot}:CATegory{category}:OSNR? {pth},{noise},{mask},{nbw},{sbw}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      category:
+        type: int
+        min: 1
+        max: 4
+      pth:
+        type: float
+        unit: dBm
+      noise:
+        type: float
+        unit: GHz
+      mask:
+        type: float
+        unit: GHz
+      nbw:
+        type: float
+        unit: nm
+      sbw:
+        type: float
+        unit: nm
+    returns:
+      type: string
+    description: Query the OSNR measurement of a sweep
+  calculate_power:
+    scpi: :CALCulate{slot}:CATegory{category}:POWer?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      category:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: dBm
+    description: Query the Total Power of a sweep
+  calculate_smsr:
+    scpi: :CALCulate{slot}:CATegory{category}:SMSR? {mth},{pth}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      category:
+        type: int
+        min: 1
+        max: 4
+      mth:
+        type: int
+        min: 1
+        max: 4
+      pth:
+        type: float
+        unit: dBm
+    returns:
+      type: string
+    description: Query the SMSR measurement of a sweep
+  calculate_spectral_width:
+    scpi: :CALCulate{slot}:CATegory{category}:SWTHresh? {fit},{pth}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      category:
+        type: int
+        min: 1
+        max: 4
+      fit:
+        type: int
+        min: 0
+        max: 1
+      pth:
+        type: float
+        unit: dB
+    returns:
+      type: string
+    description: Query the Spectral Width of a peak in a sweep
+  marker_search:
+    scpi: :CALCulate{slot}:MARKer{marker}:MSEarch? {pth}
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+      marker:
+        type: int
+        min: 1
+        max: 4
+      pth:
+        type: float
+        unit: dBm
+    returns:
+      type: string
+    description: Query the peak locations of a sweep
+subsystems:
+  Common:
+    description: IEEE 488.2 Common Commands
+    commands:
+    - identify
+    - clear_status
+    - query_options
+    - operation_complete
+    - event_status_register
+  Slot:
+    description: Slot control commands
+    commands:
+    - slot_operation_complete
+    - slot_self_test
+    - slot_reset
+    - slot_options
+    - slot_identify
+    - channel_temperature
+  Initiate:
+    description: Sweep initiation commands
+    commands:
+    - initiate_sweep
+    - sweep_mode
+  Sense:
+    description: Measurement configuration commands
+    commands:
+    - wavelength_start
+    - wavelength_stop
+    - frequency_start
+    - frequency_stop
+    - sweep_wavelength_data
+    - sweep_frequency_data
+    - sweep_points
+  Calculate:
+    description: Analysis and calculation commands
+    commands:
+    - calculate_osnr
+    - calculate_power
+    - calculate_smsr
+    - calculate_spectral_width
+    - marker_search
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:05:28.589228+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 2c557b245a65ac77389daf0e886fc36e0f779766fe4c887363b0e4fc8fa2fded
+  confidence_score: 1.0

@@ -1,0 +1,697 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: IQTX
+  class: laser
+  description: Integrated Quantum Transmitter
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,IQTX.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  event_status_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Enable Register
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 65535
+    description: Query the instrument self-test status
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset instrument to default power-on settings
+  system_info:
+    scpi: :SYSTem:INFO?
+    type: query
+    params:
+      info_type:
+        type: enum
+        options:
+        - ALL
+        - SERVER
+        - DRIVER
+        optional: true
+    returns:
+      type: string
+    description: Query the version of services
+  system_modules:
+    scpi: :SYSTem:MODUles?
+    type: query
+    returns:
+      type: int
+    description: Query the number of modules installed in the instrument
+  module_identify:
+    scpi: :MODUle{module}:IDN?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query the module identification
+  module_operation_complete:
+    scpi: :MODUle{module}:OPC?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  module_options:
+    scpi: :MODUle{module}:OPTions?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query the channels installed in the module
+  output_state:
+    getter: :OUTPut{module}:CHANnel{channel}:STATE?
+    setter: :OUTPut{module}:CHANnel{channel}:STATE {state}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set/query the optical output state of the laser
+  source_power:
+    getter: :SOURce{module}:CHANnel{channel}:POWer?
+    setter: :SOURce{module}:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        unit: dBm
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - UNIT
+        - STEP
+        - ACT
+        - ALL
+        optional: true
+    returns:
+      type: float
+      unit: dBm
+    description: Set/query the laser output power
+  source_wavelength:
+    getter: :SOURce{module}:CHANnel{channel}:WAVelength?
+    setter: :SOURce{module}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        unit: nm
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - UNIT
+        - STEP
+        - ACT
+        - LOCK
+        - ALL
+        optional: true
+    returns:
+      type: float
+      unit: nm
+    description: Set/query the laser wavelength
+  source_frequency:
+    getter: :SOURce{module}:CHANnel{channel}:FREQuency?
+    setter: :SOURce{module}:CHANnel{channel}:FREQuency {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        unit: Hz
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - UNIT
+        - STEP
+        - ACT
+        - LOCK
+        - ALL
+        optional: true
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the laser frequency
+  source_frequency_fine:
+    getter: :SOURce{module}:CHANnel{channel}:FREQuency:FINE?
+    setter: :SOURce{module}:CHANnel{channel}:FREQuency:FINE {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        unit: Hz
+        min: -6000000000
+        max: 6000000000
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - UNIT
+        - STEP
+        - ALL
+        optional: true
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the fine tune laser output frequency
+  source_grid:
+    getter: :SOURce{module}:CHANnel{channel}:GRID?
+    setter: :SOURce{module}:CHANnel{channel}:GRID {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      value:
+        type: float
+        unit: Hz
+        min: 100000000
+        max: 50000000000
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        optional: true
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the grid spacing
+  source_whisper:
+    getter: :SOURce{module}:CHANnel{channel}:WHISper?
+    setter: :SOURce{module}:CHANnel{channel}:WHISper {state}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set/query the Whisper mode state of the laser
+  source_temperature:
+    scpi: :SOURce{module}:CHANnel{channel}:TEMPerature?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 6
+    returns:
+      type: float
+      unit: "\xB0C"
+    description: Query the laser temperature
+  abc_pilot_state:
+    getter: :ABC{module}:{channel}:PILOT?
+    setter: :ABC{module}:{channel}:PILOT {state}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      state:
+        type: enum
+        options:
+        - '1'
+        - 'ON'
+        - '0'
+        - 'OFF'
+        - DEF
+      param_type:
+        type: enum
+        options:
+        - DEF
+        - ALL
+        - SET
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Set/query the modulator channel auto-bias state
+  abc_bias:
+    getter: :ABC{module}:{channel}:BIAS?
+    setter: :ABC{module}:{channel}:BIAS {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      value:
+        type: float
+        unit: V
+        min: -14.0
+        max: 24.0
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+    returns:
+      type: float
+      unit: V
+    description: Set/query the modulator channel bias voltage
+  abc_lock_status:
+    scpi: :ABC{module}:{channel}:LOCK?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      param_type:
+        type: enum
+        options:
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Query whether the bias is locked to its optimal position
+  abc_history:
+    scpi: :ABC{module}:{channel}:HISTory?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      start_time:
+        type: float
+        optional: true
+      end_time:
+        type: float
+        optional: true
+      data_type:
+        type: enum
+        options:
+        - BIAS
+        - ERROR
+        - FULL
+        optional: true
+    returns:
+      type: string
+    description: Query the error history timeframe and reason
+  abc_scan:
+    scpi: :ABC{module}:{channel}:SCAN?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      data_type:
+        type: enum
+        options:
+        - POWER
+        - ERROR
+        - PHASE
+        - FULL
+        - UNIT
+        optional: true
+    returns:
+      type: string
+    description: Query the ABC modulator scan results
+  abc_gain:
+    getter: :ABC{module}:{channel}:GAIN?
+    setter: :ABC{module}:{channel}:GAIN {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      value:
+        type: float
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - UNIT
+        optional: true
+    returns:
+      type: float
+    description: Set/query the gain VPi percentage (dither size)
+  abc_pd_power:
+    getter: :ABC{module}:PDPower?
+    setter: :ABC{module}:PDPower {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      value:
+        type: enum
+        options:
+        - 'NULL'
+        optional: true
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - ALL
+        - UNIT
+        - TIME?
+        - TIME?UNIT
+        optional: true
+    returns:
+      type: float
+      unit: mW
+    description: Set/query the output power of the unit
+  abc_pd_power_time_nulling:
+    scpi: :ABC{module}:PDPower:TIMEnulling?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      param_type:
+        type: enum
+        options:
+        - UNIT
+        optional: true
+    returns:
+      type: float
+      unit: s
+    description: Query the dark nulling time remained to complete
+  abc_pd_power_nulling:
+    scpi: :ABC{module}:PDPower:NULLing
+    type: write
+    params:
+      module:
+        type: int
+        min: 1
+    description: Perform dark current nulling on the specified channel
+  abc_calibrate_status:
+    scpi: :ABC{module}:CALibrate?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      param_type:
+        type: enum
+        options:
+        - COM
+        - REQ
+        - INFO
+        optional: true
+    returns:
+      type: string
+    description: Query the recalibration status of the auto-bias control system
+  abc_calibrate:
+    scpi: :ABC{module}:CALibrate
+    type: write
+    params:
+      module:
+        type: int
+        min: 1
+      param_type:
+        type: enum
+        options:
+        - COMpleted
+        optional: true
+    description: Force recalibration of the auto-bias control system
+  abc_history_start:
+    scpi: :ABC{module}:HISTory:STARt
+    type: write
+    params:
+      module:
+        type: int
+        min: 1
+    description: Set a reset of the error history
+  abc_vpi:
+    scpi: :ABC{module}:MODulator{modulator}:VPI?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      modulator:
+        type: int
+        min: 1
+      param_type:
+        type: enum
+        options:
+        - POWER
+        - ERROR
+        - PHASE
+        - UNIT
+        optional: true
+    returns:
+      type: string
+    description: Query the DC scan VPi
+  abc_slow_factor:
+    getter: :ABC{module}:SLOWfactor?
+    setter: :ABC{module}:SLOWfactor {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      value:
+        type: float
+        max: 250
+      param_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        optional: true
+    returns:
+      type: float
+    description: Set/query the optimizer timing factor
+subsystems:
+  SOURce:
+    description: Source subsystem
+    commands:
+    - source_power
+    - source_wavelength
+    - source_frequency
+    - source_frequency_fine
+    - source_grid
+    - source_whisper
+    - source_temperature
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - output_state
+  ABC:
+    description: Auto-bias control subsystem
+    commands:
+    - abc_pilot_state
+    - abc_bias
+    - abc_lock_status
+    - abc_history
+    - abc_scan
+    - abc_gain
+    - abc_pd_power
+    - abc_pd_power_time_nulling
+    - abc_pd_power_nulling
+    - abc_calibrate_status
+    - abc_calibrate
+    - abc_history_start
+    - abc_vpi
+    - abc_slow_factor
+  SYSTem:
+    description: System subsystem
+    commands:
+    - system_info
+    - system_modules
+  MODUle:
+    description: Module subsystem
+    commands:
+    - module_identify
+    - module_operation_complete
+    - module_options
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:12:37.756497+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 93f5121c2c74093265a22c4f170239acb5289bd6d3568d57b224621a88a96eac
+  confidence_score: 1.0

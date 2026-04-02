@@ -1,0 +1,267 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: SLED 1000
+  class: laser
+  description: Superluminescent LED Source
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,CohesionSCPI,.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: false
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query installed modules
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: string
+    description: Query installed modules
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 1
+    returns:
+      type: string
+    description: Query the module identification
+  output_state:
+    getter: :OUTPut{n}:CHANnel{m}:STATE?
+    setter: :OUTPut{n}:CHANnel{m}:STATE {state}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set or query the optical output state of the laser
+  source_power:
+    getter: :SOURce{n}:CHANnel{m}:POWer?
+    setter: :SOURce{n}:CHANnel{m}:POWer {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: Set or query the laser output power
+  query_source_power_limits:
+    scpi: :SOURce{n}:CHANnel{m}:POWer? {param}
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+    returns:
+      type: string
+    description: Query laser output power parameters
+  query_wavelength:
+    scpi: :SOURce{n}:CHANnel{m}:WAVelength?
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: m
+    description: Query the laser wavelength
+  query_wavelength_limits:
+    scpi: :SOURce{n}:CHANnel{m}:WAVelength? {param}
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+    returns:
+      type: string
+    description: Query laser wavelength parameters
+  query_frequency:
+    scpi: :SOURce{n}:CHANnel{m}:FREQuency?
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: Hz
+    description: Query the laser frequency
+  query_frequency_limits:
+    scpi: :SOURce{n}:CHANnel{m}:FREQuency? {param}
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+    returns:
+      type: string
+    description: Query laser frequency parameters
+  query_temperature:
+    scpi: :SOURce{n}:CHANnel{m}:TEMPerature?
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+        max: 1
+      m:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: "\xB0C"
+    description: Query the laser temperature
+subsystems:
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - output_state
+  SOURce:
+    description: Source subsystem
+    commands:
+    - source_power
+    - query_source_power_limits
+    - query_wavelength
+    - query_wavelength_limits
+    - query_frequency
+    - query_frequency_limits
+    - query_temperature
+  SLOT:
+    description: Slot subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:08:38.315208+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: d728b52c911965b887f1561594a2b0ce73df9d6d93eed7e25ede9e8fa505557c
+  confidence_score: 1.0

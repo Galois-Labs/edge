@@ -1,0 +1,104 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: Cohesion
+  class: optical_test_equipment
+  description: Optical Test Equipment
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: QUANTIFI.*PHOTONICS.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: false
+commands:
+  identity:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query instrument identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear status registers and response buffer
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query event status register for error details
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset instrument to factory defaults
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query operation complete status
+  wait_for_operation_complete:
+    scpi: '*WAI'
+    type: write
+    description: Wait for all pending operations to complete
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+    description: Perform self-test and return result
+  service_request_enable:
+    getter: '*SRE?'
+    setter: '*SRE {value}'
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Service request enable register
+  standard_event_status_enable:
+    getter: '*ESE?'
+    setter: '*ESE {value}'
+    type: property
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    returns:
+      type: int
+    description: Standard event status enable register
+  status_byte:
+    scpi: '*STB?'
+    type: query
+    returns:
+      type: int
+    description: Query status byte register
+subsystems:
+  IEEE488:
+    description: IEEE 488.2 common commands
+    commands:
+    - identity
+    - clear_status
+    - event_status_register
+    - reset
+    - operation_complete
+    - wait_for_operation_complete
+    - self_test
+    - service_request_enable
+    - standard_event_status_enable
+    - status_byte
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T23:35:21.971627+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 0a231ae5265e57d0e6daa98350594dda30eb4e2c0ebf1e83382b90a75b0fc57e
+  confidence_score: 1.0

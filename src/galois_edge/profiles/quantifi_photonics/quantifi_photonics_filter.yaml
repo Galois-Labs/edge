@@ -1,0 +1,573 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: FILTER
+  class: filter
+  description: Optical Filter Module
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,FILTER-.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query instrument identification
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset modules to default power-on settings
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query operation complete status
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+    description: Query self-test status of all modules
+  options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query modules managed by CohesionSCPI service
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear status registers
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query event status register
+  system_chassis_query:
+    scpi: :SYSTEM:CHASSIS?
+    type: query
+    returns:
+      type: string
+    description: Query chassis mode configuration
+  system_chassis_list:
+    scpi: :SYSTEM:CHASSIS? LIST
+    type: query
+    returns:
+      type: string
+    description: Query list of valid chassis index numbers
+  system_chassis_mode:
+    scpi: :SYSTEM:CHASSIS? MODE
+    type: query
+    returns:
+      type: string
+    description: Query current chassis mode
+  set_chassis_mode:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set chassis mode configuration
+  slot_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Reset module to default power-on settings
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query operation complete status of module
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query slot identification
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query modules managed by CohesionSCPI service
+  slot_temperature:
+    scpi: :SLOT{slot}:TEMPerature?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: float
+      unit: C
+    description: Query module temperature
+  slot_temperature_actual:
+    scpi: :SLOT{slot}:TEMPerature? ACT
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: float
+      unit: C
+    description: Query actual measured temperature
+  slot_temperature_unit:
+    scpi: :SLOT{slot}:TEMPerature? UNIT
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query default temperature unit
+  filter_wavelength:
+    getter: :FILTer{slot}:WAVelength?
+    setter: :FILTer{slot}:WAVelength {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: m
+    returns:
+      type: string
+      unit: m
+    description: Wavelength values across all channels
+  filter_wavelength_set:
+    scpi: :FILTer{slot}:WAVelength? SET
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+      unit: m
+    description: Query set wavelength values across all channels
+  filter_wavelength_scan:
+    scpi: :FILTer{slot}:WAVelength:SCAN {distance1},{distance2},{time1},{time2}
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      distance1:
+        type: float
+        unit: nm
+        min: -12.8
+        max: 12.7
+      distance2:
+        type: float
+        unit: nm
+        min: -12.8
+        max: 12.7
+      time1:
+        type: int
+        unit: ms
+        min: 1
+        max: 250
+      time2:
+        type: int
+        unit: ms
+        min: 1
+        max: 250
+    description: Scan wavelength for all channels
+  filter_frequency:
+    getter: :FILTer{slot}:FREQuency?
+    setter: :FILTer{slot}:FREQuency {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: string
+      unit: Hz
+    description: Frequency values across all channels
+  filter_frequency_set:
+    scpi: :FILTer{slot}:FREQuency? SET
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+      unit: Hz
+    description: Query set frequency values across all channels
+  channel_wavelength:
+    getter: :FILTer{slot}:CHANnel{channel}:WAVelength?
+    setter: :FILTer{slot}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: Wavelength value of a channel
+  channel_wavelength_min:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? MIN
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: m
+    description: Query minimum programmable wavelength value
+  channel_wavelength_max:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? MAX
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: m
+    description: Query maximum programmable wavelength value
+  channel_wavelength_default:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? DEF
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: m
+    description: Query default wavelength value
+  channel_wavelength_set:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? SET
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: m
+    description: Query set wavelength value
+  channel_wavelength_all:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? ALL
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: string
+    description: Query all wavelength parameters
+  channel_wavelength_step:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength? STEP
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: m
+    description: Query wavelength resolution/step size
+  channel_wavelength_scan:
+    scpi: :FILTer{slot}:CHANnel{channel}:WAVelength:SCAN {distance},{time}
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+      distance:
+        type: float
+        unit: nm
+        min: -12.8
+        max: 12.7
+      time:
+        type: int
+        unit: ms
+        min: 1
+        max: 250
+    description: Scan wavelength per channel
+  channel_frequency:
+    getter: :FILTer{slot}:CHANnel{channel}:FREQuency?
+    setter: :FILTer{slot}:CHANnel{channel}:FREQuency {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Frequency value of a channel
+  channel_frequency_min:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? MIN
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: Hz
+    description: Query minimum programmable frequency value
+  channel_frequency_max:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? MAX
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: Hz
+    description: Query maximum programmable frequency value
+  channel_frequency_default:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? DEF
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: Hz
+    description: Query default frequency value
+  channel_frequency_set:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? SET
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: Hz
+    description: Query set frequency value
+  channel_frequency_all:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? ALL
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: string
+    description: Query all frequency parameters
+  channel_frequency_step:
+    scpi: :FILTer{slot}:CHANnel{channel}:FREQuency? STEP
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      channel:
+        type: int
+        options:
+        - 1
+        - 2
+    returns:
+      type: float
+      unit: Hz
+    description: Query frequency resolution/step size
+subsystems:
+  SYSTEM:
+    description: System configuration subsystem
+    commands:
+    - system_chassis_query
+    - system_chassis_list
+    - system_chassis_mode
+    - set_chassis_mode
+  SLOT:
+    description: Slot management subsystem
+    commands:
+    - slot_test
+    - slot_reset
+    - slot_operation_complete
+    - slot_identify
+    - slot_options
+    - slot_temperature
+    - slot_temperature_actual
+    - slot_temperature_unit
+  FILTer:
+    description: Filter configuration subsystem
+    commands:
+    - filter_wavelength
+    - filter_wavelength_set
+    - filter_wavelength_scan
+    - filter_frequency
+    - filter_frequency_set
+    - channel_wavelength
+    - channel_wavelength_min
+    - channel_wavelength_max
+    - channel_wavelength_default
+    - channel_wavelength_set
+    - channel_wavelength_all
+    - channel_wavelength_step
+    - channel_wavelength_scan
+    - channel_frequency
+    - channel_frequency_min
+    - channel_frequency_max
+    - channel_frequency_default
+    - channel_frequency_set
+    - channel_frequency_all
+    - channel_frequency_step
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T22:54:10.596167+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 40a84a3d1f88ae2646d15793ebd60d018adb6b2e46def1613e0ab7620f995982
+  confidence_score: 1.0

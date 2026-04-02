@@ -1,0 +1,740 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: LASER 2000
+  class: laser
+  description: Tunable Laser Source
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,.*LASER-200.*
+interfaces:
+- type: pxi
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  query_event_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Enable Register
+  set_event_enable:
+    scpi: '*ESE {value}'
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    description: Set the Standard Event Status Enable Register
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+    description: Query the self-test status of all modules
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset modules to default power-on settings
+  system_chassis_query:
+    scpi: :SYSTEM:CHASSIS?
+    type: query
+    returns:
+      type: string
+    description: Query the Chassis Mode configuration
+  system_chassis_set:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set the Chassis Mode configuration
+  slot_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Reset the module to default power-on settings
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query the slot identification
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  slot_temperature:
+    scpi: :SLOT{slot}:TEMPerature?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: float
+      unit: C
+    description: Query the module temperature
+  output_state:
+    getter: :OUTPut{slot}:STATe?
+    setter: :OUTPut{slot}:STATe {state}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set/query the optical output state of the laser
+  output_safety:
+    scpi: :OUTPut{slot}:SAFEty?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query the status of the optical safety features
+  output_mode:
+    getter: :OUTPut{slot}:MODE?
+    setter: :OUTPut{slot}:MODE {mode}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      mode:
+        type: enum
+        options:
+        - FIXED
+        - STEP
+        - SWEEP
+        - LINEAR
+    returns:
+      type: string
+    description: Set/query the laser operation mode
+  step_start:
+    scpi: :OUTPut{slot}:STEP:STARt
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Start wavelength sweep in Step Dwell mode
+  step_stop:
+    scpi: :OUTPut{slot}:STEP:STOP
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Stop wavelength sweep in Step Dwell mode
+  step_status:
+    scpi: :OUTPut{slot}:STEP:STATus?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the sweep status in Step Dwell mode
+  step_number:
+    getter: :OUTPut{slot}:STEP:NUMBer?
+    setter: :OUTPut{slot}:STEP:NUMBer {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: Set/query the number of continuous sweeps in Step Dwell mode
+  step_wavelength_start:
+    getter: :OUTPut{slot}:STEP:WAVelength:STARt?
+    setter: :OUTPut{slot}:STEP:WAVelength:STARt {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the Step Dwell mode starting wavelength
+  step_wavelength_stop:
+    getter: :OUTPut{slot}:STEP:WAVelength:STOP?
+    setter: :OUTPut{slot}:STEP:WAVelength:STOP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the Step Dwell mode stopping wavelength
+  step_wavelength_step:
+    getter: :OUTPut{slot}:STEP:WAVelength:STEP?
+    setter: :OUTPut{slot}:STEP:WAVelength:STEP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the Step Dwell mode step size
+  step_wavelength_dwell_time:
+    getter: :OUTPut{slot}:STEP:WAVelength:DWELltime?
+    setter: :OUTPut{slot}:STEP:WAVelength:DWELltime {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: ms
+    returns:
+      type: float
+      unit: ms
+    description: Set/query the Step Dwell mode dwell time to remain at each step
+  sweep_start:
+    scpi: :OUTPut{slot}:SWEEp:STARt
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Start wavelength sweep in Step Sweep mode
+  sweep_stop:
+    scpi: :OUTPut{slot}:SWEEp:STOP
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Stop wavelength sweep in Step Sweep mode
+  sweep_status:
+    scpi: :OUTPut{slot}:SWEEp:STATus?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the sweep status in Step Sweep mode
+  sweep_number:
+    getter: :OUTPut{slot}:SWEEp:NUMBer?
+    setter: :OUTPut{slot}:SWEEp:NUMBer {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: Set/query the number of continuous sweep cycles
+  sweep_wavelength_start:
+    getter: :OUTPut{slot}:SWEEp:WAVelength:STARt?
+    setter: :OUTPut{slot}:SWEEp:WAVelength:STARt {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the starting wavelength in Step Sweep mode
+  sweep_wavelength_stop:
+    getter: :OUTPut{slot}:SWEEp:WAVelength:STOP?
+    setter: :OUTPut{slot}:SWEEp:WAVelength:STOP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the stopping wavelength in Step Sweep mode
+  sweep_wavelength_rate:
+    getter: :OUTPut{slot}:SWEEp:WAVelength:RATE?
+    setter: :OUTPut{slot}:SWEEp:WAVelength:RATE {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: nm/s
+        min: 50
+        max: 400
+    returns:
+      type: float
+      unit: nm/s
+    description: Set/query the sweep rate in Step Sweep mode
+  linear_start:
+    scpi: :OUTPut{slot}:LINEar:STARt
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Start wavelength sweep in Linear Sweep mode
+  linear_stop:
+    scpi: :OUTPut{slot}:LINEar:STOP
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Stop wavelength sweep in Linear Sweep mode
+  linear_status:
+    scpi: :OUTPut{slot}:LINEar:STATus?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the sweep status in Linear Sweep mode
+  linear_number:
+    getter: :OUTPut{slot}:LINEar:NUMBer?
+    setter: :OUTPut{slot}:LINEar:NUMBer {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: Set/query the number of continuous sweep cycles in Linear Sweep mode
+  linear_wavelength_start:
+    getter: :OUTPut{slot}:LINEar:WAVelength:STARt?
+    setter: :OUTPut{slot}:LINEar:WAVelength:STARt {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the starting wavelength in Linear Sweep mode
+  linear_wavelength_stop:
+    getter: :OUTPut{slot}:LINEar:WAVelength:STOP?
+    setter: :OUTPut{slot}:LINEar:WAVelength:STOP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the stopping wavelength in Linear Sweep mode
+  linear_wavelength_rate:
+    getter: :OUTPut{slot}:LINEar:WAVelength:RATE?
+    setter: :OUTPut{slot}:LINEar:WAVelength:RATE {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: nm/s
+        min: 2000
+        max: 10000
+    returns:
+      type: float
+      unit: nm/s
+    description: Set/query the sweep rate in Linear Sweep mode
+  source_power:
+    scpi: :SOURce{slot}:POWer?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: float
+      unit: dBm
+    description: Query the output optical power
+  source_wavelength:
+    getter: :SOURce{slot}:WAVelength?
+    setter: :SOURce{slot}:WAVelength {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: float
+        unit: pm
+    returns:
+      type: float
+      unit: pm
+    description: Set/query the current laser wavelength
+  trigger_skip:
+    getter: :TRIGger{slot}:SKIP?
+    setter: :TRIGger{slot}:SKIP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: int
+    returns:
+      type: int
+    description: Set/query the skip factor for module start/stop trigger output
+  trigger_polarity:
+    getter: :TRIGger{slot}:POLArity?
+    setter: :TRIGger{slot}:POLArity {polarity}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      polarity:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - POSITIVE
+        - NEGATIVE
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Set/query polarity of the signal for module start/stop trigger output
+  trigger_backplane_polarity:
+    getter: :TRIGger{slot}:BACKplane:POLArity?
+    setter: :TRIGger{slot}:BACKplane:POLArity {polarity}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      polarity:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - POSITIVE
+        - NEGATIVE
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Set/query polarity of the signal for PXI backplane trigger lines
+  trigger_backplane_lines:
+    getter: :TRIGger{slot}:BACKplane:LINEs?
+    setter: :TRIGger{slot}:BACKplane:LINEs {lines}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      lines:
+        type: string
+    returns:
+      type: string
+    description: Set/query the PXI trigger lines for the start/stop trigger output
+      signal
+  trigger_sync_skip:
+    getter: :TRIGger{slot}:SYNC:SKIP?
+    setter: :TRIGger{slot}:SYNC:SKIP {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+    description: Set/query the skip factor for module sync trigger output
+  trigger_sync_polarity:
+    getter: :TRIGger{slot}:SYNC:POLArity?
+    setter: :TRIGger{slot}:SYNC:POLArity {polarity}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      polarity:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - POSITIVE
+        - NEGATIVE
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Set/query polarity of the signal for module sync trigger output
+  trigger_sync_backplane_polarity:
+    getter: :TRIGger{slot}:SYNC:BACKplane:POLArity?
+    setter: :TRIGger{slot}:SYNC:BACKplane:POLArity {polarity}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      polarity:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - POSITIVE
+        - NEGATIVE
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Set/query polarity of the signal for PXI backplane trigger lines
+      (sync)
+  trigger_sync_backplane_lines:
+    getter: :TRIGger{slot}:SYNC:BACKplane:LINEs?
+    setter: :TRIGger{slot}:SYNC:BACKplane:LINEs {lines}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+      lines:
+        type: string
+    returns:
+      type: string
+    description: Set/query the PXI trigger lines for the sync trigger output signal
+subsystems:
+  SYSTEM:
+    description: System configuration commands
+    commands:
+    - system_chassis_query
+    - system_chassis_set
+  SLOT:
+    description: Slot-specific commands
+    commands:
+    - slot_test
+    - slot_reset
+    - slot_operation_complete
+    - slot_identify
+    - slot_options
+    - slot_temperature
+  OUTPUT:
+    description: Output control and sweep commands
+    commands:
+    - output_state
+    - output_safety
+    - output_mode
+    - step_start
+    - step_stop
+    - step_status
+    - step_number
+    - step_wavelength_start
+    - step_wavelength_stop
+    - step_wavelength_step
+    - step_wavelength_dwell_time
+    - sweep_start
+    - sweep_stop
+    - sweep_status
+    - sweep_number
+    - sweep_wavelength_start
+    - sweep_wavelength_stop
+    - sweep_wavelength_rate
+    - linear_start
+    - linear_stop
+    - linear_status
+    - linear_number
+    - linear_wavelength_start
+    - linear_wavelength_stop
+    - linear_wavelength_rate
+  SOURCE:
+    description: Source configuration commands
+    commands:
+    - source_power
+    - source_wavelength
+  TRIGGER:
+    description: Trigger configuration commands
+    commands:
+    - trigger_skip
+    - trigger_polarity
+    - trigger_backplane_polarity
+    - trigger_backplane_lines
+    - trigger_sync_skip
+    - trigger_sync_polarity
+    - trigger_sync_backplane_polarity
+    - trigger_sync_backplane_lines
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T23:40:31.830236+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 0cfeeced5f6e0186d9ceacc3891e3ba3aa763b968b1effcbca19ed1e45714453
+  confidence_score: 1.0

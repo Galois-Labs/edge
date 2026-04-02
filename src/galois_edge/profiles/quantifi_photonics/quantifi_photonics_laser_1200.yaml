@@ -1,0 +1,234 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: LASER 1200
+  class: laser
+  description: Tunable Laser Source
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics.*LASER.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query installed modules
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query the module identification
+  output_state:
+    getter: :OUTPut{slot}:CHANnel{channel}:STATE?
+    setter: :OUTPut{slot}:CHANnel{channel}:STATE {state}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set or query the optical output state of the laser
+  power:
+    getter: :SOURce{slot}:CHANnel{channel}:POWer? {param}
+    setter: :SOURce{slot}:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: dBm
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: dBm
+    description: Set or query the laser output power
+  wavelength:
+    getter: :SOURce{slot}:CHANnel{channel}:WAVelength? {param}
+    setter: :SOURce{slot}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: m
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - LOCK
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: m
+    description: Set or query the laser wavelength
+  frequency:
+    getter: :SOURce{slot}:CHANnel{channel}:FREQuency? {param}
+    setter: :SOURce{slot}:CHANnel{channel}:FREQuency {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - LOCK
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: Hz
+    description: Set or query the laser frequency
+  temperature:
+    scpi: :SOURce{slot}:CHANnel{channel}:TEMPerature?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 16
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: "\xB0C"
+    description: Query the laser temperature
+subsystems:
+  OUTPut:
+    description: Output control subsystem
+    commands:
+    - output_state
+  SOURce:
+    description: Source configuration subsystem
+    commands:
+    - power
+    - wavelength
+    - frequency
+    - temperature
+  SLOT:
+    description: Slot management subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:03:22.891590+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: e1ead60ff2aee62343d1fa837b87e4e2997e3c289cd5a93c122042b7931d75ec
+  confidence_score: 1.0

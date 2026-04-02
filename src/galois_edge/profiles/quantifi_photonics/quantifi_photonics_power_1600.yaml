@@ -1,0 +1,467 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: POWER 1600
+  class: power_meter
+  description: PXIe Power Meter
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics.*POWER-1[56]00.*
+interfaces:
+- type: ethernet
+- type: pxi
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  query_chassis:
+    scpi: :SYSTEM:CHASSIS?
+    type: query
+    returns:
+      type: string
+    description: Query the Chassis Mode configuration
+  query_chassis_list:
+    scpi: :SYSTEM:CHASSIS? LIST
+    type: query
+    returns:
+      type: string
+    description: Query list of valid chassis index numbers
+  query_chassis_mode:
+    scpi: :SYSTEM:CHASSIS? MODE
+    type: query
+    returns:
+      type: string
+    description: Query current Chassis Mode
+  set_chassis_mode:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set the Chassis Mode configuration
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the slot identification
+  slot_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    description: Reset the module to default power-on settings
+  trigger_delay:
+    getter: :TRIGger{trigger}:DELay?
+    setter: :TRIGger{trigger}:DELay {value}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 10.0
+    returns:
+      type: float
+      unit: s
+    description: Trigger delay of the module in seconds
+  trigger_mode:
+    getter: :TRIGger{trigger}:MODE?
+    setter: :TRIGger{trigger}:MODE {mode}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - OR
+        - AND
+    returns:
+      type: string
+    description: Trigger Line event mode of the module
+  trigger_source:
+    getter: :TRIGger{trigger}:SOURce?
+    setter: :TRIGger{trigger}:SOURce {sources}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      sources:
+        type: string
+    returns:
+      type: string
+    description: Trigger Line(s) used for events
+  trigger_arm:
+    getter: :TRIGger{trigger}:ARM?
+    setter: :TRIGger{trigger}:ARM {state}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      state:
+        type: enum
+        options:
+        - ENABLE
+        - DISABLE
+    returns:
+      type: string
+    description: Trigger ARMed state
+  output_power:
+    scpi: :OUTPut{slot}:CHANnel{channel}:POWER?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: dBm
+    description: Query the measured output power
+  output_power_offset:
+    getter: :OUTPut{slot}:CHANnel{channel}:POWer:OFFSet?
+    setter: :OUTPut{slot}:CHANnel{channel}:POWer:OFFSet {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: dB
+        min: -100.0
+        max: 100.0
+    returns:
+      type: float
+      unit: dB
+    description: Measured power offset
+  sense_power:
+    scpi: :SENSe{slot}:CHANnel{channel}:POWer?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: dBm
+    description: Query the measured power
+  sense_power_offset:
+    getter: :SENSe{slot}:CHANnel{channel}:POWer:OFFSet?
+    setter: :SENSe{slot}:CHANnel{channel}:POWer:OFFSet {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: dB
+        min: -100.0
+        max: 100.0
+    returns:
+      type: float
+      unit: dB
+    description: Power measurement offset
+  power_nulling:
+    scpi: :SENSe{slot}:CHANnel{channel}:POWer:NULLing
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: Perform dark current nulling on the channel
+  nulling_time:
+    scpi: :SENSe{slot}:CHANnel{channel}:POWer:TIMEnulling?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: s
+    description: Query the amount of time remaining for dark current nulling to complete
+  averaging_time:
+    getter: :SENSe{slot}:CHANnel{channel}:POWer:AVERagingtime?
+    setter: :SENSe{slot}:CHANnel{channel}:POWer:AVERagingtime {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 10.0
+    returns:
+      type: float
+      unit: s
+    description: Measurement averaging time
+  wavelength:
+    getter: :SENSe{slot}:CHANnel{channel}:WAVelength?
+    setter: :SENSe{slot}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: nm
+        min: 1271
+        max: 1550
+    returns:
+      type: float
+      unit: nm
+    description: Optical wavelength configuration
+  trace_complete:
+    scpi: :SENSe{slot}:TRACE:CoMPlete?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the trace completion status
+  trace_points:
+    getter: :SENSe{slot}:TRACE:PoinTS?
+    setter: :SENSe{slot}:TRACE:PoinTS {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: int
+        min: 1
+        max: 1024
+    returns:
+      type: int
+    description: Number of trace buffer data elements
+  trace_rate:
+    getter: :SENSe{slot}:TRACE:RATE?
+    setter: :SENSe{slot}:TRACE:RATE {value}
+    type: property
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      value:
+        type: float
+        unit: Hz
+        min: 0.183
+        max: 12000.0
+    returns:
+      type: float
+      unit: Hz
+    description: Trace buffer sampling rate
+  trace_trigger:
+    scpi: :SENSe{slot}:TRACE:TRIG {mode}
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - STOP
+        - IMMEDIATE
+        - FORCE
+        - SWEXTERNAL
+        - SWEXT
+        - HWINTERNAL
+        - HWINT
+        - HWEXTERNAL
+        - HWEXT
+        - HWCLOCK
+        - HWCLK
+    description: Set the trace trigger mode
+  trace_data:
+    scpi: :SENSe{slot}:TRACE{channel}?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: string
+    description: Query the trace buffer
+subsystems:
+  SLOT:
+    description: Slot control subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+    - slot_test
+    - slot_reset
+  TRIGger:
+    description: Trigger subsystem
+    commands:
+    - trigger_delay
+    - trigger_mode
+    - trigger_source
+    - trigger_arm
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - output_power
+    - output_power_offset
+  SENSe:
+    description: Sense subsystem
+    commands:
+    - sense_power
+    - sense_power_offset
+    - power_nulling
+    - nulling_time
+    - averaging_time
+    - wavelength
+    - trace_complete
+    - trace_points
+    - trace_rate
+    - trace_trigger
+    - trace_data
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T23:46:50.003498+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: ff28f7062dde4f4c7ceea09d761723a3d393c0f5a195b235b8720e952a9933ce
+  confidence_score: 1.0
