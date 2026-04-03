@@ -1,0 +1,438 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: IQABC
+  class: modulator_controller
+  description: IQ Auto Bias Controller
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,\s*IQABC-\d+-\d+-\w+-\w+,.*
+interfaces:
+- type: ethernet
+- type: pxi
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  system_info:
+    scpi: :SYSTEM:INFO? {info_type}
+    type: query
+    params:
+      info_type:
+        type: enum
+        options:
+        - ALL
+        - SERVER
+        - DRIVER
+        default: ALL
+    returns:
+      type: string
+    description: Query the version of services
+  system_slots:
+    scpi: :SYSTEM:SLOTS?
+    type: query
+    returns:
+      type: int
+    description: Query the number of modules installed in the instrument
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query the module identification
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query the modules installed on the slot
+  pilot_state:
+    getter: :ABC{abc}:{channel}:PILOT? {query_type}
+    setter: :ABC{abc}:{channel}:PILOT {state}
+    type: property
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      query_type:
+        type: enum
+        options:
+        - DEF
+        - ALL
+        - SET
+        - INFO
+        default: SET
+      state:
+        type: enum
+        options:
+        - '1'
+        - 'ON'
+        - '0'
+        - 'OFF'
+        - DEF
+    returns:
+      type: string
+    description: Modulator channel auto-bias state
+  bias_voltage:
+    getter: :ABC{abc}:{channel}:BIAS? {query_type}
+    setter: :ABC{abc}:{channel}:BIAS {value}
+    type: property
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      query_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        default: SET
+      value:
+        type: float
+        unit: V
+        min: -14.0
+        max: 24.0
+    returns:
+      type: string
+      unit: V
+    description: Modulator channel bias voltage
+  lock_status:
+    scpi: :ABC{abc}:{channel}:LOCK? {query_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      query_type:
+        type: enum
+        options:
+        - INFO
+        default: INFO
+    returns:
+      type: string
+    description: Query whether the bias is locked to its optimal position
+  history:
+    scpi: :ABC{abc}:{channel}:HISTory? {start_time},{end_time} {data_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      start_time:
+        type: float
+      end_time:
+        type: float
+      data_type:
+        type: enum
+        options:
+        - BIAS
+        - ERROR
+        - FULL
+    returns:
+      type: string
+    description: Query the error history timeframe and reason
+  scan_results:
+    scpi: :ABC{abc}:{channel}:SCAN? {data_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      data_type:
+        type: enum
+        options:
+        - POWER
+        - ERROR
+        - PHASE
+        - FULL
+        - UNIT
+    returns:
+      type: string
+    description: Query the ABC modulator scan results
+  gain:
+    getter: :ABC{abc}:{channel}:GAIN? {query_type}
+    setter: :ABC{abc}:{channel}:GAIN {value}
+    type: property
+    params:
+      abc:
+        type: int
+        min: 1
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - XP
+        - YI
+        - YQ
+        - YP
+      query_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - UNIT
+        default: SET
+      value:
+        type: float
+    returns:
+      type: string
+    description: Gain VPi percentage (dither size)
+  pd_power:
+    scpi: :ABC{abc}:PDPower? {query_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      query_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - ALL
+        - UNIT
+        default: ALL
+    returns:
+      type: string
+      unit: mW
+    description: Query the output power of the unit in mW
+  pd_power_time_nulling:
+    scpi: :ABC{abc}:PDPower:TIMEnulling? {query_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      query_type:
+        type: enum
+        options:
+        - UNIT
+        default: UNIT
+    returns:
+      type: string
+      unit: s
+    description: Query the dark nulling time remained to complete
+  pd_power_nulling:
+    scpi: :ABC{abc}:PDPower:NULLing
+    type: write
+    params:
+      abc:
+        type: int
+        min: 1
+    description: Perform dark current nulling on the specified channel
+  calibrate_status:
+    scpi: :ABC{abc}:CALibrate? {query_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      query_type:
+        type: enum
+        options:
+        - COM
+        - REQ
+        - INFO
+    returns:
+      type: string
+    description: Queries the recalibration status of the auto-bias control system
+  calibrate:
+    scpi: :ABC{abc}:CALibrate
+    type: write
+    params:
+      abc:
+        type: int
+        min: 1
+    description: Forces recalibration of the auto-bias control system
+  history_start:
+    scpi: :ABC{abc}:HISTory:STARt
+    type: write
+    params:
+      abc:
+        type: int
+        min: 1
+    description: Set a reset of the error history
+  vpi:
+    scpi: :ABC{abc}:MODulator{modulator}:VPI? {measurement_type}
+    type: query
+    params:
+      abc:
+        type: int
+        min: 1
+      modulator:
+        type: int
+        min: 1
+      measurement_type:
+        type: enum
+        options:
+        - POWER
+        - ERROR
+        - PHASE
+        - UNIT
+    returns:
+      type: string
+    description: Query the DC scan VPi
+  slow_factor:
+    getter: :ABC{abc}:SLOWfactor? {query_type}
+    setter: :ABC{abc}:SLOWfactor {value}
+    type: property
+    params:
+      abc:
+        type: int
+        min: 1
+      query_type:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        default: SET
+      value:
+        type: float
+        min: 1
+        max: 250
+    returns:
+      type: string
+    description: Optimizer timing factor
+subsystems:
+  SYSTEM:
+    description: System subsystem
+    commands:
+    - system_info
+    - system_slots
+  SLOT:
+    description: Slot subsystem
+    commands:
+    - slot_identify
+    - slot_operation_complete
+    - slot_options
+  ABC:
+    description: Auto Bias Controller subsystem
+    commands:
+    - pilot_state
+    - bias_voltage
+    - lock_status
+    - history
+    - scan_results
+    - gain
+    - pd_power
+    - pd_power_time_nulling
+    - pd_power_nulling
+    - calibrate_status
+    - calibrate
+    - history_start
+    - vpi
+    - slow_factor
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:02:02.971865+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 217f5a4b78832ffda65c0a6f7ad5ac50c548b30399bbe4af5222618a593c59e0
+  confidence_score: 1.0

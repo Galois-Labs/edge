@@ -1,0 +1,1312 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: VISIQ
+  class: optical_analyzer
+  description: Coherent Optical Signal Analyzer
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,VISIQSCPIServer,.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: false
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the software identification
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the application
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  query_event_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Enable Register
+  set_event_enable:
+    scpi: '*ESE {value}'
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    description: Set the Standard Event Status Enable Register
+  query_app_state:
+    scpi: :APP:STATe?
+    type: query
+    returns:
+      type: string
+      options:
+      - UNKNOWN
+      - UNAVAILABLE
+      - AVAILABLE
+      - BUSY
+      - STOPPED
+    description: Query the state of the VISIQ application
+  connect_app:
+    scpi: :APP:CONNect VISIQ
+    type: write
+    description: Connect to the VISIQ application
+  disconnect_app:
+    scpi: :APP:DISConnect VISIQ
+    type: write
+    description: Disconnect from the VISIQ application
+  exit_app:
+    scpi: :APP:EXIT {option}
+    type: write
+    params:
+      option:
+        type: string
+    description: Exit VISIQ with or without saving the project
+  query_data_source_type:
+    scpi: :PROJect:SOURce:DATA:TYPE?
+    type: query
+    returns:
+      type: string
+    description: Query the selected data source
+  set_data_source_type:
+    scpi: :PROJect:SOURce:DATA:TYPE {source}
+    type: write
+    params:
+      source:
+        type: string
+    description: Select the data source
+  query_available_scopes:
+    scpi: :PROJect:SOURce:DATA:TYPE:SCOPe?
+    type: query
+    returns:
+      type: string
+    description: Query available scopes on the network
+  query_scope_connection_state:
+    scpi: :PROJect:SOURce:DATA:TYPE:SCOPe:STATe?
+    type: query
+    returns:
+      type: string
+      options:
+      - 'ON'
+      - 'OFF'
+    description: Query oscilloscope connection state
+  connect_scope:
+    scpi: :PROJect:SOURce:DATA:TYPE:SCOPe:CONNect
+    type: write
+    description: Connect with the selected oscilloscope
+  disconnect_scope:
+    scpi: :PROJect:SOURce:DATA:TYPE:SCOPe:DISConnect
+    type: write
+    description: Disconnect from an oscilloscope
+  initialize_scope:
+    scpi: :PROJect:SOURce:DATA:TYPE:SCOPe:INITialize
+    type: write
+    description: Initialize the connected oscilloscope
+  query_scope_id:
+    scpi: :PROJect:SOURce:DATA:IDN?
+    type: query
+    returns:
+      type: string
+    description: Query the connected oscilloscope ID
+  scope_record_length:
+    getter: :PROJect:SOURce:DATA:RECord_LENGth?
+    setter: :PROJect:SOURce:DATA:RECord_LENGth {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: string
+    description: Oscilloscope record length
+  scope_sampling_rate:
+    getter: :PROJect:SOURce:DATA:SAMPling_RATE?
+    setter: :PROJect:SOURce:DATA:SAMPling_RATE {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: string
+    description: Oscilloscope sampling rate
+  scope_bandwidth:
+    getter: :PROJect:SOURce:DATA:BANDwidth?
+    setter: :PROJect:SOURce:DATA:BANDwidth {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: string
+    description: Oscilloscope bandwidth
+  select_receiver:
+    scpi: :PROJect:SOURce:RECeiver {ip_address}
+    type: write
+    params:
+      ip_address:
+        type: string
+    description: Select a coherent receiver
+  query_available_receivers:
+    scpi: :PROJect:SOURce:RECeiver:FIND?
+    type: query
+    returns:
+      type: string
+    description: Query available coherent receivers on the network
+  query_receiver_connection_state:
+    scpi: :PROJect:SOURce:RECeiver:STATe?
+    type: query
+    returns:
+      type: string
+      options:
+      - 'ON'
+      - 'OFF'
+    description: Query receiver connection state
+  connect_receiver:
+    scpi: :PROJect:SOURce:RECeiver:CONNect
+    type: write
+    description: Connect with a coherent receiver
+  disconnect_receiver:
+    scpi: :PROJect:SOURce:RECeiver:DISConnect
+    type: write
+    description: Disconnect the coherent receiver
+  query_receiver_id:
+    scpi: :PROJect:SOURce:RECeiver:IDN?
+    type: query
+    returns:
+      type: string
+    description: Query the connected coherent receiver ID
+  receiver_laser_state:
+    getter: :PROJect:SOURce:RECeiver:CHANnel{channel}:STATe?
+    setter: :PROJect:SOURce:RECeiver:CHANnel{channel}:STATe {state}
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Laser state
+  receiver_laser_power:
+    getter: :PROJect:SOURce:RECeiver:CHANnel{channel}:POWer?
+    setter: :PROJect:SOURce:RECeiver:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: string
+    returns:
+      type: string
+    description: Laser power
+  receiver_laser_wavelength:
+    getter: :PROJect:SOURce:RECeiver:CHANnel{channel}:WAVElength?
+    setter: :PROJect:SOURce:RECeiver:CHANnel{channel}:WAVElength {value}
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: string
+    returns:
+      type: string
+    description: Laser wavelength
+  query_channel_mapping:
+    scpi: :PROJect:SOURce:DATA:CHANnel{channel}:MAPPing?
+    type: query
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: string
+    description: Query channel mapping of the oscilloscope
+  set_channel_mapping:
+    scpi: :PROJect:SOURce:DATA:CHANnel{channel}:MAPPing {mapping}
+    type: write
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      mapping:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - YI
+        - YQ
+    description: Set channel mapping of the oscilloscope
+  channel_scale:
+    getter: :PROJect:SOURce:DATA:CHANnel{channel}:SCALe?
+    setter: :PROJect:SOURce:DATA:CHANnel{channel}:SCALe {value}
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: string
+    returns:
+      type: float
+    description: Vertical scaling of oscilloscope channels
+  signal_polarization:
+    getter: :PROJect:SOURce:DATA:SIGNal:POLarization?
+    setter: :PROJect:SOURce:DATA:SIGNal:POLarization {type}
+    type: property
+    params:
+      type:
+        type: enum
+        options:
+        - SINGle
+        - DUAL
+    returns:
+      type: string
+    description: Polarization type of the signal
+  signal_polarization_axis:
+    getter: :PROJect:SOURce:DATA:SIGNal:POLarization:AXIS?
+    setter: :PROJect:SOURce:DATA:SIGNal:POLarization:AXIS {axis}
+    type: property
+    params:
+      axis:
+        type: enum
+        options:
+        - X
+        - Y
+    returns:
+      type: string
+    description: Polarization axis for single polarization
+  signal_modulation:
+    getter: :PROJect:SOURce:DATA:SIGNal:MODUlation?
+    setter: :PROJect:SOURce:DATA:SIGNal:MODUlation {format}
+    type: property
+    params:
+      format:
+        type: int
+        min: 0
+        max: 16
+    returns:
+      type: string
+    description: Modulation format
+  query_modulation_info:
+    scpi: :PROJect:SOURce:DATA:SIGNal:MODUlation:INFO?
+    type: query
+    returns:
+      type: string
+    description: Query supported modulation formats
+  signal_baud_rate:
+    getter: :PROJect:SOURce:DATA:SIGNal:BAUDrate?
+    setter: :PROJect:SOURce:DATA:SIGNal:BAUDrate {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: Baud rate of the signal
+  signal_frequency:
+    getter: :PROJect:SOURce:DATA:SIGNal:FREQuency?
+    setter: :PROJect:SOURce:DATA:SIGNal:FREQuency {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: Carrier frequency
+  signal_symbols_number:
+    getter: :PROJect:SOURce:DATA:SIGNal:SYMbolsNumber?
+    setter: :PROJect:SOURce:DATA:SIGNal:SYMbolsNumber {value}
+    type: property
+    params:
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of symbols
+  query_signal_power:
+    scpi: :PROJect:SOURce:DATA:SIGNal:POWer?
+    type: query
+    returns:
+      type: float
+    description: Query signal power
+  add_pipeline_node:
+    scpi: :PROJect:PIPEline:CONFiguration:ADD {position},{type}
+    type: write
+    params:
+      position:
+        type: int
+        min: 1
+        max: 15
+      type:
+        type: string
+    description: Add a node to the DSP pipeline in a specific location
+  move_pipeline_node:
+    scpi: :PROJect:PIPEline:CONFiguration:MOVE {from_position},{to_position}
+    type: write
+    params:
+      from_position:
+        type: int
+        min: 1
+        max: 15
+      to_position:
+        type: int
+        min: 1
+        max: 15
+    description: Move a node to a different location in the DSP pipeline
+  remove_pipeline_node:
+    scpi: :PROJect:PIPEline:CONFiguration:REMOve {position}
+    type: write
+    params:
+      position:
+        type: int
+        min: 1
+        max: 15
+    description: Remove a node from the DSP pipeline
+  reset_pipeline_training:
+    scpi: :PROJect:PIPEline:TRAiNing:ReSeT
+    type: write
+    description: Return training properties of all nodes in the DSP pipeline that
+      support training to default values
+  query_pipeline_nodes:
+    scpi: :PROJect:PIPEline:NODEs?
+    type: query
+    returns:
+      type: string
+    description: Query the configuration of the DSP pipeline
+  corx_receiver_type:
+    getter: :PROJect:PIPEline:NODEs:CORX{node}:RECeiver?
+    setter: :PROJect:PIPEline:NODEs:CORX{node}:RECeiver {type}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      type:
+        type: enum
+        options:
+        - IQRX
+        - OTHeR
+    returns:
+      type: string
+    description: Receiver type
+  corx_settings:
+    getter: :PROJect:PIPEline:NODEs:CORX{node}:SETTings?
+    setter: :PROJect:PIPEline:NODEs:CORX{node}:SETTings {file_path}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      file_path:
+        type: string
+    returns:
+      type: string
+    description: Location of the .crs settings file to be used with the receiver
+  corx_calibrate_gradient:
+    getter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:GRADient?
+    setter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:GRADient {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Gradient
+  query_corx_calibrate_skew:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:SKEW? {channel}
+    type: query
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - ALL
+        - XI
+        - XQ
+        - YI
+        - YQ
+        - UNIT
+    returns:
+      type: float
+    description: Query skew
+  set_corx_calibrate_skew:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:SKEW {channel},{value}
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - YI
+        - YQ
+      value:
+        type: string
+    description: Set skew
+  query_corx_calibrate_gain:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:GAIN? {channel}
+    type: query
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - ALL
+        - XI
+        - XQ
+        - YI
+        - YQ
+    returns:
+      type: float
+    description: Query gain
+  set_corx_calibrate_gain:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:GAIN {channel},{value}
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - YI
+        - YQ
+      value:
+        type: string
+    description: Set gain
+  query_corx_calibrate_dc_offset:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:DCOFfset? {channel}
+    type: query
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - ALL
+        - XI
+        - XQ
+        - YI
+        - YQ
+        - UNIT
+    returns:
+      type: float
+    description: Query DC offset
+  set_corx_calibrate_dc_offset:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:DCOFfset {channel},{value}
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - YI
+        - YQ
+      value:
+        type: string
+    description: Set DC offset
+  corx_calibrate_training_acquisitions:
+    getter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:ACQuisitions?
+    setter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:ACQuisitions {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of training acquisitions
+  corx_calibrate_training_continuous:
+    getter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:CONTinuous?
+    setter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:CONTinuous {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Status of continuous training acquisitions
+  corx_calibrate_training_hold:
+    getter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:HOLD?
+    setter: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:HOLD {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Training acquisitions hold
+  query_corx_calibrate_training_count:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:COUNt?
+    type: query
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: Query training acquisition count
+  reset_corx_calibrate_training_count:
+    scpi: :PROJect:PIPEline:NODEs:coRXCaLibrate{node}:TRAiNing:COUNt:ReSeT
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+    description: Reset training acquisitions count
+  filter_type:
+    getter: :PROJect:PIPEline:NODEs:FILTer{node}:TYPE?
+    setter: :PROJect:PIPEline:NODEs:FILTer{node}:TYPE {type}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      type:
+        type: string
+    returns:
+      type: string
+    description: Filter type
+  filter_bandwidth:
+    getter: :PROJect:PIPEline:NODEs:FILTer{node}:BANDwidth?
+    setter: :PROJect:PIPEline:NODEs:FILTer{node}:BANDwidth {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+      unit: Hz
+    description: Bandwidth
+  filter_center:
+    getter: :PROJect:PIPEline:NODEs:FILTer{node}:CENTer?
+    setter: :PROJect:PIPEline:NODEs:FILTer{node}:CENTer {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Center
+  filter_rolloff:
+    getter: :PROJect:PIPEline:NODEs:FILTer{node}:ROLLoff?
+    setter: :PROJect:PIPEline:NODEs:FILTer{node}:ROLLoff {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Roll off
+  retimer_center:
+    getter: :PROJect:PIPEline:NODEs:RETiMer{node}:CENTer?
+    setter: :PROJect:PIPEline:NODEs:RETiMer{node}:CENTer {type}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      type:
+        type: string
+    returns:
+      type: string
+    description: Center type
+  retimer_upsample:
+    getter: :PROJect:PIPEline:NODEs:RETiMer{node}:UPSaMple?
+    setter: :PROJect:PIPEline:NODEs:RETiMer{node}:UPSaMple {type}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      type:
+        type: enum
+        options:
+        - LINear
+        - SINC
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: Upsample type
+  retimer_samples:
+    getter: :PROJect:PIPEline:NODEs:RETiMer{node}:SAMPles?
+    setter: :PROJect:PIPEline:NODEs:RETiMer{node}:SAMPles {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Samples per Baud
+  poldemux_taps_number:
+    getter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:TAPsNumber?
+    setter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:TAPsNumber {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of taps
+  poldemux_symbols_number:
+    getter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:SYMbolsNumber?
+    setter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:SYMbolsNumber {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of symbols
+  poldemux_gradient:
+    getter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:GRADient?
+    setter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:GRADient {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Gradient
+  poldemux_taps_per_baud:
+    getter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:TAPsperBaud?
+    setter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:TAPsperBaud {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Taps per Baud
+  poldemux_reset:
+    getter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:ReSeT?
+    setter: :PROJect:PIPEline:NODEs:PolDeMuX{node}:ReSeT {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Resetting of each capture status
+  equalizer_taps_number:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TAPsNumber?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TAPsNumber {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of taps
+  equalizer_symbols_number:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:SYMbolsNumber?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:SYMbolsNumber {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of symbols
+  equalizer_gradient:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:GRADient?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:GRADient {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Gradient
+  equalizer_taps_per_baud:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TAPsperBaud?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TAPsperBaud {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Taps per Baud
+  equalizer_training_acquisitions:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:ACQuisitions?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:ACQuisitions {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of training acquisitions
+  equalizer_training_continuous:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:CONTinuous?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:CONTinuous {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Status of continuous training acquisitions
+  equalizer_training_hold:
+    getter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:HOLD?
+    setter: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:HOLD {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Training acquisitions hold
+  query_equalizer_training_count:
+    scpi: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:COUNt?
+    type: query
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+    returns:
+      type: int
+    description: Query training acquisition count
+  reset_equalizer_training_count:
+    scpi: :PROJect:PIPEline:NODEs:EQUAlizer{node}:TRAiNing:COUNt:ReSeT
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+    description: Reset training acquisitions count
+  phase_estimator_type:
+    getter: :PROJect:PIPEline:NODEs:PHASeestimator{node}:TYPE?
+    setter: :PROJect:PIPEline:NODEs:PHASeestimator{node}:TYPE {type}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      type:
+        type: string
+    returns:
+      type: string
+    description: Type of algorithm used
+  phase_estimator_symbols_number:
+    getter: :PROJect:PIPEline:NODEs:PHASeestimator{node}:SYMbolsNumber?
+    setter: :PROJect:PIPEline:NODEs:PHASeestimator{node}:SYMbolsNumber {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of symbols
+  set_matlab_settings:
+    scpi: :PROJect:PIPEline:NODEs:MATLab{node}:SETTings {file_path}
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      file_path:
+        type: string
+    description: Set MATLAB script file path
+  nonlinear_correction_order:
+    getter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:ORDeR?
+    setter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:ORDeR {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Order
+  nonlinear_correction_training_acquisitions:
+    getter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:ACQuisitions?
+    setter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:ACQuisitions
+      {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: int
+    description: Number of training acquisitions
+  nonlinear_correction_training_continuous:
+    getter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:CONTinuous?
+    setter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:CONTinuous
+      {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Status of continuous training acquisitions
+  nonlinear_correction_training_hold:
+    getter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:HOLD?
+    setter: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:HOLD {state}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Training acquisitions hold
+  reset_nonlinear_correction_training_count:
+    scpi: :PROJect:PIPEline:NODEs:NONlinearCorrection{node}:TRAiNing:COUNt:ReSeT
+    type: write
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+    description: Reset training acquisitions count
+  chromatic_dispersion_parameter:
+    getter: :PROJect:PIPEline:NODEs:CHROmaticdispersion{node}:PARaMeter?
+    setter: :PROJect:PIPEline:NODEs:CHROmaticdispersion{node}:PARaMeter {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Chromatic dispersion parameter
+  chromatic_dispersion_fiber_length:
+    getter: :PROJect:PIPEline:NODEs:CHROmaticdispersion{node}:FIBerLength?
+    setter: :PROJect:PIPEline:NODEs:CHROmaticdispersion{node}:FIBerLength {value}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      value:
+        type: string
+    returns:
+      type: float
+    description: Fiber length
+  iq_offset_removal_calculate_from:
+    getter: :PROJect:PIPEline:NODEs:IQOFfsetremoval{node}:CALCulatefrom?
+    setter: :PROJect:PIPEline:NODEs:IQOFfsetremoval{node}:CALCulatefrom {algorithm}
+    type: property
+    params:
+      node:
+        type: int
+        min: 0
+        max: 15
+      algorithm:
+        type: string
+    returns:
+      type: string
+    description: Calculation algorithm
+  run_single_analysis:
+    scpi: :PROJect:ANALysis:SINGle
+    type: write
+    description: Run a single data acquisition
+  run_continuous_analysis:
+    scpi: :PROJect:ANALysis:CONTinuous
+    type: write
+    description: Run continuous data acquisition
+  stop_analysis:
+    scpi: :PROJect:ANALysis:STOP
+    type: write
+    description: Stop continuous data acquisition
+  test_pattern_mapping:
+    getter: :PROJect:RUNTests:PATTern:MAPPing?
+    setter: :PROJect:RUNTests:PATTern:MAPPing {mapping}
+    type: property
+    params:
+      mapping:
+        type: string
+    returns:
+      type: string
+    description: Data pattern mapping selection
+  test_pattern_encoding:
+    getter: :PROJect:RUNTests:PATTern:ENCOding?
+    setter: :PROJect:RUNTests:PATTern:ENCOding {encoding}
+    type: property
+    params:
+      encoding:
+        type: string
+    returns:
+      type: string
+    description: Data encoding selection
+  query_prbs_patterns:
+    scpi: :PROJect:RUNTests:PATTern:INFO?
+    type: query
+    returns:
+      type: string
+    description: Query supported PRBS patterns
+  query_test_pattern_selection:
+    scpi: :PROJect:RUNTests:PATTern:SELeCt?
+    type: query
+    returns:
+      type: string
+    description: Query test pattern selection
+  set_test_pattern_selection:
+    scpi: :PROJect:RUNTests:PATTern:SELeCt {channel},{pattern}
+    type: write
+    params:
+      channel:
+        type: enum
+        options:
+        - XI
+        - XQ
+        - YI
+        - YQ
+      pattern:
+        type: int
+        min: 0
+        max: 29
+    description: Set test pattern selection
+  ber_test_state:
+    getter: :PROJect:RUNTests:BERtest:STATe?
+    setter: :PROJect:RUNTests:BERtest:STATe {state}
+    type: property
+    params:
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+        - '1'
+        - '0'
+    returns:
+      type: string
+    description: BER test state
+  reset_ber_test:
+    scpi: :PROJect:RUNTests:BERtest:ReSeT
+    type: write
+    description: Reset BER error count
+  query_ber_error_bits:
+    scpi: :PROJect:RUNTests:BERtest:ERRor:BITS?
+    type: query
+    returns:
+      type: string
+    description: Query errors/bits
+  query_ber_error_count:
+    scpi: :PROJect:RUNTests:BERtest:ERRor:COUNt?
+    type: query
+    returns:
+      type: string
+    description: Query error count
+  query_ber_bits_count:
+    scpi: :PROJect:RUNTests:BERtest:BITS:COUNt?
+    type: query
+    returns:
+      type: string
+    description: Query bits count
+  set_ber_control:
+    scpi: :PROJect:RUNTests:BERtest:CONTrol {state}
+    type: write
+    params:
+      state:
+        type: enum
+        options:
+        - SHOW
+        - HIDE
+    description: Set BER control pop-up state
+  query_ber_locking:
+    scpi: :PROJect:RUNTests:BERtest:LOCKing?
+    type: query
+    returns:
+      type: string
+    description: Query the status of the BER lock indicator
+  query_measurements_info:
+    scpi: :PROJect:MEASurements:INFO?
+    type: query
+    returns:
+      type: string
+    description: Query what measurement types are displayed in the measurement table
+  query_measurements_show:
+    scpi: :PROJect:MEASurements:SHOW?
+    type: query
+    returns:
+      type: string
+    description: Query what measurement types are displayed in the measurement table
+      and mapping of supported measurement types
+  set_measurements_show:
+    scpi: :PROJect:MEASurements:SHOW {measurement}
+    type: write
+    params:
+      measurement:
+        type: string
+    description: Set measurements to be displayed in the measurement table
+  query_measurements_hide:
+    scpi: :PROJect:MEASurements:HIDE?
+    type: query
+    returns:
+      type: string
+    description: Query supported measurement types
+  set_measurements_hide:
+    scpi: :PROJect:MEASurements:HIDE {measurement}
+    type: write
+    params:
+      measurement:
+        type: string
+    description: Set measurements not to be displayed in the measurement table
+  set_measurements_mask:
+    scpi: :PROJect:MEASurements:MASK {maskvalue}
+    type: write
+    params:
+      maskvalue:
+        type: string
+    description: Set bit mask to define measurements to be displayed in the measurement
+      table
+  reset_measurements:
+    scpi: :PROJect:MEASurements:ReSeT
+    type: write
+    description: Reset statistical data for all measurements
+  export_measurements:
+    scpi: :PROJect:MEASurements:EXPOrt {file_path}
+    type: write
+    params:
+      file_path:
+        type: string
+    description: Export the measurements results as a .csv file
+  create_new_project:
+    scpi: :PROJect:NEW
+    type: write
+    description: Create a new project file
+  open_project:
+    scpi: :PROJect:OPEN {file_path}
+    type: write
+    params:
+      file_path:
+        type: string
+    description: Open a project file from a specified file path
+  save_project:
+    scpi: :PROJect:SAVE {option}
+    type: write
+    params:
+      option:
+        type: string
+    description: Save the current project
+  export_single_data:
+    scpi: :PROJect:EXPOrt:SINGle {file_path}
+    type: write
+    params:
+      file_path:
+        type: string
+    description: Export currently cached raw data
+  start_export_data:
+    scpi: :PROJect:EXPOrt:STARt {acquisitions},{file_path}
+    type: write
+    params:
+      acquisitions:
+        type: int
+      file_path:
+        type: string
+    description: Start export of raw data as a series of upcoming acquisitions
+  stop_export_data:
+    scpi: :PROJect:EXPOrt:STOP
+    type: write
+    description: Stop export of raw data
+  export_pipeline_configuration:
+    scpi: :PROJect:PIPEline:CONFiguration:EXPOrt {file_path}
+    type: write
+    params:
+      file_path:
+        type: string
+    description: Export the configuration of the DSP pipeline
+  import_pipeline_configuration:
+    scpi: :PROJect:PIPEline:CONFiguration:IMPOrt {file_path}
+    type: write
+    params:
+      file_path:
+        type: string
+    description: Import the configuration of the DSP pipeline
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:14:55.430777+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: a51a4d7e3f4c40b46e33dcdc6c22ae589dbf6dfc17e8aae7da8942a0baf722c4
+  confidence_score: 1.0

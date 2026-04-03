@@ -1,0 +1,274 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: IQRX
+  class: laser
+  description: Tunable Laser Source and Power Meter
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,IQRX.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  event_status_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Enable Register
+  system_info:
+    scpi: :SYSTem:INFO?
+    type: query
+    returns:
+      type: string
+    description: Query the version of services
+  system_modules:
+    scpi: :SYSTem:MODUles?
+    type: query
+    returns:
+      type: int
+    description: Query the number of modules installed in the instrument
+  module_identify:
+    scpi: :MODUle{module}:IDN?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query the module identification
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the slot
+  module_options:
+    scpi: :MODUle{module}:OPTions?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query installed modules
+  sense_signal:
+    scpi: :SENSe{module}:SIGnal?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: dBm
+    description: Query the measured modulated signal optical power
+  output_state:
+    getter: :OUTPut{module}:CHANnel{channel}:STATE?
+    setter: :OUTPut{module}:CHANnel{channel}:STATE {state}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Laser output state
+  source_power:
+    getter: :SOURce{module}:CHANnel{channel}:POWer?
+    setter: :SOURce{module}:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: Power of the selected laser
+  source_wavelength:
+    getter: :SOURce{module}:CHANnel{channel}:WAVelength?
+    setter: :SOURce{module}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: m
+    returns:
+      type: float
+      unit: m
+    description: Laser output wavelength value
+  source_frequency:
+    getter: :SOURce{module}:CHANnel{channel}:FREQuency?
+    setter: :SOURce{module}:CHANnel{channel}:FREQuency {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Laser output frequency
+  source_frequency_fine:
+    getter: :SOURce{module}:CHANnel{channel}:FREQuency:FINE?
+    setter: :SOURce{module}:CHANnel{channel}:FREQuency:FINE {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+        min: -6e9
+        max: 6e9
+    returns:
+      type: float
+      unit: Hz
+    description: Fine-tuning laser output frequency
+  source_grid:
+    getter: :SOURce{module}:CHANnel{channel}:GRID?
+    setter: :SOURce{module}:CHANnel{channel}:GRID {value}
+    type: property
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+      value:
+        type: float
+        unit: Hz
+        min: 100e6
+        max: 50e9
+    returns:
+      type: float
+      unit: Hz
+    description: Channel grid spacing
+  source_temperature:
+    scpi: :SOURce{module}:CHANnel{channel}:TEMPerature?
+    type: query
+    params:
+      module:
+        type: int
+        min: 1
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: "\xB0C"
+    description: Get the laser temperature
+subsystems:
+  SYSTem:
+    description: System subsystem
+    commands:
+    - system_info
+    - system_modules
+  MODUle:
+    description: Module subsystem
+    commands:
+    - module_identify
+    - slot_operation_complete
+    - module_options
+  SENSe:
+    description: Sensor subsystem
+    commands:
+    - sense_signal
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - output_state
+  SOURce:
+    description: Source subsystem
+    commands:
+    - source_power
+    - source_wavelength
+    - source_frequency
+    - source_frequency_fine
+    - source_grid
+    - source_temperature
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:11:04.171124+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: e64fb7044b33e4d55b42fdb55a2eb5d842e7e6a7c85b1db69cf0979608c8f9a6
+  confidence_score: 1.0

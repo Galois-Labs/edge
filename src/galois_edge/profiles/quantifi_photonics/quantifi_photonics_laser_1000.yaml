@@ -1,0 +1,299 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: LASER 1000
+  class: laser
+  description: Tunable Laser Source
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics.*LASER.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        default: 1
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        default: 1
+    returns:
+      type: string
+    description: Query installed modules
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        default: 1
+    returns:
+      type: string
+    description: Query the module identification
+  output_state:
+    getter: :OUTPut{source}:CHANnel{channel}:STATE?
+    setter: :OUTPut{source}:CHANnel{channel}:STATE {state}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set/query the optical output state of the laser
+  power:
+    getter: :SOURce{source}:CHANnel{channel}:POWer? {param}
+    setter: :SOURce{source}:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: dBm
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: dBm
+    description: Set/query the laser output power
+  wavelength:
+    getter: :SOURce{source}:CHANnel{channel}:WAVelength? {param}
+    setter: :SOURce{source}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: m
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: m
+    description: Set/query the laser wavelength
+  frequency:
+    getter: :SOURce{source}:CHANnel{channel}:FREQuency? {param}
+    setter: :SOURce{source}:CHANnel{channel}:FREQuency {value}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - LOCK
+        - ALL
+        default: ACT
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the laser frequency
+  frequency_fine:
+    getter: :SOURce{source}:CHANnel{channel}:FREQuency:FINE? {param}
+    setter: :SOURce{source}:CHANnel{channel}:FREQuency:FINE {value}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: -6e9
+        max: 6e9
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        default: SET
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the fine tune laser output frequency up to +/- 6 GHz around
+      the closest GRID point
+  grid:
+    getter: :SOURce{source}:CHANnel{channel}:GRID? {param}
+    setter: :SOURce{source}:CHANnel{channel}:GRID {value}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      value:
+        type: float
+        unit: Hz
+        min: 100e6
+        max: 50e9
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        default: SET
+    returns:
+      type: float
+      unit: Hz
+    description: Set/query the grid spacing
+  whisper_mode:
+    getter: :SOURce{source}:CHANnel{channel}:WHISper?
+    setter: :SOURce{source}:CHANnel{channel}:WHISper {state}
+    type: property
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+      state:
+        type: enum
+        options:
+        - 'ON'
+        - 'OFF'
+    returns:
+      type: string
+    description: Set/query the Whisper mode state of the laser
+  temperature:
+    scpi: :SOURce{source}:CHANnel{channel}:TEMPerature?
+    type: query
+    params:
+      source:
+        type: int
+        default: 1
+      channel:
+        type: int
+        default: 1
+    returns:
+      type: float
+      unit: "\xB0C"
+    description: Query the laser temperature
+subsystems:
+  OUTPut:
+    description: Output control subsystem
+    commands:
+    - output_state
+  SOURce:
+    description: Source configuration subsystem
+    commands:
+    - power
+    - wavelength
+    - frequency
+    - frequency_fine
+    - grid
+    - whisper_mode
+    - temperature
+  SLOT:
+    description: Slot management subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-02T00:02:48.310066+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 882b06f7ad052954890fb3cd5a990ada27015ca21b8c452f8bb460bfaa53d175
+  confidence_score: 1.0

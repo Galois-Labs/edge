@@ -1,0 +1,1325 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: BERT 1000
+  class: bert
+  description: Bit Error Rate Tester
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,CohesionSCPI,.*
+interfaces:
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the instrument identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules installed in the instrument
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  slot_test:
+    getter: :SLOT{n}:TeST?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_operation_complete:
+    getter: :SLOT{n}:OPC?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_identify:
+    getter: :SLOT{n}:IDN?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query the module identification
+  slot_options:
+    getter: :SLOT{n}:OPTions?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query installed modules
+  slot_ppg_channels:
+    getter: :SLOT{n}:GRouP?:PPG?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query the PPG channels within the specified group
+  slot_ed_channels:
+    getter: :SLOT{n}:GRouP?:ED?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+    returns:
+      type: string
+    description: Query the ED channels within the specified group
+  slot_temperature:
+    getter: :SLOT{n}:GRouP?:TEMPerature? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - ACT
+        - UNIT
+    returns:
+      type: float
+      unit: C
+    description: Query the temperature of all groups of channels
+  ed_error_measurement:
+    getter: :CALCulate{n}:DATA{m}:EALarm? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - STATE
+        - DATA
+        - LOCK
+        - ERROR
+        - COUNT
+        - BITS
+        - BER
+        - FULL
+        - INFO
+    returns:
+      type: string
+    description: Query the ED error measurement
+  ed_elapsed_time:
+    getter: :CALCulate{n}:DATA{m}:EALarm:ELAPsed?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: float
+      unit: s
+    description: Query the elapsed (running time) of the ED measurement
+  eye_diagram_data:
+    getter: :CALCulate{n}:DATA{m}:EDIagram?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: string
+    description: Query the eye scan measurement data
+  eye_diagram_status:
+    getter: :CALCulate{n}:DATA{m}:EDIagram:STATus? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Query the eye scan measurement status
+  bathtub_ber:
+    getter: :CALCulate{n}:DATA{m}:BATHtub?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: string
+    description: Query the BER values from the bathtub measurement
+  bathtub_status:
+    getter: :CALCulate{n}:DATA{m}:BATHtub:STATus? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Query the status of the bathtub measurement
+  bathtub_elapsed:
+    getter: :CALCulate{n}:DATA{m}:BATHtub:ELAPsed? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - TOTAL
+        - NEXT
+        - UNIT
+        optional: true
+    returns:
+      type: string
+    description: Query the elapsed time of the bathtub measurement
+  bathtub_q_values:
+    getter: :CALCulate{n}:DATA{m}:BATHtub:Q?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: string
+    description: Query the Q values from the bathtub measurement
+  bathtub_ber_floor:
+    getter: :CALCulate{n}:DATA{m}:BATHtub:BERFloor?
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    returns:
+      type: float
+    description: Query the BER floor value from the bathtub measurement
+  bathtub_center:
+    getter: :CALCulate{n}:DATA{m}:BATHtub:CENTer? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - UNIT
+        optional: true
+    returns:
+      type: float
+      unit: UI
+    description: Query the center of the eye from the bathtub measurement
+  bathtub_jitter:
+    getter: :CALCulate{n}:DATA{m}:JITTer? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DJ
+        - RJ
+        - J2
+        - J9
+        - J12
+        - UNIT
+        optional: true
+    returns:
+      type: string
+      unit: ps
+    description: Query the jitter values from the bathtub measurement
+  clock_vco_lock:
+    getter: :OUTPut{n}:CLOCk:VCOLock? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Query the stability of the clock synthesizer
+  clock_divide_ratio:
+    getter: :OUTPut{n}:CLOCk:DIVIde? {param}
+    setter: :OUTPut{n}:CLOCk:DIVIde {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        optional: true
+      value:
+        type: int
+    returns:
+      type: int
+    description: Clock synthesizer divide ratio
+  clock_frequency_arbitrary:
+    getter: :OUTPut{n}:CLOCk:FREQuency:ARBitrary? {param}
+    setter: :OUTPut{n}:CLOCk:FREQuency:ARBitrary {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Synthesizer frequency arbitrary settings
+  clock_frequency_standard:
+    getter: :OUTPut{n}:CLOCk:FREQuency:STanDard? {param}
+    setter: :OUTPut{n}:CLOCk:FREQuency:STanDard {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Current synthesizer frequency standard settings
+  clock_power:
+    getter: :OUTPut{n}:CLOCk:POWer? {param}
+    setter: :OUTPut{n}:CLOCk:POWer {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: Power of the RF output clock
+  data_amplitude:
+    getter: :OUTPut{n}:DATA{m}:AMPlitude? {param}
+    setter: :OUTPut{n}:DATA{m}:AMPlitude {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - LIST
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: Voltage amplitude of the output signal
+  data_cross_point:
+    getter: :OUTPut{n}:DATA{m}:CPOint? {param}
+    setter: :OUTPut{n}:DATA{m}:CPOint {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        optional: true
+      value:
+        type: float
+        unit: '%'
+    returns:
+      type: float
+      unit: '%'
+    description: Pattern cross point (%)
+  data_output_state:
+    getter: :OUTPut{n}:DATA{m}:OUTPut? {param}
+    setter: :OUTPut{n}:DATA{m}:OUTPut {state}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - INFO
+        optional: true
+      state:
+        type: enum
+        options:
+        - '0'
+        - 'OFF'
+        - '1'
+        - 'ON'
+        - DEF
+        - ON_ALL
+        - OFF_ALL
+    returns:
+      type: int
+    description: State of the pattern generator output
+  sense_clock_frequency_arbitrary:
+    getter: :SENSe{n}:CLOCk:FREQuency:ARBitrary? {param}
+    setter: :SENSe{n}:CLOCk:FREQuency:ARBitrary {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Current ED frequency arbitrary settings
+  sense_clock_frequency_standard:
+    getter: :SENSe{n}:CLOCk:FREQuency:STanDard? {param}
+    setter: :SENSe{n}:CLOCk:FREQuency:STanDard {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - STEP
+        - UNIT
+        optional: true
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Current ED frequency standard settings
+  bathtub_start:
+    scpi: :SENSe{n}:MEASure{m}:BATHtub:STARt
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Start the bathtub measurement
+  bathtub_stop:
+    scpi: :SENSe{n}:MEASure{m}:BATHtub:STOP
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Stop the bathtub measurement
+  bathtub_min_errors:
+    getter: :SENSe{n}:MEASure{m}:BATHtub:MINErrors? {param}
+    setter: :SENSe{n}:MEASure{m}:BATHtub:MINErrors {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: int
+        min: 0
+        max: 65535
+    returns:
+      type: int
+      unit: bits
+    description: Minimum error threshold for the bathtub measurement
+  bathtub_voltage:
+    getter: :SENSe{n}:MEASure{m}:BATHtub:VOLTage? {param}
+    setter: :SENSe{n}:MEASure{m}:BATHtub:VOLTage {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: float
+        unit: mV
+        min: -217
+        max: 217
+    returns:
+      type: float
+      unit: mV
+    description: Bathtub voltage
+  ed_measurement_mode:
+    getter: :SENSe{n}:MEASure{m}:EALarm:MODE? {param}
+    setter: :SENSe{n}:MEASure{m}:EALarm:MODE {mode}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - INFO
+        optional: true
+      mode:
+        type: enum
+        options:
+        - '1'
+        - INSTantaneous
+        - '0'
+        - ACCUmulated
+        - DEF
+    returns:
+      type: int
+    description: Mode of ED measurement
+  ed_point_mode:
+    getter: :SENSe{n}:MEASure{m}:EALarm:POINt? {param}
+    setter: :SENSe{n}:MEASure{m}:EALarm:POINt {mode}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - INFO
+        - LINKED
+        optional: true
+      mode:
+        type: enum
+        options:
+        - '0'
+        - AUTO
+        - '1'
+        - MANUAL
+        - DEF
+    returns:
+      type: int
+    description: Mode of the ED point measurement
+  ed_point_voltage:
+    getter: :SENSe{n}:MEASure{m}:EALarm:VOLTage? {param}
+    setter: :SENSe{n}:MEASure{m}:EALarm:VOLTage {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: float
+        unit: mV
+        min: -217
+        max: 217
+    returns:
+      type: float
+      unit: mV
+    description: Voltage of the ED point measurement
+  ed_point_phase:
+    getter: :SENSe{n}:MEASure{m}:EALarm:PHASe? {param}
+    setter: :SENSe{n}:MEASure{m}:EALarm:PHASe {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: float
+        unit: UI
+        min: -2.46875
+        max: 2.46875
+    returns:
+      type: float
+      unit: UI
+    description: Phase of the ED point measurement
+  ed_measurement_start:
+    scpi: :SENSe{n}:MEASure{m}:STARt
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Start the ED measurement
+  ed_measurement_stop:
+    scpi: :SENSe{n}:MEASure{m}:STOP
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Stop the ED measurement
+  ed_enable_state:
+    getter: :SENSe{n}:MEASure{m}:ENABle? {param}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - INFO
+        optional: true
+    returns:
+      type: int
+    description: Query the enabled state of the ED
+  eye_diagram_horizontal:
+    getter: :SENSe{n}:MEASure{m}:EDIagram:HORIzontal? {param}
+    setter: :SENSe{n}:MEASure{m}:EDIagram:HORIzontal {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - LINKED
+        optional: true
+      value:
+        type: int
+    returns:
+      type: int
+    description: Horizontal (x) resolution step size of the eye measurement
+  eye_diagram_pattern_length:
+    getter: :SENSe{n}:MEASure{m}:EDIagram:PatternLENgth? {param}
+    setter: :SENSe{n}:MEASure{m}:EDIagram:PatternLENgth {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - LINKED
+        optional: true
+      value:
+        type: int
+        max: 16
+    returns:
+      type: int
+    description: Eye measurement pattern length (2^n bits) resolution
+  eye_diagram_start:
+    scpi: :SENSe{n}:MEASure{m}:EDIagram:STARt
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Start the eye scan measurement
+  eye_diagram_stop:
+    scpi: :SENSe{n}:MEASure{m}:EDIagram:STOP
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Stop a running eye scan measurement
+  eye_diagram_vertical:
+    getter: :SENSe{n}:MEASure{m}:EDIagram:VERTical? {param}
+    setter: :SENSe{n}:MEASure{m}:EDIagram:VERTical {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - LINKED
+        optional: true
+      value:
+        type: float
+    returns:
+      type: float
+    description: Vertical (y) resolution step size of the eye measurement
+  ed_equalizer_boost:
+    getter: :SENSe{n}:PATTern{m}:EQBoost? {param}
+    setter: :SENSe{n}:PATTern{m}:EQBoost {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - STEP
+        - UNIT
+        - LINKED
+        optional: true
+      value:
+        type: float
+        min: 0.0
+        max: 21.0
+    returns:
+      type: float
+    description: ED equalizer boost
+  ed_equalizer_boost_mode:
+    getter: :SENSe{n}:PATTern{m}:EQBoost:MODE? {param}
+    setter: :SENSe{n}:PATTern{m}:EQBoost:MODE {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - INFO
+        optional: true
+      value:
+        type: int
+    returns:
+      type: int
+    description: ED equalizer boost mode
+  ed_pattern_logic:
+    getter: :SENSe{n}:PATTern{m}:LOGic? {param}
+    setter: :SENSe{n}:PATTern{m}:LOGic {logic}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - INFO
+        optional: true
+      logic:
+        type: enum
+        options:
+        - '0'
+        - NEGative
+        - LOW
+        - '1'
+        - POSitive
+        - HIGH
+        - DEF
+    returns:
+      type: int
+    description: ED pattern digital level logic
+  ed_pattern_type:
+    getter: :SENSe{n}:PATTern{m}:TYPE? {param}
+    setter: :SENSe{n}:PATTern{m}:TYPE {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - INFO
+        - LINKED
+        optional: true
+      value:
+        type: int
+    returns:
+      type: int
+    description: ED pattern type
+  error_inject:
+    scpi: :SENSe{n}:PATTern{m}:EINJect
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+    description: Add a small random burst of errors into the ED measurement
+  pattern_deemphasis:
+    getter: :SOURce{n}:PATTern{m}:DEEMphasis? {param}
+    setter: :SOURce{n}:PATTern{m}:DEEMphasis {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - UNIT
+        optional: true
+      value:
+        type: float
+    returns:
+      type: float
+    description: Pattern de-emphasis
+  pattern_deemphasis_cursor:
+    getter: :SOURce{n}:PATTern{m}:DEEMphasis:CURSor? {param}
+    setter: :SOURce{n}:PATTern{m}:DEEMphasis:CURSor {cursor}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - INFO
+        optional: true
+      cursor:
+        type: enum
+        options:
+        - '0'
+        - POST
+        - '1'
+        - PRE
+        - DEF
+    returns:
+      type: int
+    description: Pattern de-emphasis cursor
+  source_pattern_logic:
+    getter: :SOURce{n}:PATTern{m}:LOGic? {param}
+    setter: :SOURce{n}:PATTern{m}:LOGic {logic}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - DEF
+        - SET
+        - ALL
+        - LIST
+        - INFO
+        optional: true
+      logic:
+        type: enum
+        options:
+        - '0'
+        - NEGative
+        - LOW
+        - '1'
+        - POSitive
+        - HIGH
+        - DEF
+    returns:
+      type: int
+    description: Data pattern level logic
+  source_pattern_type:
+    getter: :SOURce{n}:PATTern{m}:TYPE? {param}
+    setter: :SOURce{n}:PATTern{m}:TYPE {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+        max: 16
+      m:
+        type: int
+        min: 0
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - LIST
+        - ALL
+        - INFO
+        - LINKED
+        optional: true
+      value:
+        type: int
+    returns:
+      type: int
+    description: Pattern type
+subsystems:
+  CALCulate:
+    description: Calculation and measurement data subsystem
+    commands:
+    - ed_error_measurement
+    - ed_elapsed_time
+    - eye_diagram_data
+    - eye_diagram_status
+    - bathtub_ber
+    - bathtub_status
+    - bathtub_elapsed
+    - bathtub_q_values
+    - bathtub_ber_floor
+    - bathtub_center
+    - bathtub_jitter
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - clock_vco_lock
+    - clock_divide_ratio
+    - clock_frequency_arbitrary
+    - clock_frequency_standard
+    - clock_power
+    - data_amplitude
+    - data_cross_point
+    - data_output_state
+  SENSe:
+    description: Sensing and measurement subsystem
+    commands:
+    - sense_clock_frequency_arbitrary
+    - sense_clock_frequency_standard
+    - bathtub_start
+    - bathtub_stop
+    - bathtub_min_errors
+    - bathtub_voltage
+    - ed_measurement_mode
+    - ed_point_mode
+    - ed_point_voltage
+    - ed_point_phase
+    - ed_measurement_start
+    - ed_measurement_stop
+    - ed_enable_state
+    - eye_diagram_horizontal
+    - eye_diagram_pattern_length
+    - eye_diagram_start
+    - eye_diagram_stop
+    - eye_diagram_vertical
+    - ed_equalizer_boost
+    - ed_equalizer_boost_mode
+    - ed_pattern_logic
+    - ed_pattern_type
+    - error_inject
+  SOURce:
+    description: Source subsystem
+    commands:
+    - pattern_deemphasis
+    - pattern_deemphasis_cursor
+    - source_pattern_logic
+    - source_pattern_type
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T23:59:05.524666+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: 3fe1b1635b1ee169c9c582f9a465809ed559047532c5cdf86b52a667e8595303
+  confidence_score: 1.0

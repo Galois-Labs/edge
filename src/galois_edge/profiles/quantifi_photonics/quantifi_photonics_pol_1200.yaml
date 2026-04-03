@@ -1,0 +1,891 @@
+instrument:
+  manufacturer: Quantifi Photonics
+  model: POL 1200
+  class: polarization_controller
+  description: Polarization Controller
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics Ltd,POL-.*
+interfaces:
+- type: pxi
+- type: ethernet
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  clear_status:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_event_status_register:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Register
+  query_event_status_enable:
+    scpi: '*ESE?'
+    type: query
+    returns:
+      type: int
+      min: 0
+      max: 255
+    description: Query the Standard Event Status Enable Register (Mask)
+  set_event_status_enable:
+    scpi: '*ESE {value}'
+    type: write
+    params:
+      value:
+        type: int
+        min: 0
+        max: 255
+    description: Set the Standard Event Status Enable Register
+  self_test:
+    scpi: '*TST?'
+    type: query
+    returns:
+      type: int
+    description: Query the self-test status of all modules
+  reset:
+    scpi: '*RST'
+    type: write
+    description: Reset modules to default power-on settings
+  query_chassis:
+    scpi: :SYSTEM:CHASSIS?
+    type: query
+    returns:
+      type: string
+    description: Query the Chassis Mode configuration
+  query_chassis_list:
+    scpi: :SYSTEM:CHASSIS? LIST
+    type: query
+    returns:
+      type: string
+    description: Query list of valid chassis index numbers
+  query_chassis_mode:
+    scpi: :SYSTEM:CHASSIS? MODE
+    type: query
+    returns:
+      type: string
+    description: Query current Chassis Mode
+  set_chassis_mode:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set the Chassis Mode configuration
+  slot_self_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    description: Reset the module to default power-on settings
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query the slot identification
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 0
+        max: 18
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  wavelength:
+    getter: :POL{n}:WAVelength?
+    setter: :POL{n}:WAVelength {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      value:
+        type: float
+        unit: nm
+        min: 1200.0
+        max: 1400.0
+    returns:
+      type: float
+      unit: nm
+    description: Wavelength setting
+  query_wavelength_min:
+    scpi: :POL{n}:WAVelength? MIN
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: nm
+    description: Query minimum wavelength
+  query_wavelength_max:
+    scpi: :POL{n}:WAVelength? MAX
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: nm
+    description: Query maximum wavelength
+  query_wavelength_default:
+    scpi: :POL{n}:WAVelength? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: nm
+    description: Query default wavelength
+  query_wavelength_all:
+    scpi: :POL{n}:WAVelength? ALL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query all wavelength parameters
+  query_wavelength_step:
+    scpi: :POL{n}:WAVelength? STEP
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query wavelength step size
+  query_wavelength_unit:
+    scpi: :POL{n}:WAVelength? UNIT
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query wavelength unit
+  set_wavelength_min:
+    scpi: :POL{n}:WAVelength MIN
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set wavelength to minimum
+  set_wavelength_max:
+    scpi: :POL{n}:WAVelength MAX
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set wavelength to maximum
+  set_wavelength_default:
+    scpi: :POL{n}:WAVelength DEF
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set wavelength to default
+  operation_mode:
+    getter: :POL{n}:MODE?
+    setter: :POL{n}:MODE {mode}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      mode:
+        type: enum
+        options:
+        - '0'
+        - STOP
+        - '1'
+        - '2'
+        - '3'
+        - '4'
+    returns:
+      type: string
+    description: Operation mode setting
+  query_mode_default:
+    scpi: :POL{n}:MODE? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query default operation mode
+  query_mode_list:
+    scpi: :POL{n}:MODE? LIST
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query list of supported modes
+  query_mode_info:
+    scpi: :POL{n}:MODE? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query mode mapping information
+  theta_angle:
+    getter: :POL{n}:THETa?
+    setter: :POL{n}:THETa {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      value:
+        type: float
+        min: 0.0
+        max: 1.0
+    returns:
+      type: float
+    description: Theta angle setting (normalized 0.0-1.0)
+  query_theta_min:
+    scpi: :POL{n}:THETa? MIN
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query minimum theta angle
+  query_theta_max:
+    scpi: :POL{n}:THETa? MAX
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query maximum theta angle
+  query_theta_default:
+    scpi: :POL{n}:THETa? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query default theta angle
+  query_theta_all:
+    scpi: :POL{n}:THETa? ALL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query all theta angle parameters
+  query_theta_step:
+    scpi: :POL{n}:THETa? STEP
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query theta angle step size
+  set_theta_min:
+    scpi: :POL{n}:THETa MIN
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set theta angle to minimum
+  set_theta_max:
+    scpi: :POL{n}:THETa MAX
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set theta angle to maximum
+  set_theta_default:
+    scpi: :POL{n}:THETa DEF
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set theta angle to default
+  phi_angle:
+    getter: :POL{n}:PHI?
+    setter: :POL{n}:PHI {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      value:
+        type: float
+        min: 0.0
+        max: 1.0
+    returns:
+      type: float
+    description: Phi angle setting (normalized 0.0-1.0)
+  query_phi_min:
+    scpi: :POL{n}:PHI? MIN
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query minimum phi angle
+  query_phi_max:
+    scpi: :POL{n}:PHI? MAX
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query maximum phi angle
+  query_phi_default:
+    scpi: :POL{n}:PHI? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query default phi angle
+  query_phi_all:
+    scpi: :POL{n}:PHI? ALL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query all phi angle parameters
+  query_phi_step:
+    scpi: :POL{n}:PHI? STEP
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query phi angle step size
+  set_phi_min:
+    scpi: :POL{n}:PHI MIN
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set phi angle to minimum
+  set_phi_max:
+    scpi: :POL{n}:PHI MAX
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set phi angle to maximum
+  set_phi_default:
+    scpi: :POL{n}:PHI DEF
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set phi angle to default
+  scan_rate:
+    getter: :POL{n}:RATE?
+    setter: :POL{n}:RATE {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      value:
+        type: float
+        unit: S/S
+        min: 10
+        max: 600000
+    returns:
+      type: float
+      unit: S/S
+    description: Scan sampling rate
+  query_rate_min:
+    scpi: :POL{n}:RATE? MIN
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: S/S
+    description: Query minimum scan rate
+  query_rate_max:
+    scpi: :POL{n}:RATE? MAX
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: S/S
+    description: Query maximum scan rate
+  query_rate_default:
+    scpi: :POL{n}:RATE? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: S/S
+    description: Query default scan rate
+  query_rate_list:
+    scpi: :POL{n}:RATE? LIST
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query list of supported scan rates
+  query_rate_all:
+    scpi: :POL{n}:RATE? ALL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query all scan rate parameters
+  query_rate_step:
+    scpi: :POL{n}:RATE? STEP
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query scan rate step size
+  query_rate_unit:
+    scpi: :POL{n}:RATE? UNIT
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query scan rate unit
+  set_rate_min:
+    scpi: :POL{n}:RATE MIN
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set scan rate to minimum
+  set_rate_max:
+    scpi: :POL{n}:RATE MAX
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set scan rate to maximum
+  set_rate_default:
+    scpi: :POL{n}:RATE DEF
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Set scan rate to default
+  query_scan_data:
+    scpi: :SCAN{n}:DATA?
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Return all scan data from the data buffer
+  query_scan_data_full:
+    scpi: :SCAN{n}:DATA? FULL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Return scan data as comma-separated array
+  query_scan_data_info:
+    scpi: :SCAN{n}:DATA? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Return scan data points information
+  clear_scan_data:
+    scpi: :SCAN{n}:CLeaR
+    type: write
+    params:
+      n:
+        type: int
+        min: 1
+    description: Clear scan data buffer
+  query_rf_signal:
+    scpi: :INPut{n}:RF? ACT
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+      unit: V
+    description: Query the actual RF input signal
+  query_rf_step:
+    scpi: :INPut{n}:RF? STEP
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: float
+    description: Query RF signal step size
+  query_rf_unit:
+    scpi: :INPut{n}:RF? UNIT
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query RF signal unit
+  rf_impedance:
+    getter: :INPut{n}:IMPEdance?
+    setter: :INPut{n}:IMPEdance {value}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      value:
+        type: enum
+        options:
+        - DEF
+        - LOW
+        - HIGH
+    returns:
+      type: string
+    description: RF input impedance setting
+  query_impedance_default:
+    scpi: :INPut{n}:IMPEdance? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query default RF impedance
+  query_impedance_list:
+    scpi: :INPut{n}:IMPEdance? LIST
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query list of supported impedances
+  query_impedance_all:
+    scpi: :INPut{n}:IMPEdance? ALL
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query all impedance parameters
+  query_impedance_info:
+    scpi: :INPut{n}:IMPEdance? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query impedance mapping information
+  optimizer_mode:
+    getter: :POL{n}:OPTImizer:MODE?
+    setter: :POL{n}:OPTImizer:MODE {mode}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      mode:
+        type: enum
+        options:
+        - '0'
+        - MINimum
+        - '1'
+        - MAXimum
+        - '2'
+        - MAINtain
+        - DEF
+    returns:
+      type: string
+    description: Optimizer mode setting
+  query_optimizer_mode_default:
+    scpi: :POL{n}:OPTImizer:MODE? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query default optimizer mode
+  query_optimizer_mode_list:
+    scpi: :POL{n}:OPTImizer:MODE? LIST
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query list of supported optimizer modes
+  query_optimizer_mode_info:
+    scpi: :POL{n}:OPTImizer:MODE? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query optimizer mode mapping information
+  query_optimizer_lock:
+    scpi: :POL{n}:OPTImizer:MODE:LOCK?
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: int
+    description: Query optimization status of the signal
+  query_optimizer_lock_info:
+    scpi: :POL{n}:OPTImizer:MODE:LOCK? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query optimization lock status mapping
+  optimizer_type:
+    getter: :POL{n}:OPTImizer:TYPE?
+    setter: :POL{n}:OPTImizer:TYPE {type}
+    type: property
+    params:
+      n:
+        type: int
+        min: 1
+      type:
+        type: enum
+        options:
+        - '0'
+        - SGD
+        - '1'
+        - LM
+        - DEF
+    returns:
+      type: string
+    description: Optimizer type setting
+  query_optimizer_type_default:
+    scpi: :POL{n}:OPTImizer:TYPE? DEF
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query default optimizer type
+  query_optimizer_type_list:
+    scpi: :POL{n}:OPTImizer:TYPE? LIST
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query list of supported optimizer types
+  query_optimizer_type_info:
+    scpi: :POL{n}:OPTImizer:TYPE? INFO
+    type: query
+    params:
+      n:
+        type: int
+        min: 1
+    returns:
+      type: string
+    description: Query optimizer type mapping information
+subsystems:
+  POL:
+    description: Polarization control subsystem
+    commands:
+    - wavelength
+    - operation_mode
+    - theta_angle
+    - phi_angle
+    - scan_rate
+    - optimizer_mode
+    - optimizer_type
+  SCAN:
+    description: Scan data subsystem
+    commands:
+    - query_scan_data
+    - query_scan_data_full
+    - query_scan_data_info
+    - clear_scan_data
+  INPUT:
+    description: RF input subsystem
+    commands:
+    - query_rf_signal
+    - rf_impedance
+  SLOT:
+    description: Slot management subsystem
+    commands:
+    - slot_self_test
+    - slot_reset
+    - slot_operation_complete
+    - slot_identify
+    - slot_options
+  SYSTEM:
+    description: System configuration subsystem
+    commands:
+    - query_chassis
+    - set_chassis_mode
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T23:43:24.277151+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: d00662e5d88a09e2f618a26b771d347fb53daf850a4608020a63700b1e543e6d
+  confidence_score: 1.0

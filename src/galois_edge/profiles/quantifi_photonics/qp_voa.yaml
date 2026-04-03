@@ -1,0 +1,602 @@
+instrument:
+  manufacturer: QP
+  model: VOA
+  class: voa
+  description: Variable Optical Attenuator Series
+protocol: scpi
+identity:
+  query: '*IDN?'
+  pattern: Quantifi Photonics.*VOA.*
+interfaces:
+- type: pxi
+settings:
+  timeout_ms: 5000
+  terminator: '
+
+    '
+  opc_query: true
+commands:
+  clear:
+    scpi: '*CLS'
+    type: write
+    description: Clear session message queues
+  identify:
+    scpi: '*IDN?'
+    type: query
+    returns:
+      type: string
+    description: Query the CohesionSCPI service identification
+  operation_complete:
+    scpi: '*OPC?'
+    type: query
+    returns:
+      type: int
+    description: Query the Operation Complete Status
+  query_options:
+    scpi: '*OPT?'
+    type: query
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  query_event_status:
+    scpi: '*ESR?'
+    type: query
+    returns:
+      type: int
+    description: Query the Standard Event Status Register
+  slot_operation_complete:
+    scpi: :SLOT{slot}:OPC?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the Operation Complete Status of the module
+  slot_options:
+    scpi: :SLOT{slot}:OPTions?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the modules managed by the CohesionSCPI service
+  slot_identify:
+    scpi: :SLOT{slot}:IDN?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: string
+    description: Query the slot identification
+  slot_test:
+    scpi: :SLOT{slot}:TeST?
+    type: query
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the module self-test status
+  slot_reset:
+    scpi: :SLOT{slot}:ReSeT
+    type: write
+    params:
+      slot:
+        type: int
+        min: 1
+        max: 18
+    description: Reset the module to default power-on settings
+  trigger_delay:
+    getter: :TRIGger{trigger}:DELay? {param}
+    setter: :TRIGger{trigger}:DELay {value}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: s
+        min: 0.0
+        max: 10.0
+    returns:
+      type: float
+      unit: s
+    description: Trigger delay of the module in seconds
+  trigger_mode:
+    getter: :TRIGger{trigger}:MODE?
+    setter: :TRIGger{trigger}:MODE {mode}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - OR
+        - AND
+    returns:
+      type: string
+    description: Trigger Line event mode of the module
+  trigger_source:
+    getter: :TRIGger{trigger}:SOURce?
+    setter: :TRIGger{trigger}:SOURce {source}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      source:
+        type: string
+    returns:
+      type: string
+    description: Trigger Line(s) used for events
+  trigger_arm:
+    getter: :TRIGger{trigger}:ARM?
+    setter: :TRIGger{trigger}:ARM {state}
+    type: property
+    params:
+      trigger:
+        type: int
+        min: 1
+        max: 18
+      state:
+        type: enum
+        options:
+        - ENABLE
+        - DISABLE
+    returns:
+      type: string
+    description: Trigger ARMed state
+  control_mode:
+    getter: :CONTrol{source}:CHANnel{channel}:MODE?
+    setter: :CONTrol{source}:CHANnel{channel}:MODE {mode}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: enum
+        options:
+        - ATT
+        - POW
+    returns:
+      type: string
+    description: Control mode
+  attenuation_mode:
+    getter: :INPut{source}:CHANnel{channel}:AMODE?
+    setter: :INPut{source}:CHANnel{channel}:AMODE {mode}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      mode:
+        type: enum
+        options:
+        - ABS
+        - REL
+        - OFFSET
+    returns:
+      type: string
+    description: Attenuation mode
+  input_attenuation:
+    getter: :INPut{source}:CHANnel{channel}:ATTenuation? {param}
+    setter: :INPut{source}:CHANnel{channel}:ATTenuation {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: Input attenuation
+  input_offset:
+    getter: :INPut{source}:CHANnel{channel}:OFFSet? {param}
+    setter: :INPut{source}:CHANnel{channel}:OFFSet {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: Attenuation mode offset
+  input_power:
+    scpi: :INPut{source}:CHANnel{channel}:POWer? {param}
+    type: query
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+    returns:
+      type: float
+      unit: dBm
+    description: Query the input optical power
+  input_wavelength:
+    getter: :INPut{source}:CHANnel{channel}:WAVelength? {param}
+    setter: :INPut{source}:CHANnel{channel}:WAVelength {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: nm
+    returns:
+      type: float
+      unit: nm
+    description: Input optical wavelength configuration
+  output_offset:
+    getter: :OUTPut{source}:CHANnel{channel}:OFFSet? {param}
+    setter: :OUTPut{source}:CHANnel{channel}:OFFSet {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: dB
+    returns:
+      type: float
+      unit: dB
+    description: Output power offset
+  output_power:
+    getter: :OUTPut{source}:CHANnel{channel}:POWer? {param}
+    setter: :OUTPut{source}:CHANnel{channel}:POWer {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ACT
+        - ALL
+      value:
+        type: float
+        unit: dBm
+    returns:
+      type: float
+      unit: dBm
+    description: Output optical power
+  averaging_time:
+    getter: :OUTPut{source}:CHANnel{channel}:POWer:AVERagingtime? {param}
+    setter: :OUTPut{source}:CHANnel{channel}:POWer:AVERagingtime {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: Output power averaging time
+  nulling:
+    scpi: :OUTPut{source}:CHANnel{channel}:POWer:NULLing
+    type: write
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    description: Perform dark current nulling
+  nulling_time:
+    scpi: :OUTPut{source}:CHANnel{channel}:POWer:TIMEnulling?
+    type: query
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: float
+      unit: s
+    description: Query the amount of time remaining for dark current nulling to complete
+  trace_complete:
+    scpi: :OUTPut{source}:TRACE:CoMPlete?
+    type: query
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+    returns:
+      type: int
+    description: Query the trace completion status
+  trace_points:
+    getter: :OUTPut{source}:TRACE:PoinTS? {param}
+    setter: :OUTPut{source}:TRACE:PoinTS {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: int
+        min: 1
+        max: 1024
+    returns:
+      type: int
+    description: Number of trace buffer data elements
+  trace_rate:
+    getter: :OUTPut{source}:TRACE:RATE? {param}
+    setter: :OUTPut{source}:TRACE:RATE {value}
+    type: property
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      param:
+        type: enum
+        options:
+        - MIN
+        - MAX
+        - DEF
+        - SET
+        - ALL
+      value:
+        type: float
+        unit: Hz
+    returns:
+      type: float
+      unit: Hz
+    description: Trace buffer sampling rate
+  trace_trigger:
+    scpi: :OUTPut{source}:TRACE:TRIGger {mode}
+    type: write
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      mode:
+        type: enum
+        options:
+        - STOP
+        - IMMEDIATE
+        - FORCE
+        - SWEXT
+        - HWINT
+        - HWEXT
+        - HWCLK
+    description: Set the trace trigger mode
+  trace_data:
+    scpi: :OUTPut{source}:TRACE{channel}?
+    type: query
+    params:
+      source:
+        type: int
+        min: 1
+        max: 18
+      channel:
+        type: int
+        min: 1
+        max: 4
+    returns:
+      type: string
+    description: Query the trace buffer
+  chassis_query:
+    scpi: :SYSTEM:CHASSIS? {param}
+    type: query
+    params:
+      param:
+        type: enum
+        options:
+        - LIST
+        - MODE
+    returns:
+      type: string
+    description: Query the Chassis Mode configuration
+  chassis_mode:
+    scpi: :SYSTEM:CHASSIS {mode}
+    type: write
+    params:
+      mode:
+        type: enum
+        options:
+        - SINGLE
+        - MULTI
+    description: Set the Chassis Mode configuration
+subsystems:
+  CONTrol:
+    description: Control subsystem
+    commands:
+    - control_mode
+  INPut:
+    description: Input subsystem
+    commands:
+    - attenuation_mode
+    - input_attenuation
+    - input_offset
+    - input_power
+    - input_wavelength
+  OUTPut:
+    description: Output subsystem
+    commands:
+    - output_offset
+    - output_power
+    - averaging_time
+    - nulling
+    - nulling_time
+    - trace_complete
+    - trace_points
+    - trace_rate
+    - trace_trigger
+    - trace_data
+  TRIGger:
+    description: Trigger subsystem
+    commands:
+    - trigger_delay
+    - trigger_mode
+    - trigger_source
+    - trigger_arm
+  SLOT:
+    description: Slot subsystem
+    commands:
+    - slot_operation_complete
+    - slot_options
+    - slot_identify
+    - slot_test
+    - slot_reset
+provenance:
+  source: pdf_manual
+  generated_at: '2026-04-01T22:42:39.756246+00:00'
+  pipeline_version: 1.0.0
+  source_pdf_hash: d2e5fc932670b9e869b37f5001c32388b1755bc5c82758a349c426c8747d59aa
+  confidence_score: 1.0
