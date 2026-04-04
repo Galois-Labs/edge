@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import signal
 import sys
 import os
 
@@ -81,6 +82,16 @@ async def _run() -> None:
         daemon._command_handler = CommandHandler(sim_manager)
 
         # 3. Auto-discover and register simulated instruments
+        # Force specific profile assignments — the generic cohesion profile
+        # pattern is too broad and swallows all Quantifi IDN strings.
+        PROFILE_OVERRIDES = {
+            "TCPIP::192.168.1.10::5025::SOCKET": "quantifi_photonics_laser_1000",
+            "TCPIP::192.168.1.11::5025::SOCKET": "quantifi_photonics_switch",
+            "TCPIP::192.168.1.12::5025::SOCKET": "quantifi_photonics_voa",
+            "TCPIP::192.168.1.13::5025::SOCKET": "quantifi_photonics_power_1400",
+            "TCPIP::192.168.1.14::5025::SOCKET": "quantifi_photonics_osa_1000",
+        }
+
         try:
             from galois_edge.profile_loader import ProfileLoader
             profile_loader = ProfileLoader()
@@ -90,8 +101,16 @@ async def _run() -> None:
             for addr in sim_manager.list_resources():
                 sim_manager.connect(addr)
                 idn = sim_manager.identify(addr)
-                profile = profile_loader.match_instrument(idn)
-                daemon._capability_manager.add_instrument(
+
+                # Use forced profile for simulation, fall back to matching
+                forced_key = PROFILE_OVERRIDES.get(addr)
+                profile = None
+                if forced_key:
+                    profile = profile_loader.get_profile(forced_key)
+                if not profile:
+                    profile = profile_loader.match_instrument(idn)
+
+                daemon._capability_manager.register_instrument(
                     instrument_id=addr,
                     visa_address=addr,
                     idn_response=idn,
@@ -110,13 +129,13 @@ async def _run() -> None:
             for addr in sim_manager.list_resources():
                 sim_manager.connect(addr)
                 idn = sim_manager.identify(addr)
-                daemon._capability_manager.add_instrument(
+                daemon._capability_manager.register_instrument(
                     instrument_id=addr,
                     visa_address=addr,
                     idn_response=idn,
                 )
 
-        # 4. Start gRPC server
+        # 4. Start gRPC server (bind 0.0.0.0 for Docker networking)
         daemon._grpc_server = GRPCServer(
             instrument_manager=sim_manager,
             command_handler=daemon._command_handler,
@@ -127,11 +146,29 @@ async def _run() -> None:
             sdk_executor=daemon._sdk_executor,
             io_executor=daemon._io_executor,
         )
-        if not await daemon._grpc_server.start():
-            logger.error("Failed to start gRPC server")
-            return
 
-        logger.info("gRPC server listening on port %d", daemon._cfg.grpc_port)
+        # Override start() to bind 0.0.0.0 instead of 127.0.0.1
+        import grpc.aio as grpc_aio
+        from galois_edge import edge_pb2_grpc
+        grpc_srv = daemon._grpc_server
+        grpc_srv._server = grpc_aio.server(
+            options=[
+                ("grpc.max_send_message_length", 50 * 1024 * 1024),
+                ("grpc.max_receive_message_length", 50 * 1024 * 1024),
+                ("grpc.keepalive_time_ms", 30000),
+                ("grpc.keepalive_timeout_ms", 10000),
+                ("grpc.keepalive_permit_without_calls", True),
+                ("grpc.http2.max_pings_without_data", 0),
+            ],
+        )
+        edge_pb2_grpc.add_EdgeDaemonServiceServicer_to_server(
+            grpc_srv._servicer, grpc_srv._server,
+        )
+        listen_addr = f"0.0.0.0:{daemon._cfg.grpc_port}"
+        grpc_srv._server.add_insecure_port(listen_addr)
+        await grpc_srv._server.start()
+
+        logger.info("gRPC server listening on %s", listen_addr)
 
         # 5. Start WebSocket server
         daemon._ws_server = WebSocketServer(
@@ -155,7 +192,7 @@ async def _run() -> None:
             stop_event.set()
 
         loop = asyncio.get_running_loop()
-        for sig in (asyncio.signal.SIGINT, asyncio.signal.SIGTERM):
+        for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 loop.add_signal_handler(sig, _handle_signal)
             except NotImplementedError:
