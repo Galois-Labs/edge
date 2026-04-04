@@ -154,6 +154,7 @@ class CommandConfig:
     force_query: bool = False  # send getter as-is (no trailing '?')
     requires_sweep: bool = False  # safety interlock: must use StartSweep RPC
     sweep: Optional[SweepConfig] = None  # sweep/ramp configuration
+    waveform_assembly: Optional[Any] = None  # WaveformAssemblyConfig or None
 
     # ---- helpers -----------------------------------------------------------
 
@@ -592,6 +593,11 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
     if "sweep" in data and data["sweep"]:
         sweep = SweepConfig(**data["sweep"])
 
+    waveform_assembly = None
+    if "waveform_assembly" in data and data["waveform_assembly"]:
+        from .waveform_assembly import build_waveform_assembly_config
+        waveform_assembly = build_waveform_assembly_config(data["waveform_assembly"])
+
     return CommandConfig(
         scpi=data.get("scpi"),
         getter=data.get("getter"),
@@ -607,6 +613,7 @@ def _build_command(data: Dict[str, Any]) -> CommandConfig:
         force_query=data.get("force_query", False),
         requires_sweep=data.get("requires_sweep", False),
         sweep=sweep,
+        waveform_assembly=waveform_assembly,
     )
 
 

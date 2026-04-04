@@ -353,7 +353,7 @@ class StreamMeasurementRequest(_message.Message):
     def __init__(self, stream_id: _Optional[str] = ..., instrument_id: _Optional[str] = ..., command_name: _Optional[str] = ..., interval_ms: _Optional[int] = ..., timeout_ms: _Optional[int] = ..., parameters: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class MeasurementDataPoint(_message.Message):
-    __slots__ = ("stream_id", "value", "timestamp_ms", "unit", "error", "status", "values")
+    __slots__ = ("stream_id", "value", "timestamp_ms", "unit", "error", "status", "values", "vector_data")
     class ValuesEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -368,6 +368,7 @@ class MeasurementDataPoint(_message.Message):
     ERROR_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
     VALUES_FIELD_NUMBER: _ClassVar[int]
+    VECTOR_DATA_FIELD_NUMBER: _ClassVar[int]
     stream_id: str
     value: float
     timestamp_ms: int
@@ -375,7 +376,8 @@ class MeasurementDataPoint(_message.Message):
     error: str
     status: str
     values: _containers.ScalarMap[str, float]
-    def __init__(self, stream_id: _Optional[str] = ..., value: _Optional[float] = ..., timestamp_ms: _Optional[int] = ..., unit: _Optional[str] = ..., error: _Optional[str] = ..., status: _Optional[str] = ..., values: _Optional[_Mapping[str, float]] = ...) -> None: ...
+    vector_data: VectorData
+    def __init__(self, stream_id: _Optional[str] = ..., value: _Optional[float] = ..., timestamp_ms: _Optional[int] = ..., unit: _Optional[str] = ..., error: _Optional[str] = ..., status: _Optional[str] = ..., values: _Optional[_Mapping[str, float]] = ..., vector_data: _Optional[_Union[VectorData, _Mapping]] = ...) -> None: ...
 
 class StopStreamRequest(_message.Message):
     __slots__ = ("stream_id",)

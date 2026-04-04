@@ -11,8 +11,13 @@ __pycache__/
 .venv/
 venv/
 
-# Go
+# Go / build binaries
 galois-edge
+galois-edge-*
+*.exe
+
+# Generated
+pal_generated.code
 
 # Wrangler / Cloudflare local state
 .wrangler/

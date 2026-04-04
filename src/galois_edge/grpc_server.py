@@ -705,6 +705,259 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             scpi_command=dispatch,
         )
 
+    async def _execute_waveform_assembly(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        instrument_id: str,
+        command_id: str,
+        timeout_ms: int,
+        cmd_config: Any,
+        params: Optional[Dict[str, Any]],
+        start: float,
+    ) -> edge_pb2.ExecuteCommandResponse:
+        """Execute a waveform assembly command.
+
+        This handles the full SCPI oscilloscope waveform acquisition
+        pipeline: set source channel, set format, query preamble, query
+        binary data, decode, scale, and package as VectorData.
+        """
+        from .waveform_assembly import (
+            WaveformAssemblyConfig,
+            assemble_waveform_vector_data,
+        )
+        import struct as _struct
+
+        wf_config: WaveformAssemblyConfig = cmd_config.waveform_assembly
+        channel = "CHANnel1"
+        if params and "channel" in params:
+            channel = params["channel"]
+
+        # Step 1: Set waveform source channel
+        source_cmd = wf_config.source_command.format(channel=channel)
+        await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=source_cmd,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        # Step 2: Set data format
+        format_cmd = wf_config.format_command
+        await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=format_cmd,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        # Step 3: Query the preamble
+        preamble_result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=wf_config.preamble_query,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+                force_query=True,
+            ),
+        )
+
+        if not preamble_result["success"]:
+            elapsed_ms = int((time.time() - start) * 1000)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=f"Preamble query failed: {preamble_result.get('error', '')}",
+                execution_time_ms=elapsed_ms,
+                scpi_command=wf_config.preamble_query,
+            )
+
+        preamble_str = preamble_result["response"].strip()
+
+        # Step 4: Query binary waveform data
+        # Determine datatype from config
+        if wf_config.data_format == "word":
+            datatype = 'h'
+        elif wf_config.data_format == "float32":
+            datatype = 'f'
+        else:
+            datatype = 'B'  # unsigned byte
+
+        data_result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_binary_query(
+                scpi_cmd=wf_config.data_query,
+                instrument_id=instrument_id,
+                datatype=datatype,
+                is_big_endian=wf_config.big_endian,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        if not data_result["success"]:
+            elapsed_ms = int((time.time() - start) * 1000)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=f"Waveform data query failed: {data_result.get('error', '')}",
+                execution_time_ms=elapsed_ms,
+                scpi_command=wf_config.data_query,
+            )
+
+        # Step 5: Decode and scale using the preamble
+        # The binary query already decoded the IEEE block for us via
+        # query_binary_values, so data_result["data"] is a list of ints/floats.
+        # We use the preamble to apply scaling.
+        from .waveform_assembly import parse_preamble
+        preamble = parse_preamble(preamble_str)
+
+        raw_samples = data_result["data"]
+
+        # Apply scaling: y = (raw - yref) * yinc + yorig
+        voltages = [
+            (sample - preamble.yreference) * preamble.yincrement + preamble.yorigin
+            for sample in raw_samples
+        ]
+
+        # Pack as float64 for the proto
+        y_data = _struct.pack(f'<{len(voltages)}d', *voltages)
+
+        vector_data = edge_pb2.VectorData(
+            y_data=y_data,
+            y_dtype="float64",
+            y_length=len(voltages),
+            x_start=preamble.xorigin,
+            x_increment=preamble.xincrement,
+            x_unit=wf_config.x_unit,
+            y_unit=wf_config.y_unit,
+            x_name="Time",
+            y_scale=1.0,
+            y_offset=0.0,
+        )
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        return edge_pb2.ExecuteCommandResponse(
+            command_id=command_id,
+            success=True,
+            data="",
+            vector_data=vector_data,
+            error_message="",
+            execution_time_ms=elapsed_ms,
+            scpi_command=f"{wf_config.preamble_query} + {wf_config.data_query}",
+        )
+
+    async def _execute_waveform_assembly_for_stream(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        instrument_id: str,
+        timeout_ms: int,
+        cmd_config: Any,
+        params: Optional[Dict[str, Any]],
+    ) -> edge_pb2.VectorData:
+        """Execute waveform assembly and return just the VectorData.
+
+        Used by StreamMeasurement to produce VectorData for each poll
+        iteration.  Raises on failure.
+        """
+        from .waveform_assembly import (
+            WaveformAssemblyConfig,
+            parse_preamble,
+        )
+        import struct as _struct
+
+        wf_config: WaveformAssemblyConfig = cmd_config.waveform_assembly
+        channel = "CHANnel1"
+        if params and "channel" in params:
+            channel = params["channel"]
+
+        # Set source
+        source_cmd = wf_config.source_command.format(channel=channel)
+        await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=source_cmd,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        # Set format
+        await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=wf_config.format_command,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+            ),
+        )
+
+        # Query preamble
+        preamble_result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_command(
+                scpi_cmd=wf_config.preamble_query,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+                force_query=True,
+            ),
+        )
+        if not preamble_result["success"]:
+            raise RuntimeError(
+                f"Preamble query failed: {preamble_result.get('error', '')}"
+            )
+
+        preamble_str = preamble_result["response"].strip()
+        preamble = parse_preamble(preamble_str)
+
+        # Query binary data
+        if wf_config.data_format == "word":
+            datatype = 'h'
+        elif wf_config.data_format == "float32":
+            datatype = 'f'
+        else:
+            datatype = 'B'
+
+        data_result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_binary_query(
+                scpi_cmd=wf_config.data_query,
+                instrument_id=instrument_id,
+                datatype=datatype,
+                is_big_endian=wf_config.big_endian,
+                timeout_ms=timeout_ms,
+            ),
+        )
+        if not data_result["success"]:
+            raise RuntimeError(
+                f"Waveform data query failed: {data_result.get('error', '')}"
+            )
+
+        raw_samples = data_result["data"]
+        voltages = [
+            (sample - preamble.yreference) * preamble.yincrement + preamble.yorigin
+            for sample in raw_samples
+        ]
+
+        y_data = _struct.pack(f'<{len(voltages)}d', *voltages)
+
+        return edge_pb2.VectorData(
+            y_data=y_data,
+            y_dtype="float64",
+            y_length=len(voltages),
+            x_start=preamble.xorigin,
+            x_increment=preamble.xincrement,
+            x_unit=wf_config.x_unit,
+            y_unit=wf_config.y_unit,
+            x_name="Time",
+            y_scale=1.0,
+            y_offset=0.0,
+        )
+
     def _apply_response_processing(
         self,
         raw_response: str,
@@ -876,6 +1129,18 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             else:
                 # SCPI path -- dispatch is the formatted SCPI string
                 scpi_label = dispatch
+
+                # --- Waveform assembly path (SCPI oscilloscopes) ---
+                if cmd_config and cmd_config.waveform_assembly:
+                    return await self._execute_waveform_assembly(
+                        loop=loop,
+                        instrument_id=instrument_id,
+                        command_id=command_id,
+                        timeout_ms=timeout_ms,
+                        cmd_config=cmd_config,
+                        params=params,
+                        start=start,
+                    )
 
                 # --- Vector / binary query path ---
                 if (
@@ -1199,6 +1464,8 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             return
 
         is_sdk = isinstance(dispatch, SDKCommandRequest)
+        is_waveform_assembly = bool(cmd.waveform_assembly)
+        stream_params = dict(request.parameters) if request.parameters else None
         interval_s = interval_ms / 1000.0
         loop = asyncio.get_running_loop()
 
@@ -1210,7 +1477,27 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 loop_start = time.time()
 
                 try:
-                    if is_sdk:
+                    # --- Waveform assembly path (SCPI oscilloscopes) ---
+                    if is_waveform_assembly:
+                        vector_data = await self._execute_waveform_assembly_for_stream(
+                            loop=loop,
+                            instrument_id=instrument_id,
+                            timeout_ms=5000,
+                            cmd_config=cmd,
+                            params=stream_params,
+                        )
+                        ts_ms = int(time.time() * 1000)
+                        yield edge_pb2.MeasurementDataPoint(
+                            stream_id=stream_id,
+                            value=0.0,
+                            timestamp_ms=ts_ms,
+                            unit=unit,
+                            error="",
+                            status="ok",
+                            vector_data=vector_data,
+                        )
+
+                    elif is_sdk:
                         if not self._sdk_executor:
                             raise ValueError("SDK executor not available")
                         result = await loop.run_in_executor(
@@ -1234,62 +1521,63 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                             ),
                         )
 
-                    ts_ms = int(time.time() * 1000)
+                    if not is_waveform_assembly:
+                        ts_ms = int(time.time() * 1000)
 
-                    if result["success"]:
-                        raw = result["response"].strip()
-                        # Apply response parser before float conversion
-                        raw = self._apply_response_processing(
-                            raw, instrument_id, command_name
-                        )
-                        values_map: Dict[str, float] = {}
-
-                        if has_fields:
-                            parts = raw.split(separator)
-                            for i, field_def in enumerate(
-                                cmd.returns.fields
-                            ):
-                                if i < len(parts):
-                                    fname = (
-                                        field_def.get("name", f"field_{i}")
-                                        if isinstance(field_def, dict)
-                                        else getattr(
-                                            field_def, "name", f"field_{i}"
-                                        )
-                                    )
-                                    try:
-                                        values_map[fname] = float(
-                                            parts[i].strip()
-                                        )
-                                    except ValueError:
-                                        values_map[fname] = 0.0
-
-                        # Primary value
-                        try:
-                            primary = float(
-                                raw.split(separator)[0].strip()
+                        if result["success"]:
+                            raw = result["response"].strip()
+                            # Apply response parser before float conversion
+                            raw = self._apply_response_processing(
+                                raw, instrument_id, command_name
                             )
-                        except (ValueError, IndexError):
-                            primary = 0.0
+                            values_map: Dict[str, float] = {}
 
-                        yield edge_pb2.MeasurementDataPoint(
-                            stream_id=stream_id,
-                            value=primary,
-                            timestamp_ms=ts_ms,
-                            unit=unit,
-                            error="",
-                            status="ok",
-                            values=values_map,
-                        )
-                    else:
-                        yield edge_pb2.MeasurementDataPoint(
-                            stream_id=stream_id,
-                            value=0.0,
-                            timestamp_ms=ts_ms,
-                            unit=unit,
-                            error=result["error"],
-                            status="error",
-                        )
+                            if has_fields:
+                                parts = raw.split(separator)
+                                for i, field_def in enumerate(
+                                    cmd.returns.fields
+                                ):
+                                    if i < len(parts):
+                                        fname = (
+                                            field_def.get("name", f"field_{i}")
+                                            if isinstance(field_def, dict)
+                                            else getattr(
+                                                field_def, "name", f"field_{i}"
+                                            )
+                                        )
+                                        try:
+                                            values_map[fname] = float(
+                                                parts[i].strip()
+                                            )
+                                        except ValueError:
+                                            values_map[fname] = 0.0
+
+                            # Primary value
+                            try:
+                                primary = float(
+                                    raw.split(separator)[0].strip()
+                                )
+                            except (ValueError, IndexError):
+                                primary = 0.0
+
+                            yield edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=primary,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error="",
+                                status="ok",
+                                values=values_map,
+                            )
+                        else:
+                            yield edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=0.0,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error=result["error"],
+                                status="error",
+                            )
 
                 except Exception as exc:
                     yield edge_pb2.MeasurementDataPoint(
