@@ -281,6 +281,7 @@ commands:
   sweep_wavelength_data:
     scpi: :SENSe{slot}:CHANnel{channel}:SWEep:WAVelength? {data_type}
     type: query
+    streamable: true
     params:
       slot:
         type: int
@@ -303,6 +304,7 @@ commands:
   sweep_frequency_data:
     scpi: :SENSe{slot}:CHANnel{channel}:SWEep:FREQuency? {data_type}
     type: query
+    streamable: true
     params:
       slot:
         type: int
@@ -351,6 +353,7 @@ commands:
   calculate_osnr:
     scpi: :CALCulate{slot}:CATegory{category}:OSNR? {pth},{noise},{mask},{nbw},{sbw}
     type: query
+    streamable: true
     params:
       slot:
         type: int

@@ -105,6 +105,7 @@ commands:
   measure_power:
     scpi: :SENSe{slot}:CHANnel{channel}:POWer? {param}
     type: query
+    streamable: true
     params:
       slot:
         type: int
@@ -334,6 +335,7 @@ commands:
   query_trace:
     scpi: :SENSe{slot}:TRACE{channel}?
     type: query
+    streamable: true
     params:
       slot:
         type: int

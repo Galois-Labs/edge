@@ -259,6 +259,7 @@ commands:
   temperature:
     scpi: :SOURce{source}:CHANnel{channel}:TEMPerature?
     type: query
+    streamable: true
     params:
       source:
         type: int

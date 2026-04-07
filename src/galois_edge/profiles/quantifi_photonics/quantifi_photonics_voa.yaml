@@ -154,6 +154,7 @@ commands:
   query_attenuation:
     scpi: :INPut{slot}:CHANnel{channel}:ATTenuation? {param}
     type: query
+    streamable: true
     params:
       slot:
         type: int
@@ -241,6 +242,7 @@ commands:
   query_input_power:
     scpi: :INPut{slot}:CHANnel{channel}:POWer? {param}
     type: query
+    streamable: true
     params:
       slot:
         type: int
@@ -354,6 +356,7 @@ commands:
   query_output_power:
     scpi: :OUTPut{slot}:CHANnel{channel}:POWer? {param}
     type: query
+    streamable: true
     params:
       slot:
         type: int
