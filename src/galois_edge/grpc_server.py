@@ -1185,9 +1185,11 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             separator = cmd.returns.separator
 
         # Resolve the SCPI/SDK dispatch once
+        params = dict(request.parameters) if request.parameters else None
         dispatch = self._capability_manager.resolve_command(
             instrument_id=instrument_id,
             command_name=command_name,
+            params=params,
             is_query=True,
         )
         if dispatch is None:
