@@ -11,8 +11,10 @@ __pycache__/
 .venv/
 venv/
 
-# Go
+# Go binaries (all platforms)
 galois-edge
+galois-edge-*
+*.exe
 
 # Wrangler / Cloudflare local state
 .wrangler/
@@ -34,7 +36,9 @@ Thumbs.db
 
 # Node (if any)
 node_modules/
-galois-edge-linux-arm64
-galois-edge.exe
+
+# Large generated/cached files
 src/galois_edge/profiles/_cache.pkl
 pal_generated.code
+*.pkl
+*.db
