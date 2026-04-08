@@ -6,7 +6,7 @@ instrument:
 protocol: scpi
 identity:
   query: '*IDN?'
-  pattern: Quantifi Photonics,.*OSA.*
+  pattern: Quantifi Photonics,.*OSA.?1000.*
 interfaces:
 - type: ethernet
 settings:

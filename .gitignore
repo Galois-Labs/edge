@@ -34,3 +34,7 @@ Thumbs.db
 
 # Node (if any)
 node_modules/
+galois-edge-linux-arm64
+galois-edge.exe
+src/galois_edge/profiles/_cache.pkl
+pal_generated.code

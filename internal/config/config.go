@@ -54,6 +54,13 @@ type Config struct {
 	// BackendURL is the cloud backend URL for registration and heartbeat.
 	BackendURL string
 
+	// RelayURL is the WebSocket URL for the relay endpoint. When set, the
+	// daemon maintains a persistent WebSocket connection to the backend so
+	// that the backend can send instrument commands even when direct gRPC
+	// dial fails. If empty but BackendURL is set, it is derived automatically
+	// by replacing http(s):// with ws(s):// and appending /api/v1/relay/ws.
+	RelayURL string
+
 	// RegistrationToken is the one-time token for initial edge registration.
 	RegistrationToken string
 
@@ -147,6 +154,13 @@ type Config struct {
 
 	// LogLevel controls the daemon log level (debug, info, warn, error).
 	LogLevel string
+
+	// ---------- Passthrough ----------
+
+	// Extra holds config.env keys that are not recognized by the Go
+	// supervisor. They are passed through as environment variables to
+	// the Python child process (e.g. DEMO_MODE, MODBUS_INSTRUMENTS).
+	Extra map[string]string
 }
 
 // --------------------------------------------------------------------------
@@ -176,6 +190,7 @@ var fieldMapping = []fieldEntry{
 
 	// Backend registration
 	{"BACKEND_URL", "BackendURL"},
+	{"RELAY_URL", "RelayURL"},
 	{"REGISTRATION_TOKEN", "RegistrationToken"},
 	{"HEARTBEAT_INTERVAL_SEC", "HeartbeatIntervalSec"},
 
@@ -358,6 +373,7 @@ func LoadFromFile(path string) (*Config, error) {
 	if err := applyMap(cfg, kvs); err != nil {
 		return nil, fmt.Errorf("config %s: %w", path, err)
 	}
+	collectExtra(cfg, kvs)
 	return cfg, nil
 }
 
@@ -563,6 +579,7 @@ func (c *Config) Save(path string) error {
 
 	section("Backend registration", []kv{
 		{"BACKEND_URL", c.BackendURL},
+		{"RELAY_URL", c.RelayURL},
 		{"REGISTRATION_TOKEN", c.RegistrationToken},
 		{"HEARTBEAT_INTERVAL_SEC", itoa(c.HeartbeatIntervalSec)},
 	})
@@ -792,6 +809,23 @@ func applyMap(cfg *Config, kvs map[string]string) error {
 	return nil
 }
 
+// collectExtra stores any config file keys that are not in fieldMapping
+// into cfg.Extra so they can be passed through to the Python child.
+func collectExtra(cfg *Config, kvs map[string]string) {
+	known := make(map[string]bool, len(fieldMapping))
+	for _, m := range fieldMapping {
+		known[m.key] = true
+	}
+	for k, v := range kvs {
+		if !known[k] {
+			if cfg.Extra == nil {
+				cfg.Extra = make(map[string]string)
+			}
+			cfg.Extra[k] = v
+		}
+	}
+}
+
 // --------------------------------------------------------------------------
 // Field setters / getters by name
 // --------------------------------------------------------------------------
@@ -808,6 +842,8 @@ func setField(cfg *Config, name, val string) error {
 		cfg.PythonBin = val
 	case "BackendURL":
 		cfg.BackendURL = val
+	case "RelayURL":
+		cfg.RelayURL = val
 	case "RegistrationToken":
 		cfg.RegistrationToken = val
 	case "TailscaleAuthKey":
@@ -898,6 +934,8 @@ func getFieldStr(cfg *Config, name string) string {
 		return itoa(cfg.WSInternalPort)
 	case "BackendURL":
 		return cfg.BackendURL
+	case "RelayURL":
+		return cfg.RelayURL
 	case "RegistrationToken":
 		return cfg.RegistrationToken
 	case "HeartbeatIntervalSec":
