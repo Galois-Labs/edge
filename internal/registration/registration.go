@@ -21,6 +21,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -380,6 +381,7 @@ type registerPayload struct {
 	Name        string           `json:"name"`
 	Hostname    string           `json:"hostname"`
 	TailnetIP   string           `json:"tailnet_ip,omitempty"`
+	LanIP       string           `json:"lan_ip,omitempty"`
 	GRPCPort    int              `json:"grpc_port"`
 	WSPort      int              `json:"ws_port"`
 	Version     string           `json:"version,omitempty"`
@@ -404,6 +406,7 @@ type RegisterResult struct {
 
 type heartbeatPayload struct {
 	TailnetIP   string           `json:"tailnet_ip,omitempty"`
+	LanIP       string           `json:"lan_ip,omitempty"`
 	Status      string           `json:"status"`
 	Instruments []InstrumentInfo `json:"instruments,omitempty"`
 }
@@ -425,6 +428,7 @@ func (m *Manager) doRegister(ctx context.Context) (*registerResponse, int, error
 		Name:        m.cfg.EdgeName,
 		Hostname:    m.cfg.Hostname,
 		TailnetIP:   m.cfg.IPFunc(),
+		LanIP:       localOutboundIP(),
 		GRPCPort:    m.cfg.GRPCPort,
 		WSPort:      m.cfg.WSPort,
 		Version:     m.cfg.Version,
@@ -527,6 +531,7 @@ func (m *Manager) heartbeat(ctx context.Context) error {
 
 	payload := heartbeatPayload{
 		TailnetIP: m.cfg.IPFunc(),
+		LanIP:     localOutboundIP(),
 		Status:    "online",
 	}
 
@@ -663,4 +668,17 @@ func (m *Manager) calcBackoff() time.Duration {
 	total := base + jitter
 
 	return time.Duration(total * float64(time.Second))
+}
+
+// localOutboundIP returns the LAN IP address that this machine would
+// use to reach the internet. Used as a fallback when tsnet is not
+// running so the cloud backend can still reach the daemon over the LAN.
+func localOutboundIP() string {
+	conn, err := net.Dial("udp4", "8.8.8.8:80")
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	addr := conn.LocalAddr().(*net.UDPAddr)
+	return addr.IP.String()
 }
