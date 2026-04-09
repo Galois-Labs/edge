@@ -104,6 +104,7 @@ commands:
     getter: :ROUTe{route}:CHANnel{channel}:STATE? {mode}
     setter: :ROUTe{route}:CHANnel{channel}:STATE {value}
     type: property
+    streamable: true
     params:
       route:
         type: int

@@ -97,6 +97,7 @@ commands:
     getter: :SOURce{source}:CHANnel{channel}:POWer? {param}
     setter: :SOURce{source}:CHANnel{channel}:POWer {value}
     type: property
+    streamable: true
     params:
       source:
         type: int
@@ -125,6 +126,7 @@ commands:
     getter: :SOURce{source}:CHANnel{channel}:WAVelength? {param}
     setter: :SOURce{source}:CHANnel{channel}:WAVelength {value}
     type: property
+    streamable: true
     params:
       source:
         type: int
