@@ -18,9 +18,30 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from .bench import SimulationBench
+from .bench import IL_SWITCH, SimulationBench
 
 logger = logging.getLogger(__name__)
+
+
+# Regex for tokens like "1550", "1550NM", "0.1S", "-3.5DB", "1e-6", "1.55012e-06M".
+_NUMERIC_WITH_UNIT = re.compile(
+    r'^([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)([A-Z]+)?$'
+)
+
+
+def _parse_value_with_glued_unit(token: str) -> Optional[float]:
+    """Parse '1550', '1550NM', '0.1S', '-3.5DB' into a float.
+
+    Returns None if the token cannot be parsed as a numeric value
+    (optionally followed by a unit suffix).
+    """
+    m = _NUMERIC_WITH_UNIT.match(token)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            return None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +172,8 @@ class _LaserHandler:
             return "1"
         if n == "*OPT?":
             return "0"
+        if n == "*ESR?":
+            return "0"
 
         # Output state
         if "STATE?" in n:
@@ -180,6 +203,30 @@ class _LaserHandler:
                 self.bench.laser.wavelength = float(val)
             except ValueError:
                 pass
+            return None
+
+        # Frequency fine offset — MUST come before the plain FREQ branches,
+        # otherwise "FREQ:FINE 100e6" would be interpreted as a plain
+        # frequency set and corrupt the stored wavelength.
+        if "FREQ" in n and "FINE" in n and "?" in n:
+            return str(self.bench.laser.frequency_fine)
+        if "FREQ" in n and "FINE" in n and "?" not in n:
+            try:
+                self.bench.laser.frequency_fine = float(n.split()[-1])
+            except ValueError:
+                pass
+            return None
+
+        # Frequency grid spacing — just acknowledge, no physical effect.
+        if ":GRID" in n and "?" in n:
+            return "50e9"
+        if ":GRID" in n:
+            return None
+
+        # Whisper (low-noise) mode — acknowledge as OFF.
+        if "WHIS" in n and "?" in n:
+            return "OFF"
+        if "WHIS" in n:
             return None
 
         # Frequency
@@ -231,6 +278,8 @@ class _SwitchHandler:
             return "1"
         if n == "*OPT?":
             return "0"
+        if n == "*ESR?":
+            return "0"
 
         route = idx.get("route", 1)
         channel = idx.get("channel", 1)
@@ -281,6 +330,30 @@ class _VOAHandler:
             return "1"
         if n == "*OPT?":
             return "0"
+        if n == "*ESR?":
+            return "0"
+
+        # Attenuation mode (AMODE) — MUST come before the MODE check (which
+        # is a substring of AMODE) and before the ATT check (since ":AMODE"
+        # also contains "A").
+        if "AMODE?" in n:
+            return self.bench.voa.amode
+        if "AMODE" in n and "?" not in n:
+            val = n.split()[-1]
+            if val in ("ABS", "REL", "OFFSET"):
+                self.bench.voa.amode = val
+            return None
+
+        # Control mode — MUST come before the ATT branches, otherwise a
+        # setter like ":CONTrol1:CHANnel1:MODE ATT" is caught by the ATT
+        # set branch which then fails to parse "ATT" as a float.
+        if "MODE?" in n:
+            return self.bench.voa.mode
+        if "MODE" in n and "?" not in n:
+            val = n.split()[-1]
+            if val in ("ATT", "POW"):
+                self.bench.voa.mode = val
+            return None
 
         # Attenuation query
         if "ATT" in n and "?" in n:
@@ -299,7 +372,18 @@ class _VOAHandler:
                     continue
             return None
 
-        # Output power query (built-in monitor)
+        # Input power query — pre-attenuation (laser - switch IL). MUST
+        # come before the bare POW? check.
+        if "INPUT" in n and "POW" in n and "?" in n:
+            if not self.bench.laser.output:
+                return "-60.0"
+            return str(round(self.bench.laser.power - IL_SWITCH, 3))
+
+        # Output power query — post-attenuation (laser - switch IL - VOA att).
+        if "OUTPUT" in n and "POW" in n and "?" in n:
+            return str(round(self.bench.compute_voa_output_power(), 3))
+
+        # Bare power query fallback (built-in monitor)
         if "POW" in n and "?" in n:
             return str(round(self.bench.compute_voa_output_power(), 3))
         # Output power set
@@ -320,24 +404,6 @@ class _VOAHandler:
                     break
                 except ValueError:
                     continue
-            return None
-
-        # Control mode
-        if "MODE?" in n:
-            return self.bench.voa.mode
-        if "MODE" in n and "?" not in n:
-            val = n.split()[-1]
-            if val in ("ATT", "POW"):
-                self.bench.voa.mode = val
-            return None
-
-        # Attenuation mode
-        if "AMODE?" in n:
-            return self.bench.voa.amode
-        if "AMODE" in n and "?" not in n:
-            val = n.split()[-1]
-            if val in ("ABS", "REL", "OFFSET"):
-                self.bench.voa.amode = val
             return None
 
         # Offset
@@ -414,47 +480,100 @@ class _PowerMeterHandler:
             return "1"
         if n == "*OPT?":
             return "0"
+        if n == "*ESR?":
+            return "0"
 
         channel = idx.get("channel", 1)
 
-        # Power measurement
+        # Power offset — MUST be checked BEFORE the bare "POW in n and ? in n"
+        # branch, otherwise ":POWer:OFFSet?" would return the computed power
+        # reading instead of the stored offset.
+        if "POW" in n and "OFFS" in n and "?" in n:
+            return str(self.bench.power_meter.offset)
+        if "POW" in n and "OFFS" in n:
+            parts = n.split()
+            for p in reversed(parts):
+                if p in ("DB", "MDB"):
+                    continue
+                parsed = _parse_value_with_glued_unit(p)
+                if parsed is not None:
+                    self.bench.power_meter.offset = parsed
+                    break
+            return None
+
+        # Averaging time — must also precede the bare POW? check, and the
+        # profile renders the value/unit glued together ("0.1S").
+        if "POW" in n and "AVER" in n and "?" in n:
+            return str(self.bench.power_meter.averaging_time)
+        if "POW" in n and "AVER" in n:
+            parts = n.split()
+            for p in reversed(parts):
+                if p in ("S", "MS", "US", "NS"):
+                    continue
+                parsed = _parse_value_with_glued_unit(p)
+                if parsed is not None:
+                    self.bench.power_meter.averaging_time = parsed
+                    break
+            return None
+
+        # Time-nulling query — must precede POW?.
+        if "POW" in n and "TIME" in n and "NULL" in n and "?" in n:
+            return "0.0"
+
+        # Nulling write (no ? so not caught by POW+?)
+        if "POW" in n and "NULL" in n:
+            return None
+
+        # Power measurement (bare query — comes AFTER the specific sub-command
+        # checks above).
         if "POW?" in n or ("POW" in n and "?" in n):
             power = self.bench.compute_received_power(channel)
             return str(round(power, 3))
-        # Power offset
+
+        # Power offset (legacy OFFS-only branch, now also used for non-POW
+        # offset commands if any exist).
         if "OFFS" in n and "?" in n:
             return str(self.bench.power_meter.offset)
         if "OFFS" in n:
-            val = n.split()[-1]
-            try:
-                self.bench.power_meter.offset = float(val)
-            except ValueError:
-                pass
+            parts = n.split()
+            for p in reversed(parts):
+                if p in ("DB", "MDB"):
+                    continue
+                parsed = _parse_value_with_glued_unit(p)
+                if parsed is not None:
+                    self.bench.power_meter.offset = parsed
+                    break
             return None
 
         # Nulling
         if "NULL" in n:
             return None
 
-        # Averaging time
+        # Averaging time (bare fallback)
         if "AVER" in n and "?" in n:
-            return "0.1"
+            return str(self.bench.power_meter.averaging_time)
         if "AVER" in n:
             return None
 
-        # Wavelength
+        # Wavelength — profile renders "{value}{unit}" (glued, e.g. "1550NM").
         if "WAV" in n and "?" in n:
             return str(self.bench.power_meter.wavelength)
         if "WAV" in n:
-            parts = n.split()
-            for p in reversed(parts):
-                if p in ("NM", "M", "MM", "UM", "PM"):
-                    continue
-                try:
-                    self.bench.power_meter.wavelength = float(p)
-                    break
-                except ValueError:
-                    continue
+            val_str = n.split()[-1]
+            parsed = _parse_value_with_glued_unit(val_str)
+            if parsed is not None:
+                self.bench.power_meter.wavelength = parsed
+            else:
+                # Fallback for space-separated value/unit
+                parts = n.split()
+                for p in reversed(parts):
+                    if p in ("NM", "M", "MM", "UM", "PM"):
+                        continue
+                    try:
+                        self.bench.power_meter.wavelength = float(p)
+                        break
+                    except ValueError:
+                        continue
             return None
 
         # Trace
@@ -514,6 +633,8 @@ class _OSAHandler:
         if n == "*OPC?":
             return "1"
         if n == "*OPT?":
+            return "0"
+        if n == "*ESR?":
             return "0"
 
         # Initiate sweep
