@@ -216,6 +216,87 @@ class TestFormatScpiWithMap:
 
 
 # ---------------------------------------------------------------------------
+# Property-command setter -> getter fallback
+# (defensive fix for clients that hardcode is_query=False on property reads)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatScpiPropertyFallback:
+    """Test that property commands fall back to the getter template when the
+    setter is invoked with no value (e.g., CommandPanel hardcoding
+    is_query=False)."""
+
+    def test_format_scpi_property_read_without_value_param_uses_getter(self):
+        """Property setter invoked with no value -> falls back to getter."""
+        cmd = CommandConfig(
+            getter=":SOURce1:POWer? {param}",
+            setter=":SOURce1:POWer {value}",
+            type="property",
+            params={
+                "param": ParameterConfig(type="string"),
+                "value": ParameterConfig(type="float"),
+            },
+        )
+        # Simulates broken CommandPanel path: is_query=False but no `value`.
+        result = cmd.format_scpi(params={"param": "ACT"}, is_query=False)
+        assert result == ":SOURce1:POWer? ACT"
+        assert "{value}" not in result
+
+    def test_format_scpi_property_write_with_value_param_uses_setter(self):
+        """Property setter invoked WITH value -> uses setter normally."""
+        cmd = CommandConfig(
+            getter=":SOURce1:POWer? {param}",
+            setter=":SOURce1:POWer {value}",
+            type="property",
+            params={
+                "param": ParameterConfig(type="string"),
+                "value": ParameterConfig(type="float"),
+            },
+        )
+        result = cmd.format_scpi(params={"value": "10.0"}, is_query=False)
+        assert result == ":SOURce1:POWer 10.0"
+
+    def test_format_scpi_property_explicit_query_uses_getter(self):
+        """Explicit is_query=True always uses the getter."""
+        cmd = CommandConfig(
+            getter=":SOURce1:POWer? {param}",
+            setter=":SOURce1:POWer {value}",
+            type="property",
+            params={
+                "param": ParameterConfig(type="string"),
+                "value": ParameterConfig(type="float"),
+            },
+        )
+        result = cmd.format_scpi(params={"param": "ACT"}, is_query=True)
+        assert result == ":SOURce1:POWer? ACT"
+
+    def test_format_scpi_non_property_unaffected(self):
+        """Non-property commands always use the scpi field, regardless of is_query."""
+        cmd = CommandConfig(
+            scpi=":MEASure:POWer?",
+            type="query",
+        )
+        # is_query=True
+        assert cmd.format_scpi(is_query=True) == ":MEASure:POWer?"
+        # is_query=False (the type is "query", so no fallback should happen)
+        assert cmd.format_scpi(is_query=False) == ":MEASure:POWer?"
+
+    def test_format_scpi_property_no_getter_no_fallback(self):
+        """If a property has no getter, the unresolved setter is returned as-is
+        (no fallback possible). This preserves prior behavior."""
+        cmd = CommandConfig(
+            setter=":SOURce1:POWer {value}",
+            type="property",
+            params={
+                "value": ParameterConfig(type="float"),
+            },
+        )
+        result = cmd.format_scpi(params={}, is_query=False)
+        # Unresolved placeholder remains; no getter to fall back to.
+        assert result == ":SOURce1:POWer {value}"
+
+
+# ---------------------------------------------------------------------------
 # SweepConfig and requires_sweep
 # ---------------------------------------------------------------------------
 
