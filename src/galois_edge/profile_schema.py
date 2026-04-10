@@ -12,9 +12,12 @@ so callers get clear error messages during profile loading.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -230,18 +233,39 @@ class CommandConfig:
         scpi = self.get_scpi_string(is_query)
         if scpi is None:
             raise ValueError("No SCPI string available for this command")
-        if params and self.params:
-            for key, value in params.items():
-                # Apply map transformation if available (forward-map only:
-                # label -> wire value on writes)
-                pc = self.params.get(key)
-                if pc and pc.map and str(value) in pc.map:
-                    value = pc.map[str(value)]
-                scpi = scpi.replace(f"{{{key}}}", str(value))
-        elif params:
-            for key, value in params.items():
-                scpi = scpi.replace(f"{{{key}}}", str(value))
-        return scpi
+
+        def _substitute(template: str) -> str:
+            if params and self.params:
+                for key, value in params.items():
+                    # Apply map transformation if available (forward-map only:
+                    # label -> wire value on writes)
+                    pc = self.params.get(key)
+                    if pc and pc.map and str(value) in pc.map:
+                        value = pc.map[str(value)]
+                    template = template.replace(f"{{{key}}}", str(value))
+            elif params:
+                for key, value in params.items():
+                    template = template.replace(f"{{{key}}}", str(value))
+            return template
+
+        resolved = _substitute(scpi)
+
+        # Property-command fallback: if the setter still has unresolved
+        # placeholders AND we have a getter, the caller almost certainly
+        # meant to read. Fall back to the getter template.
+        if (
+            self.type == "property"
+            and not is_query
+            and "{" in resolved
+            and self.getter is not None
+        ):
+            logger.info(
+                "Property command setter has unresolved placeholders; "
+                "falling back to getter template (likely a read with is_query=False)"
+            )
+            return _substitute(self.getter)
+
+        return resolved
 
     def validate(self) -> None:
         """Check internal consistency."""
