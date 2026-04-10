@@ -42,6 +42,7 @@ class LaserState:
     output: bool = False
     source: int = 1
     channel: int = 1
+    frequency_fine: float = 0.0     # Hz, fine-tune offset around grid point
 
     @property
     def wavelength_nm(self) -> float:
@@ -78,6 +79,7 @@ class PowerMeterState:
     slot: int = 1
     wavelength: float = 1550.0  # nm
     offset: float = 0.0        # dB
+    averaging_time: float = 0.1  # seconds
 
 
 @dataclass

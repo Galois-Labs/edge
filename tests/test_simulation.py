@@ -280,3 +280,94 @@ class TestProperties:
     def test_common_commands(self, mgr):
         for addr in INSTRUMENTS:
             assert mgr.query(addr, "*OPC?") == "1"
+
+
+# ---------------------------------------------------------------------------
+# Branch-ordering bug regressions
+# ---------------------------------------------------------------------------
+
+class TestBranchOrderingBugs:
+    def test_voa_control_mode_roundtrip(self, mgr):
+        # BUG-1: VOA ":CONTrol:MODE ATT" was caught by the ATT set branch
+        # and silently dropped.
+        mgr.write(VOA, ":CONTrol1:CHANnel1:MODE POW")
+        assert mgr.query(VOA, ":CONTrol1:CHANnel1:MODE?") == "POW"
+        mgr.write(VOA, ":CONTrol1:CHANnel1:MODE ATT")
+        assert mgr.query(VOA, ":CONTrol1:CHANnel1:MODE?") == "ATT"
+
+    def test_voa_attenuation_mode_roundtrip(self, mgr):
+        # BUG-1 (AMODE variant): same branch-ordering issue for AMODE.
+        mgr.write(VOA, ":INPut1:CHANnel1:AMODE REL")
+        assert mgr.query(VOA, ":INPut1:CHANnel1:AMODE?") == "REL"
+        mgr.write(VOA, ":INPut1:CHANnel1:AMODE ABS")
+        assert mgr.query(VOA, ":INPut1:CHANnel1:AMODE?") == "ABS"
+
+    def test_power_meter_offset_roundtrip(self, mgr):
+        # BUG-2: bare "POW + ?" check used to swallow :POWer:OFFSet?.
+        mgr.write(POWER, ":SENSe1:CHANnel1:POWer:OFFSet 3.0 DB")
+        result = mgr.query(POWER, ":SENSe1:CHANnel1:POWer:OFFSet? SET")
+        assert abs(float(result) - 3.0) < 0.01, f"expected 3.0, got {result}"
+
+    def test_power_meter_averaging_time_not_power(self, mgr):
+        # BUG-2: :POWer:AVERagingtime? used to return the measured power
+        # instead of the averaging time (which should be ~seconds, not dBm).
+        result = mgr.query(POWER, ":SENSe1:CHANnel1:POWer:AVERagingtime? SET")
+        assert result != ""
+        assert float(result) < 10.0, (
+            f"averaging time should be seconds (<10), got {result}"
+        )
+
+    def test_power_meter_averaging_time_roundtrip_glued_unit(self, mgr):
+        # Profile renders the setter as "{value}{unit}" (glued).
+        mgr.write(POWER, ":SENSe1:CHANnel1:POWer:AVERagingtime 0.5S")
+        result = mgr.query(POWER, ":SENSe1:CHANnel1:POWer:AVERagingtime? SET")
+        assert abs(float(result) - 0.5) < 0.01
+
+    def test_power_meter_time_nulling_does_not_return_power(self, mgr):
+        # BUG-2: :POWer:TIMEnulling? was swallowed by the POW+? branch.
+        result = mgr.query(POWER, ":SENSe1:CHANnel1:POWer:TIMEnulling?")
+        assert result != ""
+        # Should be 0.0 (nothing in progress), not a dBm power reading.
+        assert float(result) == 0.0
+
+    def test_power_meter_wavelength_glued_unit(self, mgr):
+        # BUG-3: profile renders "1310NM" with no space; old code failed
+        # float("1310NM") and silently left the stored wavelength unchanged.
+        mgr.write(POWER, ":SENSe1:CHANnel1:WAVelength 1310NM")
+        result = mgr.query(POWER, ":SENSe1:CHANnel1:WAVelength? SET")
+        assert abs(float(result) - 1310.0) < 0.01, f"got {result}"
+
+    def test_voa_input_vs_output_power(self, mgr):
+        # BUG-4: query_input_power and query_output_power used to return
+        # the same (post-attenuation) value.
+        mgr.write(LASER, ":OUTPut1:CHANnel1:STATE ON")
+        mgr.write(VOA, ":INPut1:CHANnel1:ATTenuation 5 DB")
+        p_in = float(mgr.query(VOA, ":INPut1:CHANnel1:POWer? ACT"))
+        p_out = float(mgr.query(VOA, ":OUTPut1:CHANnel1:POWer? ACT"))
+        # Input should be ~5 dB higher than output (the VOA attenuation).
+        assert abs((p_in - p_out) - 5.0) < 0.5, (
+            f"expected ~5 dB split, got p_in={p_in}, p_out={p_out}"
+        )
+
+    def test_laser_frequency_fine_preserves_wavelength(self, mgr):
+        # BUG-5: FREQ:FINE used to hit the plain FREQ set branch and
+        # compute wavelength = c/1e9 = 3 meters, collapsing the OSA
+        # spectrum to the noise floor.
+        mgr.write(LASER, ":SOURce1:CHANnel1:WAVelength 1.55012e-06")
+        mgr.write(LASER, ":SOURce1:CHANnel1:FREQuency:FINE 1e9")
+        wl_str = mgr.query(LASER, ":SOURce1:CHANnel1:WAVelength? ACT")
+        wl = float(wl_str)
+        # Must still be in the 1550 nm band, not 3 meters.
+        assert 1.5e-6 < wl < 1.6e-6, f"wavelength corrupted: {wl}"
+
+    def test_laser_frequency_fine_roundtrip(self, mgr):
+        mgr.write(LASER, ":SOURce1:CHANnel1:FREQuency:FINE 2.5e9")
+        result = mgr.query(LASER, ":SOURce1:CHANnel1:FREQuency:FINE? SET")
+        assert abs(float(result) - 2.5e9) < 1.0
+
+    def test_esr_returns_integer_all_instruments(self, mgr):
+        # NEW-3: *ESR? must be handled by every instrument.
+        for addr in [LASER, SWITCH, VOA, POWER, OSA]:
+            result = mgr.query(addr, "*ESR?")
+            assert result != "", f"{addr} missing *ESR? handler"
+            assert int(result) >= 0, f"{addr} *ESR? returned non-integer: {result}"
