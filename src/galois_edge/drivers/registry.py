@@ -105,14 +105,20 @@ class DriverRegistry:
         result = []
         for name, profile in self._profiles.items():
             identity = profile.get("identity", {})
-            result.append({
+            protocol = profile.get("protocol")
+            summary: dict[str, Any] = {
                 "name": name,
-                "protocol": profile.get("protocol"),
+                "protocol": protocol,
                 "manufacturer": identity.get("manufacturer"),
                 "model": identity.get("model"),
                 "description": identity.get("description"),
-                "register_count": len(profile.get("registers", {})),
-            })
+            }
+            if protocol == "modbus":
+                summary["register_count"] = len(profile.get("registers", {}))
+            else:
+                summary["command_count"] = len(profile.get("commands", {}))
+                summary["point_count"] = len(profile.get("points", {}))
+            result.append(summary)
         return result
 
     @property
