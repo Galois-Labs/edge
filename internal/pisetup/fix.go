@@ -156,12 +156,19 @@ func FixBluetoothOnPL011(opts FixOptions) error {
 		fmt.Fprintf(out, "  + systemctl not found; skipping disable hciuart\n")
 		return nil
 	}
-	fmt.Fprintln(out, "  + systemctl disable hciuart")
 	if opts.DryRun {
+		fmt.Fprintln(out, "  + systemctl disable hciuart (if present)")
 		return nil
 	}
+	// hciuart only exists on Pi 3/4 images; Pi 5 and Pi Zero W do not ship it.
+	// Probe with list-unit-files so a missing unit is a clean skip, not a warning.
+	if b, err := opts.runner()("systemctl", "list-unit-files", "--no-legend", "hciuart.service"); err != nil || !strings.Contains(string(b), "hciuart.service") {
+		fmt.Fprintln(out, "  + hciuart.service not present on this image (Pi 5 / Zero W); skipping")
+		return nil
+	}
+	fmt.Fprintln(out, "  + systemctl disable hciuart")
 	if b, err := opts.runner()("systemctl", "disable", "hciuart"); err != nil {
-		// hciuart may already be disabled or absent on some images; surface as warning.
+		// Already-disabled is benign; only louder errors warrant a warning.
 		fmt.Fprintf(out, "    systemctl disable hciuart returned: %v: %s\n", err, strings.TrimSpace(string(b)))
 	}
 	return nil

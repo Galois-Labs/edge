@@ -325,6 +325,88 @@ func TestFixBluetoothOnPL011_AppendsOverlay(t *testing.T) {
 	_ = calls // do not assert content; depends on host PATH.
 }
 
+// TestFixBluetoothOnPL011_SkipsHciuartWhenAbsent verifies the Pi 5 / Zero W
+// case: hciuart.service does not exist, so we probe with list-unit-files,
+// see no entry, and skip the disable call cleanly. Regression test for a real
+// bug observed during pi5 hardware integration: pi-setup --yes printed
+// "Failed to disable unit: Unit hciuart.service does not exist" because the
+// disable was unconditional.
+func TestFixBluetoothOnPL011_SkipsHciuartWhenAbsent(t *testing.T) {
+	if _, err := LookupCommand("systemctl"); err != nil {
+		t.Skip("systemctl not on PATH; this regression only manifests when systemctl is callable")
+	}
+	withTempPaths(t)
+	if err := os.WriteFile(ConfigTxtPathPrimary, []byte("# config.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	calls := &[]runnerCall{}
+	runner := func(name string, args ...string) ([]byte, error) {
+		*calls = append(*calls, runnerCall{Name: name, Args: append([]string(nil), args...)})
+		// Simulate Pi 5 / Zero W: list-unit-files for hciuart returns empty.
+		if name == "systemctl" && len(args) > 0 && args[0] == "list-unit-files" {
+			return []byte(""), nil
+		}
+		return nil, nil
+	}
+	var buf bytes.Buffer
+	if err := FixBluetoothOnPL011(FixOptions{Runner: runner, Out: &buf}); err != nil {
+		t.Fatalf("FixBluetoothOnPL011: %v", err)
+	}
+	// Must probe with list-unit-files exactly once.
+	probes := 0
+	disables := 0
+	for _, c := range *calls {
+		if c.Name == "systemctl" && len(c.Args) > 0 && c.Args[0] == "list-unit-files" {
+			probes++
+		}
+		if c.Name == "systemctl" && len(c.Args) > 0 && c.Args[0] == "disable" {
+			disables++
+		}
+	}
+	if probes != 1 {
+		t.Errorf("expected 1 list-unit-files probe; got %d (%+v)", probes, *calls)
+	}
+	if disables != 0 {
+		t.Errorf("expected 0 disable calls when hciuart absent; got %d (%+v)", disables, *calls)
+	}
+	if !strings.Contains(buf.String(), "not present on this image") {
+		t.Errorf("expected friendly skip message; got %q", buf.String())
+	}
+}
+
+// TestFixBluetoothOnPL011_DisablesHciuartWhenPresent covers the Pi 3 / Pi 4
+// path where the unit does exist.
+func TestFixBluetoothOnPL011_DisablesHciuartWhenPresent(t *testing.T) {
+	if _, err := LookupCommand("systemctl"); err != nil {
+		t.Skip("systemctl not on PATH")
+	}
+	withTempPaths(t)
+	if err := os.WriteFile(ConfigTxtPathPrimary, []byte("# config.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	calls := &[]runnerCall{}
+	runner := func(name string, args ...string) ([]byte, error) {
+		*calls = append(*calls, runnerCall{Name: name, Args: append([]string(nil), args...)})
+		if name == "systemctl" && len(args) > 0 && args[0] == "list-unit-files" {
+			return []byte("hciuart.service                            enabled         enabled\n"), nil
+		}
+		return nil, nil
+	}
+	var buf bytes.Buffer
+	if err := FixBluetoothOnPL011(FixOptions{Runner: runner, Out: &buf}); err != nil {
+		t.Fatalf("FixBluetoothOnPL011: %v", err)
+	}
+	disables := 0
+	for _, c := range *calls {
+		if c.Name == "systemctl" && len(c.Args) > 0 && c.Args[0] == "disable" {
+			disables++
+		}
+	}
+	if disables != 1 {
+		t.Errorf("expected 1 disable call when hciuart present; got %d (%+v)", disables, *calls)
+	}
+}
+
 func TestFixUserNotInDialout(t *testing.T) {
 	withTempPaths(t)
 	if _, err := LookupCommand("usermod"); err != nil {
