@@ -686,15 +686,20 @@ class EdgeDaemon:
         await self._connect_protocol_drivers()
 
     async def _connect_protocol_drivers(self) -> None:
-        """Connect Modbus (and future protocol) instruments from config."""
+        """Connect Modbus and generic-serial instruments declared in config."""
         if self._driver_registry is None:
             return
 
         modbus_configs = self._cfg.modbus_instrument_list
-        if not modbus_configs:
+        serial_configs = self._cfg.serial_instrument_list
+        if not modbus_configs and not serial_configs:
             return
 
-        logger.info("Connecting %d Modbus instrument(s)...", len(modbus_configs))
+        if modbus_configs:
+            logger.info("Connecting %d Modbus instrument(s)...", len(modbus_configs))
+        if serial_configs:
+            logger.info("Connecting %d generic-serial instrument(s)...", len(serial_configs))
+
         loop = asyncio.get_running_loop()
 
         def _connect_all():
@@ -703,11 +708,9 @@ class EdgeDaemon:
                 inst_id = cfg_entry.get("id", "")
                 uri = cfg_entry.get("uri", "")
                 slave_id = cfg_entry.get("slave_id", 1)
-
                 if not profile_name or not inst_id or not uri:
                     logger.warning("Skipping incomplete Modbus config: %s", cfg_entry)
                     continue
-
                 try:
                     driver = self._driver_registry.instantiate(
                         profile_name=profile_name,
@@ -716,20 +719,37 @@ class EdgeDaemon:
                         slave_id=slave_id,
                     )
                     driver.connect()
-                    # Register with capability manager for cloud advertisement
                     if self._capability_manager is not None:
-                        self._capability_manager.register_protocol_driver(
-                            inst_id, driver
-                        )
+                        self._capability_manager.register_protocol_driver(inst_id, driver)
                     logger.info(
                         "Connected Modbus instrument: %s (%s @ %s, slave %d)",
                         inst_id, profile_name, uri, slave_id,
                     )
                 except Exception as exc:
-                    logger.warning(
-                        "Failed to connect Modbus instrument %s: %s",
-                        inst_id, exc,
+                    logger.warning("Failed to connect Modbus instrument %s: %s", inst_id, exc)
+
+            for cfg_entry in serial_configs:
+                profile_name = cfg_entry.get("profile", "")
+                inst_id = cfg_entry.get("id", "")
+                uri = cfg_entry.get("uri", "")
+                if not profile_name or not inst_id or not uri:
+                    logger.warning("Skipping incomplete serial config: %s", cfg_entry)
+                    continue
+                try:
+                    driver = self._driver_registry.instantiate(
+                        profile_name=profile_name,
+                        instrument_id=inst_id,
+                        transport_uri=uri,
                     )
+                    driver.connect()
+                    if self._capability_manager is not None:
+                        self._capability_manager.register_protocol_driver(inst_id, driver)
+                    logger.info(
+                        "Connected serial instrument: %s (%s @ %s)",
+                        inst_id, profile_name, uri,
+                    )
+                except Exception as exc:
+                    logger.warning("Failed to connect serial instrument %s: %s", inst_id, exc)
 
         try:
             await loop.run_in_executor(self._io_executor, _connect_all)

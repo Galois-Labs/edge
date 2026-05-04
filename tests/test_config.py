@@ -98,6 +98,48 @@ class TestConfigEnvOverride:
         assert cfg.grpc_port == 50052
 
 
+class TestSerialInstruments:
+    """Verify SERIAL_INSTRUMENTS JSON parsing."""
+
+    def test_empty_string_returns_empty_list(self):
+        from galois_edge.config import Config
+        cfg = Config(serial_instruments="")
+        assert cfg.serial_instrument_list == []
+
+    def test_single_entry(self):
+        import json
+        from galois_edge.config import Config
+        entries = [{"profile": "example_ascii_psu", "id": "psu-1", "uri": "/dev/ttyUSB0"}]
+        cfg = Config(serial_instruments=json.dumps(entries))
+        assert cfg.serial_instrument_list == entries
+
+    def test_multiple_entries(self):
+        import json
+        from galois_edge.config import Config
+        entries = [
+            {"profile": "example_ascii_psu", "id": "psu-1", "uri": "/dev/ttyUSB0"},
+            {"profile": "example_binary_sensor", "id": "sensor-1", "uri": "COM3"},
+        ]
+        cfg = Config(serial_instruments=json.dumps(entries))
+        assert cfg.serial_instrument_list == entries
+
+    def test_invalid_json_returns_empty_list(self):
+        from galois_edge.config import Config
+        cfg = Config(serial_instruments="not valid json {")
+        assert cfg.serial_instrument_list == []
+
+    def test_env_override(self, monkeypatch):
+        import json
+        monkeypatch.setenv(
+            "SERIAL_INSTRUMENTS",
+            json.dumps([{"profile": "p", "id": "i", "uri": "/dev/serial0"}]),
+        )
+        from galois_edge.config import Config
+        cfg = Config()
+        assert len(cfg.serial_instrument_list) == 1
+        assert cfg.serial_instrument_list[0]["uri"] == "/dev/serial0"
+
+
 class TestConfigLanInstruments:
     """Verify LAN_INSTRUMENTS parsing."""
 

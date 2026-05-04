@@ -141,6 +141,9 @@ class Config:
     modbus_instruments: str = field(
         default_factory=lambda: _str_env("MODBUS_INSTRUMENTS", "")
     )
+    serial_instruments: str = field(
+        default_factory=lambda: _str_env("SERIAL_INSTRUMENTS", "")
+    )
 
     # --- Config directory (platform-aware) ---
     config_dir: str = field(default_factory=_default_config_dir)
@@ -157,6 +160,24 @@ class Config:
         import json
         try:
             return json.loads(self.modbus_instruments)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    @property
+    def serial_instrument_list(self) -> list[dict]:
+        """Parse SERIAL_INSTRUMENTS JSON string into a list of configs.
+
+        Each entry: {"profile": "example_ascii_psu", "id": "psu-1",
+                     "uri": "/dev/ttyUSB0"}.
+
+        URIs may be a bare port path (``/dev/ttyUSB0``, ``COM3``,
+        ``/dev/serial0`` for Pi GPIO UART) or a ``serial://<port>`` URI.
+        """
+        if not self.serial_instruments:
+            return []
+        import json
+        try:
+            return json.loads(self.serial_instruments)
         except (json.JSONDecodeError, TypeError):
             return []
 

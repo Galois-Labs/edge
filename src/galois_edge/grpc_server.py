@@ -2317,11 +2317,14 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             )
 
         try:
+            kwargs: dict = {}
+            if protocol == "modbus":
+                kwargs["slave_id"] = slave_id
             driver = self._driver_registry.instantiate(
                 profile_name=profile_name,
                 instrument_id=instrument_id,
                 transport_uri=transport_uri,
-                slave_id=slave_id,
+                **kwargs,
             )
             driver.connect()
 
@@ -2333,9 +2336,11 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
             caps = driver.get_capabilities()
             logger.info(
-                "Connected Modbus instrument: %s (%s @ %s, slave %d, %d registers)",
-                instrument_id, profile_name, transport_uri, slave_id,
-                caps.get("registers", 0),
+                "Connected %s instrument: %s (%s @ %s, %d registers/commands)",
+                protocol, instrument_id, profile_name, transport_uri,
+                caps.get("registers", caps.get("commands", 0))
+                if isinstance(caps.get("commands"), int)
+                else len(caps.get("commands", [])),
             )
 
             return edge_pb2.ConnectModbusInstrumentResponse(

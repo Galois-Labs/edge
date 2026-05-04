@@ -1118,3 +1118,89 @@ class TestRegistrySummary:
         # modbus must NOT carry serial-flavored fields
         assert "command_count" not in m_summary
         assert "point_count" not in m_summary
+
+
+# ---------------------------------------------------------------------------
+# DriverRegistry routing for protocol: serial
+# ---------------------------------------------------------------------------
+
+class TestRegistrySerialRouting:
+    """Verify the registry instantiates GenericSerialDriver for protocol: serial."""
+
+    def test_instantiate_routes_to_serial_driver(self, tmp_path):
+        pytest.importorskip("pymodbus")
+        import yaml
+
+        from galois_edge.drivers.registry import DriverRegistry
+        from galois_edge.drivers.serial_driver import GenericSerialDriver
+
+        # Build a minimal serial profile under tmp_path/generic_serial/
+        serial_dir = tmp_path / "generic_serial"
+        serial_dir.mkdir()
+        profile = {
+            "protocol": "serial",
+            "identity": {"manufacturer": "Test", "model": "TX1"},
+            "connection": {
+                "default_baudrate": 19200,
+                "encoding": "ascii",
+                "request": {"framing": "line", "terminator": "\n"},
+                "response": {"framing": "line", "terminator": "\n"},
+            },
+            "commands": {
+                "ping": {
+                    "type": "query",
+                    "request": "PING",
+                    "response": {"parser": {"type": "passthrough", "cast": "string"}},
+                },
+            },
+        }
+        (serial_dir / "rx_test.yaml").write_text(yaml.safe_dump(profile))
+
+        reg = DriverRegistry(profiles_dir=str(tmp_path))
+        assert reg.discover() == 1
+
+        driver = reg.instantiate(
+            profile_name="rx_test",
+            instrument_id="rx-1",
+            transport_uri="/dev/null-test",
+        )
+        # Routes to GenericSerialDriver (not Modbus)
+        assert isinstance(driver, GenericSerialDriver)
+        # Driver instance is registered for retrieval
+        assert reg.get_instance("rx-1") is driver
+        # Profile-derived settings landed
+        assert driver.settings.baudrate == 19200
+        # Capabilities reflect the serial schema (commands, not registers)
+        caps = driver.get_capabilities()
+        assert caps["protocol"] == "serial"
+        assert "ping" in caps["commands"]
+
+    def test_instantiate_passes_through_kwargs_safely(self, tmp_path):
+        """A stray slave_id kwarg from Modbus-flavored callers must not break serial."""
+        pytest.importorskip("pymodbus")
+        import yaml
+
+        from galois_edge.drivers.registry import DriverRegistry
+        from galois_edge.drivers.serial_driver import GenericSerialDriver
+
+        serial_dir = tmp_path / "generic_serial"
+        serial_dir.mkdir()
+        profile = {
+            "protocol": "serial",
+            "identity": {"manufacturer": "Test", "model": "TX2"},
+            "connection": {"default_baudrate": 9600, "encoding": "ascii"},
+            "commands": {"ping": {"type": "query", "request": "PING"}},
+        }
+        (serial_dir / "kw_test.yaml").write_text(yaml.safe_dump(profile))
+
+        reg = DriverRegistry(profiles_dir=str(tmp_path))
+        reg.discover()
+
+        # Mimic ConnectModbusInstrument forwarding slave_id even for serial.
+        driver = reg.instantiate(
+            profile_name="kw_test",
+            instrument_id="kw-1",
+            transport_uri="/dev/null-test",
+            slave_id=1,
+        )
+        assert isinstance(driver, GenericSerialDriver)
