@@ -39,6 +39,7 @@ func init() {
 	rootCmd.AddCommand(configureCmd)
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(piSetupCmd)
 }
 
 // Execute runs the root command. This is the sole entry point called from main.

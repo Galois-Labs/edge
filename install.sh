@@ -115,6 +115,20 @@ esac
 info "Detected platform: ${OS}/${ARCH}"
 
 # ---------------------------------------------------------------------------
+# Detect Raspberry Pi (used later to suggest the pi-setup helper)
+# ---------------------------------------------------------------------------
+
+IS_RASPBERRY_PI=0
+if [ -r /proc/device-tree/model ]; then
+    # device-tree strings are NUL-terminated; tr strips the NUL.
+    PI_MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
+    case "${PI_MODEL}" in
+        *Raspberry\ Pi*) IS_RASPBERRY_PI=1 ;;
+    esac
+fi
+[ "${IS_RASPBERRY_PI}" = 1 ] && info "Raspberry Pi detected: ${PI_MODEL}"
+
+# ---------------------------------------------------------------------------
 # Resolve version
 # ---------------------------------------------------------------------------
 
@@ -331,4 +345,27 @@ if systemctl is-active --quiet galois-edge 2>/dev/null; then
     info "Service is running."
 else
     warn "Service may not have started. Check: journalctl -u galois-edge --no-pager -n 20"
+fi
+
+# ---------------------------------------------------------------------------
+# Raspberry Pi follow-up: serial UART configuration
+# ---------------------------------------------------------------------------
+#
+# On Raspberry Pi the GPIO UART (/dev/serial0) is used for serial-instrument
+# support but ships with a login getty attached, Bluetooth bound to the PL011,
+# and the daemon user not in the dialout group. The galois-edge pi-setup
+# subcommand fixes all three. We do not run it automatically because it edits
+# /boot/firmware/cmdline.txt and config.txt and requires a reboot — instead,
+# point the operator at the command.
+
+if [ "${IS_RASPBERRY_PI}" = 1 ]; then
+    echo ""
+    info "Raspberry Pi detected — to enable serial-instrument access on the GPIO UART:"
+    echo "    sudo galois-edge pi-setup            # interactive"
+    echo "    sudo galois-edge pi-setup --dry-run  # preview only"
+    echo "    sudo galois-edge pi-setup --yes      # apply without prompting"
+    echo ""
+    echo "  This disables the login console on /dev/ttyAMA0, frees the PL011 from"
+    echo "  Bluetooth, and adds your user to the dialout group. A reboot is required"
+    echo "  for the cmdline.txt / config.txt changes to take effect."
 fi

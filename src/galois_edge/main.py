@@ -137,6 +137,14 @@ class EdgeDaemon:
             self._cfg.scan_interval_s,
         )
 
+        # 0. Surface Pi-specific UART issues before anything else touches /dev/serial0.
+        #    No-op on non-Pi hosts.
+        try:
+            from galois_edge.pi_diagnostics import log_diagnostics
+            log_diagnostics()
+        except Exception as exc:  # diagnostics must never block startup
+            logger.debug("Pi diagnostics skipped: %s", exc)
+
         # 1. Initialise instrument manager (no scanning yet)
         self._instrument_manager = InstrumentManager(
             gpib_enabled=self._cfg.gpib_enabled,
