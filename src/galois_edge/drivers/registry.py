@@ -16,6 +16,8 @@ import yaml
 from galois_edge.drivers.base import BaseProtocolDriver
 from galois_edge.drivers.modbus_driver import GenericModbusDriver
 from galois_edge.drivers.modbus_transport import ModbusBusManager
+from galois_edge.drivers.can_driver import GenericCANDriver
+from galois_edge.drivers.can_transport import CANBusManager
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ class DriverRegistry:
         self._profiles: dict[str, dict[str, Any]] = {}
         self._instances: dict[str, BaseProtocolDriver] = {}
         self._bus_manager = ModbusBusManager()
+        self._can_bus_manager = CANBusManager()
         self.profiles_dir = profiles_dir or str(
             Path(__file__).parent.parent / "profiles"
         )
@@ -90,6 +93,14 @@ class DriverRegistry:
                 bus_manager=self._bus_manager,
                 **kwargs,
             )
+        elif protocol == "can":
+            instance = GenericCANDriver(
+                instrument_id=instrument_id,
+                transport_uri=transport_uri,
+                profile=profile,
+                bus_manager=self._can_bus_manager,
+                **kwargs,
+            )
         else:
             raise ValueError(f"Unsupported protocol: {protocol}")
 
@@ -124,3 +135,7 @@ class DriverRegistry:
     @property
     def bus_manager(self) -> ModbusBusManager:
         return self._bus_manager
+
+    @property
+    def can_bus_manager(self) -> CANBusManager:
+        return self._can_bus_manager

@@ -55,6 +55,96 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class _DemoInstrumentManagerProxy:
+    """Composite proxy that delegates to the sim manager for virtual
+    addresses and to the real InstrumentManager for everything else.
+
+    Implements the same duck-typed interface that CommandHandler and
+    GRPCServer rely on, so neither needs any changes.
+    """
+
+    def __init__(self, real: "InstrumentManager", sim: object) -> None:
+        self._real = real
+        self._sim = sim
+        self._sim_addrs: set[str] = set(sim.list_resources())
+
+    def _manager_for(self, instrument_id: str) -> object:
+        return self._sim if instrument_id in self._sim_addrs else self._real
+
+    # -- Resource listing (merge both) --
+    def list_resources(self) -> tuple[str, ...]:
+        return tuple(list(self._real.list_resources()) + list(self._sim.list_resources()))
+
+    def discover_resources(self, *a, **kw) -> tuple[str, ...]:
+        return self.list_resources()
+
+    def rescan_all(self) -> tuple[str, ...]:
+        real = self._real.rescan_all()
+        return tuple(list(real) + list(self._sim.list_resources()))
+
+    def rescan_gpib(self) -> list[str]:
+        return self._real.rescan_gpib()
+
+    # -- Properties --
+    @property
+    def gpib_available(self) -> bool:
+        return self._real.gpib_available
+
+    @property
+    def usb_available(self) -> bool:
+        return self._real.usb_available
+
+    @property
+    def lan_available(self) -> bool:
+        return True
+
+    @property
+    def visa_available(self) -> bool:
+        return True
+
+    # -- Connection --
+    def connect(self, visa_address: str, **kw):
+        return self._manager_for(visa_address).connect(visa_address, **kw)
+
+    def disconnect(self, instrument_id: str) -> None:
+        self._manager_for(instrument_id).disconnect(instrument_id)
+
+    def disconnect_all(self) -> None:
+        self._real.disconnect_all()
+        self._sim.disconnect_all()
+
+    def is_connected(self, instrument_id: str) -> bool:
+        return self._manager_for(instrument_id).is_connected(instrument_id)
+
+    def canonical_id(self, instrument_id: str) -> str:
+        return self._manager_for(instrument_id).canonical_id(instrument_id)
+
+    def mark_absent(self, visa_address: str) -> None:
+        self._manager_for(visa_address).mark_absent(visa_address)
+
+    def get_instrument(self, instrument_id: str):
+        return self._manager_for(instrument_id).get_instrument(instrument_id)
+
+    # -- I/O --
+    def query(self, instrument_id: str, command: str) -> str:
+        return self._manager_for(instrument_id).query(instrument_id, command)
+
+    def write(self, instrument_id: str, command: str) -> None:
+        self._manager_for(instrument_id).write(instrument_id, command)
+
+    def read(self, instrument_id: str) -> str:
+        return self._manager_for(instrument_id).read(instrument_id)
+
+    def identify(self, instrument_id: str) -> str:
+        return self._manager_for(instrument_id).identify(instrument_id)
+
+    def query_binary_values(self, instrument_id: str, command: str, **kw):
+        return self._manager_for(instrument_id).query_binary_values(instrument_id, command, **kw)
+
+    def set_gpib_identity_probes(self, probes: list) -> None:
+        self._real.set_gpib_identity_probes(probes)
+
+
 class EdgeDaemon:
     """Main daemon process orchestrating all subsystems.
 
@@ -104,6 +194,9 @@ class EdgeDaemon:
         self._stdin_task: Optional[asyncio.Task] = None
         self._trickle_task: Optional[asyncio.Task] = None
 
+        # Demo mode (virtual instruments)
+        self._sim_manager: Optional[object] = None
+
         # Discovery subsystems
         self._trickle_scanner: Optional[TrickleScanScheduler] = None
         self._usb_monitor: Optional[object] = None  # USBMonitor or None
@@ -130,6 +223,8 @@ class EdgeDaemon:
         _configure_logging(self._cfg.log_level)
 
         logger.info("Edge daemon starting (edge_id=%s)", self._edge_id)
+        if self._cfg.demo:
+            logger.info("DEMO MODE enabled — virtual instruments will be registered")
         logger.info(
             "Config: grpc_port=%d, ws_port=%d, scan_interval=%ds",
             self._cfg.grpc_port,
@@ -146,12 +241,26 @@ class EdgeDaemon:
             logger.debug("Pi diagnostics skipped: %s", exc)
 
         # 1. Initialise instrument manager (no scanning yet)
-        self._instrument_manager = InstrumentManager(
+        real_manager = InstrumentManager(
             gpib_enabled=self._cfg.gpib_enabled,
             gpib_scan_on_init=False,  # defer GPIB scan to background
             lan_instruments=self._cfg.lan_instruments,
             include_serial_ports=self._cfg.include_serial_ports,
         )
+
+        # 1b. In demo mode, wrap with a proxy that also routes to virtual instruments
+        if self._cfg.demo:
+            try:
+                from contrib.simulation.engine import SimulatedInstrumentManager
+                self._sim_manager = SimulatedInstrumentManager()
+                self._instrument_manager = _DemoInstrumentManagerProxy(real_manager, self._sim_manager)
+                logger.info("Demo mode: SimulatedInstrumentManager active with %d virtual instruments",
+                            len(self._sim_manager.list_resources()))
+            except ImportError:
+                logger.warning("Demo mode requested but contrib.simulation not available — running without virtual instruments")
+                self._instrument_manager = real_manager
+        else:
+            self._instrument_manager = real_manager
 
         # 2. Initialise SDK executor, command handler, capability manager
         #    (all empty until background discovery runs)
@@ -690,8 +799,69 @@ class EdgeDaemon:
         except Exception as exc:
             logger.warning("Background discovery/matching failed: %s", exc)
 
+        # Register virtual demo instruments (if demo mode enabled)
+        if self._cfg.demo:
+            await self._register_demo_instruments()
+
         # Connect configured Modbus / protocol driver instruments
         await self._connect_protocol_drivers()
+
+    async def _register_demo_instruments(self) -> None:
+        """Connect virtual instruments and register them with profiles.
+
+        The SimulatedInstrumentManager was already created in start()
+        and wrapped in the proxy. This method connects each virtual
+        instrument and matches it to a Quantifi profile.
+        """
+        if self._sim_manager is None:
+            return
+        if self._capability_manager is None or self._profile_loader is None:
+            logger.warning("Demo mode: profile system not ready, skipping virtual instruments")
+            return
+
+        PROFILE_OVERRIDES = {
+            "TCPIP::192.168.1.10::5025::SOCKET": "quantifi_photonics_laser_1000",
+            "TCPIP::192.168.1.11::5025::SOCKET": "quantifi_photonics_switch",
+            "TCPIP::192.168.1.12::5025::SOCKET": "quantifi_photonics_voa",
+            "TCPIP::192.168.1.13::5025::SOCKET": "quantifi_photonics_power_1400",
+            "TCPIP::192.168.1.14::5025::SOCKET": "quantifi_photonics_osa_1000",
+        }
+
+        sim = self._sim_manager
+        registered = 0
+        for addr in sim.list_resources():
+            sim.connect(addr)
+            idn = sim.identify(addr)
+
+            profile_key = PROFILE_OVERRIDES.get(addr)
+            if profile_key:
+                # Override key is authoritative — don't fall through to match_instrument
+                profile = self._profile_loader.get_profile(profile_key)
+                if not profile:
+                    logger.error(
+                        "Demo: profile override '%s' for %s not found in loader "
+                        "(loaded %d profiles). Check profile YAML and cache.",
+                        profile_key, addr, self._profile_loader.profile_count,
+                    )
+            else:
+                profile = self._profile_loader.match_instrument(idn) if idn else None
+
+            self._capability_manager.register_instrument(
+                instrument_id=addr,
+                visa_address=addr,
+                idn_response=idn or "",
+                profile=profile,
+            )
+            registered += 1
+            if profile:
+                logger.info(
+                    "Demo: %s -> %s (profile: %s)",
+                    addr, idn, profile.profile_key,
+                )
+            else:
+                logger.warning("Demo: %s -> no profile matched for IDN: %s", addr, idn)
+
+        logger.info("Demo mode: registered %d virtual instrument(s)", registered)
 
     async def _connect_protocol_drivers(self) -> None:
         """Connect Modbus and generic-serial instruments declared in config."""

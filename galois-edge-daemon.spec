@@ -20,6 +20,7 @@ block_cipher = None
 # Paths
 ROOT = Path(SPECPATH)
 SRC = ROOT / "src"
+CONTRIB = ROOT / "contrib"
 PROFILES = SRC / "galois_edge" / "profiles"
 
 # Collect pyvisa and aiohttp fully (they use lazy/conditional imports)
@@ -39,7 +40,7 @@ if PROFILES.is_dir():
 
 a = Analysis(
     [str(SRC / "galois_edge" / "__main__.py")],
-    pathex=[str(SRC), str(SRC / "galois_edge")],
+    pathex=[str(SRC), str(SRC / "galois_edge"), str(ROOT)],
     binaries=pyvisa_binaries + pyvisapy_binaries + aiohttp_binaries,
     datas=profile_datas + pyvisa_datas + pyvisapy_datas + aiohttp_datas,
     hiddenimports=[
@@ -102,6 +103,11 @@ a = Analysis(
         "dwfpy.digital_output",
         "dwfpy.constants",
         "dwfpy.protocols",
+        # Simulation engine (demo mode)
+        "contrib",
+        "contrib.simulation",
+        "contrib.simulation.engine",
+        "contrib.simulation.bench",
         # Optional (included if available, ignored if not)
         "gpib_ctypes",
         "usb",

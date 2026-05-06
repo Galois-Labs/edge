@@ -1,0 +1,8 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+ENV PYTHONPATH=/app/src:/app
+EXPOSE 50052 8766
+CMD ["python", "-m", "contrib.simulation.run_sim"]

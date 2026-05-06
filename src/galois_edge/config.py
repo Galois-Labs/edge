@@ -145,6 +145,11 @@ class Config:
         default_factory=lambda: _str_env("SERIAL_INSTRUMENTS", "")
     )
 
+    # --- Demo mode (virtual instruments) ---
+    demo: bool = field(
+        default_factory=lambda: _bool_env("DEMO_MODE", False)
+    )
+
     # --- Config directory (platform-aware) ---
     config_dir: str = field(default_factory=_default_config_dir)
 

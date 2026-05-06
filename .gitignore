@@ -11,7 +11,7 @@ __pycache__/
 .venv/
 venv/
 
-# Go / build binaries
+# Go binaries (all platforms)
 galois-edge
 galois-edge-*
 *.exe
@@ -39,3 +39,9 @@ Thumbs.db
 
 # Node (if any)
 node_modules/
+
+# Large generated/cached files
+src/galois_edge/profiles/_cache.pkl
+pal_generated.code
+*.pkl
+*.db

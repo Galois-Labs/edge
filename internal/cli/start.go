@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,11 +15,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/galois-labs/edge/internal/claudeingest"
 	"github.com/galois-labs/edge/internal/config"
 	"github.com/galois-labs/edge/internal/grpcclient"
 	"github.com/galois-labs/edge/internal/network"
 	"github.com/galois-labs/edge/internal/proxy"
 	"github.com/galois-labs/edge/internal/registration"
+	"github.com/galois-labs/edge/internal/relay"
 	"github.com/galois-labs/edge/internal/supervisor"
 	"github.com/spf13/cobra"
 )
@@ -222,8 +225,57 @@ func runStart(cmd *cobra.Command, args []string) {
 		slog.Info("registration heartbeat loop started", "backend", cfg.BackendURL)
 	}
 
+	// ----- start Claude Code ingestion control endpoint (if configured) -----
+	var claudeControlStarted bool
+	if cfg.BackendURL != "" && cfg.RegistrationToken != "" {
+		cloudHTTPClient := http.DefaultClient
+		if tsnetSrv != nil {
+			if c, err := tsnetSrv.HTTPClient(); err == nil {
+				cloudHTTPClient = c
+			} else {
+				slog.Warn("failed to create tsnet HTTP client for Claude ingestion", "error", err)
+			}
+		}
+		claudeControl := claudeingest.NewControlServer(claudeingest.ControlConfig{
+			BackendURL: cfg.BackendURL,
+			AuthToken:  cfg.RegistrationToken,
+			HTTPClient: cloudHTTPClient,
+			Logger:     logger,
+		})
+		go func() {
+			if err := claudeControl.Run(ctx); err != nil && ctx.Err() == nil {
+				slog.Warn("claude ingest control endpoint stopped", "error", err)
+			}
+		}()
+		claudeControlStarted = true
+	} else {
+		slog.Debug("claude ingest control endpoint disabled: backend URL or registration token missing")
+	}
+
+	// ----- start relay client (if configured) -----
+	relayURL := resolveRelayURL(cfg)
+	edgeID := ""
+	if regMgr != nil {
+		edgeID = regMgr.EdgeID()
+	}
+	if relayURL != "" && edgeID != "" && cfg.RegistrationToken != "" {
+		relayClient := relay.NewClient(
+			edgeID,
+			cfg.EdgeName,
+			Version,
+			relayURL,
+			cfg.RegistrationToken,
+			healthAddr,
+			logger,
+		)
+		go relayClient.Run(ctx)
+		slog.Info("relay client started", "url", relayURL, "edge_id", edgeID)
+	} else if relayURL != "" && edgeID == "" {
+		slog.Warn("relay URL configured but no edge ID available (registration may have failed), skipping relay")
+	}
+
 	// ----- ready -----
-	slog.Info("daemon ready")
+	slog.Info("daemon ready", "claude_ingest_control", claudeControlStarted)
 	<-ctx.Done()
 	slog.Info("shutting down...")
 	fmt.Println("Shutting down...")
@@ -362,6 +414,12 @@ func buildPythonEnv(cfg *config.Config) []string {
 		env = append(env, fmt.Sprintf("LAN_INSTRUMENTS=%s", strings.Join(cfg.LANInstruments, ",")))
 	}
 
+	// Pass through any unrecognized config.env keys (e.g. DEMO_MODE,
+	// MODBUS_INSTRUMENTS) so the Python child can read them.
+	for k, v := range cfg.Extra {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	return env
 }
 
@@ -473,4 +531,30 @@ func (a *instrumentGetterAdapter) GetInstruments(ctx context.Context) ([]registr
 		})
 	}
 	return out, nil
+}
+
+// resolveRelayURL determines the WebSocket relay URL. If RELAY_URL is set
+// explicitly in config, use it. Otherwise derive it from BACKEND_URL by
+// replacing http(s):// with ws(s):// and appending /api/v1/relay/ws.
+// Returns empty string if no relay should be used.
+func resolveRelayURL(cfg *config.Config) string {
+	if cfg.RelayURL != "" {
+		return cfg.RelayURL
+	}
+	if cfg.BackendURL == "" {
+		return ""
+	}
+
+	u := cfg.BackendURL
+	if strings.HasPrefix(u, "https://") {
+		u = "wss://" + strings.TrimPrefix(u, "https://")
+	} else if strings.HasPrefix(u, "http://") {
+		u = "ws://" + strings.TrimPrefix(u, "http://")
+	} else {
+		// Already a ws:// or wss:// URL, or unknown scheme.
+		// Just use it as-is with the relay path appended.
+	}
+
+	u = strings.TrimRight(u, "/")
+	return u + "/api/v1/relay/ws"
 }

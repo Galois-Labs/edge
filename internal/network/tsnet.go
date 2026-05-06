@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"net/netip"
 	"os"
 	"sync"
@@ -136,6 +137,32 @@ func (s *Server) Listen(network, addr string) (net.Listener, error) {
 
 	log.Printf("[tsnet] listening on %s %s", network, addr)
 	return ln, nil
+}
+
+// DialContext connects to an address over the tailnet. Start must be called
+// first; this wrapper keeps callers from depending directly on tailscale.com.
+func (s *Server) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	s.mu.Lock()
+	srv := s.srv
+	s.mu.Unlock()
+
+	if srv == nil {
+		return nil, fmt.Errorf("tsnet: server not started")
+	}
+	return srv.Dial(ctx, network, addr)
+}
+
+// HTTPClient returns an HTTP client whose transport dials over the tailnet.
+// Start must be called first.
+func (s *Server) HTTPClient() (*http.Client, error) {
+	s.mu.Lock()
+	srv := s.srv
+	s.mu.Unlock()
+
+	if srv == nil {
+		return nil, fmt.Errorf("tsnet: server not started")
+	}
+	return srv.HTTPClient(), nil
 }
 
 // Stop gracefully shuts down the tsnet server and releases resources.
