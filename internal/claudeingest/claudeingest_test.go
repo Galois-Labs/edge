@@ -211,7 +211,7 @@ func TestHookRunnerAdvancesOffsetOnlyAfterUpload(t *testing.T) {
 	}
 
 	transcript := filepath.Join(home, "session.jsonl")
-	if err := os.WriteFile(transcript, []byte(`{"type":"user"}`+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(transcript, []byte(`{"uuid":"u-1","type":"user"}`+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -234,7 +234,7 @@ func TestHookRunnerAdvancesOffsetOnlyAfterUpload(t *testing.T) {
 		t.Fatalf("Run second: %v", err)
 	}
 	if uploads != 1 {
-		t.Fatalf("uploads after second run: got %d, want still 1", uploads)
+		t.Fatalf("uploads after second run: got %d, want still 1 (anchor advanced)", uploads)
 	}
 }
 
