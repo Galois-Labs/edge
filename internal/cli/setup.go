@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/galois-labs/edge/internal/config"
+	"github.com/galois-labs/edge/internal/installid"
 	"github.com/spf13/cobra"
 )
 
@@ -174,6 +175,18 @@ func runSetup(cmd *cobra.Command, args []string) {
 	if err := config.WriteFileMap(cfgPath, kvs); err != nil {
 		fmt.Fprintf(os.Stderr, "error: cannot write config %s: %v\n", cfgPath, err)
 		os.Exit(1)
+	}
+
+	// Ensure a per-machine install ID exists. This is used to derive
+	// stable subject keys for Claude Code ingestion (and any future
+	// per-edge identity needs that should outlive hostname changes).
+	// Failure is non-fatal: the ID will be lazily created the next
+	// time anything that needs it runs (Claude hook, claude enable),
+	// possibly as a per-user fallback.
+	if id, err := installid.Ensure(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not persist install id: %v\n", err)
+	} else {
+		_ = id // available; not echoed to user (it's machine-internal)
 	}
 
 	// Success output.
