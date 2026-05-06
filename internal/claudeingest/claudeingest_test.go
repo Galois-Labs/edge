@@ -268,8 +268,8 @@ func TestBackfillUploadsOnlyConsentedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(otherTranscript), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	allowedLine := `{"sessionId":"session-1","cwd":"` + filepath.ToSlash(filepath.Join(allowed, "sub")) + `","type":"user"}`
-	otherLine := `{"sessionId":"session-2","cwd":"` + filepath.ToSlash(other) + `","type":"user"}`
+	allowedLine := `{"uuid":"u-allowed","sessionId":"session-1","cwd":"` + filepath.ToSlash(filepath.Join(allowed, "sub")) + `","type":"user"}`
+	otherLine := `{"uuid":"u-other","sessionId":"session-2","cwd":"` + filepath.ToSlash(other) + `","type":"user"}`
 	if err := os.WriteFile(allowedTranscript, []byte(allowedLine+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +313,7 @@ func TestBackfillUploadsOnlyConsentedWorkspace(t *testing.T) {
 		t.Fatalf("Backfill second: %v", err)
 	}
 	if summary.Uploaded != 0 {
-		t.Fatalf("second backfill should be deduped by offsets, summary: %+v", summary)
+		t.Fatalf("second backfill should be deduped by anchors, summary: %+v", summary)
 	}
 }
 
