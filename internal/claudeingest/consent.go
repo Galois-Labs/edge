@@ -35,12 +35,12 @@ func ConsentPath() (string, error) {
 }
 
 // OffsetsPath returns the local transcript offset JSON path.
+//
+// Deprecated: use AnchorsPath. Kept as an alias because legacy callers
+// in hook.go and backfill.go still reference it. After the resume and
+// backfill rewrites land, this function is removable.
 func OffsetsPath() (string, error) {
-	dir, err := UserStateDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "offsets.json"), nil
+	return AnchorsPath()
 }
 
 // LocalSubject returns the stable local consent subject for the current
