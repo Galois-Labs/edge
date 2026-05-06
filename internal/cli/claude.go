@@ -61,7 +61,12 @@ func init() {
 	claudeCmd.PersistentFlags().StringVar(&claudeConfigPath, "config", "", "path to config.env file")
 	claudeEnableCmd.Flags().Bool("yes", false, "confirm consent non-interactively")
 	claudeEnableCmd.Flags().Bool("no-backfill", false, "skip historical transcript backfill after enabling")
-	claudeBackfillCmd.Flags().Bool("dry-run", false, "scan and report without uploading or advancing offsets")
+	claudeEnableCmd.Flags().Bool("repair", false, "reinstall hooks and re-sync cloud consent for an already-enabled folder set without re-prompting")
+	claudeEnableCmd.Flags().Bool("exclude-sidechains", false, "do not ingest subagent (sidechain) traces")
+	claudeEnableCmd.Flags().Bool("enable-credential-redactor", false, "run the local credential pre-redactor on each batch (off by default)")
+	claudeEnableCmd.Flags().StringSlice("exclude-glob", nil, "glob pattern (e.g. '**/secrets/**') to exclude from ingestion; repeatable")
+	claudeDisableCmd.Flags().Bool("purge-local", false, "also delete the local consent file and anchor store")
+	claudeBackfillCmd.Flags().Bool("dry-run", false, "scan and report without uploading or advancing anchors")
 	claudeHookCmd.Flags().String("managed-hook", "", "managed hook marker")
 	claudeCmd.AddCommand(claudeEnableCmd)
 	claudeCmd.AddCommand(claudeBackfillCmd)
@@ -82,19 +87,35 @@ func runClaudeEnable(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "error: cannot determine local user: %v\n", err)
 		os.Exit(1)
 	}
+
+	yes, _ := cmd.Flags().GetBool("yes")
+	repair, _ := cmd.Flags().GetBool("repair")
+	excludeSidechains, _ := cmd.Flags().GetBool("exclude-sidechains")
+	credentialRedactor, _ := cmd.Flags().GetBool("enable-credential-redactor")
+	excludeGlobs, _ := cmd.Flags().GetStringSlice("exclude-glob")
+
 	now := time.Now().UTC()
-	consent := claudeingest.NewConsent(subject, folders, now)
+	opts := claudeingest.ConsentOptions{
+		ExcludeGlobs:       excludeGlobs,
+		ExcludeSidechains:  excludeSidechains,
+		CredentialRedactor: credentialRedactor,
+	}
+	consent := claudeingest.NewConsentWithOptions(subject, folders, now, opts)
+
+	// Detect a same-folder-set re-enable. v2 requires --repair to skip
+	// the prompt in this case; without --repair we still re-prompt.
 	alreadyEnabled := false
 	if existing, err := claudeingest.LoadConsent(); err == nil && existing != nil && existing.Enabled {
 		alreadyEnabled = sameStringSlice(existing.AllowedFolders, folders)
-		if alreadyEnabled {
-			consent = *existing
-			consent.UpdatedAt = now
-		}
+	}
+	if alreadyEnabled && !repair && !yes {
+		fmt.Println("Claude Code ingestion is already enabled for these folders.")
+		fmt.Println("Pass --repair to reinstall hooks and re-sync cloud consent without a fresh prompt,")
+		fmt.Println("or pass new folder arguments to update the consented set (which always re-prompts).")
+		os.Exit(0)
 	}
 
-	yes, _ := cmd.Flags().GetBool("yes")
-	if !alreadyEnabled && !yes && !confirmClaudeConsent(folders) {
+	if !alreadyEnabled && !yes && !confirmClaudeConsent(folders, opts) {
 		fmt.Println("Claude Code ingestion not enabled.")
 		return
 	}
@@ -122,20 +143,30 @@ func runClaudeEnable(cmd *cobra.Command, args []string) {
 		_ = claudeingest.SaveConsent(consent)
 	}
 
-	if alreadyEnabled {
-		fmt.Println("Claude Code ingestion already enabled; repaired local hook and cloud sync.")
-	} else {
+	switch {
+	case alreadyEnabled && repair:
+		fmt.Println("Claude Code ingestion repaired (hooks reinstalled, cloud consent re-synced).")
+	default:
 		fmt.Println("Claude Code ingestion enabled.")
 	}
-	fmt.Printf("  Folders: %d\n", len(folders))
+	fmt.Printf("  Folders:   %d\n", len(folders))
 	for _, folder := range folders {
 		fmt.Printf("    - %s\n", folder)
 	}
-	fmt.Printf("  Hook:    %s\n", settingsPath)
+	if len(consent.ExcludeGlobs) > 0 {
+		fmt.Printf("  Excluded:  %d\n", len(consent.ExcludeGlobs))
+		for _, g := range consent.ExcludeGlobs {
+			fmt.Printf("    - %s\n", g)
+		}
+	}
+	fmt.Printf("  Sidechains: %s\n", boolLabel(consent.IncludeSidechains, "included", "excluded"))
+	fmt.Printf("  Redactor:   %s (cloud-side redaction always applies)\n",
+		boolLabel(consent.CredentialRedactor, "enabled", "disabled"))
+	fmt.Printf("  Hook:       %s\n", settingsPath)
 	if synced {
-		fmt.Println("  Cloud:   consent synced")
+		fmt.Println("  Cloud:      consent synced")
 	} else {
-		fmt.Printf("  Cloud:   sync pending (%v)\n", syncErr)
+		fmt.Printf("  Cloud:      sync pending (%v)\n", syncErr)
 	}
 
 	noBackfill, _ := cmd.Flags().GetBool("no-backfill")
@@ -171,6 +202,10 @@ func runClaudeDisable(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// Tell any in-flight backfill to stop. Best-effort: if the daemon
+	// isn't running there's nothing to cancel.
+	cancelBackfill(cmd.Context())
+
 	synced, syncErr := syncClaudeConsent(cmd.Context(), consent)
 	if synced {
 		syncTime := time.Now().UTC()
@@ -178,11 +213,21 @@ func runClaudeDisable(cmd *cobra.Command, args []string) {
 		_ = claudeingest.SaveConsent(consent)
 	}
 
+	purge, _ := cmd.Flags().GetBool("purge-local")
+	if purge {
+		if err := purgeLocalState(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: purge-local: %v\n", err)
+		}
+	}
+
 	fmt.Println("Claude Code ingestion disabled.")
 	if synced {
 		fmt.Println("  Cloud: consent synced")
 	} else {
 		fmt.Printf("  Cloud: sync pending (%v)\n", syncErr)
+	}
+	if purge {
+		fmt.Println("  Local: consent and anchor store purged")
 	}
 }
 
@@ -199,6 +244,14 @@ func runClaudeStatus(cmd *cobra.Command, args []string) {
 		for _, folder := range consent.AllowedFolders {
 			fmt.Printf("  - %s\n", folder)
 		}
+		if len(consent.ExcludeGlobs) > 0 {
+			fmt.Println("  Excluded:")
+			for _, g := range consent.ExcludeGlobs {
+				fmt.Printf("    - %s\n", g)
+			}
+		}
+		fmt.Printf("  Sidechains: %s\n", boolLabel(consent.IncludeSidechains, "included", "excluded"))
+		fmt.Printf("  Redactor:   %s\n", boolLabel(consent.CredentialRedactor, "enabled", "disabled"))
 		if consent.CloudSyncedAt != nil {
 			fmt.Printf("  Cloud consent synced: %s\n", consent.CloudSyncedAt.Format(time.RFC3339))
 		} else {
@@ -236,15 +289,32 @@ func runClaudeHook(cmd *cobra.Command, args []string) {
 	_ = runner.Run(ctx, os.Stdin)
 }
 
-func confirmClaudeConsent(folders []string) bool {
+func confirmClaudeConsent(folders []string, opts claudeingest.ConsentOptions) bool {
 	fmt.Println("Galois can ingest Claude Code transcripts from these folders only:")
 	fmt.Println()
 	for _, folder := range folders {
 		fmt.Printf("  %s\n", folder)
 	}
+	if len(opts.ExcludeGlobs) > 0 {
+		fmt.Println()
+		fmt.Println("Excluded subpaths (will not be ingested even if inside an allowed folder):")
+		for _, g := range opts.ExcludeGlobs {
+			fmt.Printf("  %s\n", g)
+		}
+	}
 	fmt.Println()
 	fmt.Println("Transcripts may contain prompts, assistant responses, tool results, file paths,")
 	fmt.Println("and code snippets that appear in Claude Code chats.")
+	if opts.ExcludeSidechains {
+		fmt.Println("Subagent (sidechain) traces will NOT be included.")
+	} else {
+		fmt.Println("Subagent (sidechain) traces will be included.")
+	}
+	if opts.CredentialRedactor {
+		fmt.Println("Local credential pre-redactor: enabled (cloud-side redaction always applies).")
+	} else {
+		fmt.Println("Local credential pre-redactor: disabled (cloud-side redaction always applies).")
+	}
 	fmt.Println()
 	fmt.Print("Enable Claude Code ingestion? [y/N] ")
 
@@ -277,17 +347,46 @@ func syncClaudeConsent(parent context.Context, consent claudeingest.Consent) (bo
 	return true, nil
 }
 
+func cancelBackfill(parent context.Context) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
+	defer cancel()
+	local := claudeingest.NewLocalControlClient("")
+	_ = local.CancelBackfill(ctx)
+}
+
+// localControlHealthy probes the daemon's control endpoint via the
+// platform-native IPC. It uses the same dial path as the production
+// LocalControlClient so a "reachable" answer means real hook traffic
+// would also flow.
 func localControlHealthy(ctx context.Context) bool {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+claudeingest.DefaultControlAddr+"/health", nil)
+	client := claudeingest.NewLocalControlClient("")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, client.BaseURL+"/health", nil)
 	if err != nil {
 		return false
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Client.Do(req)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode >= 200 && resp.StatusCode < 300
+}
+
+func purgeLocalState() error {
+	consentPath, err := claudeingest.ConsentPath()
+	if err != nil {
+		return err
+	}
+	anchorPath, err := claudeingest.AnchorsPath()
+	if err != nil {
+		return err
+	}
+	for _, p := range []string{consentPath, anchorPath} {
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove %s: %w", p, err)
+		}
+	}
+	return nil
 }
 
 func runBackfillAndPrint(parent context.Context, dryRun bool) {
@@ -304,6 +403,9 @@ func runBackfillAndPrint(parent context.Context, dryRun bool) {
 	if dryRun {
 		label = "dry run complete"
 	}
+	if summary.Cancelled {
+		label = "cancelled"
+	}
 	fmt.Printf("  Backfill: %s: %d transcripts scanned, %d matched, %d uploaded, %d skipped, %d failed\n",
 		label,
 		summary.Scanned,
@@ -312,6 +414,11 @@ func runBackfillAndPrint(parent context.Context, dryRun bool) {
 		summary.Skipped,
 		summary.Failed,
 	)
+	if len(summary.SkipsBy) > 0 {
+		for reason, n := range summary.SkipsBy {
+			fmt.Printf("    skipped (%s): %d\n", reason, n)
+		}
+	}
 }
 
 func managedExecutablePath() string {
@@ -335,4 +442,11 @@ func sameStringSlice(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func boolLabel(b bool, on, off string) string {
+	if b {
+		return on
+	}
+	return off
 }
