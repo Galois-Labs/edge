@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/galois-labs/edge/internal/claudeingest"
 	"github.com/galois-labs/edge/internal/config"
 	"github.com/galois-labs/edge/internal/grpcclient"
 	"github.com/galois-labs/edge/internal/network"
@@ -223,6 +225,33 @@ func runStart(cmd *cobra.Command, args []string) {
 		slog.Info("registration heartbeat loop started", "backend", cfg.BackendURL)
 	}
 
+	// ----- start Claude Code ingestion control endpoint (if configured) -----
+	var claudeControlStarted bool
+	if cfg.BackendURL != "" && cfg.RegistrationToken != "" {
+		cloudHTTPClient := http.DefaultClient
+		if tsnetSrv != nil {
+			if c, err := tsnetSrv.HTTPClient(); err == nil {
+				cloudHTTPClient = c
+			} else {
+				slog.Warn("failed to create tsnet HTTP client for Claude ingestion", "error", err)
+			}
+		}
+		claudeControl := claudeingest.NewControlServer(claudeingest.ControlConfig{
+			BackendURL: cfg.BackendURL,
+			AuthToken:  cfg.RegistrationToken,
+			HTTPClient: cloudHTTPClient,
+			Logger:     logger,
+		})
+		go func() {
+			if err := claudeControl.Run(ctx); err != nil && ctx.Err() == nil {
+				slog.Warn("claude ingest control endpoint stopped", "error", err)
+			}
+		}()
+		claudeControlStarted = true
+	} else {
+		slog.Debug("claude ingest control endpoint disabled: backend URL or registration token missing")
+	}
+
 	// ----- start relay client (if configured) -----
 	relayURL := resolveRelayURL(cfg)
 	edgeID := ""
@@ -246,7 +275,7 @@ func runStart(cmd *cobra.Command, args []string) {
 	}
 
 	// ----- ready -----
-	slog.Info("daemon ready")
+	slog.Info("daemon ready", "claude_ingest_control", claudeControlStarted)
 	<-ctx.Done()
 	slog.Info("shutting down...")
 	fmt.Println("Shutting down...")
