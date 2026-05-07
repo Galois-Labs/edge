@@ -1,7 +1,7 @@
 <h1 align="center">galois edge</h1>
 
 <p align="center">
-  <strong>A single-binary daemon that exposes lab and industrial hardware over gRPC, WebSocket, and PyVISA — across GPIB, USB, LAN, serial, Modbus, and CAN.</strong>
+  <strong>The missing hardware layer for AI agents. One daemon, every protocol — your agent talks gRPC or MCP, your hardware talks whatever it wants.</strong>
 </p>
 
 <p align="center">
@@ -27,9 +27,34 @@
 
 ---
 
-`galois-edge` discovers hardware on GPIB, USB, LAN, serial, Modbus, and CAN buses, identifies it against bundled drivers and YAML profiles, and exposes it through gRPC, WebSocket, and a drop-in PyVISA backend. It runs as a system service, joins a Tailscale/Headscale tailnet for zero-config remote access, and optionally registers with [Galois Cloud](https://cloud.galoislabs.ai) for browser-based control, fleet management, and driver distribution.
+AI agents are good at calling APIs. They're terrible at talking to instruments, PLCs, and CAN-bus devices — every vendor has its own protocol, every protocol has its own client library, every library was written by humans for humans.
+
+`galois-edge` is the missing layer: a single binary that gives any agent (or any program in any language) a unified, typed, network-addressable handle on every piece of hardware in your lab, factory, or rig. Connect the daemon to your gear once; every connected device shows up as a typed MCP tool, a typed gRPC RPC, or a familiar `pyvisa.ResourceManager("@galois")` if you're coming from existing scripts.
 
 Full documentation lives at **[docs.galoislabs.ai](https://docs.galoislabs.ai)**.
+
+## One API. Every bus.
+
+Most hardware-control projects ship one transport per protocol: PyVISA for SCPI, pymodbus for industrial, python-can for automotive, libftdi for serial, none of them speaking the same shape. `galois-edge` is one daemon that owns all of them and exposes a single, typed interface upstream.
+
+| Protocol | Bus / wire | What plugs in |
+|---|---|---|
+| **GPIB** | linux-gpib (Agilent 82357B, NI USB-GPIB-HS, …) | SCPI lab gear |
+| **USBTMC** | PyVISA USB transport | Bench DMMs, scopes, AWGs, SMUs |
+| **Raw USB** | pyusb | Vendor-specific USB devices (lock-in amplifiers, etc.) |
+| **LXI / VXI-11 / HiSLIP** | mDNS auto-discovery | Network-attached lab gear |
+| **Serial / USB-serial** | pyserial (FTDI · Prolific · CH340 · CP210x) | RS-232/485, USB-CDC adapters |
+| **Modbus** | TCP and RTU | PLCs, drives, energy meters, pumps, valves |
+| **CAN** | python-can (SocketCAN, PCAN, Vector, …) | Automotive ECUs, robotics, industrial sensors |
+| **Vendor SDKs** | Python proxy (MultiPyVu, niscope, dwfpy, …) | Non-SCPI hardware with a Python library |
+
+The agent (or your script) calls `keysight_34461a__measure_voltage_dc()`, `siemens_s71200__read_holding_register(addr=40001)`, or `dps150__set_voltage(value=3.3)` — same shape, same auth, same audit log, same fleet view in the cloud.
+
+## Who it's for
+
+- **Lab & test.** SCPI instruments on GPIB, USBTMC, and LXI. Drop-in for existing PyVISA scripts; scale up to typed agent-driven sweeps and characterization. The bundled profile library covers Keithley, Keysight, R&S, Tektronix, Lake Shore, SRS, Rigol, and 100+ other vendors — full list at [galoislabs.ai/instruments](https://www.galoislabs.ai/instruments).
+- **Industrial automation.** Modbus TCP and RTU expose every PLC tag, drive setpoint, and energy meter through the same typed-tool surface as the lab gear. An agent reads a PLC, writes a setpoint, watches an alarm, and pushes to a historian — without per-vendor glue.
+- **Robotics & automotive.** CAN-bus devices and serial sensors stream into the same gRPC contract. Whether the agent is reading an oscilloscope, an engine ECU, or a robot joint encoder, both sides see the same shape: typed RPCs returning timestamped values.
 
 ## Install
 
@@ -45,20 +70,43 @@ curl -fsSL https://galoislabs.ai/install.sh | sudo sh -s -- --token glc_XXXXXXXX
 
 Windows (MSI) and manual install steps are in the [installation guide](https://docs.galoislabs.ai/getting-started/installation/).
 
-## Talk to instruments
+## Use it
+
+### From an agent (MCP)
+
+Point any MCP client at the daemon and every connected device shows up as a typed tool. Works with Anthropic API's `mcp_servers` connector, Claude Desktop, Cursor, OpenAI Agents SDK, LangGraph, LlamaIndex — anything that speaks Model Context Protocol.
+
+```jsonc
+// Claude Desktop — claude_desktop_config.json
+{
+  "mcpServers": {
+    "galois-edge": {
+      "url": "http://lab-pi.tail-1234.ts.net:8767/mcp"
+    }
+  }
+}
+```
+
+The agent now sees per-instrument typed tools (`keithley_2400__source_voltage(value, unit)`, `siemens_s71200__read_holding_register(addr)`), plus generic tools (`list_instruments`, `get_capabilities`, `start_sweep`, `start_stream`). Three things make this genuinely first-class for tool-use, not just MCP-shaped:
+
+- **Runtime capability discovery.** `tools/list` reflects every connected instrument with typed parameters, units, ranges, and `is_dangerous` flags pulled live from profile YAML — no agent needs to read a vendor manual.
+- **Hot-plug surfaces in milliseconds.** Plug in a new oscilloscope, the daemon profile-matches it, and `notifications/tools/list_changed` fires; the agent's tool catalogue updates without a session restart.
+- **Daemon-resident long-running ops.** `start_sweep` returns a handle and the ramp continues on the daemon. `start_stream` maps each measurement point to an MCP `notifications/progress`. An agent session can drop, hand off, or sleep without stranding hardware.
+
+### From a notebook (PyVISA)
+
+If you already have PyVISA scripts, change the backend string and they keep working — every connected device is reachable through the `@galois` backend.
 
 ```python
 import pyvisa
 
-rm = pyvisa.ResourceManager("@galois")          # one line — done
-print(rm.list_resources())
-
+rm = pyvisa.ResourceManager("@galois")
 dmm = rm.open_resource("USB0::0x2A8D::0x0101::MY54505555::INSTR")
 print(dmm.query("*IDN?"))
-print(dmm.query("MEAS:VOLT:DC?"))
+print(float(dmm.query("MEAS:VOLT:DC?")))
 ```
 
-Or use the typed [`galois` Python SDK](https://docs.galoislabs.ai/guides/python-sdk/):
+Or use the typed [`galois` Python SDK](https://docs.galoislabs.ai/guides/python-sdk/) for sync/async, NumPy-decoded waveforms, and daemon-resident sweeps:
 
 ```python
 import galois
@@ -69,26 +117,37 @@ with galois.Edge.connect("lab-pi.tail-1234.ts.net:50051") as edge:
     print(smu.execute("measure_current"))
 ```
 
-Or call the gRPC API from any language — see the [daemon API reference](https://docs.galoislabs.ai/reference/daemon-api/).
+### From any language (gRPC)
+
+The proto contract under [`proto/edge/v1/edge.proto`](./proto/edge/v1/edge.proto) is the canonical surface. Generate stubs in any language `buf` supports.
+
+```sh
+grpcurl -plaintext lab-pi:50051 galois.edge.v1.EdgeDaemonService/ListInstruments
+```
+
+Full reference at the [daemon API docs](https://docs.galoislabs.ai/reference/daemon-api/).
 
 ## How it works
 
 ```mermaid
 flowchart LR
     Client["Python / gRPC client<br/>(notebook, script, app)"]
+    Agent["MCP agent<br/>(Claude · OpenAI · Cursor · LangGraph)"]
     Cloud["Galois Cloud<br/>(browser UI · AI assistant)"]
     Tailnet[("Tailnet<br/>Tailscale / Headscale")]
 
     subgraph Edge["Edge host — Linux · Windows · Raspberry Pi"]
       direction TB
       Go["Go supervisor<br/>:50051 gRPC · :8765 WS"]
-      Py["Python engine<br/>:50052 · :8766 (loopback)"]
+      Py["Python engine<br/>:50052 gRPC · :8766 WS · :8767 MCP"]
       Go -- "loopback proxy" --> Py
     end
 
     Inst[("Hardware<br/>GPIB · USB · LAN · Serial · Modbus · CAN")]
 
     Client -- "gRPC / WebSocket" --> Tailnet --> Go
+    Agent -- "MCP streamable-HTTP" --> Tailnet
+    Agent -. "via cloud relay" .-> Cloud
     Cloud -- "WebSocket relay" --> Go
     Cloud -. "browser-side direct dial" .-> Tailnet
     Py --> Inst
@@ -98,13 +157,12 @@ The Go binary owns config, lifecycle, the system service, the embedded Tailscale
 
 ## What's in the box
 
-- **Single binary** — Go supervisor plus a frozen Python engine. No Python runtime, no Docker, no dependencies on the target host.
-- **Bundled drivers and YAML profiles** for laboratory test equipment. Write your own profiles, drop them in the profile dir, or push them through Galois Cloud to a fleet of daemons. The current supported list is at **[galoislabs.ai/instruments](https://www.galoislabs.ai/instruments)**.
-- **Multi-protocol discovery** on GPIB (linux-gpib), USB (USBTMC + raw pyusb), LXI mDNS, USB-serial, Modbus (TCP and RTU), and CAN.
-- **Sweeps** — safety-aware ramps for magnets and temperature controllers. Sweep state lives on the daemon, so client drops don't strand hardware.
-- **Streaming** — gRPC server-streaming and a multi-stream WebSocket protocol (32 streams/socket) with NumPy decoding for waveforms.
-- **Vendor SDK relay** — `ProxySDKCall` invokes Python vendor libraries installed alongside the daemon for non-SCPI hardware (PPMS controllers, NI modular instruments, Digilent boards, …).
-- **Optional cloud** — when `BACKEND_URL` is set, the daemon joins a Tailscale tailnet and a WebSocket relay so the cloud can dispatch even without direct gRPC dial, and pulls driver/profile updates from the dashboard.
+- **Single binary.** Go supervisor plus a frozen Python engine. No Python runtime, no Docker, no dependencies on the target host.
+- **Bundled drivers and YAML profiles.** Write your own, drop them in the profile dir, or push them through Galois Cloud to a fleet of daemons. The current supported list is at [galoislabs.ai/instruments](https://www.galoislabs.ai/instruments).
+- **Sweeps.** Safety-aware ramps for magnets and temperature controllers. Sweep state lives on the daemon, so client drops don't strand hardware.
+- **Streaming.** gRPC server-streaming, a multi-stream WebSocket protocol (32 streams/socket), and MCP progress notifications — with NumPy decoding for waveforms.
+- **Vendor SDK proxy.** Typed agent-callable tools wrap Python vendor libraries (MultiPyVu, niscope, dwfpy, …) for non-SCPI hardware (PPMS controllers, NI modular instruments, Digilent boards, …).
+- **Optional cloud.** When `BACKEND_URL` is set, the daemon joins a Tailscale tailnet and a WebSocket relay so the cloud can dispatch even without direct gRPC dial, and pulls driver/profile updates from the dashboard.
 
 ## Roadmap
 
@@ -118,10 +176,12 @@ Tracking against the post-v0.1 capability-gap wave. Full detail in the [changelo
 - ✅ Relay client hardening (auth header, close-code handling, `hello_ack` build tag)
 - ✅ Env-var reconciliation + unknown-var startup guard
 - ✅ Windows MSI installer with code-signing pipeline (gated on signing secrets)
+- ✅ MCP server at `/mcp` — static + dynamic per-instrument typed tools, real `StreamMeasurement` → progress notifications, typed SDK wrappers replacing opaque `ProxySDKCall`
 
 **In progress**
 - 🚧 Typed `galois` Python SDK (separate repo) — Edge / Cloud / Instrument / Stream / Sweep / Waveform
 - 🚧 Cloud-routed access through `Cloud.connect(backend_url, token).edge(name)`
+- 🚧 Public-internet MCP via the cloud relay — `https://cloud.galoislabs.ai/mcp/<edge_id>` with per-call JWT-scoped ACLs (daemon side shipped, cloud side in review)
 
 **Planned**
 - 📋 Profile-defined safety interlocks for sweeps (per-instrument abort SCPI is in; declarative bounds next)
