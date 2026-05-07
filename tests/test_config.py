@@ -80,7 +80,8 @@ class TestConfigEnvOverride:
         assert cfg.gpib_enabled is True
 
     def test_scan_interval_env(self, monkeypatch):
-        monkeypatch.setenv("SCAN_INTERVAL_S", "120")
+        # G1: primary env var is now RESCAN_INTERVAL_SEC
+        monkeypatch.setenv("RESCAN_INTERVAL_SEC", "120")
         from galois_edge.config import Config
         cfg = Config()
         assert cfg.scan_interval_s == 120

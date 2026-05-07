@@ -6,7 +6,9 @@ Supports .env files via python-dotenv. Platform-aware for Linux vs Windows.
 """
 
 import os
+import re
 import sys
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,6 +18,132 @@ try:
 except ImportError:
     # python-dotenv is optional; env vars still work without it
     pass
+
+
+# ---------------------------------------------------------------------------
+# G2 — Allow-list of known Galois environment variables
+# ---------------------------------------------------------------------------
+# Derived from the union of:
+#   - Every fieldMapping key in internal/config/config.go (32 entries)
+#   - INBOUND_AUTH_TOKEN (Spec C — additive, not yet merged)
+#   - Python-only reads not yet in Go fieldMapping
+#   - Documented passthroughs
+#
+# The CI drift test in tests/test_known_vars_drift.py asserts that this set
+# is a superset of the Go fieldMapping keys, so it can never silently shrink.
+_KNOWN_GALOIS_VARS: frozenset[str] = frozenset({
+    # --- config.go fieldMapping (32 entries) ---
+    "EDGE_NAME",
+    "PYTHON_BIN",
+    "GRPC_PORT",
+    "GRPC_INTERNAL_PORT",
+    "GRPC_MAX_WORKERS",
+    "WS_PORT",
+    "WS_INTERNAL_PORT",
+    "BACKEND_URL",
+    "RELAY_URL",
+    "REGISTRATION_TOKEN",
+    "HEARTBEAT_INTERVAL_SEC",
+    "TAILSCALE_AUTH_KEY",
+    "HEADSCALE_URL",
+    "TSNET_STATE_DIR",
+    "PROFILES_ENABLED",
+    "PROFILE_DIR",
+    "GPIB_ENABLED",
+    "GPIB_BOARD",
+    "GPIB_SCAN_ON_INIT",
+    "LAN_ENABLED",
+    "LAN_MDNS_ENABLED",
+    "LAN_INSTRUMENTS",
+    "USB_RAW_ENABLED",
+    "WS_ENABLED",
+    "ZMQ_ENABLED",
+    "ZMQ_PUB_PORT",
+    "RESCAN_INTERVAL_SEC",
+    "VISA_BACKEND",
+    "CONNECTION_INITIAL_BACKOFF",
+    "CONNECTION_MAX_BACKOFF",
+    "CONNECTION_FAILURE_THRESHOLD",
+    "LOG_LEVEL",
+    # --- Spec C (INBOUND_AUTH_TOKEN) — additive, lands after G ---
+    "INBOUND_AUTH_TOKEN",
+    # --- Python-only reads not yet in Go fieldMapping ---
+    "INCLUDE_SERIAL_PORTS",
+    "USB_MONITOR_ENABLED",
+    "GPIB_TRICKLE_INTERVAL_S",
+    "GPIB_TRICKLE_PROBE_TIMEOUT_MS",
+    "DRIVER_PROFILE_DIR",
+    # --- Documented passthroughs ---
+    "MODBUS_INSTRUMENTS",
+    "SERIAL_INSTRUMENTS",
+    "DEMO_MODE",
+})
+
+# ---------------------------------------------------------------------------
+# G3 — System-environment exact-match and prefix skip-lists
+# ---------------------------------------------------------------------------
+# Intentionally narrow: better to log a spurious warning on an unusual
+# all-caps env var than to silently swallow a real config typo.
+_SYSTEM_ENV_EXACT: frozenset[str] = frozenset({
+    "PATH", "HOME", "USER", "LOGNAME", "PWD", "OLDPWD", "SHELL",
+    "TERM", "DISPLAY", "LANG", "SHLVL", "TMPDIR", "TZ",
+    "EDITOR", "VISUAL", "PAGER", "MANPATH", "INFOPATH",
+    "HOSTNAME", "HOST",
+    # Windows
+    "PROGRAMDATA", "PROGRAMFILES", "APPDATA", "LOCALAPPDATA",
+    "USERPROFILE", "USERNAME", "SYSTEMROOT", "WINDIR", "COMSPEC",
+})
+
+_SYSTEM_ENV_PREFIXES: tuple[str, ...] = (
+    "LC_",       # locale family — LC_ALL, LC_CTYPE, ...
+    "SSH_",      # SSH agent / connection
+    "XDG_",      # XDG base-dir spec
+    "GIT_",      # git internals
+    "DBUS_",     # session bus
+    "GNOME_", "KDE_", "QT_",
+    "PYTHON",    # PYTHONPATH, PYTHONHOME, PYTHONDONTWRITEBYTECODE, etc.
+    "PIP_",      # pip internals
+    "VIRTUAL_ENV",  # virtualenv activation
+    "CONDA_",    # conda environment
+    "PYTEST_",   # pytest internals
+)
+
+# Heuristic: all-caps with underscores, no lowercase, 4+ chars, no leading digit.
+_GALOIS_VAR_RE = re.compile(r'^[A-Z][A-Z0-9_]{3,}$')
+
+_cfg_logger = logging.getLogger(__name__)
+
+
+def _is_system_var(key: str) -> bool:
+    """Return True if key is a known system/runtime env var, not a Galois key."""
+    if key in _SYSTEM_ENV_EXACT:
+        return True
+    return any(key.startswith(p) for p in _SYSTEM_ENV_PREFIXES)
+
+
+def _warn_unknown_galois_vars() -> None:
+    """Warn at startup about env vars that look like Galois keys but aren't known.
+
+    Called once from load_config() before any subsystem starts.  The operator
+    sees these alongside the startup banner, catching typos like
+    ``RSCAN_INTERVAL=60`` or stale keys left in config.env after a rename.
+    """
+    for key in os.environ:
+        if key in _KNOWN_GALOIS_VARS:
+            continue
+        if not _GALOIS_VAR_RE.match(key):
+            continue
+        if _is_system_var(key):
+            continue
+        _cfg_logger.warning(
+            "galois-edge: unrecognized env var '%s' — possible typo or stale config key",
+            key,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Platform helpers
+# ---------------------------------------------------------------------------
 
 
 def _is_windows() -> bool:
@@ -33,6 +161,11 @@ def _default_config_dir() -> str:
         base = os.environ.get("PROGRAMDATA", r"C:\ProgramData")
         return os.path.join(base, "galois-edge")
     return os.path.join(os.path.expanduser("~"), ".config", "galois-edge")
+
+
+# ---------------------------------------------------------------------------
+# Environment-variable readers
+# ---------------------------------------------------------------------------
 
 
 def _bool_env(key: str, default: bool) -> bool:
@@ -70,6 +203,48 @@ def _str_env(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
+# ---------------------------------------------------------------------------
+# G1 — Compat shim: RESCAN_INTERVAL_SEC (new) with SCAN_INTERVAL_S fallback
+# ---------------------------------------------------------------------------
+
+
+def _rescan_interval_sec() -> int:
+    """Read the rescan interval, preferring the new key over the deprecated one.
+
+    Go canonical name: RESCAN_INTERVAL_SEC
+    Deprecated Python name: SCAN_INTERVAL_S  (removed next minor release)
+
+    If only SCAN_INTERVAL_S is set, returns its value and logs a
+    DeprecationWarning so operators know to rename the key.
+    """
+    new_val = os.environ.get("RESCAN_INTERVAL_SEC")
+    old_val = os.environ.get("SCAN_INTERVAL_S")
+
+    if new_val is not None:
+        # New key wins unconditionally; ignore old key even if both are set.
+        try:
+            return int(new_val)
+        except ValueError:
+            return 60
+
+    if old_val is not None:
+        _cfg_logger.warning(
+            "galois-edge: env var 'SCAN_INTERVAL_S' is deprecated; "
+            "rename to 'RESCAN_INTERVAL_SEC'"
+        )
+        try:
+            return int(old_val)
+        except ValueError:
+            return 60
+
+    return 60
+
+
+# ---------------------------------------------------------------------------
+# Config dataclass
+# ---------------------------------------------------------------------------
+
+
 @dataclass(frozen=True)
 class Config:
     """Immutable configuration loaded from environment variables."""
@@ -105,9 +280,9 @@ class Config:
     )
 
     # --- Periodic rescan ---
-    scan_interval_s: int = field(
-        default_factory=lambda: _int_env("SCAN_INTERVAL_S", 60)
-    )
+    # G1: reads RESCAN_INTERVAL_SEC first; falls back to deprecated SCAN_INTERVAL_S.
+    # The internal Python attribute name (scan_interval_s) is unchanged.
+    scan_interval_s: int = field(default_factory=_rescan_interval_sec)
 
     # --- GPIB trickle scanning ---
     gpib_trickle_interval_s: float = field(
@@ -194,6 +369,11 @@ class Config:
         return [addr.strip() for addr in self.lan_instruments.split(",") if addr.strip()]
 
 
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
 def load_config() -> Config:
     """Create a Config instance from the current environment.
 
@@ -202,5 +382,10 @@ def load_config() -> Config:
         cfg = load_config()
 
     rather than constructing Config directly.
+
+    Calls _warn_unknown_galois_vars() before constructing Config so that
+    any typo-vars or stale config keys are surfaced alongside the startup
+    banner, before any subsystem starts.
     """
+    _warn_unknown_galois_vars()
     return Config()
