@@ -15,6 +15,7 @@ Implements ALL RPCs defined in edge.proto:
 from __future__ import annotations
 
 import asyncio
+import hmac
 import importlib
 import json
 import logging
@@ -24,7 +25,7 @@ import socket
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, AsyncIterator, Dict, Optional, Set
+from typing import Any, AsyncIterator, Callable, Dict, Optional, Set
 
 import grpc
 from grpc import aio as grpc_aio
@@ -2391,6 +2392,123 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
 
 # ---------------------------------------------------------------------------
+# Bearer-token auth interceptor
+# ---------------------------------------------------------------------------
+
+# Full method names that bypass auth (health probes must work without a token).
+# The proto package is galois.edge.v1 — do NOT abbreviate to /edge.EdgeDaemonService/...
+_AUTH_EXEMPT_METHODS: frozenset[str] = frozenset({
+    "/galois.edge.v1.EdgeDaemonService/Ping",
+})
+
+
+def _extract_bearer_token(metadata: Any) -> str:
+    """Extract the bearer token from gRPC invocation metadata.
+
+    Accepts both ``Authorization: Bearer <token>`` and a bare ``<token>``.
+    Returns an empty string when the header is absent.
+    """
+    if not metadata:
+        return ""
+    for key, value in metadata:
+        if key.lower() == "authorization":
+            val = value.strip()
+            # Accept both "Bearer <token>" and bare "<token>".
+            if val.lower().startswith("bearer "):
+                return val[7:]
+            return val
+    return ""
+
+
+class BearerTokenInterceptor(grpc_aio.ServerInterceptor):
+    """gRPC server interceptor that enforces bearer-token authentication.
+
+    Activated only when ``inbound_auth_token`` is non-empty. When the token
+    is empty the interceptor should not be installed at all (see
+    ``GRPCServer.__init__``).
+
+    Exempt methods (see ``_AUTH_EXEMPT_METHODS``) bypass the check so that
+    health probes can work without distributing the token to every probe tool.
+
+    The comparison uses ``hmac.compare_digest`` to prevent timing oracles.
+
+    Implements ``grpc.aio.ServerInterceptor`` via ``intercept_service``, which
+    wraps each matched handler's callable with an auth-checking layer.
+    """
+
+    def __init__(self, token: str) -> None:
+        self._token = token
+
+    async def intercept_service(
+        self,
+        continuation: Callable,
+        handler_call_details: grpc.HandlerCallDetails,
+    ) -> grpc.RpcMethodHandler:
+        """Look up the handler, then wrap its callable with auth logic."""
+        method_name: str = handler_call_details.method  # type: ignore[attr-defined]
+
+        # Delegate to the next interceptor / handler registry first.
+        handler: Optional[grpc.RpcMethodHandler] = await continuation(handler_call_details)
+
+        # Allow explicitly exempt methods unconditionally (no wrapping needed).
+        if method_name in _AUTH_EXEMPT_METHODS:
+            return handler  # type: ignore[return-value]
+
+        if handler is None:
+            return handler  # type: ignore[return-value]
+
+        # Determine which callable field is set on the handler namedtuple.
+        # A single handler will have exactly one of the four callable fields
+        # populated; the others are None.
+        token = self._token
+
+        def _make_auth_wrapper(original_fn: Callable, streaming: bool) -> Callable:
+            """Return a wrapper coroutine / async generator that validates the token."""
+
+            if not streaming:
+                async def _auth_unary(request_or_iterator: Any, context: grpc_aio.ServicerContext) -> Any:
+                    provided = _extract_bearer_token(context.invocation_metadata())
+                    if not hmac.compare_digest(provided, token):
+                        logger.debug("auth check failed for method %s", method_name)
+                        await context.abort(
+                            grpc.StatusCode.UNAUTHENTICATED,
+                            "authentication required",
+                        )
+                        return None
+                    return await original_fn(request_or_iterator, context)
+
+                return _auth_unary
+            else:
+                async def _auth_streaming(request_or_iterator: Any, context: grpc_aio.ServicerContext) -> Any:  # type: ignore[return]
+                    provided = _extract_bearer_token(context.invocation_metadata())
+                    if not hmac.compare_digest(provided, token):
+                        logger.debug("auth check failed for method %s", method_name)
+                        await context.abort(
+                            grpc.StatusCode.UNAUTHENTICATED,
+                            "authentication required",
+                        )
+                        return
+                    async for item in original_fn(request_or_iterator, context):
+                        yield item
+
+                return _auth_streaming
+
+        # Wrap whichever callable field is populated.
+        # grpc.method_handlers returns a namedtuple; we rebuild it with the
+        # wrapped callable in the appropriate slot.
+        if handler.unary_unary is not None:
+            return handler._replace(unary_unary=_make_auth_wrapper(handler.unary_unary, False))
+        if handler.unary_stream is not None:
+            return handler._replace(unary_stream=_make_auth_wrapper(handler.unary_stream, True))
+        if handler.stream_unary is not None:
+            return handler._replace(stream_unary=_make_auth_wrapper(handler.stream_unary, False))
+        if handler.stream_stream is not None:
+            return handler._replace(stream_stream=_make_auth_wrapper(handler.stream_stream, True))
+
+        return handler  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
 # Server lifecycle wrapper
 # ---------------------------------------------------------------------------
 
@@ -2408,9 +2526,11 @@ class GRPCServer:
         sdk_executor: Optional[SDKExecutor] = None,
         io_executor: Optional[ThreadPoolExecutor] = None,
         driver_registry: Optional[Any] = None,
+        inbound_auth_token: str = "",
     ) -> None:
         self._port = port
         self._edge_id = edge_id
+        self._inbound_auth_token = inbound_auth_token
 
         self._servicer = EdgeDaemonServicer(
             instrument_manager=instrument_manager,
@@ -2439,7 +2559,17 @@ class GRPCServer:
         Returns True on success, False on failure.
         """
         try:
+            # Install the bearer-token interceptor only when a token is set,
+            # leaving zero overhead on the common unauthenticated path.
+            interceptors = []
+            if self._inbound_auth_token:
+                interceptors = [BearerTokenInterceptor(self._inbound_auth_token)]
+                logger.info("gRPC bearer-token authentication enabled")
+            else:
+                logger.debug("gRPC bearer-token authentication disabled (INBOUND_AUTH_TOKEN not set)")
+
             self._server = grpc_aio.server(
+                interceptors=interceptors,
                 options=[
                     ("grpc.max_send_message_length", 50 * 1024 * 1024),
                     ("grpc.max_receive_message_length", 50 * 1024 * 1024),

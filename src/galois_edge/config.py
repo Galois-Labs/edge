@@ -325,6 +325,14 @@ class Config:
         default_factory=lambda: _bool_env("DEMO_MODE", False)
     )
 
+    # --- Security ---
+    # Bearer token required for inbound gRPC calls. When empty, the
+    # BearerTokenInterceptor is not installed and all callers are accepted
+    # without authentication.
+    inbound_auth_token: str = field(
+        default_factory=lambda: _str_env("INBOUND_AUTH_TOKEN", "")
+    )
+
     # --- Config directory (platform-aware) ---
     config_dir: str = field(default_factory=_default_config_dir)
 

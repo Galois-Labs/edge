@@ -56,9 +56,10 @@ type setupPayload struct {
 
 // setupResponse captures the fields returned by POST /api/v1/edges/register.
 type setupResponse struct {
-	ID           string `json:"id"`
-	PreAuthKey   string `json:"pre_auth_key,omitempty"`
-	HeadscaleURL string `json:"headscale_url,omitempty"`
+	ID               string `json:"id"`
+	PreAuthKey       string `json:"pre_auth_key,omitempty"`
+	HeadscaleURL     string `json:"headscale_url,omitempty"`
+	InboundAuthToken string `json:"inbound_auth_token,omitempty"`
 }
 
 func runSetup(cmd *cobra.Command, args []string) {
@@ -170,6 +171,9 @@ func runSetup(cmd *cobra.Command, args []string) {
 	}
 	if regResp.HeadscaleURL != "" {
 		kvs["HEADSCALE_URL"] = regResp.HeadscaleURL
+	}
+	if regResp.InboundAuthToken != "" {
+		kvs["INBOUND_AUTH_TOKEN"] = regResp.InboundAuthToken
 	}
 
 	if err := config.WriteFileMap(cfgPath, kvs); err != nil {

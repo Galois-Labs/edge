@@ -161,6 +161,13 @@ func runStart(cmd *cobra.Command, args []string) {
 					}
 					persistTailnetCredentials(cfg, resolvedPath)
 				}
+				// If the backend returned an inbound auth token and we don't
+				// already have one set, persist it so subsequent restarts
+				// activate the gRPC bearer-token interceptor.
+				if result.InboundAuthToken != "" && cfg.InboundAuthToken == "" {
+					cfg.InboundAuthToken = result.InboundAuthToken
+					persistInboundAuthToken(cfg, resolvedPath)
+				}
 			}
 		}
 	} else {
@@ -410,6 +417,9 @@ func buildPythonEnv(cfg *config.Config) []string {
 	if cfg.VisaBackend != "" {
 		env = append(env, fmt.Sprintf("VISA_BACKEND=%s", cfg.VisaBackend))
 	}
+	if cfg.InboundAuthToken != "" {
+		env = append(env, fmt.Sprintf("INBOUND_AUTH_TOKEN=%s", cfg.InboundAuthToken))
+	}
 	if len(cfg.LANInstruments) > 0 {
 		env = append(env, fmt.Sprintf("LAN_INSTRUMENTS=%s", strings.Join(cfg.LANInstruments, ",")))
 	}
@@ -499,6 +509,35 @@ func persistTailnetCredentials(cfg *config.Config, resolvedPath string) {
 		return
 	}
 	slog.Info("received tailnet credentials from backend, saved to config", "path", cfgPath)
+}
+
+// persistInboundAuthToken saves INBOUND_AUTH_TOKEN to the config file using a
+// read-modify-write pattern. If the config file doesn't exist yet, a minimal
+// file is created in the user config dir.
+func persistInboundAuthToken(cfg *config.Config, resolvedPath string) {
+	cfgPath := resolvedPath
+	if cfgPath == "" || cfgPath == "(defaults + env)" {
+		cfgPath = filepath.Join(config.UserConfigDir(), "config.env")
+	}
+
+	// Read existing file (may not exist).
+	kvs := make(map[string]string)
+	if _, err := os.Stat(cfgPath); err == nil {
+		existing, err := config.ParseFile(cfgPath)
+		if err != nil {
+			slog.Warn("cannot read existing config for inbound auth token persistence", "path", cfgPath, "error", err)
+			return
+		}
+		kvs = existing
+	}
+
+	kvs["INBOUND_AUTH_TOKEN"] = cfg.InboundAuthToken
+
+	if err := config.WriteFileMap(cfgPath, kvs); err != nil {
+		slog.Warn("failed to persist inbound auth token to config", "path", cfgPath, "error", err)
+		return
+	}
+	slog.Info("received inbound auth token from backend, saved to config", "path", cfgPath)
 }
 
 // --------------------------------------------------------------------------

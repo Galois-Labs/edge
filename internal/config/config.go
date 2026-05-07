@@ -155,6 +155,13 @@ type Config struct {
 	// LogLevel controls the daemon log level (debug, info, warn, error).
 	LogLevel string
 
+	// ---------- Security ----------
+
+	// InboundAuthToken is the bearer token that remote gRPC callers must
+	// supply in the Authorization header. When empty, the interceptor is
+	// not installed and all callers are accepted without authentication.
+	InboundAuthToken string
+
 	// ---------- Passthrough ----------
 
 	// Extra holds config.env keys that are not recognized by the Go
@@ -236,6 +243,9 @@ var fieldMapping = []fieldEntry{
 
 	// Logging
 	{"LOG_LEVEL", "LogLevel"},
+
+	// Security
+	{"INBOUND_AUTH_TOKEN", "InboundAuthToken"},
 }
 
 // --------------------------------------------------------------------------
@@ -638,6 +648,10 @@ func (c *Config) Save(path string) error {
 		{"LOG_LEVEL", c.LogLevel},
 	})
 
+	section("Security", []kv{
+		{"INBOUND_AUTH_TOKEN", c.InboundAuthToken},
+	})
+
 	return os.WriteFile(path, []byte(b.String()), 0o644)
 }
 
@@ -860,6 +874,8 @@ func setField(cfg *Config, name, val string) error {
 		cfg.VisaBackend = val
 	case "LogLevel":
 		cfg.LogLevel = val
+	case "InboundAuthToken":
+		cfg.InboundAuthToken = val
 
 	// --- ints ---
 	case "GRPCPort":
@@ -982,6 +998,8 @@ func getFieldStr(cfg *Config, name string) string {
 		return itoa(cfg.ConnectionFailureThreshold)
 	case "LogLevel":
 		return cfg.LogLevel
+	case "InboundAuthToken":
+		return cfg.InboundAuthToken
 	default:
 		return ""
 	}
