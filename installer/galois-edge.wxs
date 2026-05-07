@@ -1,16 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  WiX v4 installer definition for the galois-edge daemon.
+  WiX v5 installer definition for the galois-edge daemon.
 
   Build with:
-    dotnet tool install -g wix
+    dotnet tool install -g wix --version 5.0.2
+    wix extension add WixToolset.Util.wixext/5.0.2
     wix build -d Version=1.0.0 -d BinDir=path\to\binaries installer/galois-edge.wxs
 
   The BinDir variable must point to a directory containing:
     - galois-edge.exe          (Go supervisor binary)
     - galois-edge-daemon.exe   (Python frozen binary via PyInstaller)
     - galois-edge-tray.exe     (Windows tray application)
+
+  Optional install-time properties:
+    GALOIS_TOKEN=<token>     — runs "galois-edge setup <token>" after service install.
+    TRAY_AUTORUN=user        — writes tray autorun to HKCU instead of HKLM (per-user).
+
+  Examples:
+    msiexec /i galois-edge-windows-amd64.msi /qn
+    msiexec /i galois-edge-windows-amd64.msi GALOIS_TOKEN=glc_XXXXX /qn
+    msiexec /i galois-edge-windows-amd64.msi TRAY_AUTORUN=user /qn
 -->
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
@@ -26,14 +36,109 @@
     Scope="perMachine">
 
     <SummaryInformation
-      Description="galois-edge daemon — laboratory instrument gateway" />
+      Description="galois-edge daemon — laboratory instrument gateway"
+      Comments="Uninstall runs galois-edge uninstall before removing files." />
 
-    <!-- Remove previous versions before installing -->
+    <!-- Remove previous versions before installing; allow re-install of same version -->
     <MajorUpgrade
       DowngradeErrorMessage="A newer version of galois-edge is already installed."
-      Schedule="afterInstallInitialize" />
+      Schedule="afterInstallInitialize"
+      AllowSameVersionUpgrades="yes" />
 
     <MediaTemplate EmbedCab="yes" />
+
+    <!-- ============================================================ -->
+    <!-- Public properties                                              -->
+    <!-- ============================================================ -->
+
+    <!--
+      GALOIS_TOKEN — optional registration token.
+      When non-empty, the SetupToken custom action calls
+      "galois-edge setup <GALOIS_TOKEN>" after InstallService.
+      Supply via: msiexec /i ... GALOIS_TOKEN=glc_XXXXX /qn
+    -->
+    <Property Id="GALOIS_TOKEN" Value="" />
+
+    <!--
+      TRAY_AUTORUN — controls where the tray autorun registry value is written.
+      Default (empty or any value other than "user"): HKLM (all users).
+      "user": HKCU (current user only).
+      Supply via: msiexec /i ... TRAY_AUTORUN=user /qn
+    -->
+    <Property Id="TRAY_AUTORUN" Value="" />
+
+    <!-- ============================================================ -->
+    <!-- Custom actions — service management via the Go binary          -->
+    <!-- ============================================================ -->
+
+    <!--
+      J1: Replace WiX ServiceInstall/ServiceControl/util:ServiceConfig with
+      deferred custom actions that delegate to the Go binary's own
+      install/uninstall subcommands. This matches the Linux installer path
+      and avoids conflicts between WiX's SCM API and the Go binary's own SCM
+      API calls.
+    -->
+
+    <!-- InstallService: deferred, elevated, runs after files are placed -->
+    <CustomAction
+      Id="InstallService"
+      Impersonate="no"
+      Execute="deferred"
+      Directory="INSTALLFOLDER"
+      ExeCommand="&quot;[INSTALLFOLDER]galois-edge.exe&quot; install --config &quot;[CONFIGFOLDER]config.env&quot;"
+      Return="check" />
+
+    <!-- UninstallService: deferred, elevated, runs before files are removed -->
+    <CustomAction
+      Id="UninstallService"
+      Impersonate="no"
+      Execute="deferred"
+      Directory="INSTALLFOLDER"
+      ExeCommand="&quot;[INSTALLFOLDER]galois-edge.exe&quot; uninstall"
+      Return="ignore" />
+
+    <!--
+      SetupToken: deferred, elevated, runs after InstallService.
+      Only executes when GALOIS_TOKEN property is non-empty.
+      The condition is applied in InstallExecuteSequence below.
+    -->
+    <CustomAction
+      Id="SetupToken"
+      Impersonate="no"
+      Execute="deferred"
+      Directory="INSTALLFOLDER"
+      ExeCommand="&quot;[INSTALLFOLDER]galois-edge.exe&quot; setup &quot;[GALOIS_TOKEN]&quot; --config &quot;[CONFIGFOLDER]config.env&quot;"
+      Return="check" />
+
+    <!-- ============================================================ -->
+    <!-- Execution sequences                                            -->
+    <!-- ============================================================ -->
+
+    <InstallExecuteSequence>
+      <!--
+        UninstallService: runs before RemoveFiles during uninstall/upgrade removal.
+        Condition: only when uninstalling or upgrading (product was previously installed).
+        "Installed AND (REMOVE OR UPGRADINGPRODUCTCODE)"
+      -->
+      <Custom Action="UninstallService" Before="RemoveFiles">
+        Installed AND (REMOVE OR UPGRADINGPRODUCTCODE)
+      </Custom>
+
+      <!--
+        InstallService: runs after InstallFiles during fresh install or upgrade.
+        "NOT Installed OR REINSTALL"
+      -->
+      <Custom Action="InstallService" After="InstallFiles">
+        NOT Installed OR REINSTALL
+      </Custom>
+
+      <!--
+        SetupToken: runs after InstallService, only when GALOIS_TOKEN was supplied.
+      -->
+      <Custom Action="SetupToken" After="InstallService">
+        (NOT Installed OR REINSTALL) AND GALOIS_TOKEN &lt;&gt; ""
+      </Custom>
+    </InstallExecuteSequence>
 
     <!-- ============================================================ -->
     <!-- Directory layout                                              -->
@@ -46,39 +151,20 @@
       <Directory Id="CONFIGFOLDER" Name="galois-edge" />
     </StandardDirectory>
 
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="GaloisMenuFolder" Name="Galois Edge" />
+    </StandardDirectory>
+
     <!-- ============================================================ -->
     <!-- Components                                                    -->
     <!-- ============================================================ -->
 
-    <!-- Go supervisor binary + Windows service registration -->
+    <!-- Go supervisor binary (service registration via custom actions above) -->
     <ComponentGroup Id="GoBinary" Directory="INSTALLFOLDER">
       <Component Id="GoExe" Guid="a3d8e6c1-5b47-4f9a-8e2d-1c6f3a7b9d05">
         <File Id="galois_edge_exe"
               Source="$(var.BinDir)\galois-edge.exe"
               KeyPath="yes" />
-        <ServiceInstall
-          Id="galoisEdgeService"
-          Name="galois-edge"
-          DisplayName="galois-edge daemon"
-          Description="Laboratory instrument gateway — connects bench equipment to Galois cloud"
-          Type="ownProcess"
-          Start="auto"
-          Account="LocalSystem"
-          ErrorControl="normal"
-          Arguments="start --config &quot;[CONFIGFOLDER]config.env&quot;" />
-        <ServiceControl
-          Id="galoisEdgeServiceControl"
-          Name="galois-edge"
-          Stop="both"
-          Remove="uninstall"
-          Wait="yes" />
-        <util:ServiceConfig
-          ServiceName="galois-edge"
-          FirstFailureActionType="restart"
-          SecondFailureActionType="restart"
-          ThirdFailureActionType="none"
-          RestartServiceDelayInSeconds="30"
-          ResetPeriodInDays="1" />
       </Component>
     </ComponentGroup>
 
@@ -91,24 +177,59 @@
       </Component>
     </ComponentGroup>
 
-    <!-- Windows tray application (auto-starts on user login) -->
+    <!-- Windows tray application (auto-starts on user login via registry) -->
     <ComponentGroup Id="TrayBinary" Directory="INSTALLFOLDER">
       <Component Id="TrayExe" Guid="d6a1b9f4-8e37-4c2d-a150-4f9c6d2e8a73">
         <File Id="galois_edge_tray_exe"
               Source="$(var.BinDir)\galois-edge-tray.exe"
               KeyPath="yes" />
+      </Component>
+
+      <!--
+        §5.4 Tray autorun — HKLM (all users, default).
+        Created on install, removed on uninstall by WiX component reference counting.
+        Active when TRAY_AUTORUN is empty (default) or any value other than "user".
+      -->
+      <Component Id="TrayAutorunHKLM"
+                 Guid="f8c3d1a7-2b94-4e6f-b309-6e0a1d5c8f12">
+        <Condition>TRAY_AUTORUN &lt;&gt; "user"</Condition>
         <RegistryValue
-          Root="HKMU"
+          Root="HKLM"
           Key="Software\Microsoft\Windows\CurrentVersion\Run"
-          Name="galois-edge-tray"
+          Name="GaloisEdgeTray"
           Type="string"
-          Value="&quot;[INSTALLFOLDER]galois-edge-tray.exe&quot;" />
+          Value="&quot;[INSTALLFOLDER]galois-edge-tray.exe&quot;"
+          KeyPath="yes" />
+      </Component>
+
+      <!--
+        §5.4 Tray autorun — HKCU (per-user, opt-in).
+        Active when installer is invoked with TRAY_AUTORUN=user.
+      -->
+      <Component Id="TrayAutorunHKCU"
+                 Guid="a9e4b2f6-1c73-4d8a-c420-7f1b2e6d0a93">
+        <Condition>TRAY_AUTORUN = "user"</Condition>
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Run"
+          Name="GaloisEdgeTray"
+          Type="string"
+          Value="&quot;[INSTALLFOLDER]galois-edge-tray.exe&quot;"
+          KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
-    <!-- Default configuration template -->
+    <!--
+      Default configuration template.
+      NeverOverwrite="yes" — upgrades do not overwrite an existing config.env.
+      Permanent="yes"      — uninstall leaves config.env in place (mirrors Linux).
+      This ensures user-customised settings survive upgrade and uninstall.
+    -->
     <ComponentGroup Id="ConfigTemplate" Directory="CONFIGFOLDER">
-      <Component Id="ConfigEnv" Guid="c5f0a8e3-7d69-4b1c-a04f-3e8b5c9d1f27">
+      <Component Id="ConfigEnv"
+                 Guid="c5f0a8e3-7d69-4b1c-a04f-3e8b5c9d1f27"
+                 NeverOverwrite="yes"
+                 Permanent="yes">
         <File Id="config_env"
               Source="installer\config.env.template"
               Name="config.env"
@@ -130,6 +251,35 @@
       </Component>
     </ComponentGroup>
 
+    <!--
+      J2: Start Menu shortcut for "Galois Edge Status".
+      Opens a console window running "galois-edge status" so operators can
+      quickly check the service state without opening a terminal.
+    -->
+    <ComponentGroup Id="StartMenu" Directory="GaloisMenuFolder">
+      <Component Id="StatusShortcut"
+                 Guid="b1d7e9c4-3f25-4a8b-d063-8c2f4a9e1b57">
+        <Shortcut Id="GaloisEdgeStatusShortcut"
+                  Name="Galois Edge Status"
+                  Description="Show galois-edge service status"
+                  Target="[SystemFolder]cmd.exe"
+                  Arguments="/k &quot;[INSTALLFOLDER]galois-edge.exe&quot; status"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Show="normal" />
+        <!-- KeyPath via a registry value so WiX can track the shortcut component -->
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Galois Labs\galois-edge"
+          Name="StatusShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+        <RemoveFolder Id="RemoveGaloisMenuFolder"
+                      Directory="GaloisMenuFolder"
+                      On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
     <!-- ============================================================ -->
     <!-- Feature tree                                                  -->
     <!-- ============================================================ -->
@@ -139,6 +289,7 @@
       <ComponentGroupRef Id="TrayBinary" />
       <ComponentGroupRef Id="ConfigTemplate" />
       <ComponentGroupRef Id="PathEntry" />
+      <ComponentGroupRef Id="StartMenu" />
     </Feature>
 
   </Package>
