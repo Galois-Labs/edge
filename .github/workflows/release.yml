@@ -138,7 +138,7 @@ jobs:
       - name: Freeze Python with PyInstaller
         shell: bash
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
           pyinstaller galois-edge-daemon.spec

@@ -18,6 +18,8 @@ from galois_edge.drivers.modbus_driver import GenericModbusDriver
 from galois_edge.drivers.modbus_transport import ModbusBusManager
 from galois_edge.drivers.can_driver import GenericCANDriver
 from galois_edge.drivers.can_transport import CANBusManager
+from galois_edge.drivers.serial_driver import GenericSerialDriver
+from galois_edge.drivers.serial_transport import SerialBusManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ class DriverRegistry:
         self._instances: dict[str, BaseProtocolDriver] = {}
         self._bus_manager = ModbusBusManager()
         self._can_bus_manager = CANBusManager()
+        self._serial_bus_manager = SerialBusManager()
         self.profiles_dir = profiles_dir or str(
             Path(__file__).parent.parent / "profiles"
         )
@@ -99,6 +102,14 @@ class DriverRegistry:
                 transport_uri=transport_uri,
                 profile=profile,
                 bus_manager=self._can_bus_manager,
+                **kwargs,
+            )
+        elif protocol == "serial":
+            instance = GenericSerialDriver(
+                instrument_id=instrument_id,
+                transport_uri=transport_uri,
+                profile=profile,
+                bus_manager=self._serial_bus_manager,
                 **kwargs,
             )
         else:
