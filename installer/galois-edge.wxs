@@ -54,7 +54,7 @@
       "galois-edge setup <GALOIS_TOKEN>" after InstallService.
       Supply via: msiexec /i ... GALOIS_TOKEN=glc_XXXXX /qn
     -->
-    <Property Id="GALOIS_TOKEN" Value="" />
+    <Property Id="GALOIS_TOKEN" Secure="yes" />
 
     <!--
       TRAY_AUTORUN — controls where the tray autorun registry value is written.
@@ -62,7 +62,7 @@
       "user": HKCU (current user only).
       Supply via: msiexec /i ... TRAY_AUTORUN=user /qn
     -->
-    <Property Id="TRAY_AUTORUN" Value="" />
+    <Property Id="TRAY_AUTORUN" Secure="yes" />
 
     <!-- ============================================================ -->
     <!-- Custom actions — service management via the Go binary          -->
@@ -117,24 +117,20 @@
         Condition: only when uninstalling or upgrading (product was previously installed).
         "Installed AND (REMOVE OR UPGRADINGPRODUCTCODE)"
       -->
-      <Custom Action="UninstallService" Before="RemoveFiles">
-        Installed AND (REMOVE OR UPGRADINGPRODUCTCODE)
-      </Custom>
+      <Custom Action="UninstallService" Before="RemoveFiles"
+              Condition="Installed AND (REMOVE OR UPGRADINGPRODUCTCODE)" />
 
       <!--
         InstallService: runs after InstallFiles during fresh install or upgrade.
-        "NOT Installed OR REINSTALL"
       -->
-      <Custom Action="InstallService" After="InstallFiles">
-        NOT Installed OR REINSTALL
-      </Custom>
+      <Custom Action="InstallService" After="InstallFiles"
+              Condition="NOT Installed OR REINSTALL" />
 
       <!--
         SetupToken: runs after InstallService, only when GALOIS_TOKEN was supplied.
       -->
-      <Custom Action="SetupToken" After="InstallService">
-        (NOT Installed OR REINSTALL) AND GALOIS_TOKEN &lt;&gt; ""
-      </Custom>
+      <Custom Action="SetupToken" After="InstallService"
+              Condition="(NOT Installed OR REINSTALL) AND GALOIS_TOKEN AND GALOIS_TOKEN &lt;&gt; &quot;&quot;" />
     </InstallExecuteSequence>
 
     <!-- ============================================================ -->
@@ -188,8 +184,8 @@
         Active when TRAY_AUTORUN is empty (default) or any value other than "user".
       -->
       <Component Id="TrayAutorunHKLM"
-                 Guid="f8c3d1a7-2b94-4e6f-b309-6e0a1d5c8f12">
-        <Condition>TRAY_AUTORUN &lt;&gt; "user"</Condition>
+                 Guid="f8c3d1a7-2b94-4e6f-b309-6e0a1d5c8f12"
+                 Condition="NOT TRAY_AUTORUN OR TRAY_AUTORUN &lt;&gt; &quot;user&quot;">
         <RegistryValue
           Root="HKLM"
           Key="Software\Microsoft\Windows\CurrentVersion\Run"
@@ -204,8 +200,8 @@
         Active when installer is invoked with TRAY_AUTORUN=user.
       -->
       <Component Id="TrayAutorunHKCU"
-                 Guid="a9e4b2f6-1c73-4d8a-c420-7f1b2e6d0a93">
-        <Condition>TRAY_AUTORUN = "user"</Condition>
+                 Guid="a9e4b2f6-1c73-4d8a-c420-7f1b2e6d0a93"
+                 Condition="TRAY_AUTORUN = &quot;user&quot;">
         <RegistryValue
           Root="HKCU"
           Key="Software\Microsoft\Windows\CurrentVersion\Run"
