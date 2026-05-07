@@ -3,10 +3,7 @@
 <!--
   WiX v5 installer definition for the galois-edge daemon.
 
-  Build with:
-    dotnet tool install -g wix --version 5.0.2
-    wix extension add WixToolset.Util.wixext/5.0.2
-    wix build -d Version=1.0.0 -d BinDir=path\to\binaries installer/galois-edge.wxs
+  Build: see .github/workflows/release.yml for the canonical wix v5 build invocation.
 
   The BinDir variable must point to a directory containing:
     - galois-edge.exe          (Go supervisor binary)
