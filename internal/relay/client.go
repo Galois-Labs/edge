@@ -128,6 +128,17 @@ type relayMessage struct {
 	ErrorMessage    string `json:"error_message,omitempty"`
 	ScpiCommand     string `json:"scpi_command,omitempty"`
 	ExecutionTimeMs int64  `json:"execution_time_ms,omitempty"`
+
+	// MCP frame fields (Phase 2 — see docs/mcp-integration.md §3.2.1).
+	//
+	// Payload is the raw JSON-RPC body. For mcp_request and mcp_response it
+	// includes the JSON-RPC `id`. For mcp_notification it does not (notifications
+	// are spec'd to omit `id`). McpRequestID correlates one logical streamable-HTTP
+	// call across cloud → daemon → cloud — distinct from the JSON-RPC id which
+	// the agent owns end-to-end.
+	McpRequestID string          `json:"mcp_request_id,omitempty"`
+	CallerJwt    string          `json:"caller_jwt,omitempty"`
+	Payload      json.RawMessage `json:"payload,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +154,13 @@ type Client struct {
 	backendURL string // e.g. "ws://cloud.galoislabs.ai:8000/api/v1/relay/ws"
 	authToken  string // registration token
 	localGRPC  string // "127.0.0.1:50052" — the local Python daemon
+
+	// MCP forwarding target inside the local daemon (Phase 2). When mcpPort
+	// is zero the relay still works for command_request frames; mcp_request
+	// frames are NACK'd with a 503-equivalent JSON-RPC error.
+	mcpHost string
+	mcpPort int
+	mcpPath string
 
 	logger *slog.Logger
 }
@@ -165,10 +183,30 @@ func NewClient(edgeID, edgeName, version, backendURL, authToken, localGRPCAddr s
 		backendURL: backendURL,
 		authToken:  authToken,
 		localGRPC:  localGRPCAddr,
+		mcpHost:    "127.0.0.1",
+		mcpPort:    0,
+		mcpPath:    "/mcp",
 		logger: logger.With(
 			"component", "relay",
 		),
 	}
+}
+
+// WithMCPTarget configures the local FastMCP endpoint that mcp_request frames
+// are forwarded to. host defaults to 127.0.0.1; port=0 disables MCP forwarding.
+// Phase 2 of docs/mcp-integration.md — Phase 1 deployments leave port=0 and
+// the daemon never sees mcp_request frames anyway.
+func (c *Client) WithMCPTarget(host string, port int, path string) *Client {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if path == "" {
+		path = "/mcp"
+	}
+	c.mcpHost = host
+	c.mcpPort = port
+	c.mcpPath = path
+	return c
 }
 
 // Run is the main loop. It connects to the backend WebSocket, sends hello,
@@ -356,6 +394,13 @@ func (c *Client) connectAndServe(parentCtx context.Context) error {
 			// ctx (not the parent) so the goroutine is cancelled when this
 			// session ends.
 			go c.handleCommand(ctx, &writeMu, ws, msg)
+
+		case "mcp_request":
+			c.logger.Info("received mcp request",
+				"mcp_request_id", msg.McpRequestID,
+				"payload_bytes", len(msg.Payload),
+			)
+			go c.handleMCP(ctx, &writeMu, ws, msg)
 
 		case "hello_ack":
 			// hello_ack may arrive during the read loop if the feature flag

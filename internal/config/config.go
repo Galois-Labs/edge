@@ -162,6 +162,21 @@ type Config struct {
 	// not installed and all callers are accepted without authentication.
 	InboundAuthToken string
 
+	// ---------- MCP server (Phase 2) ----------
+
+	// MCPEnabled controls whether the Python engine starts the FastMCP
+	// streamable-HTTP server. Mirrors the Python config knob of the same
+	// name (src/galois_edge/config.py).
+	MCPEnabled bool
+
+	// MCPPort is the localhost port the FastMCP server binds to. Used by
+	// the relay client to forward mcp_request frames to the local engine.
+	MCPPort int
+
+	// MCPPath is the URL path component the FastMCP server mounts under.
+	// Defaults to "/mcp"; see docs/mcp-integration.md §2.6.
+	MCPPath string
+
 	// ---------- Passthrough ----------
 
 	// Extra holds config.env keys that are not recognized by the Go
@@ -246,6 +261,11 @@ var fieldMapping = []fieldEntry{
 
 	// Security
 	{"INBOUND_AUTH_TOKEN", "InboundAuthToken"},
+
+	// MCP
+	{"MCP_ENABLED", "MCPEnabled"},
+	{"MCP_PORT", "MCPPort"},
+	{"MCP_PATH", "MCPPath"},
 }
 
 // --------------------------------------------------------------------------
@@ -311,6 +331,10 @@ func New() *Config {
 		ConnectionFailureThreshold: 3,
 
 		LogLevel: "info",
+
+		MCPEnabled: true,
+		MCPPort:    8767,
+		MCPPath:    "/mcp",
 	}
 }
 
@@ -876,6 +900,8 @@ func setField(cfg *Config, name, val string) error {
 		cfg.LogLevel = val
 	case "InboundAuthToken":
 		cfg.InboundAuthToken = val
+	case "MCPPath":
+		cfg.MCPPath = val
 
 	// --- ints ---
 	case "GRPCPort":
@@ -898,6 +924,8 @@ func setField(cfg *Config, name, val string) error {
 		return setInt(&cfg.RescanIntervalSec, val)
 	case "ConnectionFailureThreshold":
 		return setInt(&cfg.ConnectionFailureThreshold, val)
+	case "MCPPort":
+		return setInt(&cfg.MCPPort, val)
 
 	// --- floats ---
 	case "ConnectionInitialBackoff":
@@ -920,6 +948,8 @@ func setField(cfg *Config, name, val string) error {
 		return setBool(&cfg.WSEnabled, val)
 	case "ZMQEnabled":
 		return setBool(&cfg.ZMQEnabled, val)
+	case "MCPEnabled":
+		return setBool(&cfg.MCPEnabled, val)
 
 	// --- []string ---
 	case "LANInstruments":
@@ -1000,6 +1030,12 @@ func getFieldStr(cfg *Config, name string) string {
 		return cfg.LogLevel
 	case "InboundAuthToken":
 		return cfg.InboundAuthToken
+	case "MCPEnabled":
+		return btoa(cfg.MCPEnabled)
+	case "MCPPort":
+		return itoa(cfg.MCPPort)
+	case "MCPPath":
+		return cfg.MCPPath
 	default:
 		return ""
 	}
