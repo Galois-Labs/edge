@@ -262,13 +262,12 @@ class WebSocketServer:
         if existing is not None and not existing.done():
             existing.cancel()
             try:
-                await asyncio.wait_for(
-                    asyncio.shield(asyncio.ensure_future(
-                        asyncio.sleep(0)  # yield for cancellation
-                    )),
-                    timeout=1.0,
-                )
-            except Exception:
+                await asyncio.wait_for(existing, timeout=1.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                # CancelledError is the expected outcome; TimeoutError shields
+                # against a misbehaving task that swallows cancellation; any
+                # other exception thrown during teardown is logged-and-dropped
+                # by the original task's own error handler.
                 pass
 
         # --- Create new task ---
@@ -569,14 +568,6 @@ class WebSocketServer:
         # Let tasks complete their CancelledError handling
         if streams:
             await asyncio.gather(*streams.values(), return_exceptions=True)
-
-    # Keep the old name as an alias for backward compatibility in tests
-    def _cancel_stream(self, ws: Any) -> None:
-        """Cancel all streams for a WebSocket (legacy single-stream API)."""
-        streams = self._active_streams.pop(ws, {})
-        for task in streams.values():
-            if not task.done():
-                task.cancel()
 
     async def _send_error(
         self,
