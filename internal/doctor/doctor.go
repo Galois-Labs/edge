@@ -20,6 +20,9 @@ import (
 	"github.com/galois-labs/edge/internal/config"
 )
 
+// execCommand is a variable so tests can replace it with a mock.
+var execCommand = exec.Command
+
 // --------------------------------------------------------------------------
 // CheckResult
 // --------------------------------------------------------------------------
@@ -37,24 +40,49 @@ type CheckResult struct {
 
 // RunChecks executes all system-level health checks and returns the results.
 // The cfg parameter supplies the Python binary path, gRPC address, and backend
-// URL used by individual checks. If cfg is nil, sensible defaults are used.
+// URL used by individual checks. If cfg is nil, doctor still runs infrastructure
+// checks; provisioning checks that require cfg fields guard internally.
 func RunChecks(cfg *config.Config) []CheckResult {
-	if cfg == nil {
-		cfg = config.New()
+	// Determine effective config for checks that need it (python_binary,
+	// python_health, gpib_driver, network_backend). Checks that need cfg for
+	// provisioning fields guard with "if cfg == nil" internally.
+	var effectiveCfg *config.Config
+	if cfg != nil {
+		effectiveCfg = cfg
+	} else {
+		effectiveCfg = config.New()
 	}
 
-	pythonBin := cfg.PythonBin
-	grpcAddr := fmt.Sprintf("127.0.0.1:%d", cfg.GRPCInternalPort)
+	pythonBin := effectiveCfg.PythonBin
+	grpcAddr := fmt.Sprintf("127.0.0.1:%d", effectiveCfg.GRPCInternalPort)
 
 	results := []CheckResult{
+		// 1. go_binary
 		checkGoBinary(),
+		// 2. disk_space
 		checkDiskSpace(),
+		// 3. config_file
 		checkConfigFile(),
+		// 4. config_writable (NEW)
+		checkConfigWritable(),
+		// 5. python_binary
 		checkPythonBinary(pythonBin),
+		// 6. python_health
 		checkPythonHealth(grpcAddr),
+		// 7. usb_permissions
 		checkUSBPermissions(),
-		checkGPIBDriver(cfg.GPIBEnabled),
-		checkNetworkBackend(cfg.BackendURL),
+		// 8. gpib_driver
+		checkGPIBDriver(effectiveCfg.GPIBEnabled),
+		// 9. network_backend
+		checkNetworkBackend(effectiveCfg.BackendURL),
+		// 10. udev_rules_installed (NEW)
+		checkUdevRulesInstalled(),
+		// 11. service_unit_installed (NEW)
+		checkServiceUnitInstalled(),
+		// 12. tailnet_connected (NEW)
+		checkTailnetConnected(cfg),
+		// 13. registration_token_format (NEW)
+		checkRegistrationTokenFormat(cfg),
 	}
 	return results
 }
@@ -406,5 +434,161 @@ func checkNetworkBackend(backendURL string) CheckResult {
 		Name:    "network_backend",
 		Status:  "pass",
 		Message: fmt.Sprintf("Backend reachable at %s (HTTP %d)", backendURL, resp.StatusCode),
+	}
+}
+
+// checkConfigWritable verifies that the config file (or its parent directory
+// if no file exists yet) is writable by the current process.
+func checkConfigWritable() CheckResult {
+	path := config.FindConfigFile()
+	if path != "" {
+		// File exists — try to open it for writing.
+		f, err := os.OpenFile(path, os.O_WRONLY, 0)
+		if err != nil {
+			return CheckResult{
+				Name:    "config_writable",
+				Status:  "warn",
+				Message: fmt.Sprintf("Config file at %s is not writable by current user; 'configure set' will fail", path),
+			}
+		}
+		f.Close()
+		return CheckResult{
+			Name:    "config_writable",
+			Status:  "pass",
+			Message: fmt.Sprintf("Config file is writable: %s", path),
+		}
+	}
+
+	// No config file — check whether the default directory is writable.
+	dir := config.SystemConfigDir()
+	if _, err := os.Stat(dir); err != nil {
+		expectedPath := filepath.Join(dir, "config.env")
+		return CheckResult{
+			Name:    "config_writable",
+			Status:  "warn",
+			Message: fmt.Sprintf("Config directory %s does not exist; expected config at %s", dir, expectedPath),
+		}
+	}
+
+	tmp, err := os.CreateTemp(dir, ".galois-doctor-writable-*")
+	if err != nil {
+		return CheckResult{
+			Name:    "config_writable",
+			Status:  "warn",
+			Message: fmt.Sprintf("Config file at %s is not writable by current user; 'configure set' will fail", filepath.Join(dir, "config.env")),
+		}
+	}
+	tmp.Close()
+	os.Remove(tmp.Name())
+
+	return CheckResult{
+		Name:    "config_writable",
+		Status:  "pass",
+		Message: fmt.Sprintf("Config directory is writable: %s", dir),
+	}
+}
+
+// tailscaleStatusJSON is the subset of tailscale status --json output we need.
+type tailscaleStatusJSON struct {
+	Self struct {
+		TailscaleIPs []string `json:"TailscaleIPs"`
+	} `json:"Self"`
+}
+
+// checkTailnetConnected uses the tailscale CLI as a side channel to determine
+// whether the machine has at least one tailnet IP. If TAILSCALE_AUTH_KEY is
+// not configured, the check is skipped (pass).
+func checkTailnetConnected(cfg *config.Config) CheckResult {
+	if cfg == nil {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "warn",
+			Message: "config not loaded; check skipped",
+		}
+	}
+
+	if cfg.TailscaleAuthKey == "" {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "pass",
+			Message: "TAILSCALE_AUTH_KEY not set; tailnet check skipped",
+		}
+	}
+
+	// Auth key is set — try to inspect tailnet state via the tailscale CLI.
+	_, err := exec.LookPath("tailscale")
+	if err != nil {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "warn",
+			Message: "tailnet check requires the tailscale CLI; install tailscale or check 'journalctl -u galois-edge' for daemon-side tsnet state",
+		}
+	}
+
+	cmd := execCommand("tailscale", "status", "--json", "--self")
+	out, err := cmd.Output()
+	if err != nil {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "fail",
+			Message: fmt.Sprintf("tailscale status failed (auth key is configured but tailnet may not be connected): %v", err),
+		}
+	}
+
+	var status tailscaleStatusJSON
+	if jsonErr := json.Unmarshal(out, &status); jsonErr != nil {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "fail",
+			Message: fmt.Sprintf("tailscale status returned invalid JSON: %v", jsonErr),
+		}
+	}
+
+	if len(status.Self.TailscaleIPs) == 0 {
+		return CheckResult{
+			Name:    "tailnet_connected",
+			Status:  "fail",
+			Message: "tailscale status returned no IPs; machine is not connected to the tailnet (check TAILSCALE_AUTH_KEY)",
+		}
+	}
+
+	return CheckResult{
+		Name:    "tailnet_connected",
+		Status:  "pass",
+		Message: fmt.Sprintf("tailnet connected; assigned IPs: %s", strings.Join(status.Self.TailscaleIPs, ", ")),
+	}
+}
+
+// checkRegistrationTokenFormat verifies that REGISTRATION_TOKEN, if set,
+// starts with the expected "glc_" prefix. This is advisory only — never fail.
+func checkRegistrationTokenFormat(cfg *config.Config) CheckResult {
+	if cfg == nil {
+		return CheckResult{
+			Name:    "registration_token_format",
+			Status:  "warn",
+			Message: "config not loaded; check skipped",
+		}
+	}
+
+	if cfg.RegistrationToken == "" {
+		return CheckResult{
+			Name:    "registration_token_format",
+			Status:  "pass",
+			Message: "REGISTRATION_TOKEN not set; skipping format check",
+		}
+	}
+
+	if strings.HasPrefix(cfg.RegistrationToken, "glc_") {
+		return CheckResult{
+			Name:    "registration_token_format",
+			Status:  "pass",
+			Message: "REGISTRATION_TOKEN format OK (starts with 'glc_')",
+		}
+	}
+
+	return CheckResult{
+		Name:    "registration_token_format",
+		Status:  "warn",
+		Message: "REGISTRATION_TOKEN does not start with 'glc_'; check for copy-paste errors",
 	}
 }
