@@ -45,3 +45,6 @@ src/galois_edge/profiles/_cache.pkl
 pal_generated.code
 *.pkl
 *.db
+
+/docs/
+/CLAUDE.md
