@@ -10,15 +10,21 @@ Two streaming modes:
   - **Acquisition**: manage curve buffer transfers and push binary data.
 
 JSON protocol (client <-> server):
-  Subscribe:   {"action": "subscribe", "instrument_id": "...",
+  Subscribe:   {"action": "subscribe", "stream_id": "<id>",
+                 "instrument_id": "...",
                  "mode": "poll", "interval_ms": 100}
-  Unsubscribe: {"action": "unsubscribe", "instrument_id": "..."}
+  Unsubscribe: {"action": "unsubscribe", "stream_id": "<id>"}
   Command:     {"action": "command", "instrument_id": "...",
                  "scpi": "*IDN?"}
-  Data push:   {"type": "data", "timestamp": 1234.5,
-                 "values": {"VOLT": 1.23}}
-  Error:       {"type": "error", "message": "..."}
-  Status:      {"type": "status", "state": "subscribed"}
+  Data push:   {"type": "data", "stream_id": "<id>",
+                 "timestamp": 1234.5, "values": {"VOLT": 1.23}}
+  Error:       {"type": "error", "message": "...",
+                 "stream_id": "<id>"}  # stream_id omitted for parse errors
+  Status:      {"type": "status", "stream_id": "<id>",
+                 "state": "subscribed"}
+
+Each socket supports up to **32 concurrent named streams**, each identified
+by a caller-supplied ``stream_id``.
 """
 
 from __future__ import annotations
@@ -32,6 +38,9 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
+# Maximum concurrent streams per WebSocket connection.
+_MAX_STREAMS_PER_SOCKET = 32
+
 # Guard aiohttp import -- the daemon should still load without it for
 # environments that only need gRPC.
 try:
@@ -42,12 +51,24 @@ except ImportError:
     logger.warning("aiohttp not available -- WebSocket server disabled")
 
 
+def _validate_stream_id(stream_id: Any) -> Optional[str]:
+    """Validate stream_id; return the string on success or None on failure."""
+    if not isinstance(stream_id, str) or not stream_id:
+        return None
+    if len(stream_id) > 64:
+        return None
+    if not all(32 <= ord(c) <= 126 for c in stream_id):
+        return None
+    return stream_id
+
+
 class WebSocketServer:
     """WebSocket server for streaming instrument data from the edge.
 
-    Each connected client may have at most one active subscription.
-    Subscriptions are tracked per-WebSocket connection and automatically
-    cancelled when the client disconnects.
+    Each connected client may have up to 32 concurrent named streams,
+    identified by caller-supplied ``stream_id`` strings. Subscriptions are
+    tracked per-WebSocket connection and automatically cancelled when the
+    client disconnects.
     """
 
     def __init__(
@@ -70,11 +91,25 @@ class WebSocketServer:
 
         self._app: Optional[Any] = None      # web.Application
         self._runner: Optional[Any] = None    # web.AppRunner
-        self._active_streams: Dict[Any, asyncio.Task] = {}
+
+        # Two-level dict: ws -> {stream_id -> asyncio.Task}
+        self._active_streams: Dict[Any, Dict[str, asyncio.Task]] = {}
+
+        # Global acquisition exclusion: instrument_id -> True while acquiring
+        self._acquiring_instruments: set[str] = set()
+
+        # Per-instrument asyncio.Lock to serialise poll ticks and commands
+        self._instrument_locks: Dict[str, asyncio.Lock] = {}
 
     @property
     def port(self) -> int:
         return self._port
+
+    def _get_instrument_lock(self, instrument_id: str) -> asyncio.Lock:
+        """Return the per-instrument Lock, creating it if necessary."""
+        if instrument_id not in self._instrument_locks:
+            self._instrument_locks[instrument_id] = asyncio.Lock()
+        return self._instrument_locks[instrument_id]
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -100,8 +135,9 @@ class WebSocketServer:
 
     async def stop(self) -> None:
         """Stop the server and cancel all active streaming tasks."""
-        for ws, task in list(self._active_streams.items()):
-            task.cancel()
+        for ws, streams in list(self._active_streams.items()):
+            for task in list(streams.values()):
+                task.cancel()
             try:
                 if not ws.closed:
                     await ws.close()
@@ -120,9 +156,10 @@ class WebSocketServer:
 
     async def _handle_health(self, request: Any) -> Any:
         """Simple health endpoint."""
+        total = sum(len(s) for s in self._active_streams.values())
         return web.json_response({
             "status": "ok",
-            "active_streams": len(self._active_streams),
+            "active_streams": total,
         })
 
     async def _handle_ws(self, request: Any) -> Any:
@@ -130,6 +167,9 @@ class WebSocketServer:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         logger.info("WebSocket client connected: %s", request.remote)
+
+        # Initialise per-socket stream registry
+        self._active_streams[ws] = {}
 
         try:
             async for msg in ws:
@@ -142,7 +182,7 @@ class WebSocketServer:
         except asyncio.CancelledError:
             pass
         finally:
-            self._cancel_stream(ws)
+            await self._cancel_all_streams(ws)
             logger.info(
                 "WebSocket client disconnected: %s", request.remote
             )
@@ -166,8 +206,7 @@ class WebSocketServer:
         if action == "subscribe":
             await self._handle_subscribe(ws, msg)
         elif action == "unsubscribe":
-            self._cancel_stream(ws)
-            await self._send_status(ws, "unsubscribed")
+            await self._handle_unsubscribe(ws, msg)
         elif action == "command":
             await self._handle_command(ws, msg)
         else:
@@ -179,41 +218,123 @@ class WebSocketServer:
 
     async def _handle_subscribe(self, ws: Any, msg: dict) -> None:
         """Start a streaming subscription for a client."""
-        instrument_id = msg.get("instrument_id")
-        if not instrument_id:
-            await self._send_error(ws, "Missing instrument_id")
+        # --- Validate stream_id (required, hard break) ---
+        raw_sid = msg.get("stream_id")
+        stream_id = _validate_stream_id(raw_sid)
+        if stream_id is None:
+            await self._send_error(
+                ws, "stream_id must be a non-empty string"
+            )
             return
 
-        # Ensure connected
+        # --- Validate instrument_id ---
+        instrument_id = msg.get("instrument_id")
+        if not instrument_id:
+            await self._send_error(
+                ws, "Missing instrument_id", stream_id=stream_id
+            )
+            return
+
+        # --- Stream cap check ---
+        streams = self._active_streams.get(ws, {})
+        # If this stream_id is new and we're already at the cap, reject
+        if stream_id not in streams and len(streams) >= _MAX_STREAMS_PER_SOCKET:
+            await self._send_error(
+                ws,
+                "Stream limit reached (max 32 per connection)",
+                stream_id=stream_id,
+            )
+            return
+
+        # --- Ensure connected ---
         if not self._instruments.is_connected(instrument_id):
             connected = self._instruments.connect(instrument_id)
             if not connected:
                 await self._send_error(
-                    ws, f"Cannot connect to {instrument_id}"
+                    ws,
+                    f"Cannot connect to {instrument_id}",
+                    stream_id=stream_id,
                 )
                 return
 
-        # Cancel any existing subscription for this WebSocket
-        self._cancel_stream(ws)
+        # --- Cancel duplicate stream_id (cancel-and-replace) ---
+        existing = streams.get(stream_id)
+        if existing is not None and not existing.done():
+            existing.cancel()
+            try:
+                await asyncio.wait_for(
+                    asyncio.shield(asyncio.ensure_future(
+                        asyncio.sleep(0)  # yield for cancellation
+                    )),
+                    timeout=1.0,
+                )
+            except Exception:
+                pass
 
+        # --- Create new task ---
         mode = msg.get("mode", "poll")
         if mode == "poll":
             task = asyncio.create_task(
-                self._poll_loop(ws, instrument_id, msg)
+                self._poll_loop(ws, instrument_id, stream_id, msg)
             )
         elif mode == "acquisition":
+            # Acquisition exclusion check
+            if instrument_id in self._acquiring_instruments:
+                await self._send_error(
+                    ws,
+                    "Instrument already in acquisition mode",
+                    stream_id=stream_id,
+                )
+                return
             task = asyncio.create_task(
-                self._acquisition_loop(ws, instrument_id, msg)
+                self._acquisition_loop(ws, instrument_id, stream_id, msg)
             )
         else:
-            await self._send_error(ws, f"Unknown mode: {mode}")
+            await self._send_error(
+                ws, f"Unknown mode: {mode}", stream_id=stream_id
+            )
             return
 
-        self._active_streams[ws] = task
-        await self._send_status(ws, "subscribed", mode=mode)
+        # Register and ack
+        if ws not in self._active_streams:
+            self._active_streams[ws] = {}
+        self._active_streams[ws][stream_id] = task
+        await self._send_status(ws, "subscribed", stream_id=stream_id, mode=mode)
+
+    async def _handle_unsubscribe(self, ws: Any, msg: dict) -> None:
+        """Cancel a specific stream by stream_id."""
+        raw_sid = msg.get("stream_id")
+        stream_id = _validate_stream_id(raw_sid)
+        if stream_id is None:
+            await self._send_error(
+                ws, "stream_id must be a non-empty string"
+            )
+            return
+
+        streams = self._active_streams.get(ws, {})
+        task = streams.get(stream_id)
+        if task is None:
+            await self._send_error(
+                ws, "Unknown stream_id", stream_id=stream_id
+            )
+            return
+
+        if not task.done():
+            task.cancel()
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=1.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
+
+        streams.pop(stream_id, None)
+        await self._send_status(ws, "unsubscribed", stream_id=stream_id)
 
     async def _poll_loop(
-        self, ws: Any, instrument_id: str, config: dict,
+        self,
+        ws: Any,
+        instrument_id: str,
+        stream_id: str,
+        config: dict,
     ) -> None:
         """Periodically query the instrument and push JSON data.
 
@@ -225,42 +346,57 @@ class WebSocketServer:
         interval = config.get("interval_ms", 100) / 1000.0
         signals = config.get("signals", [])
         scpi_command = config.get("scpi_command", "")
+        lock = self._get_instrument_lock(instrument_id)
 
         try:
             while not ws.closed:
                 ts = time.time()
 
                 try:
-                    if scpi_command:
-                        # Custom SCPI query
-                        raw = self._instruments.query(
-                            instrument_id, scpi_command
-                        )
-                        values = _parse_csv_data(raw)
-                    elif signals:
-                        # Query each signal individually
-                        values: Dict[str, Any] = {}
-                        for sig in signals:
-                            resp = self._instruments.query(
-                                instrument_id, sig
+                    async with lock:
+                        if scpi_command:
+                            # Custom SCPI query
+                            raw = self._instruments.query(
+                                instrument_id, scpi_command
                             )
-                            try:
-                                values[sig] = float(resp)
-                            except ValueError:
-                                values[sig] = resp
-                    else:
-                        # Fast snapshot query
-                        raw = self._instruments.query(instrument_id, "?")
-                        values = _parse_csv_data(raw)
+                            values = _parse_csv_data(raw)
+                        elif signals:
+                            # Query each signal individually
+                            values: Dict[str, Any] = {}
+                            for sig in signals:
+                                resp = self._instruments.query(
+                                    instrument_id, sig
+                                )
+                                try:
+                                    values[sig] = float(resp)
+                                except ValueError:
+                                    values[sig] = resp
+                        else:
+                            # Fast snapshot query
+                            raw = self._instruments.query(instrument_id, "?")
+                            values = _parse_csv_data(raw)
 
                     await ws.send_json({
                         "type": "data",
+                        "stream_id": stream_id,
                         "timestamp": ts,
                         "values": values,
                     })
 
+                except asyncio.CancelledError:
+                    raise
                 except Exception as exc:
-                    await self._send_error(ws, str(exc))
+                    logger.warning(
+                        "Poll tick error for stream %s: %s", stream_id, exc
+                    )
+                    await self._send_error(ws, str(exc), stream_id=stream_id)
+                    # Check for unrecoverable errors (instrument gone)
+                    if _is_unrecoverable(exc):
+                        # Self-cleanup: pop from inner dict
+                        streams = self._active_streams.get(ws)
+                        if streams is not None:
+                            streams.pop(stream_id, None)
+                        return
 
                 # Sleep for the remainder of the interval
                 elapsed = time.time() - ts
@@ -271,7 +407,11 @@ class WebSocketServer:
             pass
 
     async def _acquisition_loop(
-        self, ws: Any, instrument_id: str, config: dict,
+        self,
+        ws: Any,
+        instrument_id: str,
+        stream_id: str,
+        config: dict,
     ) -> None:
         """Manage a curve buffer acquisition and stream binary data.
 
@@ -289,9 +429,11 @@ class WebSocketServer:
 
         im = self._instruments
 
+        # Register acquisition exclusion
+        self._acquiring_instruments.add(instrument_id)
         try:
             # Configure the curve buffer
-            await self._send_status(ws, "configuring")
+            await self._send_status(ws, "configuring", stream_id=stream_id)
             im.write(instrument_id, "HC")                    # halt
             im.write(instrument_id, f"LEN {length}")
             im.write(instrument_id, f"STR {interval_us}")
@@ -299,7 +441,7 @@ class WebSocketServer:
             im.write(instrument_id, "NC")                    # new curve
             im.write(instrument_id, "TD")                    # trigger
 
-            await self._send_status(ws, "acquiring")
+            await self._send_status(ws, "acquiring", stream_id=stream_id)
 
             # Poll acquisition status
             while not ws.closed:
@@ -315,13 +457,13 @@ class WebSocketServer:
                 if not td_running and not tdc_running:
                     break
 
-                await self._send_status(ws, "acquiring")
+                await self._send_status(ws, "acquiring", stream_id=stream_id)
                 await asyncio.sleep(0.1)
 
             if ws.closed:
                 return
 
-            await self._send_status(ws, "downloading")
+            await self._send_status(ws, "downloading", stream_id=stream_id)
 
             # Download each curve as base64-encoded binary
             for curve_idx in curves:
@@ -336,6 +478,7 @@ class WebSocketServer:
 
                     await ws.send_json({
                         "type": "curve",
+                        "stream_id": stream_id,
                         "curve_id": curve_idx,
                         "format": "base64",
                         "dtype": "int16",
@@ -346,9 +489,10 @@ class WebSocketServer:
                     await self._send_error(
                         ws,
                         f"Curve {curve_idx} download failed: {exc}",
+                        stream_id=stream_id,
                     )
 
-            await self._send_status(ws, "complete")
+            await self._send_status(ws, "complete", stream_id=stream_id)
 
         except asyncio.CancelledError:
             # Best-effort halt on cancellation
@@ -356,6 +500,9 @@ class WebSocketServer:
                 im.write(instrument_id, "HC")
             except Exception:
                 pass
+        finally:
+            # Always release the acquisition exclusion lock
+            self._acquiring_instruments.discard(instrument_id)
 
     def _read_curve_binary(
         self, instrument_id: str, curve_idx: int, num_points: int,
@@ -395,10 +542,12 @@ class WebSocketServer:
             await self._send_error(ws, "Missing scpi or instrument_id")
             return
 
-        result = self._handler.execute_command(
-            scpi_cmd=scpi,
-            instrument_id=instrument_id,
-        )
+        lock = self._get_instrument_lock(instrument_id)
+        async with lock:
+            result = self._handler.execute_command(
+                scpi_cmd=scpi,
+                instrument_id=instrument_id,
+            )
 
         await ws.send_json({
             "type": "command_result",
@@ -411,23 +560,45 @@ class WebSocketServer:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _cancel_stream(self, ws: Any) -> None:
-        """Cancel an active streaming task for a WebSocket."""
-        task = self._active_streams.pop(ws, None)
-        if task is not None and not task.done():
-            task.cancel()
+    async def _cancel_all_streams(self, ws: Any) -> None:
+        """Cancel every stream task for a WebSocket (called on disconnect)."""
+        streams = self._active_streams.pop(ws, {})
+        for task in streams.values():
+            if not task.done():
+                task.cancel()
+        # Let tasks complete their CancelledError handling
+        if streams:
+            await asyncio.gather(*streams.values(), return_exceptions=True)
 
-    async def _send_error(self, ws: Any, message: str) -> None:
+    # Keep the old name as an alias for backward compatibility in tests
+    def _cancel_stream(self, ws: Any) -> None:
+        """Cancel all streams for a WebSocket (legacy single-stream API)."""
+        streams = self._active_streams.pop(ws, {})
+        for task in streams.values():
+            if not task.done():
+                task.cancel()
+
+    async def _send_error(
+        self,
+        ws: Any,
+        message: str,
+        stream_id: Optional[str] = None,
+    ) -> None:
         """Send a JSON error to the client."""
         if not ws.closed:
-            await ws.send_json({"type": "error", "message": message})
+            payload: Dict[str, Any] = {"type": "error", "message": message}
+            if stream_id is not None:
+                payload["stream_id"] = stream_id
+            await ws.send_json(payload)
 
     async def _send_status(
-        self, ws: Any, state: str, **kwargs: Any,
+        self, ws: Any, state: str, stream_id: Optional[str] = None, **kwargs: Any,
     ) -> None:
         """Send a JSON status to the client."""
         if not ws.closed:
             payload: Dict[str, Any] = {"type": "status", "state": state}
+            if stream_id is not None:
+                payload["stream_id"] = stream_id
             payload.update(kwargs)
             await ws.send_json(payload)
 
@@ -435,6 +606,21 @@ class WebSocketServer:
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+
+def _is_unrecoverable(exc: Exception) -> bool:
+    """Return True for exceptions that indicate the instrument has gone away."""
+    msg = str(exc).lower()
+    unrecoverable_keywords = (
+        "disconnected",
+        "no longer available",
+        "connection refused",
+        "timeout",
+        "resource not found",
+        "vi_error_rsrc_nfound",
+        "visaioerror",
+    )
+    return any(kw in msg for kw in unrecoverable_keywords)
 
 
 def _parse_csv_data(raw: str) -> Dict[str, Any]:
