@@ -184,6 +184,65 @@ class SDKExecutor:
         """List of currently connected SDK instrument IDs."""
         return list(self._clients.keys())
 
+    # -- MCP tool registration (Phase 3) ---
+
+    def register_with_mcp(self, registry: Any) -> int:
+        """Emit per-SDK typed MCP tools for every wrapper that publishes
+        an ``MCP_TOOL_SPECS`` constant.
+
+        Each tool routes through :meth:`call_method` internally so the
+        agent never sees the opaque ``ProxySDKCall`` surface — they call
+        e.g. ``dps150_wrapper__set_voltage(instrument_id="x", value=5.0)``
+        and the dispatch lands on the right per-instrument lock.
+
+        Returns the number of tools registered.
+        """
+        from .mcp.sdk_tools import register_sdk_typed_tools
+
+        return register_sdk_typed_tools(registry, self)
+
+    def call_method(
+        self,
+        instrument_id: str,
+        method_name: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Invoke a method by name on a connected SDK client.
+
+        Used by the Phase-3 typed SDK tool surface. Each wrapper's
+        ``MCP_TOOL_SPECS`` declares a ``name``; this method resolves
+        ``getattr(client, name)`` and calls it with the supplied kwargs.
+        """
+        entry = self._clients.get(instrument_id)
+        if entry is None:
+            return _fail(f"SDK client not connected: {instrument_id}")
+
+        start = time.monotonic()
+        with entry.lock:
+            try:
+                fn = getattr(entry.client, method_name, None)
+                if fn is None or not callable(fn):
+                    return _fail(
+                        f"SDK method '{method_name}' not found on {instrument_id}"
+                    )
+                kwargs = _coerce_params(params) or {}
+                result = fn(**kwargs) if kwargs else fn()
+                elapsed = (time.monotonic() - start) * 1000.0
+                return {
+                    "success": True,
+                    "response": _serialize_result(result),
+                    "error": "",
+                    "execution_time_ms": round(elapsed, 2),
+                }
+            except Exception as exc:
+                elapsed = (time.monotonic() - start) * 1000.0
+                return {
+                    "success": False,
+                    "response": "",
+                    "error": f"SDK method '{method_name}' raised: {exc}",
+                    "execution_time_ms": round(elapsed, 2),
+                }
+
 
 # ---------------------------------------------------------------------------
 # Dispatch

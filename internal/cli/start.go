@@ -275,6 +275,9 @@ func runStart(cmd *cobra.Command, args []string) {
 			healthAddr,
 			logger,
 		)
+		if cfg.MCPEnabled && cfg.MCPPort > 0 {
+			relayClient.WithMCPTarget("127.0.0.1", cfg.MCPPort, cfg.MCPPath)
+		}
 		go relayClient.Run(ctx)
 		slog.Info("relay client started", "url", relayURL, "edge_id", edgeID)
 	} else if relayURL != "" && edgeID == "" {

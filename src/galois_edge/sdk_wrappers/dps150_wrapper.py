@@ -19,6 +19,121 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+# MCP_TOOL_SPECS: agent-callable surface (Phase 3 dynamic per-SDK tools).
+# Each entry becomes one typed MCP tool routed through SDKExecutor.execute.
+# `instrument_id` is supplied by the agent at call time and identifies the
+# already-connected DPS-150 client. is_dangerous=True trips MCP's
+# destructiveHint annotation and JWT danger_allow gating.
+MCP_TOOL_SPECS = [
+    {
+        "name": "enable_output",
+        "description": "Enable the DPS-150 output (live voltage on terminals).",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "disable_output",
+        "description": "Disable the DPS-150 output (terminals safe).",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "set_voltage",
+        "description": "Set the DPS-150 output voltage setpoint.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+            "value": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 30.0,
+                "unit": "V",
+                "description": "Target output voltage",
+            },
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "set_current",
+        "description": "Set the DPS-150 current limit.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+            "value": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 5.0,
+                "unit": "A",
+                "description": "Target current limit",
+            },
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "set_ovp",
+        "description": "Set over-voltage protection threshold.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+            "value": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 33.0,
+                "unit": "V",
+            },
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "set_ocp",
+        "description": "Set over-current protection threshold.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+            "value": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 5.5,
+                "unit": "A",
+            },
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "get_output_voltage",
+        "description": "Read the cached output voltage telemetry (no I/O).",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "get_output_current",
+        "description": "Read the cached output current telemetry (no I/O).",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "get_output_power",
+        "description": "Read the cached output power telemetry (no I/O).",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "get_state",
+        "description": "Return the full cached telemetry state as JSON.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DPS-150 client id"},
+        },
+        "is_dangerous": False,
+    },
+]
+
+
 class DPS150Client:
     """SDK wrapper for the FNIRSI DPS-150 power supply."""
 

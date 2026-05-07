@@ -18,6 +18,133 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+# MCP_TOOL_SPECS: agent-callable surface (Phase 3). Subset of the wrapper's
+# public methods chosen for clear semantics; raw protocol bus methods
+# (uart_*, spi_*, i2c_*) are intentionally omitted to avoid surfacing
+# arbitrary-byte-injection paths to agents without explicit operator
+# acknowledgement.
+MCP_TOOL_SPECS = [
+    {
+        "name": "enable_positive_supply",
+        "description": "Turn on the V+ programmable supply.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "disable_positive_supply",
+        "description": "Turn off the V+ programmable supply.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "set_positive_supply_voltage",
+        "description": "Set the V+ programmable supply voltage.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "value": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 5.0,
+                "unit": "V",
+            },
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "scope_measure_dc",
+        "description": "One-shot DC voltage measurement on a scope channel.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "channel": {"type": "integer", "minimum": 0, "maximum": 1},
+            "v_range": {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 50.0,
+                "unit": "V",
+            },
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "scope_measure_peak_to_peak",
+        "description": "Measure peak-to-peak voltage on a scope channel.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "channel": {"type": "integer", "minimum": 0, "maximum": 1},
+            "v_range": {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 50.0,
+                "unit": "V",
+            },
+            "sample_rate": {
+                "type": "number",
+                "minimum": 1000.0,
+                "maximum": 100_000_000.0,
+                "unit": "Sa/s",
+            },
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "scope_measure_frequency",
+        "description": "Estimate signal frequency via zero-crossing count.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "channel": {"type": "integer", "minimum": 0, "maximum": 1},
+            "v_range": {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 50.0,
+                "unit": "V",
+            },
+        },
+        "is_dangerous": False,
+    },
+    {
+        "name": "wavegen_setup",
+        "description": "Configure and start the waveform generator output.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "channel": {"type": "integer", "minimum": 0, "maximum": 1},
+            "function": {"type": "string", "description": "sine | square | triangle | dc | custom"},
+            "frequency": {
+                "type": "number",
+                "minimum": 0.01,
+                "maximum": 25_000_000.0,
+                "unit": "Hz",
+            },
+            "amplitude": {
+                "type": "number",
+                "minimum": 0.0,
+                "maximum": 5.0,
+                "unit": "V",
+            },
+            "offset": {
+                "type": "number",
+                "minimum": -5.0,
+                "maximum": 5.0,
+                "unit": "V",
+            },
+        },
+        "is_dangerous": True,
+    },
+    {
+        "name": "wavegen_stop",
+        "description": "Stop waveform generator output on a channel.",
+        "params": {
+            "instrument_id": {"type": "string", "description": "DWF device id"},
+            "channel": {"type": "integer", "minimum": 0, "maximum": 1},
+        },
+        "is_dangerous": False,
+    },
+]
+
+
 class DigilentDwfClient:
     """SDK wrapper for Digilent WaveForms devices."""
 
