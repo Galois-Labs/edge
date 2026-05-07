@@ -619,3 +619,81 @@ func TestParseFileAndWriteFileMap(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// InboundAuthToken — Spec C security field
+// ---------------------------------------------------------------------------
+
+func TestInboundAuthToken_Default(t *testing.T) {
+	cfg := New()
+	if cfg.InboundAuthToken != "" {
+		t.Errorf("InboundAuthToken default: got %q, want empty string", cfg.InboundAuthToken)
+	}
+}
+
+func TestInboundAuthToken_LoadFromFile(t *testing.T) {
+	path := writeTempConfig(t, "INBOUND_AUTH_TOKEN=glc_internal_abc123\n")
+	cfg, err := LoadFromFile(path)
+	if err != nil {
+		t.Fatalf("LoadFromFile: %v", err)
+	}
+	if cfg.InboundAuthToken != "glc_internal_abc123" {
+		t.Errorf("InboundAuthToken: got %q, want %q", cfg.InboundAuthToken, "glc_internal_abc123")
+	}
+}
+
+func TestInboundAuthToken_EnvOverride(t *testing.T) {
+	setEnvForTest(t, "INBOUND_AUTH_TOKEN", "glc_internal_from_env")
+	cfg := LoadFromEnv()
+	if cfg.InboundAuthToken != "glc_internal_from_env" {
+		t.Errorf("InboundAuthToken from env: got %q, want %q", cfg.InboundAuthToken, "glc_internal_from_env")
+	}
+}
+
+func TestInboundAuthToken_GetSetValue(t *testing.T) {
+	cfg := New()
+	if err := SetValue(cfg, "INBOUND_AUTH_TOKEN", "test_token"); err != nil {
+		t.Fatalf("SetValue: %v", err)
+	}
+	got, ok := GetValue(cfg, "INBOUND_AUTH_TOKEN")
+	if !ok {
+		t.Fatal("GetValue: key not found")
+	}
+	if got != "test_token" {
+		t.Errorf("GetValue: got %q, want %q", got, "test_token")
+	}
+}
+
+func TestInboundAuthToken_SaveAndReload(t *testing.T) {
+	cfg := New()
+	cfg.InboundAuthToken = "glc_internal_persist_test"
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.env")
+	if err := cfg.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := LoadFromFile(path)
+	if err != nil {
+		t.Fatalf("LoadFromFile: %v", err)
+	}
+	if loaded.InboundAuthToken != "glc_internal_persist_test" {
+		t.Errorf("InboundAuthToken after save/reload: got %q, want %q",
+			loaded.InboundAuthToken, "glc_internal_persist_test")
+	}
+}
+
+func TestInboundAuthToken_InFieldMapping(t *testing.T) {
+	keys := EnvKeys()
+	found := false
+	for _, k := range keys {
+		if k == "INBOUND_AUTH_TOKEN" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("INBOUND_AUTH_TOKEN must be present in fieldMapping / EnvKeys()")
+	}
+}

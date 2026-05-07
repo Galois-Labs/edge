@@ -289,6 +289,7 @@ class EdgeDaemon:
             sdk_executor=self._sdk_executor,
             io_executor=self._io_executor,
             driver_registry=self._driver_registry,
+            inbound_auth_token=self._cfg.inbound_auth_token,
         )
         if not await self._grpc_server.start():
             logger.error("Failed to start gRPC server -- aborting")

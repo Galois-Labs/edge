@@ -185,3 +185,24 @@ class TestLoadConfig:
         cfg = Config()
         with pytest.raises(Exception):
             cfg.grpc_port = 9999  # type: ignore[misc]
+
+
+class TestInboundAuthToken:
+    """Spec C — INBOUND_AUTH_TOKEN config field."""
+
+    def test_default_is_empty(self):
+        from galois_edge.config import Config
+        cfg = Config()
+        assert cfg.inbound_auth_token == ""
+
+    def test_env_override(self, monkeypatch):
+        monkeypatch.setenv("INBOUND_AUTH_TOKEN", "glc_internal_test_xyz")
+        from galois_edge.config import Config
+        cfg = Config()
+        assert cfg.inbound_auth_token == "glc_internal_test_xyz"
+
+    def test_empty_env_override(self, monkeypatch):
+        monkeypatch.setenv("INBOUND_AUTH_TOKEN", "")
+        from galois_edge.config import Config
+        cfg = Config()
+        assert cfg.inbound_auth_token == ""

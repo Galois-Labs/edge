@@ -10,6 +10,7 @@ import (
 
 	edgepb "github.com/galois-labs/edge/proto/gen/go/edge/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -86,4 +87,39 @@ func (c *Client) Close() error {
 		return c.conn.Close()
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Bearer-token dial option
+// ---------------------------------------------------------------------------
+
+// bearerTokenCredentials implements grpc.PerRPCCredentials, attaching an
+// Authorization: Bearer <token> header to every outbound RPC.
+type bearerTokenCredentials struct {
+	token string
+}
+
+// GetRequestMetadata returns the per-RPC metadata map containing the token.
+func (b bearerTokenCredentials) GetRequestMetadata(_ context.Context, _ ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "Bearer " + b.token,
+	}, nil
+}
+
+// RequireTransportSecurity returns false because the daemon's internal port
+// uses plaintext gRPC (it is loopback-only; TLS is not required there).
+// Callers reaching the external port over a Tailscale tailnet may also use
+// plaintext. Returning false allows this credential to work on both.
+func (b bearerTokenCredentials) RequireTransportSecurity() bool {
+	return false
+}
+
+// WithBearerToken returns a grpc.DialOption that injects
+// "authorization: Bearer <token>" into every outbound RPC call.
+// Use this when dialing the external gRPC port that has the
+// BearerTokenInterceptor enabled.
+func WithBearerToken(token string) grpc.DialOption {
+	return grpc.WithPerRPCCredentials(
+		credentials.PerRPCCredentials(bearerTokenCredentials{token: token}),
+	)
 }

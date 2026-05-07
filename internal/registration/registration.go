@@ -392,16 +392,18 @@ type registerPayload struct {
 // registerResponse captures the relevant fields from the backend's JSON
 // response to POST /api/v1/edges/register.
 type registerResponse struct {
-	ID           string `json:"id"`
-	PreAuthKey   string `json:"pre_auth_key,omitempty"`
-	HeadscaleURL string `json:"headscale_url,omitempty"`
+	ID               string `json:"id"`
+	PreAuthKey       string `json:"pre_auth_key,omitempty"`
+	HeadscaleURL     string `json:"headscale_url,omitempty"`
+	InboundAuthToken string `json:"inbound_auth_token,omitempty"`
 }
 
 // RegisterResult holds the outcome of a single registration call.
 type RegisterResult struct {
-	EdgeID       string
-	PreAuthKey   string
-	HeadscaleURL string
+	EdgeID           string
+	PreAuthKey       string
+	HeadscaleURL     string
+	InboundAuthToken string
 }
 
 type heartbeatPayload struct {
@@ -504,13 +506,14 @@ func (m *Manager) RegisterOnce(ctx context.Context) (*RegisterResult, error) {
 	}
 	m.mu.Unlock()
 
-	log.Printf("[registration] registered as edge %s (pre_auth_key=%t, headscale_url=%t)",
-		regResp.ID, regResp.PreAuthKey != "", regResp.HeadscaleURL != "")
+	log.Printf("[registration] registered as edge %s (pre_auth_key=%t, headscale_url=%t, inbound_auth_token=%t)",
+		regResp.ID, regResp.PreAuthKey != "", regResp.HeadscaleURL != "", regResp.InboundAuthToken != "")
 
 	return &RegisterResult{
-		EdgeID:       regResp.ID,
-		PreAuthKey:   regResp.PreAuthKey,
-		HeadscaleURL: regResp.HeadscaleURL,
+		EdgeID:           regResp.ID,
+		PreAuthKey:       regResp.PreAuthKey,
+		HeadscaleURL:     regResp.HeadscaleURL,
+		InboundAuthToken: regResp.InboundAuthToken,
 	}, nil
 }
 
