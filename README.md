@@ -1,40 +1,33 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-dark.svg">
-    <img alt="Galois" src=".github/assets/logo-light.svg" width="320">
-  </picture>
-</p>
-
-<h1 align="center">galois-edge</h1>
+<h1 align="center">galois edge</h1>
 
 <p align="center">
-  <strong>The R&amp;D operating system for hardware teams — a single network endpoint for every instrument in the lab.</strong>
+  <strong>A single-binary daemon that exposes lab and industrial hardware over gRPC, WebSocket, and PyVISA — across GPIB, USB, LAN, serial, Modbus, and CAN.</strong>
 </p>
 
 <p align="center">
   <a href="https://docs.galoislabs.ai">Docs</a> ·
   <a href="https://docs.galoislabs.ai/getting-started/quickstart/">Quickstart</a> ·
-  <a href="https://releases.galoislabs.ai">Releases</a> ·
+  <a href="https://github.com/Galois-Labs/edge/releases">Releases</a> ·
   <a href="https://cloud.galoislabs.ai">Galois Cloud</a> ·
   <a href="https://docs.galoislabs.ai/changelog/">Changelog</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/Galois-Labs/edge/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/Galois-Labs/edge?display_name=tag&sort=semver"></a>
-  <a href="https://github.com/Galois-Labs/edge/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Galois-Labs/edge"></a>
-  <a href="https://github.com/Galois-Labs/edge/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Galois-Labs/edge/ci.yml?branch=main&label=CI"></a>
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/github/license/Galois-Labs/edge"></a>
+  <a href="https://github.com/Galois-Labs/edge/actions/workflows/release.yml"><img alt="Release pipeline" src="https://img.shields.io/github/actions/workflow/status/Galois-Labs/edge/release.yml?label=release"></a>
   <img alt="Go" src="https://img.shields.io/github/go-mod/go-version/Galois-Labs/edge">
   <img alt="Python" src="https://img.shields.io/badge/python-3.10%2B-blue">
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-linux%20%7C%20windows%20%7C%20rpi-lightgrey">
 </p>
 
 <p align="center">
-  <img alt="galois-edge — discover instruments on the Pi, drive them from a notebook" src=".github/assets/demo.gif">
+  <img alt="galois edge — discover hardware on the Pi, drive it from a notebook" src=".github/assets/demo.gif">
 </p>
 
 ---
 
-`galois-edge` discovers instruments on GPIB, USB, LAN, and serial buses, identifies them against 130+ bundled YAML profiles, and exposes them through gRPC, WebSocket, and a drop-in PyVISA backend. It runs as a system service, joins a Tailscale/Headscale tailnet for zero-config remote access, and optionally registers with [Galois Cloud](https://cloud.galoislabs.ai) for browser-based control, multi-user workspaces, and the AI assistant.
+`galois-edge` discovers hardware on GPIB, USB, LAN, serial, Modbus, and CAN buses, identifies it against bundled drivers and YAML profiles, and exposes it through gRPC, WebSocket, and a drop-in PyVISA backend. It runs as a system service, joins a Tailscale/Headscale tailnet for zero-config remote access, and optionally registers with [Galois Cloud](https://cloud.galoislabs.ai) for browser-based control, fleet management, and driver distribution.
 
 Full documentation lives at **[docs.galoislabs.ai](https://docs.galoislabs.ai)**.
 
@@ -93,7 +86,7 @@ flowchart LR
       Go -- "loopback proxy" --> Py
     end
 
-    Inst[("Instruments<br/>GPIB · USB · LAN · Serial")]
+    Inst[("Hardware<br/>GPIB · USB · LAN · Serial · Modbus · CAN")]
 
     Client -- "gRPC / WebSocket" --> Tailnet --> Go
     Cloud -- "WebSocket relay" --> Go
@@ -101,45 +94,17 @@ flowchart LR
     Py --> Inst
 ```
 
-The Go binary owns config, lifecycle, the system service, the embedded Tailscale node, the WebSocket relay client, and a gRPC proxy from the external port to the loopback port the Python engine binds. The Python engine owns instrument I/O — discovery, profile matching, command dispatch, sweeps, streaming.
+The Go binary owns config, lifecycle, the system service, the embedded Tailscale node, the WebSocket relay client, and a gRPC proxy from the external port to the loopback port the Python engine binds. The Python engine owns hardware I/O — discovery, profile matching, command dispatch, sweeps, streaming.
 
 ## What's in the box
 
-- **Single binary** — Go supervisor plus a frozen Python instrument engine. No Python runtime, no Docker, no dependencies on the target host.
-- **130+ instrument profiles** with named commands and typed parameters — see the full list below.
-- **Auto-discovery** on GPIB (linux-gpib), USBTMC, raw USB (pyusb), LXI mDNS, and USB-serial.
+- **Single binary** — Go supervisor plus a frozen Python engine. No Python runtime, no Docker, no dependencies on the target host.
+- **Bundled drivers and YAML profiles** for laboratory test equipment. Write your own profiles, drop them in the profile dir, or push them through Galois Cloud to a fleet of daemons. The current supported list is at **[galoislabs.ai/instruments](https://www.galoislabs.ai/instruments)**.
+- **Multi-protocol discovery** on GPIB (linux-gpib), USB (USBTMC + raw pyusb), LXI mDNS, USB-serial, Modbus (TCP and RTU), and CAN.
 - **Sweeps** — safety-aware ramps for magnets and temperature controllers. Sweep state lives on the daemon, so client drops don't strand hardware.
 - **Streaming** — gRPC server-streaming and a multi-stream WebSocket protocol (32 streams/socket) with NumPy decoding for waveforms.
-- **Vendor SDK relay** — `ProxySDKCall` invokes Python vendor libraries (MultiPyVu, niscope, dwfpy, …) installed alongside the daemon for non-SCPI instruments.
-- **Optional cloud** — when `BACKEND_URL` is set, the daemon joins a Tailscale tailnet and a WebSocket relay so the cloud can dispatch even without direct gRPC dial.
-
-<details>
-<summary><strong>Supported instruments (131 profiles)</strong></summary>
-
-| Vendor | Profiles |
-|---|---|
-| **Keysight / Agilent / HP** | 33500B, 34401A, 34461A, 34970A, B1500A, DSOX3000, E36300, E3631A, E4980A, E5080B, M8195 AWG, MXG, N1913A, N9000B, PSG, PXI AWG / Digitizer / HVI Trigger / LO, S-series scope · 4156C, E4440A, E5071C · HP 33120A, 3478A DMM, 4284A, 53131A, 6632B, 8648 |
-| **Tektronix / Keithley** | AFG31000, DMM4050, MSO2000/3000/4000/56, TDS2000 · Keithley 2000, 2010, 2182A, 2280S, 2400, 2450, 2600B, 2700, 6221, 6430, 6485, 6517B, DAQ6510, DMM6500 |
-| **Rohde &amp; Schwarz / Hameg** | FSW, HMP4000, RTB2004, SGS100A, ZNB · Hameg HM813x |
-| **Stanford Research (SRS)** | CS580, CTC100, DG645, DS345, PTC10, SR715, SR830, SR860, SR865A |
-| **Rigol** | DG1000Z, DG4000, DHO800, DM3058, DP800, DS1000Z, DSA800 |
-| **Siglent** | SDG2000X, SDM3045X, SDS1000X |
-| **Yokogawa** | 7651, GS200, WT3000, WT5000 |
-| **Lake Shore** | 335, 336, 372 (dilution-fridge), 460 |
-| **National Instruments** | DAQ, DCPower, DMM, FGEN, Scope, USB-6218 |
-| **Oxford Instruments** | ILM, IPS120, Mercury IPS, PS120 |
-| **Zurich Instruments** | HDAWG, MFLI, UHFLI |
-| **Cryogenics &amp; magnets** | Cryomagnetics LM-510 · BlueFors logging · Triton · Leiden pressure |
-| **Quantum Design** | PPMS (MultiPyVu) |
-| **Lock-ins / preamps** | Signal Recovery 7265, 7270 |
-| **Power / loads** | BK Precision 8600, Chroma 63600, GW Instek GPP |
-| **DMMs / counters** | Fluke 8845A · Advantest R8340 |
-| **Sources / synthesizers** | Holzworth HS9000, Lab Brick LMS / LSG, Marconi 2026, BNC 645, Vaunix attenuator |
-| **Spectrum / network** | Anritsu MS2830A / MS4640A, Signal Hound, SignaDyne AWG / Digitizer, Tabor SE5082 AWG, Acqiris U1084A, AlazarTech digitizer |
-| **Switching / motion** | Mini-Circuits MW &amp; RF switches · Newport MM4006 stage |
-| **PXI &amp; misc** | Aeroflex 302x / 303x · LeCroy T3DSO · Digilent Analog Discovery · Ocean Optics spectrometer · WITec |
-
-</details>
+- **Vendor SDK relay** — `ProxySDKCall` invokes Python vendor libraries installed alongside the daemon for non-SCPI hardware (PPMS controllers, NI modular instruments, Digilent boards, …).
+- **Optional cloud** — when `BACKEND_URL` is set, the daemon joins a Tailscale tailnet and a WebSocket relay so the cloud can dispatch even without direct gRPC dial, and pulls driver/profile updates from the dashboard.
 
 ## Roadmap
 
@@ -170,7 +135,8 @@ cmd/galois-edge/         Go supervisor entry point (CLI + service)
 cmd/galois-edge-tray/    Windows system-tray helper
 internal/                Go: config, doctor, supervisor, relay, registration, proxy, …
 src/galois_edge/         Python engine (gRPC server, instrument managers, profile loader)
-src/galois_edge/profiles/  130+ bundled YAML instrument profiles
+src/galois_edge/profiles/  Bundled YAML hardware profiles
+src/galois_edge/drivers/   Protocol drivers (Modbus, CAN, serial)
 proto/edge/v1/edge.proto Canonical service contract
 installer/               Windows MSI (WiX) sources
 scripts/                 Build, package, release helpers
@@ -220,8 +186,8 @@ Every key, default, and validation rule is in the [configuration reference](http
 
 ## Status
 
-Pre-1.0. The gRPC contract under `proto/edge/v1/edge.proto` is the stable surface; the Go and Python internals will continue to move. Tagged releases land on `main` as `v<major>.<minor>.<patch>`; per-release artifacts and SHA-256 checksums live at [releases.galoislabs.ai](https://releases.galoislabs.ai).
+Pre-1.0. The gRPC contract under `proto/edge/v1/edge.proto` is the stable surface; the Go and Python internals will continue to move. Tagged releases land on `main` as `v<major>.<minor>.<patch>` — binaries, MSI, and SHA-256 checksums attach to each [GitHub release](https://github.com/Galois-Labs/edge/releases).
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+Apache License 2.0 — see [LICENSE](./LICENSE).

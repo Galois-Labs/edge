@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "galois-edge"
 version = "0.1.0"
 description = "Galois edge daemon — laboratory instrument gateway (Python engine)"
-license = "MIT"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
     "grpcio>=1.60.0",
