@@ -13,9 +13,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Galois-Labs/edge/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/Galois-Labs/edge?display_name=tag&sort=semver"></a>
+  <a href="https://github.com/Galois-Labs/edge/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/Galois-Labs/edge?display_name=tag"></a>
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/github/license/Galois-Labs/edge"></a>
-  <a href="https://github.com/Galois-Labs/edge/actions/workflows/release.yml"><img alt="Release pipeline" src="https://img.shields.io/github/actions/workflow/status/Galois-Labs/edge/release.yml?label=release"></a>
+  <a href="https://github.com/Galois-Labs/edge/actions/workflows/release.yml"><img alt="Release pipeline" src="https://img.shields.io/github/actions/workflow/status/Galois-Labs/edge/release.yml?event=push&label=release"></a>
   <img alt="Go" src="https://img.shields.io/github/go-mod/go-version/Galois-Labs/edge">
   <img alt="Python" src="https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FGalois-Labs%2Fedge%2Fmain%2Fpyproject.toml&label=python">
   <img alt="Platforms" src="https://img.shields.io/badge/platforms-linux%20%7C%20windows%20%7C%20rpi-lightgrey">
