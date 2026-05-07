@@ -157,7 +157,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Sign binaries
         if: ${{ env.SIGNING_TENANT_ID != '' }}
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@1d365fec12862c4aa68fcac418143d73f0cea293  # v0
         env:
           SIGNING_TENANT_ID: ${{ secrets.SIGNING_TENANT_ID }}
         with:
@@ -189,7 +189,7 @@ jobs:
       # embedding changes the file hash relative to pre-packaging).
       - name: Sign MSI
         if: ${{ env.SIGNING_TENANT_ID != '' }}
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@1d365fec12862c4aa68fcac418143d73f0cea293  # v0
         env:
           SIGNING_TENANT_ID: ${{ secrets.SIGNING_TENANT_ID }}
         with:
