@@ -77,6 +77,10 @@ _KNOWN_GALOIS_VARS: frozenset[str] = frozenset({
     "MODBUS_INSTRUMENTS",
     "SERIAL_INSTRUMENTS",
     "DEMO_MODE",
+    # --- MCP server (Phase 1) ---
+    "MCP_ENABLED",
+    "MCP_PORT",
+    "MCP_PATH",
 })
 
 # ---------------------------------------------------------------------------
@@ -331,6 +335,17 @@ class Config:
     # without authentication.
     inbound_auth_token: str = field(
         default_factory=lambda: _str_env("INBOUND_AUTH_TOKEN", "")
+    )
+
+    # --- MCP server (Phase 1) ---
+    mcp_enabled: bool = field(
+        default_factory=lambda: _bool_env("MCP_ENABLED", True)
+    )
+    mcp_port: int = field(
+        default_factory=lambda: _int_env("MCP_PORT", 8767)
+    )
+    mcp_path: str = field(
+        default_factory=lambda: _str_env("MCP_PATH", "/mcp")
     )
 
     # --- Config directory (platform-aware) ---

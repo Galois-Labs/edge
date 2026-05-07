@@ -20,7 +20,7 @@ import signal
 import socket
 import sys
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from .config import Config, load_config
 from .command_handler import CommandHandler
@@ -29,6 +29,11 @@ from .instrument_manager import InstrumentManager
 from .capability_manager import CapabilityManager
 from .sdk_executor import SDKExecutor
 from .ws_server import WebSocketServer
+
+try:
+    from .mcp import MCPServer
+except ImportError:
+    MCPServer = None  # type: ignore[assignment,misc]
 
 # Protocol driver registry (Modbus, etc.)
 try:
@@ -187,6 +192,7 @@ class EdgeDaemon:
         self._sdk_executor: Optional[SDKExecutor] = None
         self._grpc_server: Optional[GRPCServer] = None
         self._ws_server: Optional[WebSocketServer] = None
+        self._mcp_server: Optional[Any] = None
         self._driver_registry: Optional[object] = None  # DriverRegistry or None
 
         # Background tasks
@@ -306,6 +312,23 @@ class EdgeDaemon:
         except Exception as exc:
             logger.warning("WebSocket server failed to start: %s", exc)
 
+        # 5b. Start MCP server (Phase 1: tailnet-direct, no relay)
+        if self._cfg.mcp_enabled and MCPServer is not None:
+            try:
+                self._mcp_server = MCPServer(
+                    capability_manager=self._capability_manager,
+                    command_handler=self._command_handler,
+                    instrument_manager=self._instrument_manager,
+                    port=self._cfg.mcp_port,
+                    path=self._cfg.mcp_path,
+                    edge_id=self._edge_id,
+                    edge_name=socket.gethostname(),
+                )
+                await self._mcp_server.start()
+            except Exception as exc:
+                logger.warning("MCP server failed to start: %s", exc)
+                self._mcp_server = None
+
         # 4. Start USB hotplug monitor (if available and enabled)
         if (
             self._cfg.usb_monitor_enabled
@@ -384,6 +407,13 @@ class EdgeDaemon:
         # 2. Stop WebSocket server
         if self._ws_server is not None:
             await self._ws_server.stop()
+
+        # 2b. Stop MCP server
+        if self._mcp_server is not None:
+            try:
+                await self._mcp_server.stop()
+            except Exception as exc:
+                logger.warning("MCP server stop error: %s", exc)
 
         # 3. Stop gRPC server
         if self._grpc_server is not None:

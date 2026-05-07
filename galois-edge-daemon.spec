@@ -13,7 +13,7 @@ import os
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 block_cipher = None
 
@@ -28,6 +28,20 @@ pyvisa_datas, pyvisa_binaries, pyvisa_hiddenimports = collect_all("pyvisa")
 pyvisapy_datas, pyvisapy_binaries, pyvisapy_hiddenimports = collect_all("pyvisa_py")
 aiohttp_datas, aiohttp_binaries, aiohttp_hiddenimports = collect_all("aiohttp")
 
+# MCP stack — no upstream PyInstaller hooks for these as of 2026-04.
+# Skip mcp.cli during submodule collection: it imports `typer`, which we
+# don't ship and which would fail collect_submodules' import probe.
+def _skip_mcp_cli(name: str) -> bool:
+    return not name.startswith("mcp.cli")
+
+
+mcp_datas, mcp_binaries, mcp_hiddenimports = collect_all(
+    "mcp", filter_submodules=_skip_mcp_cli,
+)
+starlette_datas, starlette_binaries, starlette_hiddenimports = collect_all("starlette")
+sse_datas, sse_binaries, sse_hiddenimports = collect_all("sse_starlette")
+pyd_datas, pyd_binaries, pyd_hiddenimports = collect_all("pydantic")
+
 # Collect YAML instrument profiles as data files (recurse into subdirs)
 profile_datas = []
 if PROFILES.is_dir():
@@ -40,9 +54,17 @@ if PROFILES.is_dir():
 
 a = Analysis(
     [str(SRC / "galois_edge" / "__main__.py")],
-    pathex=[str(SRC), str(SRC / "galois_edge"), str(ROOT)],
-    binaries=pyvisa_binaries + pyvisapy_binaries + aiohttp_binaries,
-    datas=profile_datas + pyvisa_datas + pyvisapy_datas + aiohttp_datas,
+    # NOTE: Do NOT add `SRC / "galois_edge"` to pathex. Doing so makes
+    # the local subpackage `galois_edge.mcp` visible as bare `mcp`, which
+    # shadows the upstream `mcp` SDK and confuses PyInstaller's module
+    # graph (it then resolves `from mcp.server.fastmcp import FastMCP`
+    # against the empty local subpackage).
+    pathex=[str(SRC), str(ROOT)],
+    binaries=pyvisa_binaries + pyvisapy_binaries + aiohttp_binaries
+        + mcp_binaries + starlette_binaries + sse_binaries + pyd_binaries,
+    datas=profile_datas + pyvisa_datas + pyvisapy_datas + aiohttp_datas
+        + mcp_datas + starlette_datas + sse_datas + pyd_datas
+        + copy_metadata("mcp") + copy_metadata("pydantic"),
     hiddenimports=[
         # gRPC / protobuf stubs
         "galois_edge.edge_pb2",
@@ -115,7 +137,40 @@ a = Analysis(
         "zmq",
         "msgpack",
         "pyudev",
-    ] + pyvisa_hiddenimports + pyvisapy_hiddenimports + aiohttp_hiddenimports,
+        # MCP server (no upstream hook in pyinstaller-hooks-contrib as of 2026-04)
+        "galois_edge.mcp",
+        "galois_edge.mcp.server",
+        "galois_edge.mcp.context",
+        "galois_edge.mcp.schema",
+        "galois_edge.mcp.tools",
+        "galois_edge.mcp.tools.discovery",
+        "galois_edge.mcp.tools.execute",
+        "galois_edge.mcp.tools.sweep",
+        "galois_edge.mcp.tools.stream",
+        "mcp.server.fastmcp",
+        "mcp.server.streamable_http",
+        "mcp.server.streamable_http_manager",
+        "mcp.server.sse",
+        "mcp.server.stdio",
+        "mcp.server.auth.handlers.token",
+        "mcp.server.auth.handlers.authorize",
+        "mcp.server.auth.middleware.bearer_auth",
+        "mcp.server.auth.middleware.client_auth",
+        "mcp.server.lowlevel.server",
+        "mcp.shared.session",
+        "mcp.types",
+        # Starlette / sse-starlette (no upstream hooks)
+        "sse_starlette.sse",
+        # uvicorn[standard] extras (separate packages, NOT uvicorn submodules)
+        "uvloop",
+        "httptools",
+        "httptools.parser",
+        "websockets",
+        "websockets.legacy",
+        "websockets.legacy.server",
+        "wsproto",
+    ] + pyvisa_hiddenimports + pyvisapy_hiddenimports + aiohttp_hiddenimports
+      + mcp_hiddenimports + starlette_hiddenimports + sse_hiddenimports + pyd_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
