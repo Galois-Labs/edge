@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .profile_schema import (
@@ -245,6 +245,39 @@ class CapabilityManager:
 
     def __init__(self) -> None:
         self._instruments: Dict[str, InstrumentCapabilities] = {}
+        # Phase 3: observers notified on register/unregister so the MCP
+        # DynamicToolRegistry (and any future listener) can update its
+        # tool surface in lock-step with hot-plug events.
+        self._listeners: List[Callable[[str, str], None]] = []
+
+    # -- Listener pattern (Phase 3) ---
+
+    def add_listener(self, fn: Callable[[str, str], None]) -> None:
+        """Register a (event, instrument_id) callback.
+
+        Events fired: "registered" on register_instrument /
+        register_protocol_driver, "unregistered" on unregister_instrument.
+        Listener exceptions are logged and swallowed so a misbehaving
+        observer cannot break instrument registration.
+        """
+        self._listeners.append(fn)
+
+    def remove_listener(self, fn: Callable[[str, str], None]) -> None:
+        """Detach a previously-added listener; no-op if absent."""
+        try:
+            self._listeners.remove(fn)
+        except ValueError:
+            pass
+
+    def _emit(self, event: str, instrument_id: str) -> None:
+        for fn in list(self._listeners):
+            try:
+                fn(event, instrument_id)
+            except Exception:
+                logger.exception(
+                    "capability listener raised on %s/%s",
+                    event, instrument_id,
+                )
 
     # -- Registration ---
 
@@ -275,6 +308,7 @@ class CapabilityManager:
             driver_caps.get("protocol", "?"),
             len(driver_caps.get("commands", [])),
         )
+        self._emit("registered", instrument_id)
         return caps
 
     def get_protocol_driver(self, instrument_id: str) -> Optional[Any]:
@@ -320,6 +354,7 @@ class CapabilityManager:
                 "Registered instrument %s (%s) with no matching profile",
                 instrument_id, visa_address,
             )
+        self._emit("registered", instrument_id)
         return caps
 
     def unregister_instrument(self, instrument_id: str) -> bool:
@@ -327,6 +362,7 @@ class CapabilityManager:
         if instrument_id in self._instruments:
             del self._instruments[instrument_id]
             logger.info("Unregistered instrument: %s", instrument_id)
+            self._emit("unregistered", instrument_id)
             return True
         logger.warning("Cannot unregister unknown instrument: %s", instrument_id)
         return False

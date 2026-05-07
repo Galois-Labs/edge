@@ -143,6 +143,8 @@ a = Analysis(
         "galois_edge.mcp.context",
         "galois_edge.mcp.schema",
         "galois_edge.mcp.auth",
+        "galois_edge.mcp.dynamic_tools",
+        "galois_edge.mcp.sdk_tools",
         "galois_edge.mcp.tools",
         "galois_edge.mcp.tools.discovery",
         "galois_edge.mcp.tools.execute",

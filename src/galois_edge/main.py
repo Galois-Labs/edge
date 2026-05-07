@@ -312,7 +312,9 @@ class EdgeDaemon:
         except Exception as exc:
             logger.warning("WebSocket server failed to start: %s", exc)
 
-        # 5b. Start MCP server (Phase 1: tailnet-direct, no relay)
+        # 5b. Start MCP server (Phase 1: tailnet-direct, no relay).
+        #     Phase 3: pass the SDK executor so per-SDK typed tools are
+        #     emitted alongside the per-instrument dynamic tools.
         if self._cfg.mcp_enabled and MCPServer is not None:
             try:
                 self._mcp_server = MCPServer(
@@ -323,6 +325,7 @@ class EdgeDaemon:
                     path=self._cfg.mcp_path,
                     edge_id=self._edge_id,
                     edge_name=socket.gethostname(),
+                    sdk_executor=self._sdk_executor,
                 )
                 await self._mcp_server.start()
             except Exception as exc:

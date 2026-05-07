@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from mcp.server.fastmcp import FastMCP
 
 from .context import EdgeContext, reset_current_caller, set_current_caller
+from .dynamic_tools import DynamicToolRegistry
 from .tools import (
     register_discovery_tools,
     register_execute_tools,
@@ -24,6 +25,7 @@ from .tools import (
 if TYPE_CHECKING:
     from ..capability_manager import CapabilityManager
     from ..command_handler import CommandHandler
+    from ..sdk_executor import SDKExecutor
     from .auth import JWTValidator
 
 logger = logging.getLogger(__name__)
@@ -48,11 +50,14 @@ class MCPServer:
         edge_id: str = "",
         edge_name: str = "",
         jwt_validator: Optional["JWTValidator"] = None,
+        sdk_executor: Optional["SDKExecutor"] = None,
+        dynamic_tools_enabled: bool = True,
     ) -> None:
         self._port = port
         self._path = path
         self._host = host
         self._jwt_validator = jwt_validator
+        self._sdk_executor = sdk_executor
 
         self._ctx = EdgeContext(
             capability_manager=capability_manager,
@@ -81,8 +86,21 @@ class MCPServer:
         register_sweep_tools(self._mcp, self._ctx)
         register_stream_tools(self._mcp, self._ctx)
 
+        self._dynamic_registry: Optional[DynamicToolRegistry] = None
+        if dynamic_tools_enabled:
+            self._dynamic_registry = DynamicToolRegistry(self._mcp, self._ctx)
+            if self._sdk_executor is not None:
+                try:
+                    self._sdk_executor.register_with_mcp(self._dynamic_registry)
+                except Exception as exc:
+                    logger.warning("SDK MCP registration failed: %s", exc)
+
         self._server: Optional[Any] = None
         self._task: Optional[asyncio.Task] = None
+
+    @property
+    def dynamic_registry(self) -> Optional[DynamicToolRegistry]:
+        return self._dynamic_registry
 
     @property
     def app(self) -> FastMCP:
@@ -124,6 +142,12 @@ class MCPServer:
 
     async def stop(self) -> None:
         """Tear down the uvicorn server cleanly."""
+        if self._dynamic_registry is not None:
+            try:
+                self._dynamic_registry.detach()
+            except Exception:
+                logger.exception("dynamic registry detach raised")
+            self._dynamic_registry = None
         if self._server is not None:
             self._server.should_exit = True
         if self._task is not None:

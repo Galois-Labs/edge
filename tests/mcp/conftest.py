@@ -96,6 +96,20 @@ def _build_keithley_profile() -> Any:
                     ),
                 },
             ),
+            "measure_voltage": CommandConfig(
+                scpi=":MEAS:VOLT?",
+                type="query",
+                description="One-shot voltage read (streamable)",
+                streamable=True,
+                returns=ReturnConfig(type="float", unit="V"),
+            ),
+            "trigger_self_test": CommandConfig(
+                scpi="*TST?",
+                type="query",
+                description="Run instrument self-test",
+                is_dangerous=True,
+                returns=ReturnConfig(type="string"),
+            ),
         },
         sequences={
             "iv_sweep": SequenceConfig(
@@ -201,6 +215,16 @@ def synthetic_instrument_manager() -> Any:
         "GPIB0::24::INSTR",
         ":STAT:RAMP?",
         "IDLE",
+    )
+    mgr.set_query_response(
+        "GPIB0::24::INSTR",
+        ":MEAS:VOLT?",
+        "1.500000E+00",
+    )
+    mgr.set_query_response(
+        "GPIB0::24::INSTR",
+        "*TST?",
+        "0",
     )
     return mgr
 
