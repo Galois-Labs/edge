@@ -138,3 +138,49 @@ class TestInstantiate:
         )
         assert registry.get_instance("inst-1") is driver
         assert registry.get_instance("unknown") is None
+
+
+class TestRegistration:
+    """Tests for the F0.4 class-method registration API."""
+
+    def test_baseline_protocols_registered(self):
+        # Importing DriverRegistry triggers _ensure_protocols_imported
+        # via __init__; the four baseline protocols must be present.
+        DriverRegistry()  # construct to force import side effects
+        names = set(DriverRegistry.registered_protocols())
+        assert {"modbus", "can", "serial"}.issubset(names)
+
+    def test_get_spec_returns_driver_class(self):
+        DriverRegistry()  # ensure protocols imported
+        spec = DriverRegistry.get_spec("modbus")
+        # The driver_class is GenericModbusDriver — assert by name to
+        # avoid creating yet another import dependency in this test.
+        assert spec.driver_class.__name__ == "GenericModbusDriver"
+
+    def test_get_spec_unknown_raises(self):
+        with pytest.raises(KeyError, match="not registered"):
+            DriverRegistry.get_spec("nonexistent_protocol_for_test")
+
+    def test_register_replaces_idempotently(self):
+        DriverRegistry()  # ensure protocols imported
+        original = DriverRegistry.get_spec("modbus")
+        try:
+            class _DummyDriver:
+                def __init__(self, **kw):
+                    pass
+            DriverRegistry.register(
+                "modbus",
+                _DummyDriver,  # type: ignore[arg-type]
+                bus_manager_factory=None,
+            )
+            assert DriverRegistry.get_spec("modbus").driver_class is _DummyDriver
+        finally:
+            # Restore original registration so other tests don't see a
+            # corrupted modbus entry.
+            DriverRegistry.register(
+                "modbus",
+                original.driver_class,
+                bus_manager_factory=original.bus_manager_factory,
+                bus_manager_kwarg=original.bus_manager_kwarg,
+                extra_kwargs_filter=original.extra_kwargs_filter,
+            )
