@@ -79,14 +79,25 @@ def _select_data_type(bit_length: int, signed: bool) -> str:
 # ---------------------------------------------------------------------------
 
 
-class _ErrorListener:
-    """Listener that counts error frames and triggers BusOff recovery.
+if python_can is not None:
+    _ListenerBase = python_can.Listener
+else:  # pragma: no cover — exercised only when python-can missing
 
-    We do not subclass ``python_can.Listener`` to keep this importable when
-    python-can is missing (tests).  python-can's notifier accepts any
-    callable with ``on_message_received`` / ``on_error`` so duck typing is
-    enough.
-    """
+    class _ListenerBase:  # type: ignore[no-redef]
+        """Stand-in base class when python-can is unavailable."""
+
+        def on_message_received(self, msg: Any) -> None: ...
+
+        def __call__(self, msg: Any) -> None:
+            self.on_message_received(msg)
+
+        def on_error(self, exc: Exception) -> None: ...
+
+        def stop(self) -> None: ...
+
+
+class _ErrorListener(_ListenerBase):  # type: ignore[misc, valid-type]
+    """Listener that counts error frames and triggers BusOff recovery."""
 
     def __init__(self, driver: "GenericCANDriver") -> None:
         self._driver = driver
@@ -103,7 +114,7 @@ class _ErrorListener:
         pass
 
 
-class _SignalListener:
+class _SignalListener(_ListenerBase):  # type: ignore[misc, valid-type]
     """Listener that decodes incoming frames into signal values.
 
     Used by :py:meth:`GenericCANDriver.subscribe`.
@@ -175,6 +186,9 @@ class GenericCANDriver(BaseProtocolDriver):
         self.bus_lock: Any = None
         self._notifier: Any = None
         self._error_listener: _ErrorListener | None = None
+        # BufferedReader registered with the Notifier so read_point() can
+        # call recv() semantics without competing with Notifier consumers.
+        self._reader: Any = None
         # Map subscription_id -> dict(listener, points, callback).  We keep
         # enough state to re-attach listeners after BusOff recovery.
         self._native_subscriptions: dict[str, dict[str, Any]] = {}
@@ -268,12 +282,17 @@ class GenericCANDriver(BaseProtocolDriver):
             filters=self._raw_filters,
         )
         # Install error listener via Notifier for bus error / BusOff
-        # detection.  Tests may use the virtual interface where Notifier
-        # construction succeeds but errors are never emitted.
+        # detection.  python-can 4.x forbids attaching the same Bus to
+        # multiple Notifier instances, so we keep ONE Notifier per bus
+        # and add subscription listeners to it via ``add_listener``.
         self._error_listener = _ErrorListener(self)
+        self._reader = python_can.BufferedReader() if python_can is not None else None
         if python_can is not None:
             try:
-                self._notifier = python_can.Notifier(self.bus, [self._error_listener])
+                listeners: list[Any] = [self._error_listener]
+                if self._reader is not None:
+                    listeners.append(self._reader)
+                self._notifier = python_can.Notifier(self.bus, listeners)
             except Exception as exc:  # pragma: no cover — defensive
                 logger.warning("Failed to start CAN Notifier: %s", exc)
                 self._notifier = None
@@ -297,14 +316,15 @@ class GenericCANDriver(BaseProtocolDriver):
         )
 
     def disconnect(self) -> None:
-        # Stop notifier and tear down active subscriptions
-        for sub in list(self._native_subscriptions.values()):
-            notifier = sub.get("notifier")
-            if notifier is not None:
-                try:
-                    notifier.stop()
-                except Exception:  # pragma: no cover
-                    pass
+        # Tear down subscription listeners (they share self._notifier)
+        if self._notifier is not None:
+            for sub in self._native_subscriptions.values():
+                listener = sub.get("listener")
+                if listener is not None:
+                    try:
+                        self._notifier.remove_listener(listener)
+                    except Exception:  # pragma: no cover
+                        pass
         self._native_subscriptions.clear()
         if self._notifier is not None:
             try:
@@ -312,6 +332,12 @@ class GenericCANDriver(BaseProtocolDriver):
             except Exception:  # pragma: no cover
                 pass
             self._notifier = None
+        if self._reader is not None:
+            try:
+                self._reader.stop()
+            except Exception:  # pragma: no cover
+                pass
+            self._reader = None
         if self.bus is not None:
             self.bus_manager.release(
                 channel=self.channel,
@@ -496,13 +522,19 @@ class GenericCANDriver(BaseProtocolDriver):
         ) or self.bus
         self.bus = bus
 
-        # With filters installed, frames matching the filter set arrive
-        # quickly.  Allow a small number of spurious frames in case the
-        # mask covers more than one ID.
+        # With filters installed at the kernel/python-can layer, frames
+        # matching the filter set arrive quickly.  We pull from the
+        # BufferedReader (registered with the Notifier) rather than
+        # calling bus.recv() directly so we don't compete with the
+        # Notifier dispatcher.  Allow a small number of spurious frames
+        # in case the mask covers more than one ID.
         attempts = 8
         msg = None
         while attempts > 0:
-            msg = bus.recv(timeout=self.recv_timeout)
+            if self._reader is not None:
+                msg = self._reader.get_message(timeout=self.recv_timeout)
+            else:  # pragma: no cover — Notifier failed at connect
+                msg = bus.recv(timeout=self.recv_timeout)
             if msg is None:
                 raise IOError(f"CAN receive timeout waiting for ID 0x{can_id:X}")
             if getattr(msg, "is_error_frame", False):
@@ -621,17 +653,29 @@ class GenericCANDriver(BaseProtocolDriver):
         Frames matching the configured filter set are decoded as they
         arrive — there is no polling interval; ``interval_ms`` is accepted
         for API compatibility but ignored at the transport layer.
+
+        The driver maintains a single :class:`python_can.Notifier` per
+        bus (created in :py:meth:`connect`); each subscription adds a
+        listener to it.  This sidesteps python-can 4.x's restriction that
+        a Bus may belong to only one Notifier at a time.
         """
         if self.bus is None:
             raise IOError("CAN bus not connected")
         if python_can is None:
             raise RuntimeError("python-can not installed")
+        if self._notifier is None:
+            # Notifier failed to start at connect; fall back to polling
+            # via the base class implementation.
+            return super().subscribe(points, callback, interval_ms)
         sub_id = str(uuid.uuid4())
         listener = _SignalListener(self, points, callback)
-        notifier = python_can.Notifier(self.bus, [listener])
+        try:
+            self._notifier.add_listener(listener)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to add CAN listener: %s", exc)
+            raise
         self._native_subscriptions[sub_id] = {
             "listener": listener,
-            "notifier": notifier,
             "points": list(points),
             "callback": callback,
         }
@@ -642,10 +686,10 @@ class GenericCANDriver(BaseProtocolDriver):
         if sub is None:
             super().unsubscribe(subscription_id)
             return
-        notifier = sub.get("notifier")
-        if notifier is not None:
+        listener = sub.get("listener")
+        if listener is not None and self._notifier is not None:
             try:
-                notifier.stop()
+                self._notifier.remove_listener(listener)
             except Exception:  # pragma: no cover
                 pass
 
@@ -679,13 +723,19 @@ class GenericCANDriver(BaseProtocolDriver):
                 pass
 
     def _on_bus_error(self, exc: Exception) -> None:
+        # Ignore exceptions raised because the bus is shutting down.
+        # python-can's Notifier polls bus.recv() in a thread; on shutdown
+        # the bus raises "Cannot operate on a closed bus" which we don't
+        # treat as an instrument error.
+        msg = str(exc).lower()
+        if "closed bus" in msg or not self._connected:
+            return
         self._error_frame_count += 1
         self._last_error_at = time.time()
-        # Heuristic: treat any "bus off" / "Tx queue full" exception as
-        # BusOff for recovery purposes.  Real socketcan reports this via
-        # CanOperationError; the virtual interface never does.
-        msg = str(exc).lower()
-        if "bus" in msg and ("off" in msg or "error" in msg):
+        # Heuristic: treat "bus off" exceptions as BusOff for recovery
+        # purposes.  Real socketcan reports this via CanOperationError;
+        # the virtual interface never does.
+        if "bus" in msg and "off" in msg:
             self._notify_bus_off()
 
     def _notify_bus_off(self) -> None:
@@ -706,44 +756,45 @@ class GenericCANDriver(BaseProtocolDriver):
     def _on_bus_recovered(self, new_bus: Any) -> None:
         """Called by the bus manager after a successful BusOff recovery.
 
-        Replaces our cached Bus reference, restarts the error notifier,
-        and re-attaches every active subscription so listeners run on
-        the fresh Bus.
+        Replaces our cached Bus reference, recreates the single shared
+        Notifier on the fresh Bus, and re-attaches every active
+        subscription's listener.
         """
         logger.info("Re-installing CAN listeners after recovery on %s", self.channel)
         self._reconnect_count += 1
-        # Tear down stale notifiers
+        # Tear down stale notifier
         if self._notifier is not None:
             try:
                 self._notifier.stop()
             except Exception:  # pragma: no cover
                 pass
             self._notifier = None
-        for sub in self._native_subscriptions.values():
-            notifier = sub.get("notifier")
-            if notifier is not None:
-                try:
-                    notifier.stop()
-                except Exception:  # pragma: no cover
-                    pass
-            sub["notifier"] = None
 
         # Swap bus reference
         self.bus = new_bus
 
-        # Restart error notifier
-        if python_can is not None and self._error_listener is not None:
+        # Restart shared notifier with error listener, the BufferedReader,
+        # and all subscription listeners.  The reader is replaced so
+        # stale frames buffered before recovery don't bleed into the
+        # post-recovery read path.
+        if python_can is None:
+            return
+        if self._reader is not None:
             try:
-                self._notifier = python_can.Notifier(new_bus, [self._error_listener])
-            except Exception as exc:  # pragma: no cover
-                logger.warning("Failed to restart error notifier: %s", exc)
-
-        # Re-attach subscriptions
+                self._reader.stop()
+            except Exception:  # pragma: no cover
+                pass
+        self._reader = python_can.BufferedReader()
+        listeners: list[Any] = []
+        if self._error_listener is not None:
+            listeners.append(self._error_listener)
+        listeners.append(self._reader)
         for sub in self._native_subscriptions.values():
-            listener = sub.get("listener")
-            if listener is None or python_can is None:
-                continue
-            try:
-                sub["notifier"] = python_can.Notifier(new_bus, [listener])
-            except Exception as exc:  # pragma: no cover
-                logger.warning("Failed to re-attach subscription listener: %s", exc)
+            l = sub.get("listener")
+            if l is not None:
+                listeners.append(l)
+        try:
+            self._notifier = python_can.Notifier(new_bus, listeners)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to restart Notifier after recovery: %s", exc)
+            self._notifier = None
