@@ -1,0 +1,210 @@
+# Curtis Instruments 1238E AC motor controller — CAN profile
+#
+# The 1238E supports CANopen (DS-301) on its standard CAN port.  This
+# profile maps a representative subset of TPDOs/RPDOs that field-service
+# tools typically read or write.  Frame layout follows the manufacturer's
+# default OEM-customisable PDO map; production deployments often rebind
+# PDOs via the OEM tool, in which case this profile must be regenerated
+# from the customer's specific configuration.
+#
+# Frame IDs use 11-bit standard CAN identifiers in the form
+# (function_code << 7) | node_id.  Node ID 0x10 (16) is the factory
+# default; change ``can_id`` values in tandem if the controller has
+# been re-addressed.
+#
+# Provenance: hand-authored from the Curtis 1238E "AC Induction Motor
+# Controller" manual (publicly available) and DS-301 PDO conventions.
+
+protocol: can
+identity:
+  manufacturer: "Curtis Instruments"
+  model: "1238E"
+  description: "AC induction motor controller, CANopen interface"
+  firmware_version: "Multimode AC F"
+
+connection:
+  channel: can0
+  interface: socketcan
+  bitrate: 500000
+  recv_timeout: 1.0
+  filters:
+    - can_id: 0x190               # TPDO1 (status) for node 0x10
+      can_mask: 0x7FF
+    - can_id: 0x290               # TPDO2 (motor data) for node 0x10
+      can_mask: 0x7FF
+    - can_id: 0x210               # RPDO1 (command) for node 0x10
+      can_mask: 0x7FF
+
+messages:
+  # ----- TPDO1: status word + heartbeat data -----
+  status_tpdo1:
+    can_id: 0x190
+    is_extended: false
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 100
+    signals:
+      controller_state:
+        start_bit: 0
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        enum:
+          0: not_ready
+          1: ready
+          2: enabled
+          3: fault
+        description: "Controller state machine"
+      fault_code:
+        start_bit: 8
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        description: "Active fault code (0 = no fault)"
+      battery_voltage:
+        start_bit: 24
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0625
+        offset: 0
+        unit: V
+        range: [0, 100]
+        description: "Battery voltage at controller"
+      throttle_input:
+        start_bit: 40
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        scale: 0.5
+        offset: 0
+        unit: "%"
+        range: [0, 100]
+        description: "Throttle pot reading"
+      direction_switch:
+        start_bit: 48
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        enum:
+          0: neutral
+          1: forward
+          2: reverse
+        description: "Direction selector input"
+
+  # ----- TPDO2: motor speed and current -----
+  motor_data_tpdo2:
+    can_id: 0x290
+    is_extended: false
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 50
+    signals:
+      motor_rpm:
+        start_bit: 0
+        bit_length: 16
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: rpm
+        range: [-8000, 8000]
+        description: "Motor mechanical speed"
+      motor_current:
+        start_bit: 16
+        bit_length: 16
+        byte_order: little_endian
+        signed: true
+        scale: 0.1
+        offset: 0
+        unit: A
+        range: [-500, 500]
+        description: "RMS motor current"
+      motor_temp:
+        start_bit: 32
+        bit_length: 8
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: degC
+        description: "Motor temperature sensor"
+      controller_temp:
+        start_bit: 40
+        bit_length: 8
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: degC
+        description: "Controller heatsink temperature"
+
+  # ----- RPDO1: command frame from supervisor -----
+  command_rpdo1:
+    can_id: 0x210
+    is_extended: false
+    dlc: 8
+    direction: tx
+    signals:
+      command_word:
+        start_bit: 0
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        enum:
+          0: stop
+          6: enable_with_brake_release
+          15: enable_full
+        description: "Controller command word"
+      target_speed:
+        start_bit: 16
+        bit_length: 16
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: rpm
+        range: [-8000, 8000]
+        description: "Commanded mechanical speed"
+      torque_limit:
+        start_bit: 32
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.1
+        offset: 0
+        unit: "%"
+        range: [0, 100]
+        description: "Torque limit override"
+
+points: {}
+
+commands:
+  read_status:
+    type: query
+    reads: [controller_state, fault_code, battery_voltage]
+  read_motor:
+    type: query
+    reads: [motor_rpm, motor_current, motor_temp, controller_temp]
+  command_stop:
+    type: action
+    writes:
+      - register: command_word
+        value: stop
+      - register: target_speed
+        value: 0
+  command_run:
+    type: action
+    writes:
+      - register: command_word
+        value: enable_full
+      - register: target_speed
+        value: "{rpm}"
+      - register: torque_limit
+        value: "{torque_pct}"
+
+provenance:
+  source: "manual; sample profile for testing"
+  notes: "Authored from the Curtis 1238E AC controller manual and DS-301 default PDO mapping. PDO assignments are OEM-configurable; verify before deploying."
+  pipeline_version: "0.1"
+  confidence_score: 0.65
