@@ -373,6 +373,17 @@ func (m *Manager) setAuthHeader(req *http.Request) {
 	}
 }
 
+// defaultProtocolsSupported returns the static list of protocols the
+// daemon currently ships drivers for.  Phase 0 (foundation) advertises
+// the four currently-shipping protocols so the cloud can begin gating
+// deploys against the protocols_supported list ahead of Phase 1+
+// landings.  Phase F replaces this with a probe of the Python protocol
+// registry that adds SPI / I2C / OPC-UA only when their hardware /
+// library deps are present on the host.
+func defaultProtocolsSupported() []string {
+	return []string{"scpi", "modbus", "can", "serial"}
+}
+
 // ---------------------------------------------------------------------------
 // HTTP payloads
 // ---------------------------------------------------------------------------
@@ -387,6 +398,13 @@ type registerPayload struct {
 	Version     string           `json:"version,omitempty"`
 	OSInfo      string           `json:"os_info,omitempty"`
 	Instruments []InstrumentInfo `json:"instruments"`
+
+	// Phase 0 capability advertising scaffold (F0.7).  Default value
+	// covers the four currently-shipping protocols; Phase F replaces
+	// this with a runtime probe of the Python registry that fills in
+	// SPI / I2C / OPC-UA when their hardware/library deps are
+	// satisfied on this host.
+	ProtocolsSupported []string `json:"protocols_supported,omitempty"`
 }
 
 // registerResponse captures the relevant fields from the backend's JSON
@@ -411,6 +429,12 @@ type heartbeatPayload struct {
 	LanIP       string           `json:"lan_ip,omitempty"`
 	Status      string           `json:"status"`
 	Instruments []InstrumentInfo `json:"instruments,omitempty"`
+
+	// Phase 0 capability advertising scaffold (F0.7).  Daemon ships
+	// these on every heartbeat so the cloud can gate deploys against
+	// what the edge actually supports.  Phase F populates this from
+	// the Python protocol registry; today it's a static default.
+	ProtocolsSupported []string `json:"protocols_supported,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -427,15 +451,16 @@ func (m *Manager) doRegister(ctx context.Context) (*registerResponse, int, error
 	}
 
 	payload := registerPayload{
-		Name:        m.cfg.EdgeName,
-		Hostname:    m.cfg.Hostname,
-		TailnetIP:   m.cfg.IPFunc(),
-		LanIP:       localOutboundIP(),
-		GRPCPort:    m.cfg.GRPCPort,
-		WSPort:      m.cfg.WSPort,
-		Version:     m.cfg.Version,
-		OSInfo:      m.cfg.OSInfo,
-		Instruments: instruments,
+		Name:               m.cfg.EdgeName,
+		Hostname:           m.cfg.Hostname,
+		TailnetIP:          m.cfg.IPFunc(),
+		LanIP:              localOutboundIP(),
+		GRPCPort:           m.cfg.GRPCPort,
+		WSPort:             m.cfg.WSPort,
+		Version:            m.cfg.Version,
+		OSInfo:             m.cfg.OSInfo,
+		Instruments:        instruments,
+		ProtocolsSupported: defaultProtocolsSupported(),
 	}
 
 	body, err := json.Marshal(payload)
@@ -533,9 +558,10 @@ func (m *Manager) heartbeat(ctx context.Context) error {
 	}
 
 	payload := heartbeatPayload{
-		TailnetIP: m.cfg.IPFunc(),
-		LanIP:     localOutboundIP(),
-		Status:    "online",
+		TailnetIP:          m.cfg.IPFunc(),
+		LanIP:              localOutboundIP(),
+		Status:             "online",
+		ProtocolsSupported: defaultProtocolsSupported(),
 	}
 
 	// Include instruments when the set has changed since last ack.

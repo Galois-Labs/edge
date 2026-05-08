@@ -1,0 +1,131 @@
+protocol: spi
+identity:
+  manufacturer: "Microchip"
+  model: "MCP3008"
+  description: "8-channel 10-bit successive-approximation ADC"
+  firmware_version: ""
+connection:
+  bus: 0
+  device: 0
+  mode: 0                       # CPOL=0, CPHA=0 (mode 0 standard for MCP3008)
+  bits_per_word: 8
+  max_speed_hz: 1350000         # MCP3008 max is 3.6 MHz at 5V; we keep 1.35 MHz for 3.3V parts
+  cs_high: false
+  lsb_first: false
+  three_wire: false
+  byte_order: big
+read_command:
+  # MCP3008 24-clock transaction:
+  #   tx[0] = 0x01            (start bit)
+  #   tx[1] = (0x80 | (sgl/diff << 7) | (channel << 4)) — 0x80 = single-ended
+  #   tx[2] = 0x00            (clocks out the lower 8 bits of the result)
+  # MISO returns 10 bits starting at bit 6 of byte 1 (MSB-first, with one
+  # null bit immediately after the start bit).
+  pattern: start_bit
+  start_byte: 0x01
+  mux_template: 0x80            # single-ended mode
+  mux_shift: 4                  # channel goes in the upper nibble of the mux byte
+  read_opcode: 0x00
+  write_opcode: 0x00
+  address_bytes: 0
+  dummy_bytes: 0
+registers:
+  ch0:
+    address: 0
+    channel: 0
+    access: read
+    length_bytes: 2             # response data spans byte 1 and byte 2 of the reply
+    data_type: uint16
+    data_offset_bits: 6         # 6-bit pad (top of response) before the 10-bit result MSB
+    data_length_bits: 10
+    scale: 0.00322265625        # 3.3V / 1024 LSB; adjust to 0.00488281 for 5V Vref
+    unit: V
+    description: "Single-ended channel 0"
+  ch1:
+    address: 1
+    channel: 1
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 1"
+  ch2:
+    address: 2
+    channel: 2
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 2"
+  ch3:
+    address: 3
+    channel: 3
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 3"
+  ch4:
+    address: 4
+    channel: 4
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 4"
+  ch5:
+    address: 5
+    channel: 5
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 5"
+  ch6:
+    address: 6
+    channel: 6
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 6"
+  ch7:
+    address: 7
+    channel: 7
+    access: read
+    length_bytes: 2
+    data_type: uint16
+    data_offset_bits: 6
+    data_length_bits: 10
+    scale: 0.00322265625
+    unit: V
+    description: "Single-ended channel 7"
+points: {}
+commands:
+  read_ch0:
+    type: query
+    reads: [ch0]
+  read_ch1:
+    type: query
+    reads: [ch1]
+provenance:
+  source_url: "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP3004-MCP3008-Data-Sheet-DS20001295.pdf"
+  source_notes: "Hand-authored from public MCP3008 datasheet (DS20001295C); transaction shape matches Figure 6-1."

@@ -1,0 +1,330 @@
+# Ewert Energy Systems Orion BMS Jr2 — CAN profile
+#
+# This profile covers a representative subset of the J1939-style CAN
+# frames the Orion Jr2 emits.  The Orion Jr2 uses 29-bit (extended)
+# arbitration IDs in the J1939 PGN format.  Frames marked direction: rx
+# are broadcast by the BMS at fixed cycle times; configuration writes
+# (direction: tx) target a "command" PGN.
+#
+# Frame layouts here are authored from publicly available DBC excerpts
+# and the Orion Jr2 communication spec.  Always verify against the
+# current Orion CAN protocol document for the firmware build deployed
+# in your fleet — Ewert publishes minor revisions per firmware drop.
+#
+# Multiplexing: The BMS broadcasts one "rotating" status frame
+# (cell_voltage_status) at PGN 0xFFA1 where the first byte selects
+# which cell index the remaining bytes describe.  Profile expresses
+# this with the multiplex.mux_signal mechanism so a single decoded
+# frame yields the correct (cell_index, voltage) pair.
+
+protocol: can
+identity:
+  manufacturer: "Ewert Energy Systems"
+  model: "Orion BMS Jr2"
+  description: "48-cell lithium battery management system, J1939 CAN"
+  firmware_version: "5.x"
+
+connection:
+  channel: can0
+  interface: socketcan
+  bitrate: 250000              # J1939 default
+  recv_timeout: 1.0
+  filters:
+    # Mask 0x1FFFFF00 captures all Orion Jr2 PGNs while ignoring the
+    # source address byte.  Adjust the can_id values if multiple
+    # Orion units share a bus.
+    - can_id: 0x18FF50F4       # battery_status (PGN 0xFF50, src 0xF4)
+      can_mask: 0x1FFFFF00
+      extended: true
+    - can_id: 0x18FF51F4       # battery_limits
+      can_mask: 0x1FFFFF00
+      extended: true
+    - can_id: 0x18FFA1F4       # cell_voltage_status (multiplexed)
+      can_mask: 0x1FFFFF00
+      extended: true
+    - can_id: 0x18FFA2F4       # thermistor_status
+      can_mask: 0x1FFFFF00
+      extended: true
+    - can_id: 0x18EEFF00       # NM heartbeat / address claim
+      can_mask: 0x1FFFFF00
+      extended: true
+
+messages:
+  # ----- 0x18EEFF00 — J1939 NM address claim heartbeat -----
+  nm_heartbeat:
+    can_id: 0x18EEFF00
+    is_extended: true
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 1000
+    signals:
+      identity_number:
+        start_bit: 0
+        bit_length: 21
+        byte_order: little_endian
+        signed: false
+        description: "Manufacturer identity number (J1939-81)"
+      manufacturer_code:
+        start_bit: 21
+        bit_length: 11
+        byte_order: little_endian
+        signed: false
+        description: "Manufacturer code"
+      ecu_instance:
+        start_bit: 32
+        bit_length: 3
+        byte_order: little_endian
+        signed: false
+      function_instance:
+        start_bit: 35
+        bit_length: 5
+        byte_order: little_endian
+        signed: false
+      function:
+        start_bit: 40
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+
+  # ----- 0x18FF50F4 — top-level pack status -----
+  battery_status:
+    can_id: 0x18FF50F4
+    is_extended: true
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 100
+    signals:
+      pack_voltage:
+        start_bit: 0
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.1
+        offset: 0
+        unit: V
+        range: [0, 6553.5]
+        description: "Pack voltage"
+      pack_current:
+        start_bit: 16
+        bit_length: 16
+        byte_order: little_endian
+        signed: true
+        scale: 0.1
+        offset: 0
+        unit: A
+        range: [-3276.8, 3276.7]
+        description: "Pack current (positive = discharge)"
+      pack_soc:
+        start_bit: 32
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        scale: 0.5
+        offset: 0
+        unit: "%"
+        range: [0, 100]
+        description: "State of charge"
+      pack_state:
+        start_bit: 40
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        enum:
+          0: idle
+          1: charging
+          2: discharging
+          3: fault
+        description: "Pack operating state"
+
+  # ----- 0x18FF51F4 — operational limits -----
+  battery_limits:
+    can_id: 0x18FF51F4
+    is_extended: true
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 500
+    signals:
+      max_charge_current:
+        start_bit: 0
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.1
+        offset: 0
+        unit: A
+        description: "Maximum allowed charge current"
+      max_discharge_current:
+        start_bit: 16
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.1
+        offset: 0
+        unit: A
+        description: "Maximum allowed discharge current"
+      pack_dcl_kw:
+        start_bit: 32
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.01
+        offset: 0
+        unit: kW
+        description: "Discharge power limit"
+      pack_ccl_kw:
+        start_bit: 48
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.01
+        offset: 0
+        unit: kW
+        description: "Charge power limit"
+
+  # ----- 0x18FFA1F4 — multiplexed per-cell voltage -----
+  # Byte 0 is the cell index (0..47).  Bytes 1..2 carry the voltage of
+  # that cell.  Bytes 3..7 carry instantaneous min/max trackers for
+  # the most recent broadcast cycle.
+  cell_voltage_status:
+    can_id: 0x18FFA1F4
+    is_extended: true
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 50
+    multiplex:
+      mux_signal: cell_index
+      mux_values: [0, 1, 2, 3]   # subset shown; 0..47 in real fleets
+    signals:
+      cell_index:
+        start_bit: 0
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        description: "Cell index multiplex selector"
+      cell_voltage_0:
+        start_bit: 8
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        mux_value: 0
+        description: "Cell 0 voltage"
+      cell_voltage_1:
+        start_bit: 8
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        mux_value: 1
+        description: "Cell 1 voltage"
+      cell_voltage_2:
+        start_bit: 8
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        mux_value: 2
+      cell_voltage_3:
+        start_bit: 8
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        mux_value: 3
+      cell_min_voltage:
+        start_bit: 24
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        description: "Minimum cell voltage seen this cycle"
+      cell_max_voltage:
+        start_bit: 40
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        scale: 0.0001
+        offset: 0
+        unit: V
+        description: "Maximum cell voltage seen this cycle"
+
+  # ----- 0x18FFA2F4 — thermistor status -----
+  thermistor_status:
+    can_id: 0x18FFA2F4
+    is_extended: true
+    dlc: 8
+    direction: rx
+    cycle_time_ms: 500
+    signals:
+      thermistor_min_c:
+        start_bit: 0
+        bit_length: 8
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: degC
+        description: "Coldest thermistor"
+      thermistor_max_c:
+        start_bit: 8
+        bit_length: 8
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: degC
+        description: "Hottest thermistor"
+      thermistor_avg_c:
+        start_bit: 16
+        bit_length: 8
+        byte_order: little_endian
+        signed: true
+        scale: 1.0
+        offset: 0
+        unit: degC
+        description: "Average thermistor"
+      fault_flags:
+        start_bit: 24
+        bit_length: 16
+        byte_order: little_endian
+        signed: false
+        description: "Bitmask of latched fault codes"
+      pack_health:
+        start_bit: 40
+        bit_length: 8
+        byte_order: little_endian
+        signed: false
+        scale: 1.0
+        offset: 0
+        unit: "%"
+        range: [0, 100]
+        description: "Pack health indicator"
+
+points: {}
+
+commands:
+  read_pack_status:
+    type: query
+    reads: [pack_voltage, pack_current, pack_soc, pack_state]
+  read_limits:
+    type: query
+    reads: [max_charge_current, max_discharge_current]
+  read_temps:
+    type: query
+    reads: [thermistor_min_c, thermistor_max_c, thermistor_avg_c]
+
+provenance:
+  source: "manual; sample profile for testing"
+  notes: "Authored from publicly available Orion Jr2 DBC excerpts and J1939 PGN documentation. Verify against the current Orion CAN spec before production use."
+  pipeline_version: "0.1"
+  confidence_score: 0.6

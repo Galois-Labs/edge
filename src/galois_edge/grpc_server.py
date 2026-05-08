@@ -2271,94 +2271,140 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 ))
         return edge_pb2.ListProfilesResponse(profiles=profiles)
 
-    async def ConnectModbusInstrument(self, request, context):
-        """Deploy profile (if YAML provided) and connect instrument in one step."""
-        import os
-        import yaml
+    async def _connect_instrument_impl(
+        self,
+        *,
+        profile_name: str,
+        profile_yaml: str,
+        protocol: str,
+        instrument_id: str,
+        transport_uri: str,
+        connection_kwargs: dict,
+    ) -> tuple[bool, str, int, list]:
+        """Shared implementation of the deploy + connect path.
 
-        profile_name = request.profile_name
-        profile_yaml = request.profile_yaml
-        protocol = request.protocol or "modbus"
-        instrument_id = request.instrument_id
-        transport_uri = request.transport_uri
-        slave_id = request.slave_id or 1
+        Returns ``(success, error_message, register_count, commands)`` so
+        the wrapper RPC implementations can build the protocol-specific
+        response message.
+        """
+        import os
 
         if not instrument_id or not transport_uri:
-            return edge_pb2.ConnectModbusInstrumentResponse(
-                success=False,
-                error_message="instrument_id and transport_uri are required",
-            )
-
+            return False, "instrument_id and transport_uri are required", 0, []
         if self._driver_registry is None:
-            return edge_pb2.ConnectModbusInstrumentResponse(
-                success=False,
-                error_message="Driver registry not available",
-            )
+            return False, "Driver registry not available", 0, []
 
-        # Step 1: Deploy profile if YAML provided
+        # Step 1: deploy profile if YAML provided
         if profile_yaml and profile_name:
             profile_dir = self._driver_registry.profiles_dir
-            protocol_dir = os.path.join(profile_dir, protocol)
+            protocol_dir = os.path.join(profile_dir, protocol or "modbus")
             os.makedirs(protocol_dir, exist_ok=True)
             file_path = os.path.join(protocol_dir, f"{profile_name}.yaml")
             try:
                 with open(file_path, "w") as f:
                     f.write(profile_yaml)
                 self._driver_registry.reload()
-                logger.info("Deployed profile %s for ConnectModbusInstrument", profile_name)
+                logger.info("Deployed profile %s for ConnectInstrument", profile_name)
             except Exception as exc:
-                return edge_pb2.ConnectModbusInstrumentResponse(
-                    success=False,
-                    error_message=f"Failed to deploy profile: {exc}",
-                )
+                return False, f"Failed to deploy profile: {exc}", 0, []
 
-        # Step 2: Instantiate and connect the driver
         if not profile_name:
-            return edge_pb2.ConnectModbusInstrumentResponse(
-                success=False,
-                error_message="profile_name is required",
-            )
+            return False, "profile_name is required", 0, []
 
         try:
-            kwargs: dict = {}
-            if protocol == "modbus":
-                kwargs["slave_id"] = slave_id
             driver = self._driver_registry.instantiate(
                 profile_name=profile_name,
                 instrument_id=instrument_id,
                 transport_uri=transport_uri,
-                **kwargs,
+                **connection_kwargs,
             )
             driver.connect()
 
-            # Register with capability manager
             if self._capability_manager is not None:
                 self._capability_manager.register_protocol_driver(
                     instrument_id, driver
                 )
 
             caps = driver.get_capabilities()
+            register_count = caps.get("registers", 0) or 0
+            commands_obj = caps.get("commands", [])
+            commands = (
+                list(commands_obj) if not isinstance(commands_obj, int) else []
+            )
             logger.info(
                 "Connected %s instrument: %s (%s @ %s, %d registers/commands)",
-                protocol, instrument_id, profile_name, transport_uri,
-                caps.get("registers", caps.get("commands", 0))
-                if isinstance(caps.get("commands"), int)
-                else len(caps.get("commands", [])),
+                protocol,
+                instrument_id,
+                profile_name,
+                transport_uri,
+                register_count
+                if isinstance(commands_obj, int)
+                else len(commands),
             )
-
-            return edge_pb2.ConnectModbusInstrumentResponse(
-                success=True,
-                instrument_id=instrument_id,
-                register_count=caps.get("registers", 0),
-                commands=caps.get("commands", []),
-            )
+            return True, "", register_count, commands
 
         except Exception as exc:
-            logger.error("ConnectModbusInstrument failed: %s", exc)
+            logger.error("ConnectInstrument failed: %s", exc)
+            return False, str(exc), 0, []
+
+    async def ConnectModbusInstrument(self, request, context):
+        """Legacy protocol-specific connect.  Routes to ConnectInstrument."""
+        protocol = request.protocol or "modbus"
+        connection_kwargs: dict = {}
+        # Modbus is the only protocol the legacy RPC carried a typed
+        # parameter for.  Strip it for non-Modbus protocols (the runtime
+        # already does this); for Modbus, preserve the existing default.
+        if protocol == "modbus":
+            connection_kwargs["slave_id"] = request.slave_id or 1
+
+        ok, err, reg_count, commands = await self._connect_instrument_impl(
+            profile_name=request.profile_name,
+            profile_yaml=request.profile_yaml,
+            protocol=protocol,
+            instrument_id=request.instrument_id,
+            transport_uri=request.transport_uri,
+            connection_kwargs=connection_kwargs,
+        )
+        if not ok:
             return edge_pb2.ConnectModbusInstrumentResponse(
-                success=False,
-                error_message=str(exc),
+                success=False, error_message=err,
             )
+        return edge_pb2.ConnectModbusInstrumentResponse(
+            success=True,
+            instrument_id=request.instrument_id,
+            register_count=reg_count,
+            commands=commands,
+        )
+
+    async def ConnectInstrument(self, request, context):
+        """Generic deploy + connect across all protocol drivers."""
+        protocol = request.protocol or "modbus"
+
+        # Translate the connection_params Struct into kwargs for the
+        # driver registry.  Empty Struct → empty dict.
+        connection_kwargs: dict = {}
+        if request.HasField("connection_params"):
+            from google.protobuf.json_format import MessageToDict
+            connection_kwargs = MessageToDict(request.connection_params)
+
+        ok, err, reg_count, commands = await self._connect_instrument_impl(
+            profile_name=request.profile_name,
+            profile_yaml=request.profile_yaml,
+            protocol=protocol,
+            instrument_id=request.instrument_id,
+            transport_uri=request.transport_uri,
+            connection_kwargs=connection_kwargs,
+        )
+        if not ok:
+            return edge_pb2.ConnectInstrumentResponse(
+                success=False, error_message=err,
+            )
+        return edge_pb2.ConnectInstrumentResponse(
+            success=True,
+            instrument_id=request.instrument_id,
+            register_count=reg_count,
+            commands=commands,
+        )
 
     async def DisconnectInstrument(self, request, context):
         """Disconnect a protocol-driver instrument."""
