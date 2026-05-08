@@ -802,3 +802,75 @@ def test_write_when_disconnected_raises():
     with pytest.raises(IOError):
         driver.write_point(driver._points["target_speed"], 100)
     mgr.shutdown_all()
+
+
+# ---------------------------------------------------------------------------
+# Example profile parse coverage
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "profile_filename,min_signals,min_commands",
+    [
+        ("bms_orion_jr2.yaml", 20, 1),
+        ("motor_controller_curtis_1238e.yaml", 10, 1),
+    ],
+)
+def test_example_profile_parses(profile_filename, min_signals, min_commands):
+    """Ground-truth profiles in profiles/can/ instantiate cleanly."""
+    import os
+    import yaml
+
+    here = os.path.dirname(__file__)
+    profile_path = os.path.join(
+        here, "..", "src", "galois_edge", "profiles", "can", profile_filename
+    )
+    with open(profile_path) as f:
+        profile = yaml.safe_load(f)
+    assert profile["protocol"] == "can"
+    mgr = CANBusManager()
+    driver = GenericCANDriver(
+        instrument_id="example",
+        transport_uri=f"can://{profile_filename}",
+        profile=profile,
+        bus_manager=mgr,
+    )
+    try:
+        assert len(driver._points) >= min_signals
+        assert len(driver._commands) >= min_commands
+        # Identity always present
+        assert profile["identity"]["manufacturer"]
+        assert profile["identity"]["model"]
+        # Filters list parses
+        assert isinstance(driver._raw_filters, list)
+    finally:
+        mgr.shutdown_all()
+
+
+def test_orion_profile_has_multiplex_signals():
+    """Verify the Orion profile actually exercises the mux pathway."""
+    import os
+    import yaml
+
+    here = os.path.dirname(__file__)
+    profile_path = os.path.join(
+        here, "..", "src", "galois_edge", "profiles", "can",
+        "bms_orion_jr2.yaml",
+    )
+    with open(profile_path) as f:
+        profile = yaml.safe_load(f)
+    mgr = CANBusManager()
+    driver = GenericCANDriver(
+        instrument_id="example",
+        transport_uri="can://example",
+        profile=profile,
+        bus_manager=mgr,
+    )
+    try:
+        # cell_voltage_status carries a mux selector
+        assert driver._mux_for_message.get("cell_voltage_status") == "cell_index"
+        # And cell_voltage_0 is bound to mux_value 0
+        cv0 = driver._points["cell_voltage_0"]
+        assert cv0.addressing.get("mux_value") == 0
+    finally:
+        mgr.shutdown_all()

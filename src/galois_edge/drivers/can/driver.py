@@ -107,6 +107,9 @@ class _ErrorListener(_ListenerBase):  # type: ignore[misc, valid-type]
             self._driver._on_error_frame(msg)
 
     def on_error(self, exc: Exception) -> None:  # pragma: no cover — log path
+        # "closed bus" is shutdown noise; suppress at log level too.
+        if "closed bus" in str(exc).lower():
+            return
         logger.warning("CAN bus error: %s", exc)
         self._driver._on_bus_error(exc)
 
@@ -154,6 +157,8 @@ class _SignalListener(_ListenerBase):  # type: ignore[misc, valid-type]
                 logger.warning("Subscription callback raised: %s", exc)
 
     def on_error(self, exc: Exception) -> None:  # pragma: no cover — log path
+        if "closed bus" in str(exc).lower():
+            return
         logger.warning("CAN subscription listener error: %s", exc)
 
     def stop(self) -> None:  # pragma: no cover — Notifier hook
