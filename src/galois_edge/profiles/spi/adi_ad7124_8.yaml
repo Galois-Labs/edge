@@ -1,0 +1,98 @@
+protocol: spi
+identity:
+  manufacturer: "Analog Devices"
+  model: "AD7124-8"
+  description: "8-channel 24-bit low-power sigma-delta ADC"
+  firmware_version: "Rev D"
+connection:
+  bus: 0
+  device: 0
+  mode: 3                       # CPOL=1, CPHA=1 per AD7124 datasheet (Figure 51)
+  bits_per_word: 8
+  max_speed_hz: 5000000         # SCLK up to 5 MHz
+  cs_high: false
+  lsb_first: false
+  three_wire: false
+  byte_order: big
+read_command:
+  pattern: register_address
+  read_opcode: 0x40             # bit 6 set in the comm register = read
+  write_opcode: 0x00            # bit 6 clear = write
+  address_bytes: 1
+  dummy_bytes: 0
+  identify_register: id         # AD7124 ID register
+registers:
+  status:
+    address: 0x00
+    access: read
+    length_bytes: 1
+    data_type: uint8
+    description: "Status register: ready/error/channel flags"
+    bitfield:
+      not_ready:
+        bit: 7
+        description: "/RDY: 0 when conversion ready"
+      error:
+        bit: 6
+        description: "Error flag — see ERROR register"
+      power_on_reset:
+        bit: 4
+        description: "POR flag, write 1 to clear"
+      active_channel:
+        bits: [0, 1, 2, 3]
+        description: "Last converted channel (0-15)"
+  ctrl:
+    address: 0x01
+    access: read_write
+    length_bytes: 2
+    data_type: uint16
+    description: "ADC_CONTROL: clock select, mode, ref, power, etc."
+    byte_order: big
+  data:
+    address: 0x02
+    access: read
+    length_bytes: 3
+    data_type: int24
+    scale: 4.76837158e-7        # ±2.5V / 2^23 in volts (5V Vref / 2^24 LSB)
+    unit: V
+    description: "DATA register: latest conversion result, 24-bit signed"
+    byte_order: big
+  io_control_1:
+    address: 0x03
+    access: read_write
+    length_bytes: 3
+    data_type: uint24
+    description: "IO_CONTROL_1: digital output, current source pins"
+  io_control_2:
+    address: 0x04
+    access: read_write
+    length_bytes: 2
+    data_type: uint16
+    description: "IO_CONTROL_2: bias voltage, V_BIAS"
+  id:
+    address: 0x05
+    access: read
+    length_bytes: 1
+    data_type: uint8
+    expected: 0x14              # AD7124-8 device ID (DEVICE_ID = 0x14, SILICON_REV in bits[3:0])
+    description: "ID register — used by identify()"
+  error:
+    address: 0x06
+    access: read
+    length_bytes: 3
+    data_type: uint24
+    description: "ERROR register"
+points: {}
+commands:
+  read_status:
+    type: query
+    reads: [status]
+  read_data:
+    type: query
+    reads: [data]
+  read_id:
+    type: query
+    reads: [id]
+provenance:
+  source_url: "https://www.analog.com/media/en/technical-documentation/data-sheets/AD7124-8.pdf"
+  source_notes: "Hand-authored from public AD7124-8 datasheet (Rev D); register addresses verified against Table 33."

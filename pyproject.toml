@@ -76,6 +76,9 @@ digilent = [
 modbus = [
     "pymodbus>=3.6,<3.8",
 ]
+spi = [
+    "spidev>=3.6; sys_platform == 'linux'",
+]
 hotplug = [
     "pyudev>=0.24.0; sys_platform == 'linux'",
 ]
