@@ -1857,3 +1857,74 @@ class TestProxySDKCallSecurity:
         # Should fail with an ImportError, NOT an allowlist error
         assert resp.success is False
         assert "not in the allowed modules list" not in resp.error_message
+
+
+# ---------------------------------------------------------------------------
+# ConnectInstrument RPC (F0.5)
+# ---------------------------------------------------------------------------
+
+
+class TestConnectInstrument:
+    """Smoke tests for the new generic ConnectInstrument RPC and the
+    legacy ConnectModbusInstrument shim."""
+
+    @pytest.mark.asyncio
+    async def test_connect_instrument_requires_instrument_id(
+        self, mock_instrument_manager, mock_command_handler,
+    ):
+        servicer = _make_servicer(
+            mock_instrument_manager, mock_command_handler,
+        )
+        ctx = _make_context()
+
+        request = edge_pb2.ConnectInstrumentRequest(
+            transport_uri="tcp://1.2.3.4:502",
+            protocol="modbus",
+        )
+        resp = await servicer.ConnectInstrument(request, ctx)
+        assert resp.success is False
+        assert "instrument_id" in resp.error_message
+
+    @pytest.mark.asyncio
+    async def test_connect_instrument_no_registry(
+        self, mock_instrument_manager, mock_command_handler,
+    ):
+        servicer = _make_servicer(
+            mock_instrument_manager, mock_command_handler,
+        )
+        ctx = _make_context()
+
+        request = edge_pb2.ConnectInstrumentRequest(
+            instrument_id="foo",
+            transport_uri="tcp://1.2.3.4:502",
+            profile_name="prof",
+            protocol="modbus",
+        )
+        resp = await servicer.ConnectInstrument(request, ctx)
+        assert resp.success is False
+        assert "registry" in resp.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_connect_modbus_instrument_routes_to_new_path(
+        self, mock_instrument_manager, mock_command_handler,
+    ):
+        """The legacy ConnectModbusInstrument RPC must produce the same
+        outcome as ConnectInstrument for Modbus traffic — i.e. it routes
+        through _connect_instrument_impl internally."""
+        servicer = _make_servicer(
+            mock_instrument_manager, mock_command_handler,
+        )
+        ctx = _make_context()
+
+        request = edge_pb2.ConnectModbusInstrumentRequest(
+            instrument_id="foo",
+            transport_uri="tcp://1.2.3.4:502",
+            profile_name="prof",
+            protocol="modbus",
+            slave_id=7,
+        )
+        resp = await servicer.ConnectModbusInstrument(request, ctx)
+        # No registry attached → both code paths should report the same
+        # "registry not available" sentinel.
+        assert resp.success is False
+        assert "registry" in resp.error_message.lower()

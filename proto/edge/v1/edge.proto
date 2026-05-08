@@ -104,8 +104,17 @@ service EdgeDaemonService {
   // ListProfiles returns all driver profiles installed on the daemon.
   rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
 
-  // ConnectModbusInstrument deploys a profile AND connects an instrument in one step.
+  // ConnectModbusInstrument is the legacy protocol-specific connect RPC.
+  // Kept for one release cycle as a deprecation shim that the daemon
+  // routes to the new ConnectInstrument path internally.  New cloud
+  // traffic should use ConnectInstrument.
   rpc ConnectModbusInstrument(ConnectModbusInstrumentRequest) returns (ConnectModbusInstrumentResponse);
+
+  // ConnectInstrument deploys a profile (if profile_yaml is set) and
+  // connects an instrument in one step.  Generic across SCPI, Modbus,
+  // CAN, Serial, SPI, I2C, OPC-UA — protocol-specific connection
+  // parameters travel inside the connection_params Struct.
+  rpc ConnectInstrument(ConnectInstrumentRequest) returns (ConnectInstrumentResponse);
 
   // DisconnectInstrument disconnects a protocol-driver instrument.
   rpc DisconnectInstrument(DisconnectInstrumentRequest) returns (DisconnectInstrumentResponse);
@@ -564,6 +573,31 @@ message ConnectModbusInstrumentRequest {
 }
 
 message ConnectModbusInstrumentResponse {
+  bool success = 1;
+  string error_message = 2;
+  string instrument_id = 3;
+  int32 register_count = 4;
+  repeated string commands = 5;
+}
+
+// Generic deploy-and-connect request used by the ConnectInstrument RPC.
+// connection_params is a protocol-specific bag of kwargs forwarded to
+// the daemon's DriverRegistry.instantiate(...).  Examples:
+//   - Modbus  : {"slave_id": 1}
+//   - CAN     : {"channel": "can0", "bitrate": 500000}
+//   - SPI     : {"cs_pin": 0, "mode": 0}
+//   - I2C     : {"bus_num": 1, "device_addr": 0x76}
+//   - OPC-UA  : {"endpoint_url": "...", "security_policy": "..."}
+message ConnectInstrumentRequest {
+  string profile_name      = 1;
+  string profile_yaml      = 2;
+  string protocol          = 3;
+  string instrument_id     = 4;
+  string transport_uri     = 5;
+  google.protobuf.Struct connection_params = 6;
+}
+
+message ConnectInstrumentResponse {
   bool success = 1;
   string error_message = 2;
   string instrument_id = 3;
