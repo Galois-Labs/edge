@@ -49,4 +49,7 @@ pal_generated.code
 /docs/
 /CLAUDE.md
 /.claude/
-/src/galois_edge/profiles/
+/src/galois_edge/profiles/*
+# Allow checked-in protocol-specific reviewed profiles (Phase 1+ spec).
+!/src/galois_edge/profiles/opcua
+!/src/galois_edge/profiles/opcua/**

@@ -1,0 +1,159 @@
+# Beckhoff TwinCAT 3 demo PLC OPC-UA profile.
+#
+# Representative shape — namespace 4 with structured browse names is the
+# default for TwinCAT 3 OPC-UA Server when symbols are exported from a
+# GVL (Global Variable List). Adjust namespace index and browse names to
+# match your runtime's actual address space export.
+
+protocol: opcua
+identity:
+  manufacturer: "Beckhoff"
+  model: "TC3-PLC-Channel1"
+  description: "TwinCAT 3 demo PLC, single-channel temperature controller."
+  firmware_version: "TC3.1.4024"
+
+connection:
+  endpoint_url: "opc.tcp://192.168.1.50:4840"
+  security_policy: "None"
+  security_mode: "None"
+  user_token: "anonymous"
+  username: ""
+  password_env: "BECKHOFF_TC3_PASSWORD"
+  client_certificate_path: ""
+  client_private_key_path: ""
+  session_timeout_ms: 60000
+  publish_interval_ms: 1000
+
+nodes:
+  channel_1_temperature:
+    node_id: "ns=4;s=GVL.MainController.Channel1.Temperature"
+    data_type: Double
+    access: read
+    unit: degC
+    description: "Channel 1 measured temperature (PT100)"
+    deadband: 0.5
+
+  channel_1_setpoint:
+    node_id: "ns=4;s=GVL.MainController.Channel1.Setpoint"
+    data_type: Double
+    access: read_write
+    unit: degC
+    range: [0.0, 200.0]
+    description: "Channel 1 temperature setpoint"
+
+  channel_1_pressure:
+    node_id: "ns=4;s=GVL.MainController.Channel1.Pressure"
+    data_type: Double
+    access: read
+    unit: bar
+    description: "Channel 1 measured pressure"
+    deadband: 0.05
+
+  channel_1_pressure_setpoint:
+    node_id: "ns=4;s=GVL.MainController.Channel1.PressureSetpoint"
+    data_type: Double
+    access: read_write
+    unit: bar
+    range: [0.0, 16.0]
+    description: "Channel 1 pressure setpoint"
+
+  channel_1_run:
+    node_id: "ns=4;s=GVL.MainController.Channel1.Run"
+    data_type: Boolean
+    access: read_write
+    description: "Channel 1 run state"
+
+  channel_1_alarm:
+    node_id: "ns=4;s=GVL.MainController.Channel1.Alarm"
+    data_type: Boolean
+    access: read
+    description: "Channel 1 alarm flag"
+
+  controller_state:
+    node_id: "ns=4;s=GVL.MainController.State"
+    data_type: Int32
+    access: read
+    description: "Controller state machine"
+    enum:
+      0: idle
+      1: warmup
+      2: running
+      3: cooldown
+      4: fault
+
+  controller_uptime_s:
+    node_id: "ns=4;s=GVL.MainController.UptimeSeconds"
+    data_type: UInt32
+    access: read
+    unit: s
+    description: "Seconds since controller boot"
+
+  recipe_name:
+    node_id: "ns=4;s=GVL.MainController.RecipeName"
+    data_type: String
+    access: read_write
+    description: "Active recipe name"
+
+  fault_code:
+    node_id: "ns=4;s=GVL.MainController.FaultCode"
+    data_type: UInt16
+    access: read
+    description: "Last fault code"
+
+methods:
+  start_acquisition:
+    object_node_id: "ns=4;s=GVL.MainController.Channel1"
+    method_node_id: "ns=4;s=GVL.MainController.Channel1.Start"
+    input_arguments:
+      - name: rate_hz
+        data_type: UInt32
+    output_arguments:
+      - name: status
+        data_type: Boolean
+
+points: {}
+
+commands:
+  read_temperature:
+    type: query
+    reads: [channel_1_temperature]
+
+  read_state:
+    type: query
+    reads: [controller_state]
+
+  set_setpoint:
+    type: action
+    writes:
+      - register: channel_1_setpoint
+        value: "{value}"
+
+  set_pressure:
+    type: action
+    writes:
+      - register: channel_1_pressure_setpoint
+        value: "{value}"
+
+  start_channel:
+    type: action
+    writes:
+      - register: channel_1_run
+        value: true
+
+  stop_channel:
+    type: action
+    writes:
+      - register: channel_1_run
+        value: false
+
+  start_acquisition:
+    type: opcua_method
+    method: start_acquisition
+    arguments:
+      rate_hz: "{rate}"
+
+provenance:
+  source: "manual; representative TwinCAT namespace"
+  generated_at: "2026-05-07"
+  pipeline_version: "0.1.0"
+  confidence_score: 0.7
