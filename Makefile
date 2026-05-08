@@ -43,6 +43,8 @@ proto: ## Regenerate Go + Python protobuf/gRPC stubs
 	@echo "--- copying Python stubs into src/galois_edge/ ---"
 	cp $(PROTO_DIR)/gen/python/edge/v1/edge_pb2.py     src/galois_edge/edge_pb2.py
 	cp $(PROTO_DIR)/gen/python/edge/v1/edge_pb2_grpc.py src/galois_edge/edge_pb2_grpc.py
+	@echo "--- rewriting grpc import path so daemon can `from galois_edge import edge_pb2_grpc` ---"
+	@$(PYTHON) -c "import pathlib, re; p = pathlib.Path('src/galois_edge/edge_pb2_grpc.py'); src = p.read_text(); p.write_text(re.sub(r'^from edge\.v1 import edge_pb2', 'from galois_edge import edge_pb2', src, flags=re.MULTILINE))"
 
 # -----------------------------------------------------------------------
 # Go build
