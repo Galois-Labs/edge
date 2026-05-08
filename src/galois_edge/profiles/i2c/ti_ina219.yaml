@@ -1,0 +1,183 @@
+protocol: i2c
+
+identity:
+  manufacturer: Texas Instruments
+  model: INA219
+  description: >
+    Zerø-drift, bidirectional current/power monitor with I²C interface. Senses
+    bus voltage 0–26 V, shunt voltage ±320 mV, and reports current and power
+    when the calibration register is loaded.
+  firmware_version: ""
+
+connection:
+  bus: 1                       # /dev/i2c-1
+  device_address: 0x40         # default; addresses 0x40..0x4F selectable via A0/A1
+  ten_bit: false
+  smbus_compatible: true
+  byte_order: big              # all INA219 registers are 16-bit big-endian on the wire
+
+read_command:
+  pattern: register_then_read
+  block_read: false
+  pec: false
+
+# ---------------------------------------------------------------------------
+# Register map — INA219 has six 16-bit registers (datasheet table 6-1).
+# All multi-byte values are big-endian (MSB first).
+# ---------------------------------------------------------------------------
+registers:
+
+  # 0x00 — Configuration
+  config:
+    address: 0x00
+    access: read_write
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    bitfield:
+      mode:
+        bits: [0, 1, 2]
+        enum:
+          0: power_down
+          1: shunt_triggered
+          2: bus_triggered
+          3: shunt_and_bus_triggered
+          4: adc_off
+          5: shunt_continuous
+          6: bus_continuous
+          7: shunt_and_bus_continuous
+      sadc:
+        bits: [3, 4, 5, 6]
+        description: "Shunt ADC resolution / averaging"
+      badc:
+        bits: [7, 8, 9, 10]
+        description: "Bus ADC resolution / averaging"
+      pg:
+        bits: [11, 12]
+        enum:
+          0: gain_1_40mV
+          1: gain_2_80mV
+          2: gain_4_160mV
+          3: gain_8_320mV
+        description: "Programmable gain across the shunt"
+      brng:
+        bit: 13
+        description: "Bus voltage range (0 = 16V FSR, 1 = 32V FSR)"
+      rst:
+        bit: 15
+        description: "Self-clearing system reset bit"
+    description: "Configuration register (default 0x399F)"
+
+  # 0x01 — Shunt voltage (signed, 10 µV per LSB)
+  shunt_voltage:
+    address: 0x01
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: int16
+    scale: 0.00001              # 10 µV per LSB → V
+    unit: V
+    description: "Differential voltage across the shunt resistor"
+
+  # 0x02 — Bus voltage; the low 3 bits are CNVR/OVF/reserved, value in [15:3]
+  bus_voltage_raw:
+    address: 0x02
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    description: >
+      Raw 16-bit bus-voltage register. Bits[15:3] are the bus voltage in 4 mV
+      increments; bit 1 is OVF (math overflow) and bit 0 is CNVR (conversion
+      ready). Decode as `(raw >> 3) * 0.004` V.
+
+  bus_voltage_flags:
+    address: 0x02
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    bitfield:
+      cnvr:
+        bit: 1
+        description: "Conversion ready"
+      ovf:
+        bit: 2
+        description: "Math overflow"
+    description: "CNVR/OVF status decoded from the bus-voltage register"
+
+  # 0x03 — Power register (LSB = 20× current_lsb × bus_lsb, requires calibration)
+  power:
+    address: 0x03
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    unit: W
+    description: >
+      Power = bus_voltage × current. Units depend on the calibration register
+      and the chosen current_lsb. With current_lsb = 100 µA, power_lsb = 2 mW.
+
+  # 0x04 — Current register (signed, LSB set by calibration)
+  current:
+    address: 0x04
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: int16
+    unit: A
+    description: >
+      Calibrated shunt current. The LSB is determined by the calibration
+      register; with current_lsb = 100 µA, scale this register by 1e-4.
+
+  # 0x05 — Calibration (sets full-scale range; bit 0 ignored)
+  calibration:
+    address: 0x05
+    access: read_write
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    description: >
+      Sets the LSB of the current register. Computed as
+      cal = trunc(0.04096 / (current_lsb × R_shunt)). Datasheet eq. 1.
+
+points: {}
+
+commands:
+  read_shunt:
+    type: query
+    reads: [shunt_voltage]
+  read_bus:
+    type: query
+    reads: [bus_voltage_raw]
+  read_current:
+    type: query
+    reads: [current]
+  read_power:
+    type: query
+    reads: [power]
+  read_all:
+    type: query
+    reads: [shunt_voltage, bus_voltage_raw, current, power]
+  configure_default:
+    type: action
+    writes:
+      - register: config
+        value: 0x399F            # power-on default: 32V FSR, gain/8, 12-bit ADCs, continuous
+  calibrate:
+    type: action
+    writes:
+      - register: calibration
+        value: "{cal}"
+  reset:
+    type: action
+    writes:
+      - register: config
+        value: 0x8000            # rst=1; self-clears
+
+provenance:
+  source_url: "https://www.ti.com/product/INA219"
+  generated_at: "2026-05-07"
+  pipeline_version: "i2c-daemon-track-v0"
+  confidence_score: 1.0
+  notes: "Hand-authored from the public INA219 datasheet (SBOS448G, revised 2015)."

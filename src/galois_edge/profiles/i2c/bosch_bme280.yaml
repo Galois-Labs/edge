@@ -1,0 +1,252 @@
+protocol: i2c
+
+identity:
+  manufacturer: Bosch Sensortec
+  model: BME280
+  description: >
+    Combined humidity, pressure and temperature sensor. I²C / SPI selectable;
+    this profile targets the I²C interface at default address 0x76 (SDO low).
+  firmware_version: ""
+
+connection:
+  bus: 1                       # /dev/i2c-1
+  device_address: 0x76         # 0x76 (SDO=GND) or 0x77 (SDO=VDDIO)
+  ten_bit: false
+  smbus_compatible: true
+  byte_order: little           # most BME280 calibration words are little-endian
+
+read_command:
+  pattern: register_then_read
+  block_read: false
+  pec: false
+
+# ---------------------------------------------------------------------------
+# Register map (selected — full BME280 has 26 calibration bytes plus the
+# control / status / data registers below). Datasheet section 5.3.
+# ---------------------------------------------------------------------------
+registers:
+
+  # Identity
+  chip_id:
+    address: 0xD0
+    access: read
+    length_bytes: 1
+    data_type: uint8
+    expected: 0x60              # constant 0x60 for BME280
+    description: "Chip identity register"
+
+  # Reset
+  reset:
+    address: 0xE0
+    access: read_write
+    length_bytes: 1
+    data_type: uint8
+    description: >
+      Writing 0xB6 triggers a soft reset (POR equivalent). Other writes are
+      ignored. Reads return 0x00.
+
+  # Status
+  status:
+    address: 0xF3
+    access: read
+    length_bytes: 1
+    data_type: uint8
+    bitfield:
+      im_update:
+        bit: 0
+        description: NVM data being copied to image registers
+      measuring:
+        bit: 3
+        description: Conversion in progress
+    description: "Sensor status flags"
+
+  # Humidity oversampling control
+  ctrl_hum:
+    address: 0xF2
+    access: read_write
+    length_bytes: 1
+    data_type: uint8
+    bitfield:
+      osrs_h:
+        bits: [0, 1, 2]
+        enum:
+          0: skipped
+          1: x1
+          2: x2
+          3: x4
+          4: x8
+          5: x16
+    description: "Humidity oversampling (0xF2 must be written before 0xF4)"
+
+  # Pressure / temperature oversampling and operating mode
+  ctrl_meas:
+    address: 0xF4
+    access: read_write
+    length_bytes: 1
+    data_type: uint8
+    bitfield:
+      mode:
+        bits: [0, 1]
+        enum:
+          0: sleep
+          1: forced
+          2: forced
+          3: normal
+      osrs_p:
+        bits: [2, 3, 4]
+        enum:
+          0: skipped
+          1: x1
+          2: x2
+          3: x4
+          4: x8
+          5: x16
+      osrs_t:
+        bits: [5, 6, 7]
+        enum:
+          0: skipped
+          1: x1
+          2: x2
+          3: x4
+          4: x8
+          5: x16
+    description: "Pressure/temperature oversampling + power mode"
+
+  # IIR filter and standby time
+  config:
+    address: 0xF5
+    access: read_write
+    length_bytes: 1
+    data_type: uint8
+    bitfield:
+      spi3w_en:
+        bit: 0
+      filter:
+        bits: [2, 3, 4]
+        enum:
+          0: off
+          1: x2
+          2: x4
+          3: x8
+          4: x16
+      t_sb:
+        bits: [5, 6, 7]
+        enum:
+          0: 0.5_ms
+          1: 62.5_ms
+          2: 125_ms
+          3: 250_ms
+          4: 500_ms
+          5: 1000_ms
+          6: 10_ms
+          7: 20_ms
+    description: "IIR filter coefficient + standby time in normal mode"
+
+  # Pressure (20-bit value across 3 bytes; raw, requires compensation)
+  press_raw:
+    address: 0xF7
+    access: read
+    length_bytes: 3
+    byte_order: big
+    data_type: uint20
+    description: >
+      Raw 20-bit pressure ADC reading. Bytes are press_msb (0xF7),
+      press_lsb (0xF8), press_xlsb (0xF9 with the data in the upper 4 bits).
+      Compensation per datasheet section 4.2.3 yields Pa.
+
+  # Temperature (20-bit raw)
+  temp_raw:
+    address: 0xFA
+    access: read
+    length_bytes: 3
+    byte_order: big
+    data_type: uint20
+    description: >
+      Raw 20-bit temperature ADC reading. Bytes temp_msb (0xFA), temp_lsb
+      (0xFB), temp_xlsb (0xFC). Compensation per datasheet section 4.2.3
+      yields hundredths of °C.
+
+  # Humidity (16-bit raw)
+  hum_raw:
+    address: 0xFD
+    access: read
+    length_bytes: 2
+    byte_order: big
+    data_type: uint16
+    description: "Raw 16-bit humidity ADC reading (hum_msb, hum_lsb)."
+
+  # ---- Calibration coefficients (subset; little-endian on the wire) ----
+  dig_T1:
+    address: 0x88
+    access: read
+    length_bytes: 2
+    byte_order: little
+    data_type: uint16
+    description: "Temperature compensation T1"
+  dig_T2:
+    address: 0x8A
+    access: read
+    length_bytes: 2
+    byte_order: little
+    data_type: int16
+    description: "Temperature compensation T2"
+  dig_T3:
+    address: 0x8C
+    access: read
+    length_bytes: 2
+    byte_order: little
+    data_type: int16
+    description: "Temperature compensation T3"
+  dig_P1:
+    address: 0x8E
+    access: read
+    length_bytes: 2
+    byte_order: little
+    data_type: uint16
+    description: "Pressure compensation P1"
+  dig_P2:
+    address: 0x90
+    access: read
+    length_bytes: 2
+    byte_order: little
+    data_type: int16
+    description: "Pressure compensation P2"
+  dig_H1:
+    address: 0xA1
+    access: read
+    length_bytes: 1
+    data_type: uint8
+    description: "Humidity compensation H1"
+
+points: {}
+
+commands:
+  read_chip_id:
+    type: query
+    reads: [chip_id]
+  read_status:
+    type: query
+    reads: [status]
+  read_raw_climate:
+    type: query
+    reads: [press_raw, temp_raw, hum_raw]
+  start_forced_measurement:
+    type: action
+    writes:
+      # osrs_h must be written before ctrl_meas to take effect.
+      - register: ctrl_hum
+        value: 1                # x1 oversampling
+      - register: ctrl_meas
+        value: 0x25             # mode=forced(01), osrs_p=001 (x1), osrs_t=001 (x1)
+  soft_reset:
+    type: action
+    writes:
+      - register: reset
+        value: 0xB6
+
+provenance:
+  source_url: "https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/"
+  generated_at: "2026-05-07"
+  pipeline_version: "i2c-daemon-track-v0"
+  confidence_score: 1.0
+  notes: "Hand-authored from the public BME280 datasheet (revision 1.6, March 2020)."
