@@ -1,0 +1,138 @@
+# Prosys public OPC-UA simulation server profile.
+#
+# Endpoint: opc.tcp://opcua.demo-this.com:51210/UA/SampleServer
+# Useful for CI smoke tests — the server is publicly reachable, anonymous,
+# and exposes a stable, well-known address space with simulated values.
+#
+# All node IDs reference the standard "Simulation" object that ships with
+# every Prosys/UaSimulation server build. Confirmed against the public
+# instance as of 2026-05.
+
+protocol: opcua
+identity:
+  manufacturer: "Prosys OPC"
+  model: "UA Simulation Server"
+  description: "Public OPC-UA simulation server with simulated process values."
+  firmware_version: "5.x"
+
+connection:
+  endpoint_url: "opc.tcp://opcua.demo-this.com:51210/UA/SampleServer"
+  security_policy: "None"
+  security_mode: "None"
+  user_token: "anonymous"
+  username: ""
+  password_env: ""
+  client_certificate_path: ""
+  client_private_key_path: ""
+  session_timeout_ms: 60000
+  publish_interval_ms: 1000
+
+nodes:
+  sin_signal:
+    node_id: "ns=3;i=1001"
+    data_type: Double
+    access: read
+    unit: ""
+    description: "Simulated sinusoidal signal"
+    deadband: 0.01
+
+  saw_signal:
+    node_id: "ns=3;i=1002"
+    data_type: Double
+    access: read
+    unit: ""
+    description: "Simulated sawtooth signal"
+    deadband: 0.01
+
+  triangle_signal:
+    node_id: "ns=3;i=1003"
+    data_type: Double
+    access: read
+    unit: ""
+    description: "Simulated triangle signal"
+    deadband: 0.01
+
+  square_signal:
+    node_id: "ns=3;i=1004"
+    data_type: Double
+    access: read
+    unit: ""
+    description: "Simulated square wave signal"
+
+  random_signal:
+    node_id: "ns=3;i=1005"
+    data_type: Double
+    access: read
+    unit: ""
+    description: "Random walk simulator"
+    deadband: 0.1
+
+  counter:
+    node_id: "ns=3;i=1006"
+    data_type: Int32
+    access: read
+    unit: ""
+    description: "Monotonic counter"
+
+  static_int32:
+    node_id: "ns=5;s=Static.Int32"
+    data_type: Int32
+    access: read_write
+    description: "Operator-writable Int32 (static folder)"
+
+  static_double:
+    node_id: "ns=5;s=Static.Double"
+    data_type: Double
+    access: read_write
+    description: "Operator-writable Double (static folder)"
+
+  static_string:
+    node_id: "ns=5;s=Static.String"
+    data_type: String
+    access: read_write
+    description: "Operator-writable String (static folder)"
+
+  static_boolean:
+    node_id: "ns=5;s=Static.Boolean"
+    data_type: Boolean
+    access: read_write
+    description: "Operator-writable Boolean (static folder)"
+
+points: {}
+
+commands:
+  read_sin:
+    type: query
+    reads: [sin_signal]
+
+  read_counter:
+    type: query
+    reads: [counter]
+
+  read_all_signals:
+    type: query
+    reads:
+      - sin_signal
+      - saw_signal
+      - triangle_signal
+      - square_signal
+      - random_signal
+
+  set_int32:
+    type: action
+    writes:
+      - register: static_int32
+        value: "{value}"
+
+  set_string:
+    type: action
+    writes:
+      - register: static_string
+        value: "{text}"
+
+provenance:
+  source: "live browse against public Prosys simulation server"
+  source_url: "opc.tcp://opcua.demo-this.com:51210/UA/SampleServer"
+  generated_at: "2026-05-07"
+  pipeline_version: "0.1.0"
+  confidence_score: 0.95

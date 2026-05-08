@@ -51,5 +51,11 @@ pal_generated.code
 /.claude/
 /src/galois_edge/profiles/*
 # Allow checked-in protocol-specific reviewed profiles (Phase 1+ spec).
+!/src/galois_edge/profiles/i2c
+!/src/galois_edge/profiles/i2c/**
 !/src/galois_edge/profiles/spi
 !/src/galois_edge/profiles/spi/**
+!/src/galois_edge/profiles/opcua
+!/src/galois_edge/profiles/opcua/**
+!/src/galois_edge/profiles/can
+!/src/galois_edge/profiles/can/**

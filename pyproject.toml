@@ -20,6 +20,7 @@ dependencies = [
     "pymodbus>=3.6,<3.8",
     "pyserial>=3.5",
     "smbus2>=0.4.0",
+    "asyncua>=1.0",
     "mcp>=1.27.0",
     "pydantic>=2.5",
     "uvicorn[standard]>=0.30",
@@ -78,6 +79,9 @@ modbus = [
 ]
 spi = [
     "spidev>=3.6; sys_platform == 'linux'",
+]
+opcua = [
+    "asyncua>=1.0",
 ]
 hotplug = [
     "pyudev>=0.24.0; sys_platform == 'linux'",
