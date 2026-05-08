@@ -184,6 +184,8 @@ Tracking against the post-v0.1 capability-gap wave. Full detail in the [changelo
 - 🚧 Typed `galois` Python SDK (separate repo) — Edge / Cloud / Instrument / Stream / Sweep / Waveform
 - 🚧 Cloud-routed access through `Cloud.connect(backend_url, token).edge(name)`
 - 🚧 Public-internet MCP via the cloud relay — `https://cloud.galoislabs.ai/mcp/<edge_id>` with per-call JWT-scoped ACLs (daemon side shipped, cloud side in review)
+- 🚧 SPI/I2C/OPC-UA support (check branches)
+- 🚧 CAN-FD support for more adapters/manufacturers/SOMs like the iMX8, etc
 
 **Planned**
 - 📋 Profile-defined safety interlocks for sweeps (per-instrument abort SCPI is in; declarative bounds next)
