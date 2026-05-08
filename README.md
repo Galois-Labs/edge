@@ -47,6 +47,8 @@ Most hardware-control projects ship one transport per protocol: PyVISA for SCPI,
 | **Modbus** | TCP and RTU | PLCs, drives, energy meters, pumps, valves |
 | **CAN** | python-can (SocketCAN, PCAN, Vector, …) | Automotive ECUs, robotics, industrial sensors |
 | **Vendor SDKs** | Python proxy (MultiPyVu, niscope, dwfpy, …) | Non-SCPI hardware with a Python library |
+|**SPI** | spidev (lib and python) | GPIOs/adapters |
+|**I2C** | smbus2, etc | GPIOs/adapters |
 
 The agent (or your script) calls `keysight_34461a__measure_voltage_dc()`, `siemens_s71200__read_holding_register(addr=40001)`, or `dps150__set_voltage(value=3.3)` — same shape, same auth, same audit log, same fleet view in the cloud.
 
