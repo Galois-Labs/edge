@@ -436,6 +436,13 @@ class WebSocketServer:
             im.write(instrument_id, "HC")                    # halt
             im.write(instrument_id, f"LEN {length}")
             im.write(instrument_id, f"STR {interval_us}")
+            # dt for the curve frames must reflect the storage interval
+            # actually programmed (work order §4): prefer the STR
+            # readback (the instrument may quantize the request), fall
+            # back to the validated request value.
+            actual_interval_us = self._read_back_storage_interval(
+                instrument_id, interval_us
+            )
             im.write(instrument_id, f"CBD {channels}")
             im.write(instrument_id, "NC")                    # new curve
             im.write(instrument_id, "TD")                    # trigger
@@ -483,6 +490,22 @@ class WebSocketServer:
                         "dtype": "int16",
                         "points": length,
                         "data": encoded,
+                        # Timebase (work order §4) so clients can plot
+                        # y[] against time: x(i) = t0 + i*dt seconds.
+                        # Curve buffers start at acquisition start, so
+                        # t0 = 0.0; dt is the STR storage interval
+                        # actually programmed (readback when available,
+                        # else the validated request), µs → s. Additive
+                        # keys — old clients ignore them.
+                        "t0": 0.0,
+                        "dt": actual_interval_us * 1e-6,
+                        "x_unit": "s",
+                        # Counts → physical-units mapping is unknown for
+                        # this device path: explicit 1.0 / 0.0 / "" —
+                        # never 0 for a multiplier (§3.0 rule).
+                        "y_scale": 1.0,
+                        "y_offset": 0.0,
+                        "y_unit": "",
                     })
                 except Exception as exc:
                     await self._send_error(
@@ -502,6 +525,35 @@ class WebSocketServer:
         finally:
             # Always release the acquisition exclusion lock
             self._acquiring_instruments.discard(instrument_id)
+
+    def _read_back_storage_interval(
+        self, instrument_id: str, requested_us: Any,
+    ) -> float:
+        """Return the storage interval actually programmed, in µs.
+
+        Work order §4: the curve frame's ``dt`` MUST come from the value
+        actually programmed into the instrument — the ``STR`` readback
+        when available (instruments may quantize the request), otherwise
+        the validated request value. Never returns <= 0.
+        """
+        try:
+            requested = float(requested_us)
+        except (TypeError, ValueError):
+            requested = 1000.0
+        if requested <= 0:
+            requested = 1000.0
+
+        try:
+            raw = self._instruments.query(instrument_id, "STR")
+            readback = float(str(raw).strip().split(",")[0])
+            if readback > 0:
+                return readback
+        except Exception as exc:
+            logger.debug(
+                "STR readback failed for %s (%s); using requested interval",
+                instrument_id, exc,
+            )
+        return requested
 
     def _read_curve_binary(
         self, instrument_id: str, curve_idx: int, num_points: int,
