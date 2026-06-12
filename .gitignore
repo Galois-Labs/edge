@@ -59,3 +59,5 @@ pal_generated.code
 !/src/galois_edge/profiles/opcua/**
 !/src/galois_edge/profiles/can
 !/src/galois_edge/profiles/can/**
+!/src/galois_edge/profiles/scpi
+!/src/galois_edge/profiles/scpi/**
