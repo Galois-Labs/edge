@@ -1,0 +1,1135 @@
+instrument:
+  manufacturer: "Keysight"
+  model: "InfiniiVision 3000 X-Series"
+  class: oscilloscope
+  description: "InfiniiVision 3000 X-Series Oscilloscopes with integrated waveform generator"
+
+identity:
+  query: "*IDN?"
+  pattern: "KEYSIGHT TECHNOLOGIES.*[DM]SOX3[0-9]{3}[AT]"
+
+interfaces:
+  - type: gpib
+    default_address: 7
+  - type: usb
+  - type: ethernet
+    port: 5025
+  - type: serial
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+  # Drive the waveform transfer setup explicitly — never trust
+  # instrument defaults to survive a front-panel reset (doc §2.4):
+  # WORD + signed (UNSigned 0) -> int16 samples, BYTeorder LSBFirst
+  # -> little-endian on the wire.
+  init_commands:
+    - ":WAVeform:FORMat WORD"
+    - ":WAVeform:UNSigned 0"
+    - ":WAVeform:BYTeorder LSBFirst"
+
+commands:
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Reset instrument to default state"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  operation_complete:
+    scpi: "*OPC"
+    type: write
+    description: "Set OPC bit after all pending operations complete"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Return 1 when all pending operations complete"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0=pass)"
+
+  wait:
+    scpi: "*WAI"
+    type: write
+    description: "Wait until all previous commands executed"
+
+  trigger:
+    scpi: "*TRG"
+    type: write
+    description: "Send bus trigger to instrument"
+
+  save_setup:
+    scpi: "*SAV {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Save setup to memory location"
+
+  recall_setup:
+    scpi: "*RCL {location}"
+    type: write
+    params:
+      location:
+        type: int
+        min: 0
+        max: 9
+    description: "Recall setup from memory location"
+
+  autoscale:
+    scpi: ":AUToscale"
+    type: write
+    description: "Automatically configure oscilloscope"
+
+  run:
+    scpi: ":RUN"
+    type: write
+    description: "Start continuous acquisition"
+
+  stop:
+    scpi: ":STOP"
+    type: write
+    description: "Stop acquisition"
+
+  single:
+    scpi: ":SINGle"
+    type: write
+    description: "Single acquisition"
+
+  digitize:
+    scpi: ":DIGitize {source}"
+    type: write
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+    description: "Acquire waveform and stop"
+
+  acquire_type:
+    getter: ":ACQuire:TYPE?"
+    setter: ":ACQuire:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["NORMal", "AVERage", "HRESolution", "PEAK"]
+    returns:
+      type: string
+    description: "Acquisition type"
+
+  acquire_count:
+    getter: ":ACQuire:COUNt?"
+    setter: ":ACQuire:COUNt {count}"
+    type: property
+    params:
+      count:
+        type: int
+        min: 2
+        max: 65536
+    returns:
+      type: int
+    description: "Number of averages for average acquisition"
+
+  acquire_points:
+    scpi: ":ACQuire:POINts?"
+    type: query
+    returns:
+      type: int
+    description: "Query number of points to acquire"
+
+  acquire_sample_rate:
+    scpi: ":ACQuire:SRATe?"
+    type: query
+    returns:
+      type: float
+      unit: Hz
+    description: "Query sample rate"
+
+  channel_display:
+    getter: ":CHANnel{channel}:DISPlay?"
+    setter: ":CHANnel{channel}:DISPlay {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Turn channel display on/off"
+
+  channel_coupling:
+    getter: ":CHANnel{channel}:COUPling?"
+    setter: ":CHANnel{channel}:COUPling {coupling}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      coupling:
+        type: enum
+        options: ["AC", "DC"]
+    returns:
+      type: string
+    description: "Channel input coupling"
+
+  channel_scale:
+    getter: ":CHANnel{channel}:SCALe?"
+    setter: ":CHANnel{channel}:SCALe {scale}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      scale:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Vertical scale per division"
+
+  channel_offset:
+    getter: ":CHANnel{channel}:OFFSet?"
+    setter: ":CHANnel{channel}:OFFSet {offset}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      offset:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Vertical offset"
+
+  channel_range:
+    getter: ":CHANnel{channel}:RANGe?"
+    setter: ":CHANnel{channel}:RANGe {range}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      range:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Vertical full-scale range"
+
+  channel_probe:
+    getter: ":CHANnel{channel}:PROBe?"
+    setter: ":CHANnel{channel}:PROBe {ratio}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      ratio:
+        type: float
+    returns:
+      type: float
+    description: "Probe attenuation ratio"
+
+  channel_bwlimit:
+    getter: ":CHANnel{channel}:BWLimit?"
+    setter: ":CHANnel{channel}:BWLimit {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable bandwidth limit"
+
+  channel_invert:
+    getter: ":CHANnel{channel}:INVert?"
+    setter: ":CHANnel{channel}:INVert {state}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Invert channel waveform"
+
+  timebase_mode:
+    getter: ":TIMebase:MODE?"
+    setter: ":TIMebase:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["MAIN", "WINDow", "XY", "ROLL"]
+    returns:
+      type: string
+    description: "Timebase mode"
+
+  timebase_scale:
+    getter: ":TIMebase:SCALe?"
+    setter: ":TIMebase:SCALe {scale}"
+    type: property
+    params:
+      scale:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Horizontal scale (time/div)"
+
+  timebase_position:
+    getter: ":TIMebase:POSition?"
+    setter: ":TIMebase:POSition {position}"
+    type: property
+    params:
+      position:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Horizontal position (time from trigger to center)"
+
+  timebase_range:
+    getter: ":TIMebase:RANGe?"
+    setter: ":TIMebase:RANGe {range}"
+    type: property
+    params:
+      range:
+        type: float
+        unit: s
+    returns:
+      type: float
+      unit: s
+    description: "Timebase range (10 divisions)"
+
+  timebase_reference:
+    getter: ":TIMebase:REFerence?"
+    setter: ":TIMebase:REFerence {ref}"
+    type: property
+    params:
+      ref:
+        type: enum
+        options: ["LEFT", "CENTer", "RIGHt"]
+    returns:
+      type: string
+    description: "Timebase reference position"
+
+  trigger_mode:
+    getter: ":TRIGger:MODE?"
+    setter: ":TRIGger:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["EDGE", "GLITch", "PATTern", "TV", "DELay", "EBURst", "OR", "RUNT", "SHOLd", "TRANsition", "USB"]
+    returns:
+      type: string
+    description: "Trigger mode"
+
+  trigger_sweep:
+    getter: ":TRIGger:SWEep?"
+    setter: ":TRIGger:SWEep {sweep}"
+    type: property
+    params:
+      sweep:
+        type: enum
+        options: ["AUTO", "NORMal"]
+    returns:
+      type: string
+    description: "Trigger sweep mode"
+
+  trigger_edge_source:
+    getter: ":TRIGger:EDGE:SOURce?"
+    setter: ":TRIGger:EDGE:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "EXTernal", "LINE", "WGEN"]
+    returns:
+      type: string
+    description: "Edge trigger source"
+
+  trigger_edge_level:
+    getter: ":TRIGger:EDGE:LEVel?"
+    setter: ":TRIGger:EDGE:LEVel {level}"
+    type: property
+    params:
+      level:
+        type: float
+        unit: V
+    returns:
+      type: float
+      unit: V
+    description: "Edge trigger level"
+
+  trigger_edge_slope:
+    getter: ":TRIGger:EDGE:SLOPe?"
+    setter: ":TRIGger:EDGE:SLOPe {slope}"
+    type: property
+    params:
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative", "EITHer", "ALTernate"]
+    returns:
+      type: string
+    description: "Edge trigger slope"
+
+  trigger_force:
+    scpi: ":TRIGger:FORCe"
+    type: write
+    description: "Force trigger event"
+
+  measure_frequency:
+    scpi: ":MEASure:FREQuency? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: Hz
+    description: "Measure frequency"
+    streamable: true
+
+  measure_period:
+    scpi: ":MEASure:PERiod? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: s
+    description: "Measure period"
+    streamable: true
+
+  measure_vamplitude:
+    scpi: ":MEASure:VAMPlitude? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure vertical amplitude"
+    streamable: true
+
+  measure_vpp:
+    scpi: ":MEASure:VPP? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure peak-to-peak voltage"
+    streamable: true
+
+  measure_vmax:
+    scpi: ":MEASure:VMAX? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure maximum voltage"
+    streamable: true
+
+  measure_vmin:
+    scpi: ":MEASure:VMIN? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure minimum voltage"
+    streamable: true
+
+  measure_vtop:
+    scpi: ":MEASure:VTOP? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure top voltage"
+    streamable: true
+
+  measure_vbase:
+    scpi: ":MEASure:VBASe? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure base voltage"
+    streamable: true
+
+  measure_vaverage:
+    scpi: ":MEASure:VAVerage? {interval},{source}"
+    type: query
+    params:
+      interval:
+        type: enum
+        options: ["CYCLe", "DISPlay"]
+        default: "DISPlay"
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure average voltage"
+    streamable: true
+
+  measure_vrms:
+    scpi: ":MEASure:VRMS? {interval},{type},{source}"
+    type: query
+    params:
+      interval:
+        type: enum
+        options: ["CYCLe", "DISPlay"]
+        default: "DISPlay"
+      type:
+        type: enum
+        options: ["AC", "DC"]
+        default: "DC"
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Measure RMS voltage"
+    streamable: true
+
+  measure_risetime:
+    scpi: ":MEASure:RISetime? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: s
+    description: "Measure rise time"
+    streamable: true
+
+  measure_falltime:
+    scpi: ":MEASure:FALLtime? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: s
+    description: "Measure fall time"
+    streamable: true
+
+  measure_pwidth:
+    scpi: ":MEASure:PWIDth? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: s
+    description: "Measure positive pulse width"
+    streamable: true
+
+  measure_nwidth:
+    scpi: ":MEASure:NWIDth? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: s
+    description: "Measure negative pulse width"
+    streamable: true
+
+  measure_dutycycle:
+    scpi: ":MEASure:DUTYcycle? {source}"
+    type: query
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+    description: "Measure duty cycle percentage"
+    streamable: true
+
+  waveform_source:
+    getter: ":WAVeform:SOURce?"
+    setter: ":WAVeform:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+    returns:
+      type: string
+    description: "Waveform data source"
+
+  waveform_format:
+    getter: ":WAVeform:FORMat?"
+    setter: ":WAVeform:FORMat {format}"
+    type: property
+    params:
+      format:
+        type: enum
+        options: ["WORD", "BYTE", "ASCII"]
+    returns:
+      type: string
+    description: "Waveform data format"
+
+  waveform_byteorder:
+    getter: ":WAVeform:BYTeorder?"
+    setter: ":WAVeform:BYTeorder {order}"
+    type: property
+    params:
+      order:
+        type: enum
+        options: ["LSBFirst", "MSBFirst"]
+    returns:
+      type: string
+    description: "Waveform data byte order (WORD format)"
+
+  waveform_unsigned:
+    getter: ":WAVeform:UNSigned?"
+    setter: ":WAVeform:UNSigned {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Unsigned (1) vs signed (0) waveform data"
+
+  waveform_points_mode:
+    getter: ":WAVeform:POINts:MODE?"
+    setter: ":WAVeform:POINts:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["NORMal", "MAXimum", "RAW"]
+    returns:
+      type: string
+    description: "Waveform points mode"
+
+  waveform_points:
+    getter: ":WAVeform:POINts?"
+    setter: ":WAVeform:POINts {points}"
+    type: property
+    params:
+      points:
+        type: int
+        min: 100
+        max: 8000000
+    returns:
+      type: int
+    description: "Number of waveform points"
+
+  waveform_preamble:
+    scpi: ":WAVeform:PREamble?"
+    type: query
+    returns:
+      type: array
+      element_type: float
+      separator: ","
+      fields:
+        - name: format
+          type: int
+        - name: type
+          type: int
+        - name: points
+          type: int
+        - name: count
+          type: int
+        - name: xincrement
+          type: float
+        - name: xorigin
+          type: float
+        - name: xreference
+          type: int
+        - name: yincrement
+          type: float
+        - name: yorigin
+          type: float
+        - name: yreference
+          type: int
+    description: "Query waveform preamble"
+
+  waveform_data:
+    scpi: ":WAVeform:DATA?"
+    type: query
+    streamable: true
+    returns:
+      type: binary
+      format: ieee_block
+      unit: "V"
+      x_unit: "s"
+      x_name: "Time"
+      binary:
+        # :WAVeform:FORMat WORD + :WAVeform:UNSigned 0 (driven by
+        # settings.init_commands) -> signed 16-bit samples;
+        # :WAVeform:BYTeorder LSBFirst -> little-endian. int16 is
+        # preferred over uint8: full vertical resolution, and the
+        # cloud decodes only float64|float32|int32|int16|uint8
+        # (doc §2.4 — never uint16/int8).
+        dtype: int16
+        byte_order: little
+        # Names the sibling profile command whose CSV reply carries
+        # the scaling preamble (doc §2.3).
+        preamble_command: waveform_preamble
+        # Multi-channel frames (doc §3.5): when a stream request carries
+        # a comma-separated `channels` parameter (e.g.
+        # "CHANnel1,CHANnel2"), the daemon drives this sibling command's
+        # setter to select each source in turn, re-reads the preamble
+        # per channel (vertical scale/offset differ per channel), and
+        # emits one MeasurementDataPoint per tick with vectors[] plus
+        # vector_data = the first channel for old clouds. Without the
+        # `channels` parameter, behavior is unchanged single-channel.
+        source_command: waveform_source
+        # CSV indices in the PREamble reply: format,type,points,count,
+        # xincrement,xorigin,xreference,yincrement,yorigin,yreference.
+        # The reference-point composition
+        #   x_start  = xorigin - xreference*xincrement
+        #   y_offset = yorigin - yreference*yincrement
+        #   y_scale  = yincrement
+        # is daemon code, not YAML (preamble_map is index-only).
+        preamble_map:
+          x_increment: 4
+          x_start: 5
+          x_reference: 6
+          y_scale: 7
+          y_offset: 8
+          y_reference: 9
+    description: "Query waveform data (IEEE 488.2 definite-length block)"
+
+  waveform_xincrement:
+    scpi: ":WAVeform:XINCrement?"
+    type: query
+    returns:
+      type: float
+    description: "Query X increment"
+
+  waveform_xorigin:
+    scpi: ":WAVeform:XORigin?"
+    type: query
+    returns:
+      type: float
+    description: "Query X origin"
+
+  waveform_yincrement:
+    scpi: ":WAVeform:YINCrement?"
+    type: query
+    returns:
+      type: float
+    description: "Query Y increment"
+
+  waveform_yorigin:
+    scpi: ":WAVeform:YORigin?"
+    type: query
+    returns:
+      type: float
+    description: "Query Y origin"
+
+  display_data:
+    scpi: ":DISPlay:DATA? {format},{palette}"
+    type: query
+    params:
+      format:
+        type: enum
+        options: ["BMP", "BMP8bit", "PNG"]
+        default: "PNG"
+      palette:
+        type: enum
+        options: ["COLor", "GRAYscale"]
+        default: "COLor"
+    returns:
+      type: binary
+      format: ieee_block
+    description: "Get screen image"
+
+  system_error:
+    scpi: ":SYSTem:ERRor?"
+    type: query
+    returns:
+      type: string
+    description: "Read error from error queue"
+
+  system_setup:
+    getter: ":SYSTem:SETup?"
+    setter: ":SYSTem:SETup {data}"
+    type: property
+    params:
+      data:
+        type: string
+    returns:
+      type: binary
+      format: ieee_block
+    description: "Save/recall complete instrument setup"
+
+  wgen_output:
+    getter: ":WGEN:OUTPut?"
+    setter: ":WGEN:OUTPut {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+        map:
+          "ON": 1
+          "OFF": 0
+    returns:
+      type: bool
+    description: "Waveform generator output on/off"
+    enabled: false
+
+  wgen_function:
+    getter: ":WGEN:FUNCtion?"
+    setter: ":WGEN:FUNCtion {signal}"
+    type: property
+    params:
+      signal:
+        type: enum
+        options: ["SINusoid", "SQUare", "RAMP", "PULSe", "NOISe", "DC", "SINC", "EXPRise", "EXPFall", "CARDiac", "GAUSsian", "ARBitrary"]
+    returns:
+      type: string
+    description: "Waveform generator function"
+    enabled: false
+
+  wgen_frequency:
+    getter: ":WGEN:FREQuency?"
+    setter: ":WGEN:FREQuency {frequency}"
+    type: property
+    params:
+      frequency:
+        type: float
+        unit: Hz
+        min: 0.0000001
+        max: 20000000
+    returns:
+      type: float
+      unit: Hz
+    description: "Waveform generator frequency"
+    enabled: false
+
+  wgen_voltage:
+    getter: ":WGEN:VOLTage?"
+    setter: ":WGEN:VOLTage {amplitude}"
+    type: property
+    params:
+      amplitude:
+        type: float
+        unit: V
+        min: 0.02
+        max: 5
+    returns:
+      type: float
+      unit: V
+    description: "Waveform generator amplitude"
+    enabled: false
+
+  wgen_offset:
+    getter: ":WGEN:VOLTage:OFFSet?"
+    setter: ":WGEN:VOLTage:OFFSet {offset}"
+    type: property
+    params:
+      offset:
+        type: float
+        unit: V
+        min: -2.5
+        max: 2.5
+    returns:
+      type: float
+      unit: V
+    description: "Waveform generator DC offset"
+    enabled: false
+
+  wgen_load:
+    getter: ":WGEN:OUTPut:LOAD?"
+    setter: ":WGEN:OUTPut:LOAD {impedance}"
+    type: property
+    params:
+      impedance:
+        type: enum
+        options: ["ONEMeg", "FIFTy"]
+    returns:
+      type: string
+    description: "Waveform generator output load impedance"
+    enabled: false
+
+  wgen_square_duty:
+    getter: ":WGEN:FUNCtion:SQUare:DCYCle?"
+    setter: ":WGEN:FUNCtion:SQUare:DCYCle {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: "%"
+        min: 20
+        max: 80
+    returns:
+      type: float
+      unit: "%"
+    description: "Square wave duty cycle"
+    enabled: false
+
+  wgen_ramp_symmetry:
+    getter: ":WGEN:FUNCtion:RAMP:SYMMetry?"
+    setter: ":WGEN:FUNCtion:RAMP:SYMMetry {percent}"
+    type: property
+    params:
+      percent:
+        type: float
+        unit: "%"
+        min: 0
+        max: 100
+    returns:
+      type: float
+      unit: "%"
+    description: "Ramp wave symmetry"
+    enabled: false
+
+  wgen_pulse_width:
+    getter: ":WGEN:FUNCtion:PULSe:WIDTh?"
+    setter: ":WGEN:FUNCtion:PULSe:WIDTh {width}"
+    type: property
+    params:
+      width:
+        type: float
+        unit: s
+        min: 0.00000002
+        max: 10
+    returns:
+      type: float
+      unit: s
+    description: "Pulse width"
+    enabled: false
+
+  wgen_modulation_state:
+    getter: ":WGEN:MODulation:STATe?"
+    setter: ":WGEN:MODulation:STATe {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF", "1", "0"]
+    returns:
+      type: bool
+    description: "Enable/disable modulation"
+    enabled: false
+
+  wgen_modulation_type:
+    getter: ":WGEN:MODulation:TYPE?"
+    setter: ":WGEN:MODulation:TYPE {type}"
+    type: property
+    params:
+      type:
+        type: enum
+        options: ["AM", "FM", "FSK"]
+    returns:
+      type: string
+    description: "Modulation type"
+    enabled: false
+
+sequences:
+  acquire_and_measure:
+    description: "Acquire waveform and make basic measurements"
+    params:
+      channel:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+        default: "CHANnel1"
+    steps:
+      - command: digitize
+        args:
+          source: "{channel}"
+      - command: measure_frequency
+        args:
+          source: "{channel}"
+        capture: frequency
+      - command: measure_vamplitude
+        args:
+          source: "{channel}"
+        capture: amplitude
+    returns: amplitude
+
+  setup_edge_trigger:
+    description: "Configure edge trigger"
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+        default: "CHANnel1"
+      level:
+        type: float
+        unit: V
+        default: 0
+      slope:
+        type: enum
+        options: ["POSitive", "NEGative"]
+        default: "POSitive"
+    steps:
+      - command: trigger_mode
+        args:
+          mode: "EDGE"
+      - command: trigger_edge_source
+        args:
+          source: "{source}"
+      - command: trigger_edge_level
+        args:
+          level: "{level}"
+      - command: trigger_edge_slope
+        args:
+          slope: "{slope}"
+
+  capture_waveform:
+    description: "Capture and download waveform data"
+    params:
+      channel:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4"]
+        default: "CHANnel1"
+    steps:
+      - command: digitize
+        args:
+          source: "{channel}"
+      - command: waveform_source
+        args:
+          source: "{channel}"
+      - command: waveform_format
+        args:
+          format: "WORD"
+      - command: waveform_points_mode
+        args:
+          mode: "RAW"
+      - command: waveform_preamble
+        capture: preamble
+      - command: waveform_data
+        capture: data
+    returns: data
+
+  screenshot:
+    description: "Capture screen image"
+    params:
+      format:
+        type: enum
+        options: ["PNG", "BMP"]
+        default: "PNG"
+    steps:
+      - command: display_data
+        args:
+          format: "{format}"
+          palette: "COLor"
+        capture: image
+    returns: image
+
+status:
+  stb:
+    bit4: MAV
+    bit5: ESB
+    bit6: RQS
+  esr:
+    bit0: OPC
+    bit2: QYE
+    bit3: DDE
+    bit4: EXE
+    bit5: CME
+    bit7: PON

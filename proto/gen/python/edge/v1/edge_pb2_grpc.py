@@ -5,7 +5,7 @@ import grpc
 from edge.v1 import edge_pb2 as edge_dot_v1_dot_edge__pb2
 
 
-class EdgeDaemonServiceStub(object):
+class EdgeDaemonServiceStub:
     """EdgeDaemonService provides gRPC access to lab instruments connected to an
     edge daemon. The cloud backend acts as a client; edge daemons act as servers.
 
@@ -146,7 +146,7 @@ class EdgeDaemonServiceStub(object):
                 _registered_method=True)
 
 
-class EdgeDaemonServiceServicer(object):
+class EdgeDaemonServiceServicer:
     """EdgeDaemonService provides gRPC access to lab instruments connected to an
     edge daemon. The cloud backend acts as a client; edge daemons act as servers.
 
@@ -492,7 +492,7 @@ def add_EdgeDaemonServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class EdgeDaemonService(object):
+class EdgeDaemonService:
     """EdgeDaemonService provides gRPC access to lab instruments connected to an
     edge daemon. The cloud backend acts as a client; edge daemons act as servers.
 

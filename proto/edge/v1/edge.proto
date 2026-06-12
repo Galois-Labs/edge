@@ -330,9 +330,46 @@ message StreamMeasurementRequest {
   string stream_id = 1;                    // Unique stream identifier
   string instrument_id = 2;
   string command_name = 3;                 // Profile command name (must be streamable)
-  int32 interval_ms = 4;                   // Polling interval in ms (min 100)
+  int32 interval_ms = 4;                   // Polling interval in ms; server clamps
+                                           // to its configured floor (default 10 ms;
+                                           // chunk-capable commands may treat it as
+                                           // the sample period)
   int32 timeout_ms = 5;                    // Overall stream timeout (0 = indefinite)
   map<string, string> parameters = 6;      // Optional command parameters
+}
+
+// NEW — frequency-domain semantics. Presence of this message is the
+// authoritative "this vector is a spectrum" signal; the frontend's
+// x_unit=='Hz' sniffing becomes a fallback only.
+message SpectrumInfo {
+  string amplitude = 1;   // "dbm" | "dbv" | "vrms" | "vpk" | "v2" | "psd"
+  string scale = 2;       // "log" | "linear" — scale of the y values as sent
+  double rbw_hz = 3;      // 0 = unknown
+  double vbw_hz = 4;      // 0 = unknown
+  optional double ref_level = 5;  // in amplitude units; proto3 explicit
+                          // presence — 0 dBm is a *valid* ref level, so a
+                          // zero-sentinel cannot encode "unknown" here
+  string window = 6;      // e.g. "hann", "flattop"; "" = unknown
+  int32 averages = 7;     // averaging count applied at the instrument
+}
+
+// NEW — a block of hardware-clocked scalar samples. Chunks APPEND to the
+// client's per-channel time series (contrast VectorData sweeps, which
+// REPLACE the displayed waveform). The only way past the polling floor.
+message ScalarChunk {
+  string field = 1;     // "" = the stream's primary value channel;
+                        // otherwise a values{} field name ("X", "phase").
+  double t0_ms = 2;     // epoch ms (daemon clock) of sample 0
+  double dt_ms = 3;     // sample period in ms; MUST be > 0 when t_data empty
+  uint32 n = 4;         // sample count; len(y_data) == n * sizeof(y_dtype)
+  bytes  y_data = 5;    // packed little-endian samples
+  string y_dtype = 6;   // float64|float32|int32|int16|uint8; "" = float64
+                        // (same five-dtype constraint as §2.4)
+  double y_scale = 7;   // EXPLICIT 1.0 when no scaling (never 0 — §3.0 rule)
+  double y_offset = 8;
+  bytes  t_data = 9;    // OPTIONAL explicit float64 epoch-ms timestamps for
+                        // non-uniform sampling; when non-empty, t0_ms/dt_ms
+                        // are ignored; length must equal n*8.
 }
 
 message VectorData {
@@ -346,6 +383,17 @@ message VectorData {
   string x_name = 8;          // X-axis label
   double y_scale = 9;         // Y-axis scale factor
   double y_offset = 10;       // Y-axis offset
+  bytes x_data = 11;        // OPTIONAL explicit x samples (non-uniform sweeps:
+                            // log sweeps, VNA segmented). When non-empty,
+                            // x_start/x_increment are ignored.
+  string x_dtype = 12;      // dtype of x_data; "" means "float64"
+  bytes y2_data = 13;       // OPTIONAL second component; same dtype, length,
+                            // y_scale/y_offset rules as y_data
+  string pair_kind = 14;    // "" | "iq" | "magphase" | "xy" — semantics of
+                            // (y_data, y2_data); "" means y2_data absent
+  string channel = 15;      // channel label for multi-channel frames ("CH1")
+  string y2_unit = 16;      // unit of y2 (e.g. "deg" for magphase)
+  SpectrumInfo spectrum = 17;
 }
 
 message MeasurementDataPoint {
@@ -357,6 +405,19 @@ message MeasurementDataPoint {
   string status = 6;                       // "ok", "error", "stopped"
   map<string, double> values = 7;          // Named fields for multi-value measurements
   VectorData vector_data = 8;              // Waveform/curve data (oscilloscopes, etc.)
+  repeated VectorData vectors = 9;  // multi-channel simultaneous frame.
+                                    // When non-empty, consumers MUST ignore
+                                    // vector_data (8). Producers keep filling
+                                    // (8) for single-channel back-compat.
+  uint64 seq = 10;                  // per-stream monotonic counter set by the
+                                    // daemon, starting at 1; 0 = "unsequenced
+                                    // producer" (old daemons) and disables gap
+                                    // detection. Lets the client detect drops
+                                    // across the 3 lossy stages (broker 64,
+                                    // mux 256, browser ring)
+  repeated ScalarChunk chunks = 11;  // when non-empty: value (2) and values
+                                     // (7) MUST be absent; one seq (10) per
+                                     // chunk-bearing point, like any point.
 }
 
 // ===========================================================================

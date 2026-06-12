@@ -49,6 +49,112 @@ class ParameterConfig:
             raise ValueError("Enum parameters must define 'options'")
 
 
+#: Sample dtypes a profile may declare inside ``returns.binary``.
+#: ``int8`` is accepted but widened to ``int16`` before emission — the
+#: cloud decodes only float64|float32|int32|int16|uint8 (doc §2.4).
+ALLOWED_BINARY_DTYPES = ("int8", "int16", "uint8", "float32", "float64")
+
+#: Byte orders a profile may declare inside ``returns.binary``.
+ALLOWED_BYTE_ORDERS = ("little", "big")
+
+#: ``returns.format`` spellings that mean "IEEE 488.2 definite-length
+#: block". ``ieee_block`` is canonical; ``ieee_binary`` is the legacy
+#: alias normalised at YAML load time.
+IEEE_BLOCK_FORMATS = ("ieee_block", "ieee_binary")
+
+
+@dataclass
+class PreambleMap:
+    """Maps CSV indices of a preamble response to waveform scaling fields.
+
+    The map is **index-only** by design (doc §2.3): anything requiring
+    arithmetic across preamble fields — the Keysight reference-point
+    composition — lives in daemon code
+    (``waveform_assembly.compose_block_scaling``), not in YAML.
+
+    Example (Keysight DSOX3000 ``:WAVeform:PREamble?``): the CSV reply
+    is ``format,type,points,count,xincrement,xorigin,xreference,
+    yincrement,yorigin,yreference`` so ``x_increment=4, x_start=5,
+    x_reference=6, y_scale=7, y_offset=8, y_reference=9``.  When the
+    reference indices are mapped, the daemon composes::
+
+        x_start  = xorigin - xreference * xincrement
+        y_offset = yorigin - yreference * yincrement
+
+    Omit them for instruments whose origin already includes the
+    reference.
+    """
+
+    x_increment: Optional[int] = None
+    x_start: Optional[int] = None
+    y_scale: Optional[int] = None
+    y_offset: Optional[int] = None
+    x_reference: Optional[int] = None
+    y_reference: Optional[int] = None
+
+    _FIELDS = (
+        "x_increment", "x_start", "y_scale", "y_offset",
+        "x_reference", "y_reference",
+    )
+
+    def to_index_dict(self) -> Dict[str, int]:
+        """Return ``{field: csv_index}`` for every mapped field."""
+        return {
+            name: getattr(self, name)
+            for name in self._FIELDS
+            if getattr(self, name) is not None
+        }
+
+    def validate(self) -> None:
+        for name in self._FIELDS:
+            value = getattr(self, name)
+            if value is None:
+                continue
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(
+                    f"preamble_map.{name} must be a non-negative CSV "
+                    f"index, got {value!r}"
+                )
+
+
+@dataclass
+class BinaryConfig:
+    """Decode configuration for ``returns.type == binary`` commands whose
+    response is a definite-length IEEE 488.2 block (``#<n><len><payload>``).
+    """
+
+    dtype: str = "uint8"            # int8 | int16 | uint8 | float32 | float64
+    byte_order: str = "little"      # little | big
+    preamble_command: Optional[str] = None  # sibling command name or raw SCPI
+    preamble_map: Optional[PreambleMap] = None
+    # OPTIONAL multi-channel knob (doc §3.5): sibling command (or raw SCPI
+    # template with a {source}/{channel} placeholder) whose setter selects
+    # the acquisition source. When a stream request carries a comma-
+    # separated ``channels`` parameter, the daemon selects each channel in
+    # turn, re-reads the preamble per channel (scale/offset differ per
+    # channel on real scopes — never shared), and emits one multi-channel
+    # frame per tick.
+    source_command: Optional[str] = None
+
+    def validate(self) -> None:
+        if self.dtype not in ALLOWED_BINARY_DTYPES:
+            raise ValueError(
+                f"binary.dtype must be one of {ALLOWED_BINARY_DTYPES}, "
+                f"got {self.dtype!r}"
+            )
+        if self.byte_order not in ALLOWED_BYTE_ORDERS:
+            raise ValueError(
+                f"binary.byte_order must be one of {ALLOWED_BYTE_ORDERS}, "
+                f"got {self.byte_order!r}"
+            )
+        if self.preamble_map is not None:
+            self.preamble_map.validate()
+            if not self.preamble_command:
+                raise ValueError(
+                    "binary.preamble_map requires binary.preamble_command"
+                )
+
+
 @dataclass
 class ReturnConfig:
     """Return value description for a query command."""
@@ -57,14 +163,39 @@ class ReturnConfig:
     unit: Optional[str] = None
     element_type: Optional[str] = None  # for array
     separator: Optional[str] = None     # for array
-    format: Optional[str] = None        # "ieee_binary", "ascii" — how to read trace data
+    format: Optional[str] = None        # "ieee_block" (canonical; "ieee_binary"
+                                        # is a legacy alias), "ascii" — how to
+                                        # read trace data
     fields: Optional[List[Dict[str, Any]]] = None  # named multi-value fields
     parser: Optional[Dict[str, Any]] = None  # response parser config
+    binary: Optional[BinaryConfig] = None  # block decode config for binary types
     # Vector/trace fields
     x_name: Optional[str] = None          # e.g. "Time"
     x_unit: Optional[str] = None          # e.g. "s"
     x_start_query: Optional[str] = None   # SCPI query to fetch x-axis start
     x_increment_query: Optional[str] = None  # SCPI query to fetch x-axis increment
+
+    @property
+    def is_ieee_block(self) -> bool:
+        """True when this command returns an IEEE 488.2 definite-length
+        block that must be read through the raw byte path
+        (``InstrumentManager.query_raw``), never the text path.
+
+        A ``type: binary`` command with no explicit format defaults to
+        the block format.
+        """
+        if self.type != "binary":
+            return False
+        return (self.format or "ieee_block") in IEEE_BLOCK_FORMATS
+
+    @property
+    def effective_binary(self) -> Optional[BinaryConfig]:
+        """The :class:`BinaryConfig` for an ``ieee_block`` command,
+        defaulting to ``uint8``/``little`` when the profile omits the
+        ``binary`` sub-block. ``None`` for non-block commands."""
+        if not self.is_ieee_block:
+            return None
+        return self.binary if self.binary is not None else BinaryConfig()
 
     def parse_response(self, raw: str) -> str:
         """Apply parser rules to raw instrument response. Falls back to raw on no match."""
@@ -101,6 +232,12 @@ class ReturnConfig:
                 f"Invalid return type '{self.type}'. "
                 f"Must be one of {allowed}"
             )
+        if self.binary is not None:
+            if self.type != "binary":
+                raise ValueError(
+                    "returns.binary is only valid with returns.type == 'binary'"
+                )
+            self.binary.validate()
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +671,55 @@ class InstrumentProfile:
             return self.sequences.get(name)
         return None
 
+    def resolve_scpi_ref(
+        self,
+        ref: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Resolve a command reference to a query SCPI string.
+
+        ``binary.preamble_command`` may name a sibling profile command
+        (doc §2.3, e.g. ``waveform_preamble``) or carry a raw SCPI
+        string (e.g. ``":WAVeform:PREamble?"``).  When *ref* names a
+        sibling command, its SCPI template is formatted with *params*
+        (same channel parameters as the block read); otherwise *ref* is
+        returned as-is.
+        """
+        cmd = self.commands.get(ref)
+        if cmd is not None:
+            try:
+                return cmd.format_scpi(params, is_query=True)
+            except ValueError:
+                logger.warning(
+                    "preamble command '%s' has no usable SCPI template; "
+                    "treating the reference as raw SCPI", ref,
+                )
+        return ref
+
+    def resolve_source_ref(self, ref: str, channel: str) -> str:
+        """Resolve ``binary.source_command`` for one channel of a
+        multi-channel frame (doc §3.5).
+
+        *ref* may name a sibling profile command (e.g. ``waveform_source``)
+        whose setter selects the acquisition source, or carry a raw SCPI
+        template. The channel label is substituted into the ``{source}``
+        / ``{channel}`` placeholder, whichever the template uses.
+        """
+        params = {"source": channel, "channel": channel}
+        cmd = self.commands.get(ref)
+        if cmd is not None:
+            try:
+                return cmd.format_scpi(params, is_query=False)
+            except ValueError:
+                logger.warning(
+                    "source command '%s' has no usable SCPI template; "
+                    "treating the reference as raw SCPI", ref,
+                )
+        out = ref
+        for key, value in params.items():
+            out = out.replace(f"{{{key}}}", str(value))
+        return out
+
     # ---- export ------------------------------------------------------------
 
     @staticmethod
@@ -631,15 +817,49 @@ def _build_parameter_config(data: Dict[str, Any]) -> ParameterConfig:
     )
 
 
+def _build_preamble_map(data: Dict[str, Any]) -> PreambleMap:
+    return PreambleMap(
+        x_increment=data.get("x_increment"),
+        x_start=data.get("x_start"),
+        y_scale=data.get("y_scale"),
+        y_offset=data.get("y_offset"),
+        x_reference=data.get("x_reference"),
+        y_reference=data.get("y_reference"),
+    )
+
+
+def _build_binary_config(data: Dict[str, Any]) -> BinaryConfig:
+    preamble_map = None
+    if data.get("preamble_map"):
+        preamble_map = _build_preamble_map(data["preamble_map"])
+    return BinaryConfig(
+        dtype=data.get("dtype", "uint8"),
+        byte_order=data.get("byte_order", "little"),
+        preamble_command=data.get("preamble_command"),
+        preamble_map=preamble_map,
+        source_command=data.get("source_command"),
+    )
+
+
 def _build_return_config(data: Dict[str, Any]) -> ReturnConfig:
+    fmt = data.get("format")
+    if fmt == "ieee_binary":
+        # Legacy alias — "ieee_block" is canonical (doc §2.3).
+        fmt = "ieee_block"
+
+    binary = None
+    if data.get("binary"):
+        binary = _build_binary_config(data["binary"])
+
     return ReturnConfig(
         type=data.get("type", "string"),
         unit=data.get("unit"),
         element_type=data.get("element_type"),
         separator=data.get("separator"),
-        format=data.get("format"),
+        format=fmt,
         fields=data.get("fields"),
         parser=data.get("parser"),
+        binary=binary,
         x_name=data.get("x_name"),
         x_unit=data.get("x_unit"),
         x_start_query=data.get("x_start_query"),

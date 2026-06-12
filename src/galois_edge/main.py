@@ -143,6 +143,9 @@ class _DemoInstrumentManagerProxy:
     def identify(self, instrument_id: str) -> str:
         return self._manager_for(instrument_id).identify(instrument_id)
 
+    def query_raw(self, instrument_id: str, command: str) -> bytes:
+        return self._manager_for(instrument_id).query_raw(instrument_id, command)
+
     def query_binary_values(self, instrument_id: str, command: str, **kw):
         return self._manager_for(instrument_id).query_binary_values(instrument_id, command, **kw)
 
