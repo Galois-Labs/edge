@@ -8,6 +8,7 @@ generic execute_command tool refuses commands flagged requires_sweep
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import time
 from typing import Any, Dict, Optional
@@ -89,18 +90,75 @@ def register_execute_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
                 start,
             )
 
+        timeout_ms = (
+            caps.profile.settings.timeout_ms if caps.profile else 5000
+        )
         loop = asyncio.get_running_loop()
+
+        # IEEE 488.2 definite-length block commands must go through the
+        # raw byte path — the text query() path corrupts binary and
+        # terminates early on 0x0A payload bytes (doc §2.1).
+        returns_cfg = cmd_config.returns
+        if returns_cfg is not None and getattr(
+            returns_cfg, "is_ieee_block", False
+        ):
+            binary_config = returns_cfg.effective_binary
+            preamble_scpi = None
+            if binary_config.preamble_command and caps.profile is not None:
+                preamble_scpi = caps.profile.resolve_scpi_ref(
+                    binary_config.preamble_command, params
+                )
+            try:
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: ctx.command_handler.execute_binary_block_query(
+                        scpi_cmd=dispatch,
+                        instrument_id=instrument_id,
+                        binary_config=binary_config,
+                        preamble_scpi=preamble_scpi,
+                        timeout_ms=timeout_ms,
+                    ),
+                )
+            except Exception as exc:
+                logger.exception("execute_command binary dispatch raised")
+                return _error(str(exc), start, scpi_command=dispatch)
+
+            elapsed_ms = int((time.time() - start) * 1000)
+            if not result.get("success"):
+                return _error(
+                    result.get("error", "Binary block query failed"),
+                    start,
+                    scpi_command=dispatch,
+                )
+
+            block = result["block"]
+            return {
+                "success": True,
+                "data": {
+                    "y_data_base64": base64.b64encode(
+                        block["y_data"]
+                    ).decode("ascii"),
+                    "y_dtype": block["y_dtype"],
+                    "y_length": block["y_length"],
+                    "x_start": block["x_start"],
+                    "x_increment": block["x_increment"],
+                    "y_scale": block["y_scale"],
+                    "y_offset": block["y_offset"],
+                    "x_unit": returns_cfg.x_unit or "",
+                    "y_unit": returns_cfg.unit or "",
+                },
+                "error": "",
+                "scpi_command": dispatch,
+                "execution_time_ms": elapsed_ms,
+            }
+
         try:
             result = await loop.run_in_executor(
                 None,
                 lambda: ctx.command_handler.execute_command(
                     scpi_cmd=dispatch,
                     instrument_id=instrument_id,
-                    timeout_ms=(
-                        caps.profile.settings.timeout_ms
-                        if caps.profile
-                        else 5000
-                    ),
+                    timeout_ms=timeout_ms,
                     force_query=is_query or cmd_config.force_query,
                 ),
             )

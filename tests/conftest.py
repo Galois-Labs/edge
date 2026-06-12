@@ -38,6 +38,7 @@ class MockInstrumentManager:
         self._connected: set[str] = set()
         self._idn_map: Dict[str, str] = dict(idn_map or {})
         self._query_responses: Dict[str, str] = {}
+        self._raw_responses: Dict[str, bytes] = {}
         self._writes: List[tuple] = []
 
     # -- Resource listing --
@@ -87,6 +88,15 @@ class MockInstrumentManager:
             return self._query_responses[key]
         return self._idn_map.get(instrument_id, "")
 
+    def query_raw(self, instrument_id: str, command: str) -> bytes:
+        key = f"{instrument_id}:{command}"
+        if key in self._raw_responses:
+            return self._raw_responses[key]
+        raise ValueError(
+            f"Binary (raw) reads are not supported on this transport: "
+            f"{instrument_id}"
+        )
+
     def write(self, instrument_id: str, command: str) -> None:
         self._writes.append((instrument_id, command))
 
@@ -102,6 +112,11 @@ class MockInstrumentManager:
         self, instrument_id: str, command: str, response: str,
     ) -> None:
         self._query_responses[f"{instrument_id}:{command}"] = response
+
+    def set_raw_response(
+        self, instrument_id: str, command: str, response: bytes,
+    ) -> None:
+        self._raw_responses[f"{instrument_id}:{command}"] = response
 
 
 @pytest.fixture
