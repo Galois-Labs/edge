@@ -741,10 +741,11 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 except (ValueError, KeyError):
                     pass
 
-        # Pack y-values into bytes
-        endian_prefix = '>' if is_big_endian else '<'
+        # Pack y-values into bytes. The samples were already decoded to
+        # Python numbers by execute_binary_query (instrument byte order
+        # handled there); the wire is ALWAYS little-endian (doc §3.0).
         y_data = _struct.pack(
-            f'{endian_prefix}{len(y_values)}{struct_fmt_char}',
+            f'<{len(y_values)}{struct_fmt_char}',
             *y_values,
         )
 
@@ -757,6 +758,10 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             x_unit=returns.x_unit or "",
             y_unit=returns.unit or "",
             x_name=returns.x_name or "",
+            # Pre-scaled physical samples: y_scale is EXPLICITLY 1.0 —
+            # never the proto3 zero-default (doc §3.0).
+            y_scale=1.0,
+            y_offset=0.0,
         )
 
         elapsed_ms = int((time.time() - start) * 1000)
