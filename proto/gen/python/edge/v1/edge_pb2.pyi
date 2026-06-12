@@ -74,7 +74,7 @@ class Instrument(_message.Message):
     instrument_class: str
     is_connected: bool
     capabilities: _containers.RepeatedCompositeFieldContainer[CommandCapability]
-    def __init__(self, id: _Optional[str] = ..., address: _Optional[str] = ..., connection_type: _Optional[_Union[ConnectionType, str]] = ..., idn_string: _Optional[str] = ..., manufacturer: _Optional[str] = ..., model: _Optional[str] = ..., serial_number: _Optional[str] = ..., firmware: _Optional[str] = ..., profile_name: _Optional[str] = ..., instrument_class: _Optional[str] = ..., is_connected: bool = ..., capabilities: _Optional[_Iterable[_Union[CommandCapability, _Mapping]]] = ...) -> None: ...
+    def __init__(self, id: _Optional[str] = ..., address: _Optional[str] = ..., connection_type: _Optional[_Union[ConnectionType, str]] = ..., idn_string: _Optional[str] = ..., manufacturer: _Optional[str] = ..., model: _Optional[str] = ..., serial_number: _Optional[str] = ..., firmware: _Optional[str] = ..., profile_name: _Optional[str] = ..., instrument_class: _Optional[str] = ..., is_connected: _Optional[bool] = ..., capabilities: _Optional[_Iterable[_Union[CommandCapability, _Mapping]]] = ...) -> None: ...
 
 class CommandCapability(_message.Message):
     __slots__ = ("name", "description", "type", "parameters", "returns_data", "is_dangerous", "return_type", "unit", "is_streamable")
@@ -96,7 +96,7 @@ class CommandCapability(_message.Message):
     return_type: str
     unit: str
     is_streamable: bool
-    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., type: _Optional[str] = ..., parameters: _Optional[_Iterable[_Union[CommandParameter, _Mapping]]] = ..., returns_data: bool = ..., is_dangerous: bool = ..., return_type: _Optional[str] = ..., unit: _Optional[str] = ..., is_streamable: bool = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., type: _Optional[str] = ..., parameters: _Optional[_Iterable[_Union[CommandParameter, _Mapping]]] = ..., returns_data: _Optional[bool] = ..., is_dangerous: _Optional[bool] = ..., return_type: _Optional[str] = ..., unit: _Optional[str] = ..., is_streamable: _Optional[bool] = ...) -> None: ...
 
 class CommandParameter(_message.Message):
     __slots__ = ("name", "description", "type", "required", "default_value", "enum_values", "unit")
@@ -114,7 +114,7 @@ class CommandParameter(_message.Message):
     default_value: str
     enum_values: _containers.RepeatedScalarFieldContainer[str]
     unit: str
-    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., type: _Optional[_Union[ParameterType, str]] = ..., required: bool = ..., default_value: _Optional[str] = ..., enum_values: _Optional[_Iterable[str]] = ..., unit: _Optional[str] = ...) -> None: ...
+    def __init__(self, name: _Optional[str] = ..., description: _Optional[str] = ..., type: _Optional[_Union[ParameterType, str]] = ..., required: _Optional[bool] = ..., default_value: _Optional[str] = ..., enum_values: _Optional[_Iterable[str]] = ..., unit: _Optional[str] = ...) -> None: ...
 
 class SequenceCapability(_message.Message):
     __slots__ = ("name", "description", "params")
@@ -153,7 +153,7 @@ class InstrumentCapabilities(_message.Message):
     commands: _containers.RepeatedCompositeFieldContainer[CommandCapability]
     sequences: _containers.RepeatedCompositeFieldContainer[SequenceCapability]
     settings: _containers.ScalarMap[str, str]
-    def __init__(self, instrument_id: _Optional[str] = ..., has_profile: bool = ..., profile_key: _Optional[str] = ..., manufacturer: _Optional[str] = ..., model: _Optional[str] = ..., instrument_class: _Optional[str] = ..., commands: _Optional[_Iterable[_Union[CommandCapability, _Mapping]]] = ..., sequences: _Optional[_Iterable[_Union[SequenceCapability, _Mapping]]] = ..., settings: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    def __init__(self, instrument_id: _Optional[str] = ..., has_profile: _Optional[bool] = ..., profile_key: _Optional[str] = ..., manufacturer: _Optional[str] = ..., model: _Optional[str] = ..., instrument_class: _Optional[str] = ..., commands: _Optional[_Iterable[_Union[CommandCapability, _Mapping]]] = ..., sequences: _Optional[_Iterable[_Union[SequenceCapability, _Mapping]]] = ..., settings: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class SendCommandRequest(_message.Message):
     __slots__ = ("command_id", "scpi_command", "instrument_id", "timeout_ms")
@@ -248,31 +248,7 @@ class ExecuteCommandRequest(_message.Message):
     parameters: _containers.ScalarMap[str, str]
     is_query: bool
     timeout_ms: int
-    def __init__(self, command_id: _Optional[str] = ..., instrument_id: _Optional[str] = ..., command_name: _Optional[str] = ..., parameters: _Optional[_Mapping[str, str]] = ..., is_query: bool = ..., timeout_ms: _Optional[int] = ...) -> None: ...
-
-class VectorData(_message.Message):
-    __slots__ = ("y_data", "y_dtype", "y_length", "x_start", "x_increment", "x_unit", "y_unit", "x_name", "y_scale", "y_offset")
-    Y_DATA_FIELD_NUMBER: _ClassVar[int]
-    Y_DTYPE_FIELD_NUMBER: _ClassVar[int]
-    Y_LENGTH_FIELD_NUMBER: _ClassVar[int]
-    X_START_FIELD_NUMBER: _ClassVar[int]
-    X_INCREMENT_FIELD_NUMBER: _ClassVar[int]
-    X_UNIT_FIELD_NUMBER: _ClassVar[int]
-    Y_UNIT_FIELD_NUMBER: _ClassVar[int]
-    X_NAME_FIELD_NUMBER: _ClassVar[int]
-    Y_SCALE_FIELD_NUMBER: _ClassVar[int]
-    Y_OFFSET_FIELD_NUMBER: _ClassVar[int]
-    y_data: bytes
-    y_dtype: str
-    y_length: int
-    x_start: float
-    x_increment: float
-    x_unit: str
-    y_unit: str
-    x_name: str
-    y_scale: float
-    y_offset: float
-    def __init__(self, y_data: _Optional[bytes] = ..., y_dtype: _Optional[str] = ..., y_length: _Optional[int] = ..., x_start: _Optional[float] = ..., x_increment: _Optional[float] = ..., x_unit: _Optional[str] = ..., y_unit: _Optional[str] = ..., x_name: _Optional[str] = ..., y_scale: _Optional[float] = ..., y_offset: _Optional[float] = ...) -> None: ...
+    def __init__(self, command_id: _Optional[str] = ..., instrument_id: _Optional[str] = ..., command_name: _Optional[str] = ..., parameters: _Optional[_Mapping[str, str]] = ..., is_query: _Optional[bool] = ..., timeout_ms: _Optional[int] = ...) -> None: ...
 
 class ExecuteCommandResponse(_message.Message):
     __slots__ = ("command_id", "success", "data", "error_message", "execution_time_ms", "scpi_command", "vector_data")
@@ -290,7 +266,7 @@ class ExecuteCommandResponse(_message.Message):
     execution_time_ms: int
     scpi_command: str
     vector_data: VectorData
-    def __init__(self, command_id: _Optional[str] = ..., success: bool = ..., data: _Optional[str] = ..., error_message: _Optional[str] = ..., execution_time_ms: _Optional[int] = ..., scpi_command: _Optional[str] = ..., vector_data: _Optional[_Union[VectorData, _Mapping]] = ...) -> None: ...
+    def __init__(self, command_id: _Optional[str] = ..., success: _Optional[bool] = ..., data: _Optional[str] = ..., error_message: _Optional[str] = ..., execution_time_ms: _Optional[int] = ..., scpi_command: _Optional[str] = ..., vector_data: _Optional[_Union[VectorData, _Mapping]] = ...) -> None: ...
 
 class ExecuteSequenceRequest(_message.Message):
     __slots__ = ("sequence_id", "instrument_id", "sequence_name", "parameters", "timeout_ms")
@@ -352,8 +328,86 @@ class StreamMeasurementRequest(_message.Message):
     parameters: _containers.ScalarMap[str, str]
     def __init__(self, stream_id: _Optional[str] = ..., instrument_id: _Optional[str] = ..., command_name: _Optional[str] = ..., interval_ms: _Optional[int] = ..., timeout_ms: _Optional[int] = ..., parameters: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
+class SpectrumInfo(_message.Message):
+    __slots__ = ("amplitude", "scale", "rbw_hz", "vbw_hz", "ref_level", "window", "averages")
+    AMPLITUDE_FIELD_NUMBER: _ClassVar[int]
+    SCALE_FIELD_NUMBER: _ClassVar[int]
+    RBW_HZ_FIELD_NUMBER: _ClassVar[int]
+    VBW_HZ_FIELD_NUMBER: _ClassVar[int]
+    REF_LEVEL_FIELD_NUMBER: _ClassVar[int]
+    WINDOW_FIELD_NUMBER: _ClassVar[int]
+    AVERAGES_FIELD_NUMBER: _ClassVar[int]
+    amplitude: str
+    scale: str
+    rbw_hz: float
+    vbw_hz: float
+    ref_level: float
+    window: str
+    averages: int
+    def __init__(self, amplitude: _Optional[str] = ..., scale: _Optional[str] = ..., rbw_hz: _Optional[float] = ..., vbw_hz: _Optional[float] = ..., ref_level: _Optional[float] = ..., window: _Optional[str] = ..., averages: _Optional[int] = ...) -> None: ...
+
+class ScalarChunk(_message.Message):
+    __slots__ = ("field", "t0_ms", "dt_ms", "n", "y_data", "y_dtype", "y_scale", "y_offset", "t_data")
+    FIELD_FIELD_NUMBER: _ClassVar[int]
+    T0_MS_FIELD_NUMBER: _ClassVar[int]
+    DT_MS_FIELD_NUMBER: _ClassVar[int]
+    N_FIELD_NUMBER: _ClassVar[int]
+    Y_DATA_FIELD_NUMBER: _ClassVar[int]
+    Y_DTYPE_FIELD_NUMBER: _ClassVar[int]
+    Y_SCALE_FIELD_NUMBER: _ClassVar[int]
+    Y_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    T_DATA_FIELD_NUMBER: _ClassVar[int]
+    field: str
+    t0_ms: float
+    dt_ms: float
+    n: int
+    y_data: bytes
+    y_dtype: str
+    y_scale: float
+    y_offset: float
+    t_data: bytes
+    def __init__(self, field: _Optional[str] = ..., t0_ms: _Optional[float] = ..., dt_ms: _Optional[float] = ..., n: _Optional[int] = ..., y_data: _Optional[bytes] = ..., y_dtype: _Optional[str] = ..., y_scale: _Optional[float] = ..., y_offset: _Optional[float] = ..., t_data: _Optional[bytes] = ...) -> None: ...
+
+class VectorData(_message.Message):
+    __slots__ = ("y_data", "y_dtype", "y_length", "x_start", "x_increment", "x_unit", "y_unit", "x_name", "y_scale", "y_offset", "x_data", "x_dtype", "y2_data", "pair_kind", "channel", "y2_unit", "spectrum")
+    Y_DATA_FIELD_NUMBER: _ClassVar[int]
+    Y_DTYPE_FIELD_NUMBER: _ClassVar[int]
+    Y_LENGTH_FIELD_NUMBER: _ClassVar[int]
+    X_START_FIELD_NUMBER: _ClassVar[int]
+    X_INCREMENT_FIELD_NUMBER: _ClassVar[int]
+    X_UNIT_FIELD_NUMBER: _ClassVar[int]
+    Y_UNIT_FIELD_NUMBER: _ClassVar[int]
+    X_NAME_FIELD_NUMBER: _ClassVar[int]
+    Y_SCALE_FIELD_NUMBER: _ClassVar[int]
+    Y_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    X_DATA_FIELD_NUMBER: _ClassVar[int]
+    X_DTYPE_FIELD_NUMBER: _ClassVar[int]
+    Y2_DATA_FIELD_NUMBER: _ClassVar[int]
+    PAIR_KIND_FIELD_NUMBER: _ClassVar[int]
+    CHANNEL_FIELD_NUMBER: _ClassVar[int]
+    Y2_UNIT_FIELD_NUMBER: _ClassVar[int]
+    SPECTRUM_FIELD_NUMBER: _ClassVar[int]
+    y_data: bytes
+    y_dtype: str
+    y_length: int
+    x_start: float
+    x_increment: float
+    x_unit: str
+    y_unit: str
+    x_name: str
+    y_scale: float
+    y_offset: float
+    x_data: bytes
+    x_dtype: str
+    y2_data: bytes
+    pair_kind: str
+    channel: str
+    y2_unit: str
+    spectrum: SpectrumInfo
+    def __init__(self, y_data: _Optional[bytes] = ..., y_dtype: _Optional[str] = ..., y_length: _Optional[int] = ..., x_start: _Optional[float] = ..., x_increment: _Optional[float] = ..., x_unit: _Optional[str] = ..., y_unit: _Optional[str] = ..., x_name: _Optional[str] = ..., y_scale: _Optional[float] = ..., y_offset: _Optional[float] = ..., x_data: _Optional[bytes] = ..., x_dtype: _Optional[str] = ..., y2_data: _Optional[bytes] = ..., pair_kind: _Optional[str] = ..., channel: _Optional[str] = ..., y2_unit: _Optional[str] = ..., spectrum: _Optional[_Union[SpectrumInfo, _Mapping]] = ...) -> None: ...
+
 class MeasurementDataPoint(_message.Message):
-    __slots__ = ("stream_id", "value", "timestamp_ms", "unit", "error", "status", "values", "vector_data")
+    __slots__ = ("stream_id", "value", "timestamp_ms", "unit", "error", "status", "values", "vector_data", "vectors", "seq", "chunks")
     class ValuesEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -369,6 +423,9 @@ class MeasurementDataPoint(_message.Message):
     STATUS_FIELD_NUMBER: _ClassVar[int]
     VALUES_FIELD_NUMBER: _ClassVar[int]
     VECTOR_DATA_FIELD_NUMBER: _ClassVar[int]
+    VECTORS_FIELD_NUMBER: _ClassVar[int]
+    SEQ_FIELD_NUMBER: _ClassVar[int]
+    CHUNKS_FIELD_NUMBER: _ClassVar[int]
     stream_id: str
     value: float
     timestamp_ms: int
@@ -377,7 +434,10 @@ class MeasurementDataPoint(_message.Message):
     status: str
     values: _containers.ScalarMap[str, float]
     vector_data: VectorData
-    def __init__(self, stream_id: _Optional[str] = ..., value: _Optional[float] = ..., timestamp_ms: _Optional[int] = ..., unit: _Optional[str] = ..., error: _Optional[str] = ..., status: _Optional[str] = ..., values: _Optional[_Mapping[str, float]] = ..., vector_data: _Optional[_Union[VectorData, _Mapping]] = ...) -> None: ...
+    vectors: _containers.RepeatedCompositeFieldContainer[VectorData]
+    seq: int
+    chunks: _containers.RepeatedCompositeFieldContainer[ScalarChunk]
+    def __init__(self, stream_id: _Optional[str] = ..., value: _Optional[float] = ..., timestamp_ms: _Optional[int] = ..., unit: _Optional[str] = ..., error: _Optional[str] = ..., status: _Optional[str] = ..., values: _Optional[_Mapping[str, float]] = ..., vector_data: _Optional[_Union[VectorData, _Mapping]] = ..., vectors: _Optional[_Iterable[_Union[VectorData, _Mapping]]] = ..., seq: _Optional[int] = ..., chunks: _Optional[_Iterable[_Union[ScalarChunk, _Mapping]]] = ...) -> None: ...
 
 class StopStreamRequest(_message.Message):
     __slots__ = ("stream_id",)
@@ -389,7 +449,7 @@ class StopStreamResponse(_message.Message):
     __slots__ = ("success",)
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     success: bool
-    def __init__(self, success: bool = ...) -> None: ...
+    def __init__(self, success: _Optional[bool] = ...) -> None: ...
 
 class GetStatusRequest(_message.Message):
     __slots__ = ()
@@ -462,7 +522,7 @@ class RegisterEdgeResponse(_message.Message):
     success: bool
     message: str
     assigned_edge_id: str
-    def __init__(self, success: bool = ..., message: _Optional[str] = ..., assigned_edge_id: _Optional[str] = ...) -> None: ...
+    def __init__(self, success: _Optional[bool] = ..., message: _Optional[str] = ..., assigned_edge_id: _Optional[str] = ...) -> None: ...
 
 class HeartbeatRequest(_message.Message):
     __slots__ = ("edge_id", "instrument_count", "cpu_usage", "memory_usage")
@@ -491,7 +551,7 @@ class HeartbeatResponse(_message.Message):
     acknowledged: bool
     server_timestamp_ms: int
     config_updates: _containers.ScalarMap[str, str]
-    def __init__(self, acknowledged: bool = ..., server_timestamp_ms: _Optional[int] = ..., config_updates: _Optional[_Mapping[str, str]] = ...) -> None: ...
+    def __init__(self, acknowledged: _Optional[bool] = ..., server_timestamp_ms: _Optional[int] = ..., config_updates: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class GetWebcamSnapshotRequest(_message.Message):
     __slots__ = ("camera_url",)
@@ -548,7 +608,7 @@ class ProxySDKCallResponse(_message.Message):
     result: _struct_pb2.Value
     error_message: str
     execution_time_ms: int
-    def __init__(self, call_id: _Optional[str] = ..., success: bool = ..., result: _Optional[_Union[_struct_pb2.Value, _Mapping]] = ..., error_message: _Optional[str] = ..., execution_time_ms: _Optional[int] = ...) -> None: ...
+    def __init__(self, call_id: _Optional[str] = ..., success: _Optional[bool] = ..., result: _Optional[_Union[_struct_pb2.Value, _Mapping]] = ..., error_message: _Optional[str] = ..., execution_time_ms: _Optional[int] = ...) -> None: ...
 
 class StartSweepRequest(_message.Message):
     __slots__ = ("instrument_id", "command_name", "target_value", "sweep_rate", "extra_parameters")
@@ -579,7 +639,7 @@ class StartSweepResponse(_message.Message):
     sweep_id: str
     accepted: bool
     error: str
-    def __init__(self, sweep_id: _Optional[str] = ..., accepted: bool = ..., error: _Optional[str] = ...) -> None: ...
+    def __init__(self, sweep_id: _Optional[str] = ..., accepted: _Optional[bool] = ..., error: _Optional[str] = ...) -> None: ...
 
 class GetSweepStatusRequest(_message.Message):
     __slots__ = ("sweep_id",)
@@ -615,4 +675,142 @@ class StopSweepResponse(_message.Message):
     STATUS_FIELD_NUMBER: _ClassVar[int]
     success: bool
     status: str
-    def __init__(self, success: bool = ..., status: _Optional[str] = ...) -> None: ...
+    def __init__(self, success: _Optional[bool] = ..., status: _Optional[str] = ...) -> None: ...
+
+class DeployProfileRequest(_message.Message):
+    __slots__ = ("profile_name", "profile_yaml", "protocol")
+    PROFILE_NAME_FIELD_NUMBER: _ClassVar[int]
+    PROFILE_YAML_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    profile_name: str
+    profile_yaml: str
+    protocol: str
+    def __init__(self, profile_name: _Optional[str] = ..., profile_yaml: _Optional[str] = ..., protocol: _Optional[str] = ...) -> None: ...
+
+class DeployProfileResponse(_message.Message):
+    __slots__ = ("success", "error_message", "register_count")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_COUNT_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error_message: str
+    register_count: int
+    def __init__(self, success: _Optional[bool] = ..., error_message: _Optional[str] = ..., register_count: _Optional[int] = ...) -> None: ...
+
+class RemoveProfileRequest(_message.Message):
+    __slots__ = ("profile_name", "protocol")
+    PROFILE_NAME_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    profile_name: str
+    protocol: str
+    def __init__(self, profile_name: _Optional[str] = ..., protocol: _Optional[str] = ...) -> None: ...
+
+class RemoveProfileResponse(_message.Message):
+    __slots__ = ("success", "error_message")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error_message: str
+    def __init__(self, success: _Optional[bool] = ..., error_message: _Optional[str] = ...) -> None: ...
+
+class ListProfilesRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class ListProfilesResponse(_message.Message):
+    __slots__ = ("profiles",)
+    PROFILES_FIELD_NUMBER: _ClassVar[int]
+    profiles: _containers.RepeatedCompositeFieldContainer[DriverProfileSummary]
+    def __init__(self, profiles: _Optional[_Iterable[_Union[DriverProfileSummary, _Mapping]]] = ...) -> None: ...
+
+class DriverProfileSummary(_message.Message):
+    __slots__ = ("name", "protocol", "manufacturer", "model", "description", "register_count", "active")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    MANUFACTURER_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_COUNT_FIELD_NUMBER: _ClassVar[int]
+    ACTIVE_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    protocol: str
+    manufacturer: str
+    model: str
+    description: str
+    register_count: int
+    active: bool
+    def __init__(self, name: _Optional[str] = ..., protocol: _Optional[str] = ..., manufacturer: _Optional[str] = ..., model: _Optional[str] = ..., description: _Optional[str] = ..., register_count: _Optional[int] = ..., active: _Optional[bool] = ...) -> None: ...
+
+class ConnectModbusInstrumentRequest(_message.Message):
+    __slots__ = ("profile_name", "profile_yaml", "protocol", "instrument_id", "transport_uri", "slave_id")
+    PROFILE_NAME_FIELD_NUMBER: _ClassVar[int]
+    PROFILE_YAML_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    INSTRUMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    TRANSPORT_URI_FIELD_NUMBER: _ClassVar[int]
+    SLAVE_ID_FIELD_NUMBER: _ClassVar[int]
+    profile_name: str
+    profile_yaml: str
+    protocol: str
+    instrument_id: str
+    transport_uri: str
+    slave_id: int
+    def __init__(self, profile_name: _Optional[str] = ..., profile_yaml: _Optional[str] = ..., protocol: _Optional[str] = ..., instrument_id: _Optional[str] = ..., transport_uri: _Optional[str] = ..., slave_id: _Optional[int] = ...) -> None: ...
+
+class ConnectModbusInstrumentResponse(_message.Message):
+    __slots__ = ("success", "error_message", "instrument_id", "register_count", "commands")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    INSTRUMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_COUNT_FIELD_NUMBER: _ClassVar[int]
+    COMMANDS_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error_message: str
+    instrument_id: str
+    register_count: int
+    commands: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, success: _Optional[bool] = ..., error_message: _Optional[str] = ..., instrument_id: _Optional[str] = ..., register_count: _Optional[int] = ..., commands: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class ConnectInstrumentRequest(_message.Message):
+    __slots__ = ("profile_name", "profile_yaml", "protocol", "instrument_id", "transport_uri", "connection_params")
+    PROFILE_NAME_FIELD_NUMBER: _ClassVar[int]
+    PROFILE_YAML_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    INSTRUMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    TRANSPORT_URI_FIELD_NUMBER: _ClassVar[int]
+    CONNECTION_PARAMS_FIELD_NUMBER: _ClassVar[int]
+    profile_name: str
+    profile_yaml: str
+    protocol: str
+    instrument_id: str
+    transport_uri: str
+    connection_params: _struct_pb2.Struct
+    def __init__(self, profile_name: _Optional[str] = ..., profile_yaml: _Optional[str] = ..., protocol: _Optional[str] = ..., instrument_id: _Optional[str] = ..., transport_uri: _Optional[str] = ..., connection_params: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+
+class ConnectInstrumentResponse(_message.Message):
+    __slots__ = ("success", "error_message", "instrument_id", "register_count", "commands")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    INSTRUMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_COUNT_FIELD_NUMBER: _ClassVar[int]
+    COMMANDS_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error_message: str
+    instrument_id: str
+    register_count: int
+    commands: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, success: _Optional[bool] = ..., error_message: _Optional[str] = ..., instrument_id: _Optional[str] = ..., register_count: _Optional[int] = ..., commands: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class DisconnectInstrumentRequest(_message.Message):
+    __slots__ = ("instrument_id",)
+    INSTRUMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    instrument_id: str
+    def __init__(self, instrument_id: _Optional[str] = ...) -> None: ...
+
+class DisconnectInstrumentResponse(_message.Message):
+    __slots__ = ("success", "error_message")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    error_message: str
+    def __init__(self, success: _Optional[bool] = ..., error_message: _Optional[str] = ...) -> None: ...
