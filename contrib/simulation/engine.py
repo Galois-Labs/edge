@@ -884,6 +884,17 @@ class SimulatedInstrumentManager:
             return info["idn"]
         return ""
 
+    def query_raw(self, instrument_id: str, command: str) -> bytes:
+        """Raw binary-safe read — not supported for simulated instruments.
+
+        Mirrors the transport-unsupported behaviour of the real
+        InstrumentManager so the binary command path surfaces a clean
+        error instead of an AttributeError.
+        """
+        raise ValueError(
+            f"Binary (raw) reads are not supported on this transport: {instrument_id}"
+        )
+
     def query_binary_values(
         self,
         instrument_id: str,
