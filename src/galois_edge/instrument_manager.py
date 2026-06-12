@@ -676,6 +676,66 @@ class InstrumentManager:
             return self._usb.identify(instrument_id)
         return self.query(instrument_id, "*IDN?")
 
+    def query_raw(self, instrument_id: str, command: str) -> bytes:
+        """Send a query and return the raw, binary-safe response bytes.
+
+        Unlike :meth:`query`, the response is returned as raw bytes with
+        no termination handling and no text decoding. This is required
+        for IEEE 488.2 definite-length binary blocks: the text path
+        decodes the payload (corrupting arbitrary bytes) and terminates
+        early on any ``0x0A`` byte inside the block, so a binary block
+        can never survive it. Every profile command declared
+        ``returns: {type: binary}`` must go through this method.
+
+        ``read_termination`` enables the VISA termchar: ``read_raw()``
+        would stop at the first ``0x0A`` byte inside the block payload.
+        It is cleared for the raw read and restored afterwards so text
+        ``query()`` calls keep working on the same resource.
+
+        Only supported for PyVISA instruments (``write()`` followed by
+        ``read_raw()``).
+
+        Parameters
+        ----------
+        instrument_id:
+            VISA resource string identifying the instrument.
+        command:
+            SCPI query command (e.g. ``":WAVeform:DATA?"``).
+
+        Returns
+        -------
+        bytes
+            The raw response, including the block header and any
+            trailing terminator the instrument appends.
+
+        Raises
+        ------
+        ValueError
+            If the instrument is not connected, or uses a transport
+            without raw-read support (GPIB / raw USB).
+        IOError / pyvisa.Error
+            On communication failure.
+        """
+        if self._is_gpib(instrument_id) or self._is_usb(instrument_id):
+            raise ValueError(
+                f"Binary (raw) reads are not supported on this transport: "
+                f"{instrument_id}"
+            )
+
+        instrument = self._instruments.get(instrument_id)
+        if instrument is None:
+            raise ValueError(f"Instrument not connected: {instrument_id}")
+
+        saved_termination = getattr(instrument, "read_termination", None)
+        if saved_termination is not None:
+            instrument.read_termination = None
+        try:
+            instrument.write(command)
+            return instrument.read_raw()
+        finally:
+            if saved_termination is not None:
+                instrument.read_termination = saved_termination
+
     def query_binary_values(
         self,
         instrument_id: str,
@@ -688,6 +748,14 @@ class InstrumentManager:
         """Send a query and read the response as IEEE 488.2 binary block data.
 
         Uses pyvisa's query_binary_values() which handles the #N header parsing.
+
+        .. note::
+           This is the *legacy* path kept for ``returns.type == "vector"``
+           profile commands. It depends on pyvisa's block parsing, whose
+           byte-safety cannot be guaranteed across backends/termchar
+           configurations. New ``returns.type == "binary"`` (``ieee_block``)
+           commands must use :meth:`query_raw` plus
+           ``waveform_assembly.decode_ieee_block`` instead.
 
         Only supported for PyVISA instruments; GPIB and raw USB instruments
         will raise ValueError.
