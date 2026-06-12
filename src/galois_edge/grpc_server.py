@@ -41,6 +41,12 @@ from .capability_manager import (
 )
 from .profile_schema import SweepConfig
 from .command_handler import CommandHandler
+from .scalar_chunker import (
+    CHUNK_TRIGGER_MS,
+    CHUNK_WINDOW_MS,
+    ScalarChunker,
+    clamp_sample_period,
+)
 from .sdk_executor import SDKExecutor
 
 logger = logging.getLogger(__name__)
@@ -267,6 +273,64 @@ def _python_to_value(obj: Any) -> Any:
     else:
         v.string_value = str(obj)
     return v
+
+
+# ---------------------------------------------------------------------------
+# Streaming helpers (seq / chunks — work order §3.6, §5, §7)
+# ---------------------------------------------------------------------------
+
+
+def _build_chunk_point(
+    stream_id: str,
+    unit: str,
+    chunks: list,
+    timestamp_ms: int,
+    seq: int,
+) -> edge_pb2.MeasurementDataPoint:
+    """Build a chunk-bearing MeasurementDataPoint from ScalarChunker.take().
+
+    Exclusivity (§7.3): chunk-bearing points carry no value/values (and
+    no vectors) — the chunks ARE the payload. One seq per point.
+    """
+    point = edge_pb2.MeasurementDataPoint(
+        stream_id=stream_id,
+        timestamp_ms=timestamp_ms,
+        unit=unit,
+        error="",
+        status="ok",
+        seq=seq,
+    )
+    for c in chunks:
+        point.chunks.add(
+            field=c["field"],
+            t0_ms=c["t0_ms"],
+            dt_ms=c["dt_ms"],
+            n=c["n"],
+            y_data=c["y_data"],
+            y_dtype=c["y_dtype"],
+            y_scale=c["y_scale"],
+            y_offset=c["y_offset"],
+            t_data=c.get("t_data", b""),
+        )
+    return point
+
+
+def _driver_stream_fields(result: Any) -> tuple[float, Dict[str, float]]:
+    """Map a protocol driver execute_command() result onto (value, values{})."""
+    if isinstance(result, dict):
+        values: Dict[str, float] = {}
+        for k, v in result.items():
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                continue
+            values[str(k)] = float(v)
+        primary = next(iter(values.values()), 0.0)
+        return primary, values
+    if isinstance(result, (int, float)) and not isinstance(result, bool):
+        return float(result), {}
+    try:
+        return float(str(result).strip()), {}
+    except (TypeError, ValueError):
+        return 0.0, {}
 
 
 # ---------------------------------------------------------------------------
@@ -1390,11 +1454,32 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
         Polls a profile command at ``interval_ms`` and yields
         MeasurementDataPoint messages until the client cancels.
+
+        Every yielded point carries ``seq`` (work order §3.6): a
+        per-stream monotonic counter starting at 1, incremented by
+        exactly 1 for EVERY point — including ``status:"error"`` points
+        (errors are data; gap detectors must not fire because errors
+        were unsequenced). The counter resets per StreamMeasurement
+        call; 0 is reserved for unsequenced (pre-seq) daemons and is
+        never emitted here.
+
+        Chunk-capable hardware-clocked sources (work order §7): when the
+        requested ``interval_ms < 100`` and the instrument's protocol
+        driver exposes ``open_hw_stream``, the interval is reinterpreted
+        as the sample period (1 ms floor) and samples are coalesced into
+        ScalarChunk blocks. Ordinary polled commands keep per-point
+        emission and the 10 ms poll floor regardless of the requested
+        interval — at ``interval_ms >= 100`` chunks are never emitted
+        (the negotiation-free back-compat rule, §7.2).
         """
         stream_id = request.stream_id
         instrument_id = request.instrument_id
         command_name = request.command_name
-        interval_ms = max(request.interval_ms, 10)  # floor at 10 ms
+        interval_ms = max(request.interval_ms, 10)  # poll floor (doc §5)
+
+        # Per-stream monotonic sequence counter (§3.6). Local to this
+        # call, so it resets with every StreamMeasurement invocation.
+        seq = 0
 
         logger.info(
             "StreamMeasurement %s: '%s' -> %s every %dms",
@@ -1403,36 +1488,77 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
         # Validate profile command exists and is streamable
         if not self._capability_manager:
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 error="Profile system not available",
                 status="error",
+                seq=seq,
             )
+            return
+
+        params = dict(request.parameters) if request.parameters else None
+
+        # --- Protocol-driver instruments (CAN / I2C / SPI / OPC-UA /
+        # synthetic DAQ) dispatch through the driver, not the profile
+        # command table. Chunk-capable hardware-clocked commands take the
+        # chunked path only below the §7.2 trigger; everything else is
+        # ordinary per-point polling at the 10 ms floor.
+        protocol_driver = self._capability_manager.get_protocol_driver(
+            instrument_id
+        )
+        if protocol_driver is not None:
+            hw_source = None
+            if 0 < request.interval_ms < CHUNK_TRIGGER_MS:
+                hw_source = self._open_hw_source(
+                    protocol_driver, command_name, params
+                )
+            self._active_streams[stream_id] = asyncio.current_task()
+            try:
+                if hw_source is not None:
+                    point_gen = self._stream_chunked(
+                        context, hw_source, stream_id, request.interval_ms,
+                    )
+                else:
+                    point_gen = self._stream_driver_polled(
+                        context, protocol_driver, stream_id,
+                        command_name, params, interval_ms,
+                    )
+                async for point in point_gen:
+                    yield point
+            finally:
+                self._active_streams.pop(stream_id, None)
             return
 
         caps = self._capability_manager.get_instrument_caps(instrument_id)
         if caps is None:
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 error=f"Instrument not found: {instrument_id}",
                 status="error",
+                seq=seq,
             )
             return
 
         cmd = caps.get_command(command_name)
         if cmd is None:
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 error=f"Command '{command_name}' not found or disabled",
                 status="error",
+                seq=seq,
             )
             return
 
         if not cmd.streamable:
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 error=f"Command '{command_name}' is not streamable",
                 status="error",
+                seq=seq,
             )
             return
 
@@ -1451,7 +1577,6 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             separator = cmd.returns.separator
 
         # Resolve the SCPI/SDK dispatch once
-        params = dict(request.parameters) if request.parameters else None
         dispatch = self._capability_manager.resolve_command(
             instrument_id=instrument_id,
             command_name=command_name,
@@ -1459,10 +1584,12 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             is_query=True,
         )
         if dispatch is None:
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 error=f"Failed to resolve command '{command_name}'",
                 status="error",
+                seq=seq,
             )
             return
 
@@ -1490,6 +1617,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                             params=stream_params,
                         )
                         ts_ms = int(time.time() * 1000)
+                        seq += 1
                         yield edge_pb2.MeasurementDataPoint(
                             stream_id=stream_id,
                             value=0.0,
@@ -1498,6 +1626,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                             error="",
                             status="ok",
                             vector_data=vector_data,
+                            seq=seq,
                         )
 
                     elif is_sdk:
@@ -1563,6 +1692,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                             except (ValueError, IndexError):
                                 primary = 0.0
 
+                            seq += 1
                             yield edge_pb2.MeasurementDataPoint(
                                 stream_id=stream_id,
                                 value=primary,
@@ -1571,8 +1701,12 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                                 error="",
                                 status="ok",
                                 values=values_map,
+                                seq=seq,
                             )
                         else:
+                            # Error points are sequenced like any point
+                            # (§3.6) and the stream continues (§5).
+                            seq += 1
                             yield edge_pb2.MeasurementDataPoint(
                                 stream_id=stream_id,
                                 value=0.0,
@@ -1580,9 +1714,11 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                                 unit=unit,
                                 error=result["error"],
                                 status="error",
+                                seq=seq,
                             )
 
                 except Exception as exc:
+                    seq += 1
                     yield edge_pb2.MeasurementDataPoint(
                         stream_id=stream_id,
                         value=0.0,
@@ -1590,9 +1726,13 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                         unit=unit,
                         error=str(exc),
                         status="error",
+                        seq=seq,
                     )
 
-                # Sleep for the remaining interval
+                # Overrun policy (doc §5): sleep only for the remainder
+                # of the interval — slow reads skip ticks (poll late)
+                # rather than queueing a backlog, and timestamp_ms above
+                # is always the wall-clock of the actual read.
                 elapsed = time.time() - loop_start
                 remaining = max(0, interval_s - elapsed)
                 if remaining > 0:
@@ -1602,6 +1742,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             pass
         finally:
             self._active_streams.pop(stream_id, None)
+            seq += 1
             yield edge_pb2.MeasurementDataPoint(
                 stream_id=stream_id,
                 value=0.0,
@@ -1609,6 +1750,252 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 unit=unit,
                 error="",
                 status="stopped",
+                seq=seq,
+            )
+            logger.info("StreamMeasurement %s stopped", stream_id)
+
+    @staticmethod
+    def _open_hw_source(
+        driver: Any,
+        command_name: str,
+        params: Optional[Dict[str, Any]],
+    ) -> Optional[Any]:
+        """Resolve a chunk-capable hardware-clocked source (work order §7).
+
+        Duck-typed: a protocol driver advertises chunk capability by
+        exposing ``open_hw_stream(command_name, params) -> source | None``
+        (contract in ``hw_stream.py``). Ordinary polled commands have no
+        source and keep per-point emission regardless of the requested
+        interval (§7.2).
+        """
+        opener = getattr(driver, "open_hw_stream", None)
+        if opener is None:
+            return None
+        try:
+            return opener(command_name, params)
+        except Exception as exc:
+            logger.warning(
+                "open_hw_stream('%s') failed: %s — falling back to "
+                "per-point polling", command_name, exc,
+            )
+            return None
+
+    async def _stream_chunked(
+        self,
+        context: grpc.aio.ServicerContext,
+        source: Any,
+        stream_id: str,
+        requested_interval_ms: float,
+    ) -> AsyncIterator[edge_pb2.MeasurementDataPoint]:
+        """Chunked emission for hardware-clocked sources (work order §7).
+
+        ``interval_ms`` is reinterpreted as the SAMPLE PERIOD (1 ms
+        daemon floor, §7.2); the actual ``dt_ms`` comes from the source's
+        ``start()`` readback, never the request (§7.3). The loop wakes
+        every ~50 ms window, drains the source FIFO, and emits one
+        chunk-bearing point per full window. A FIFO overflow yields a
+        sequenced ``status:"error"`` point and the next chunk starts a
+        fresh ``t0_ms`` — ``dt_ms`` is never stretched (§7.4).
+        """
+        loop = asyncio.get_running_loop()
+        seq = 0
+        unit = str(getattr(source, "unit", "") or "")
+        period_ms = clamp_sample_period(requested_interval_ms)
+
+        try:
+            actual_ms = float(
+                await loop.run_in_executor(self._executor, source.start, period_ms)
+            )
+            if actual_ms <= 0:
+                raise ValueError(
+                    f"source readback returned invalid period {actual_ms!r}"
+                )
+        except Exception as exc:
+            seq += 1
+            yield edge_pb2.MeasurementDataPoint(
+                stream_id=stream_id,
+                timestamp_ms=int(time.time() * 1000),
+                unit=unit,
+                error=f"Failed to start hardware acquisition: {exc}",
+                status="error",
+                seq=seq,
+            )
+            return
+
+        # t0: hardware tick 0 mapped onto daemon wall-clock captured at
+        # acquisition start (§7.3).
+        chunker = ScalarChunker(dt_ms=actual_ms, t0_ms=time.time() * 1000.0)
+        window_s = CHUNK_WINDOW_MS / 1000.0
+        logger.info(
+            "StreamMeasurement %s: chunked hardware-clocked emission "
+            "(period %.3f ms readback for %.3f ms request, ~%d samples/chunk)",
+            stream_id, actual_ms, period_ms, chunker.target_n,
+        )
+
+        try:
+            while not context.cancelled():
+                tick_start = time.time()
+                try:
+                    block = await loop.run_in_executor(
+                        self._executor, source.read
+                    )
+                    timestamp_ms = int(time.time() * 1000)  # actual read time
+                    if block is not None and getattr(block, "overflow", False):
+                        # Flush, report the gap as a sequenced error
+                        # point, then rebase: fresh t0_ms, dt unchanged.
+                        if chunker.pending:
+                            seq += 1
+                            yield _build_chunk_point(
+                                stream_id, unit, chunker.take(),
+                                timestamp_ms, seq,
+                            )
+                        seq += 1
+                        yield edge_pb2.MeasurementDataPoint(
+                            stream_id=stream_id,
+                            timestamp_ms=timestamp_ms,
+                            unit=unit,
+                            error="hardware FIFO overflow: samples dropped",
+                            status="error",
+                            seq=seq,
+                        )
+                        chunker.rebase(time.time() * 1000.0)
+                    if block is not None:
+                        for value, values_map in block.rows():
+                            if chunker.add(value, values_map):
+                                seq += 1
+                                yield _build_chunk_point(
+                                    stream_id, unit, chunker.take(),
+                                    timestamp_ms, seq,
+                                )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    timestamp_ms = int(time.time() * 1000)
+                    if chunker.pending:
+                        seq += 1
+                        yield _build_chunk_point(
+                            stream_id, unit, chunker.take(), timestamp_ms, seq,
+                        )
+                    seq += 1
+                    yield edge_pb2.MeasurementDataPoint(
+                        stream_id=stream_id,
+                        timestamp_ms=timestamp_ms,
+                        unit=unit,
+                        error=str(exc),
+                        status="error",
+                        seq=seq,
+                    )
+                    # A failed read is a gap in the sample clock: the
+                    # next chunk starts a fresh t0_ms (§7.4).
+                    chunker.rebase(time.time() * 1000.0)
+
+                # Overrun policy (§5/§7.4): skip ticks — sleep only for
+                # the remainder of the window, never queue a backlog.
+                elapsed = time.time() - tick_start
+                remaining = window_s - elapsed
+                if remaining > 0:
+                    await asyncio.sleep(remaining)
+
+        except asyncio.CancelledError:
+            pass
+        finally:
+            # Flush the partial window so buffered samples are not lost.
+            if chunker.pending:
+                seq += 1
+                yield _build_chunk_point(
+                    stream_id, unit, chunker.take(),
+                    int(time.time() * 1000), seq,
+                )
+            try:
+                source.stop()
+            except Exception as exc:
+                logger.debug("hw source stop() failed: %s", exc)
+            seq += 1
+            yield edge_pb2.MeasurementDataPoint(
+                stream_id=stream_id,
+                timestamp_ms=int(time.time() * 1000),
+                unit=unit,
+                error="",
+                status="stopped",
+                seq=seq,
+            )
+            logger.info("StreamMeasurement %s stopped", stream_id)
+
+    async def _stream_driver_polled(
+        self,
+        context: grpc.aio.ServicerContext,
+        driver: Any,
+        stream_id: str,
+        command_name: str,
+        params: Optional[Dict[str, Any]],
+        interval_ms: int,
+    ) -> AsyncIterator[edge_pb2.MeasurementDataPoint]:
+        """Per-point polling for protocol-driver instruments.
+
+        Doc §7.2: ordinary polled commands keep per-point emission and
+        the 10 ms poll floor regardless of the requested interval — this
+        is also the >= 100 ms half of the negotiation-free rule for
+        chunk-capable commands (old clouds reset sub-100 requests to
+        1000 ms and land here; no chunk is ever emitted on this path).
+        """
+        loop = asyncio.get_running_loop()
+        seq = 0
+        interval_s = interval_ms / 1000.0
+
+        try:
+            while not context.cancelled():
+                loop_start = time.time()
+                try:
+                    result = await loop.run_in_executor(
+                        self._executor,
+                        driver.execute_command,
+                        command_name,
+                        params or {},
+                    )
+                    primary, values_map = _driver_stream_fields(result)
+                    seq += 1
+                    yield edge_pb2.MeasurementDataPoint(
+                        stream_id=stream_id,
+                        value=primary,
+                        timestamp_ms=int(time.time() * 1000),
+                        unit="",
+                        error="",
+                        status="ok",
+                        values=values_map,
+                        seq=seq,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    seq += 1
+                    yield edge_pb2.MeasurementDataPoint(
+                        stream_id=stream_id,
+                        value=0.0,
+                        timestamp_ms=int(time.time() * 1000),
+                        unit="",
+                        error=str(exc),
+                        status="error",
+                        seq=seq,
+                    )
+
+                # Overrun policy (doc §5): skip ticks, never queue.
+                elapsed = time.time() - loop_start
+                remaining = max(0, interval_s - elapsed)
+                if remaining > 0:
+                    await asyncio.sleep(remaining)
+
+        except asyncio.CancelledError:
+            pass
+        finally:
+            seq += 1
+            yield edge_pb2.MeasurementDataPoint(
+                stream_id=stream_id,
+                value=0.0,
+                timestamp_ms=int(time.time() * 1000),
+                unit="",
+                error="",
+                status="stopped",
+                seq=seq,
             )
             logger.info("StreamMeasurement %s stopped", stream_id)
 
