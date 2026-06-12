@@ -70,6 +70,17 @@ class TestDSOX3000Profile:
         scpi = profile.resolve_scpi_ref(binary.preamble_command)
         assert scpi == ":WAVeform:PREamble?"
 
+    def test_source_command_declared_and_resolves(self, profile):
+        # Multi-channel frames (doc §3.5): the per-channel source
+        # selector named in the binary block must resolve to the
+        # waveform_source setter for each channel label.
+        binary = profile.get_command("waveform_data").returns.binary
+        assert binary.source_command == "waveform_source"
+        assert (
+            profile.resolve_source_ref(binary.source_command, "CHANnel2")
+            == ":WAVeform:SOURce CHANnel2"
+        )
+
     def test_explicit_setup_commands_declared(self, profile):
         # Setup is driven explicitly, never trusted to defaults
         # (doc §2.4): format, signedness, byte order.

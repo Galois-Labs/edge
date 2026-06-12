@@ -776,6 +776,15 @@ commands:
         # Names the sibling profile command whose CSV reply carries
         # the scaling preamble (doc §2.3).
         preamble_command: waveform_preamble
+        # Multi-channel frames (doc §3.5): when a stream request carries
+        # a comma-separated `channels` parameter (e.g.
+        # "CHANnel1,CHANnel2"), the daemon drives this sibling command's
+        # setter to select each source in turn, re-reads the preamble
+        # per channel (vertical scale/offset differ per channel), and
+        # emits one MeasurementDataPoint per tick with vectors[] plus
+        # vector_data = the first channel for old clouds. Without the
+        # `channels` parameter, behavior is unchanged single-channel.
+        source_command: waveform_source
         # CSV indices in the PREamble reply: format,type,points,count,
         # xincrement,xorigin,xreference,yincrement,yorigin,yreference.
         # The reference-point composition

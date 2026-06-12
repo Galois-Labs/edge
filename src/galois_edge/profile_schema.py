@@ -127,6 +127,14 @@ class BinaryConfig:
     byte_order: str = "little"      # little | big
     preamble_command: Optional[str] = None  # sibling command name or raw SCPI
     preamble_map: Optional[PreambleMap] = None
+    # OPTIONAL multi-channel knob (doc §3.5): sibling command (or raw SCPI
+    # template with a {source}/{channel} placeholder) whose setter selects
+    # the acquisition source. When a stream request carries a comma-
+    # separated ``channels`` parameter, the daemon selects each channel in
+    # turn, re-reads the preamble per channel (scale/offset differ per
+    # channel on real scopes — never shared), and emits one multi-channel
+    # frame per tick.
+    source_command: Optional[str] = None
 
     def validate(self) -> None:
         if self.dtype not in ALLOWED_BINARY_DTYPES:
@@ -688,6 +696,30 @@ class InstrumentProfile:
                 )
         return ref
 
+    def resolve_source_ref(self, ref: str, channel: str) -> str:
+        """Resolve ``binary.source_command`` for one channel of a
+        multi-channel frame (doc §3.5).
+
+        *ref* may name a sibling profile command (e.g. ``waveform_source``)
+        whose setter selects the acquisition source, or carry a raw SCPI
+        template. The channel label is substituted into the ``{source}``
+        / ``{channel}`` placeholder, whichever the template uses.
+        """
+        params = {"source": channel, "channel": channel}
+        cmd = self.commands.get(ref)
+        if cmd is not None:
+            try:
+                return cmd.format_scpi(params, is_query=False)
+            except ValueError:
+                logger.warning(
+                    "source command '%s' has no usable SCPI template; "
+                    "treating the reference as raw SCPI", ref,
+                )
+        out = ref
+        for key, value in params.items():
+            out = out.replace(f"{{{key}}}", str(value))
+        return out
+
     # ---- export ------------------------------------------------------------
 
     @staticmethod
@@ -805,6 +837,7 @@ def _build_binary_config(data: Dict[str, Any]) -> BinaryConfig:
         byte_order=data.get("byte_order", "little"),
         preamble_command=data.get("preamble_command"),
         preamble_map=preamble_map,
+        source_command=data.get("source_command"),
     )
 
 

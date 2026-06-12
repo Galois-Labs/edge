@@ -133,6 +133,57 @@ class TestBinarySubBlock:
             returns.validate()
 
 
+class TestSourceCommand:
+    """binary.source_command — the multi-channel knob (doc §3.5)."""
+
+    def test_source_command_parsed(self):
+        profile = _profile_with_returns(
+            {
+                "type": "binary",
+                "binary": {
+                    "dtype": "int16",
+                    "source_command": "waveform_source",
+                },
+            }
+        )
+        profile.validate()
+        binary = profile.commands["waveform_data"].returns.binary
+        assert binary.source_command == "waveform_source"
+
+    def test_source_command_defaults_to_none(self):
+        profile = _profile_with_returns(
+            {"type": "binary", "binary": {"dtype": "int16"}}
+        )
+        binary = profile.commands["waveform_data"].returns.binary
+        assert binary.source_command is None
+
+    def test_resolve_source_ref_sibling_setter(self):
+        profile = profile_from_dict(
+            {
+                "instrument": {"manufacturer": "Test", "model": "T1"},
+                "identity": {"pattern": "TEST"},
+                "commands": {
+                    "waveform_source": {
+                        "getter": ":WAVeform:SOURce?",
+                        "setter": ":WAVeform:SOURce {source}",
+                        "type": "property",
+                    },
+                },
+            }
+        )
+        assert (
+            profile.resolve_source_ref("waveform_source", "CHANnel2")
+            == ":WAVeform:SOURce CHANnel2"
+        )
+
+    def test_resolve_source_ref_raw_scpi_template(self):
+        profile = _profile_with_returns({"type": "binary"})
+        assert (
+            profile.resolve_source_ref(":WAVeform:SOURce {channel}", "CHANnel3")
+            == ":WAVeform:SOURce CHANnel3"
+        )
+
+
 class TestPreambleResolution:
     def _profile(self):
         return profile_from_dict(
