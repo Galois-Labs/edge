@@ -6,6 +6,7 @@ Uses mock subsystems and the gRPC async test infrastructure.
 
 import asyncio
 import os
+import struct
 import sys
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1928,3 +1929,668 @@ class TestConnectInstrument:
         # "registry not available" sentinel.
         assert resp.success is False
         assert "registry" in resp.error_message.lower()
+
+
+# ---------------------------------------------------------------------------
+# IEEE 488.2 block path over gRPC (doc §2, §3.0–§3.5)
+# ---------------------------------------------------------------------------
+
+
+SCOPE_ADDR = "TCPIP::192.168.1.50::INSTR"
+
+# 10-field DSOX-shape preambles with NONZERO x/y reference points, so a
+# producer that skips the §2.4 composition (x_start = xorigin -
+# xreference*xincrement, y_offset = yorigin - yreference*yincrement)
+# emits visibly wrong values:
+#   format,type,points,count,xincrement,xorigin,xreference,
+#   yincrement,yorigin,yreference
+CH1_PREAMBLE = "+1,+0,+4,+1,+2.0E-06,-1.0E-03,+100,+4.0E-03,+1.25,+128"
+CH2_PREAMBLE = "+1,+0,+4,+1,+2.0E-06,-1.0E-03,+100,+2.0E-03,+0.5,+64"
+
+CH1_X_START = -1.0e-03 - 100 * 2.0e-06       # -0.0012
+CH1_Y_SCALE = 4.0e-03
+CH1_Y_OFFSET = 1.25 - 128 * 4.0e-03          # 0.738
+CH2_Y_SCALE = 2.0e-03
+CH2_Y_OFFSET = 0.5 - 64 * 2.0e-03            # 0.372
+
+CH1_SAMPLES = [0, 1000, -1000, 256]
+CH2_SAMPLES = [10, -20, 30, -40]
+
+
+def _ieee_block(samples):
+    """Pack int16 samples into a definite-length IEEE 488.2 block."""
+    payload = struct.pack(f"<{len(samples)}h", *samples)
+    header = f"#{len(str(len(payload)))}{len(payload)}".encode()
+    return header + payload + b"\n"
+
+
+class _BlockInstrumentManager:
+    """Instrument-manager stub for IEEE-block tests.
+
+    Text queries serve the preamble of the currently selected source
+    (per-channel preambles, doc §3.5); raw reads serve the block of the
+    currently selected source. Every query()/query_raw() call is
+    recorded so tests can assert binary never touches the text path.
+    A source's block may be a list, consumed one read at a time, for
+    malformed-mid-stream scripting.
+    """
+
+    def __init__(self, preambles, blocks):
+        self._preambles = dict(preambles)
+        self._blocks = {k: v for k, v in blocks.items()}
+        self._source = next(iter(self._preambles))
+        self.query_calls = []
+        self.raw_calls = []
+        self.writes = []
+
+    def is_connected(self, instrument_id):
+        return True
+
+    def connect(self, instrument_id, timeout=5000):
+        return instrument_id
+
+    def write(self, instrument_id, command):
+        self.writes.append(command)
+        if command.startswith(":WAVeform:SOURce"):
+            self._source = command.split()[-1]
+
+    def query(self, instrument_id, command):
+        self.query_calls.append(command)
+        if command == ":WAVeform:PREamble?":
+            return self._preambles[self._source]
+        return ""
+
+    def query_raw(self, instrument_id, command):
+        self.raw_calls.append(command)
+        block = self._blocks[self._source]
+        if isinstance(block, list):
+            return block.pop(0)
+        return block
+
+
+def _make_block_profile(with_source_command=True):
+    """DSOX-shaped profile: waveform_source + waveform_preamble +
+    waveform_data (returns: type binary / format ieee_block)."""
+    from galois_edge.profile_schema import (
+        BinaryConfig, CommandConfig, IdentityConfig, InstrumentMetadata,
+        InstrumentProfile, ParameterConfig, PreambleMap, ReturnConfig,
+        SettingsConfig,
+    )
+
+    binary = BinaryConfig(
+        dtype="int16",
+        byte_order="little",
+        preamble_command="waveform_preamble",
+        preamble_map=PreambleMap(
+            x_increment=4, x_start=5, x_reference=6,
+            y_scale=7, y_offset=8, y_reference=9,
+        ),
+        source_command="waveform_source" if with_source_command else None,
+    )
+    profile = InstrumentProfile(
+        instrument=InstrumentMetadata(
+            manufacturer="Keysight", model="DSOX-LIKE",
+            instrument_class="oscilloscope",
+        ),
+        identity=IdentityConfig(pattern="KEYSIGHT.*DSOX"),
+        settings=SettingsConfig(),
+        commands={
+            "waveform_source": CommandConfig(
+                getter=":WAVeform:SOURce?",
+                setter=":WAVeform:SOURce {source}",
+                type="property",
+                params={"source": ParameterConfig(type="enum")},
+            ),
+            "waveform_preamble": CommandConfig(
+                scpi=":WAVeform:PREamble?",
+                type="query",
+            ),
+            "waveform_data": CommandConfig(
+                scpi=":WAVeform:DATA?",
+                type="query",
+                streamable=True,
+                returns=ReturnConfig(
+                    type="binary",
+                    format="ieee_block",
+                    unit="V",
+                    x_unit="s",
+                    x_name="Time",
+                    binary=binary,
+                ),
+            ),
+        },
+    )
+    return profile
+
+
+def _make_block_servicer(manager, with_source_command=True):
+    """Servicer wired with a REAL CommandHandler + CapabilityManager so
+    the test exercises the full gRPC → handler → query_raw pipeline."""
+    from galois_edge.capability_manager import CapabilityManager
+    from galois_edge.command_handler import CommandHandler
+
+    cap_mgr = CapabilityManager()
+    cap_mgr.register_instrument(
+        instrument_id=SCOPE_ADDR,
+        visa_address=SCOPE_ADDR,
+        idn_response="KEYSIGHT,DSOX-LIKE,SN,v1",
+        profile=_make_block_profile(with_source_command),
+    )
+    return _make_servicer(
+        manager,
+        CommandHandler(manager),
+        mock_capability_manager=cap_mgr,
+    )
+
+
+class _CancelAfter:
+    """context.cancelled() stub: False for `ticks` polls, then True."""
+
+    def __init__(self, ticks):
+        self._left = ticks
+
+    def __call__(self):
+        self._left -= 1
+        return self._left < 0
+
+
+def _make_stream_context(ticks):
+    ctx = MagicMock()
+    ctx.cancelled = _CancelAfter(ticks)
+    return ctx
+
+
+def _block_request(command_id="blk-001", parameters=None):
+    return edge_pb2.ExecuteCommandRequest(
+        command_id=command_id,
+        instrument_id=SCOPE_ADDR,
+        command_name="waveform_data",
+        is_query=True,
+        parameters=parameters or {},
+    )
+
+
+def _block_stream_request(parameters=None, interval_ms=10):
+    return edge_pb2.StreamMeasurementRequest(
+        stream_id="blk-stream-1",
+        instrument_id=SCOPE_ADDR,
+        command_name="waveform_data",
+        interval_ms=interval_ms,
+        parameters=parameters or {},
+    )
+
+
+def _assert_ch1_vector(vd, samples=CH1_SAMPLES):
+    """Assert the §2.4/§3.0 population for a CH1-preamble vector."""
+    assert vd.y_dtype == "int16"
+    assert vd.y_length == len(samples)
+    assert struct.unpack(f"<{vd.y_length}h", vd.y_data) == tuple(samples)
+    assert vd.y_scale != 0.0                       # §3.0 — never 0
+    assert abs(vd.y_scale - CH1_Y_SCALE) < 1e-12
+    assert abs(vd.y_offset - CH1_Y_OFFSET) < 1e-12
+    assert abs(vd.x_start - CH1_X_START) < 1e-12   # reference-composed
+    assert abs(vd.x_increment - 2.0e-06) < 1e-18
+    assert vd.x_unit == "s"
+    assert vd.y_unit == "V"
+    assert vd.x_name == "Time"
+
+
+class TestExecuteCommandIEEEBlockPath:
+    """One-shot ExecuteCommand on returns.type==binary (doc §2.1/§2.2)."""
+
+    @pytest.mark.asyncio
+    async def test_one_shot_returns_composed_vector(self):
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": _ieee_block(CH1_SAMPLES)},
+        )
+        servicer = _make_block_servicer(mgr)
+
+        response = await servicer.ExecuteCommand(
+            _block_request(), _make_context(),
+        )
+
+        assert response.success is True, response.error_message
+        _assert_ch1_vector(response.vector_data)
+
+    @pytest.mark.asyncio
+    async def test_binary_never_touches_text_query(self):
+        """The data SCPI must reach query_raw() only — the text query()
+        path corrupts binary and stops at 0x0A payload bytes (§2.1)."""
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": _ieee_block(CH1_SAMPLES)},
+        )
+        servicer = _make_block_servicer(mgr)
+
+        response = await servicer.ExecuteCommand(
+            _block_request(), _make_context(),
+        )
+
+        assert response.success is True
+        assert ":WAVeform:DATA?" not in mgr.query_calls
+        assert mgr.raw_calls == [":WAVeform:DATA?"]
+        # The preamble is a text CSV — it stays on the text path.
+        assert ":WAVeform:PREamble?" in mgr.query_calls
+
+    @pytest.mark.asyncio
+    async def test_binary_never_routed_to_execute_command(
+        self, mock_instrument_manager,
+    ):
+        """Handler-level guard: the servicer must dispatch ieee_block
+        commands to execute_binary_block_query, never execute_command."""
+        from galois_edge.capability_manager import CapabilityManager
+
+        cap_mgr = CapabilityManager()
+        cap_mgr.register_instrument(
+            instrument_id=SCOPE_ADDR,
+            visa_address=SCOPE_ADDR,
+            idn_response="KEYSIGHT,DSOX-LIKE,SN,v1",
+            profile=_make_block_profile(),
+        )
+        handler_mock = MagicMock()
+        handler_mock.execute_binary_block_query.return_value = {
+            "success": True,
+            "response": "<binary block: 4 int16 samples>",
+            "error": "",
+            "execution_time_ms": 1.0,
+            "block": {
+                "y_data": struct.pack("<4h", *CH1_SAMPLES),
+                "y_dtype": "int16",
+                "y_length": 4,
+                "x_start": CH1_X_START,
+                "x_increment": 2.0e-06,
+                "y_scale": CH1_Y_SCALE,
+                "y_offset": CH1_Y_OFFSET,
+            },
+        }
+        servicer = _make_servicer(
+            mock_instrument_manager, handler_mock,
+            mock_capability_manager=cap_mgr,
+        )
+
+        response = await servicer.ExecuteCommand(
+            _block_request(), _make_context(),
+        )
+
+        assert response.success is True
+        handler_mock.execute_command.assert_not_called()
+        handler_mock.execute_binary_query.assert_not_called()
+        handler_mock.execute_binary_block_query.assert_called_once()
+        kwargs = handler_mock.execute_binary_block_query.call_args.kwargs
+        assert kwargs["scpi_cmd"] == ":WAVeform:DATA?"
+        assert kwargs["binary_config"].dtype == "int16"
+        assert kwargs["preamble_scpi"] == ":WAVeform:PREamble?"
+
+    @pytest.mark.asyncio
+    async def test_malformed_block_returns_error_response(self):
+        """Truncated payload → success:false + message, no crash, no
+        partial vector (§2.2 rule 4)."""
+        truncated = b"#18" + struct.pack("<2h", 1, 2)  # declares 8, sends 4
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": truncated},
+        )
+        servicer = _make_block_servicer(mgr)
+
+        response = await servicer.ExecuteCommand(
+            _block_request(), _make_context(),
+        )
+
+        assert response.success is False
+        assert "Malformed binary block" in response.error_message
+        assert response.vector_data.y_length == 0
+        assert len(response.vector_data.y_data) == 0
+
+    @pytest.mark.asyncio
+    async def test_bad_header_returns_error_response(self):
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": b"not a block"},
+        )
+        servicer = _make_block_servicer(mgr)
+
+        response = await servicer.ExecuteCommand(
+            _block_request(), _make_context(),
+        )
+
+        assert response.success is False
+        assert "Malformed binary block" in response.error_message
+
+    @pytest.mark.asyncio
+    async def test_one_shot_multichannel_rejected(self):
+        """vectors[] frames exist only on MeasurementDataPoint — a
+        multi-channel one-shot fails loudly instead of dropping data."""
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE, "CHANnel2": CH2_PREAMBLE},
+            {
+                "CHANnel1": _ieee_block(CH1_SAMPLES),
+                "CHANnel2": _ieee_block(CH2_SAMPLES),
+            },
+        )
+        servicer = _make_block_servicer(mgr)
+
+        response = await servicer.ExecuteCommand(
+            _block_request(
+                parameters={"channels": "CHANnel1,CHANnel2"},
+            ),
+            _make_context(),
+        )
+
+        assert response.success is False
+        assert "stream-only" in response.error_message
+        assert mgr.raw_calls == []  # nothing was read
+
+
+class TestStreamMeasurementIEEEBlockPath:
+    """StreamMeasurement on returns.type==binary (doc §2.2, §3.5, §3.6)."""
+
+    @pytest.mark.asyncio
+    async def test_stream_points_carry_vector_data(self):
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": _ieee_block(CH1_SAMPLES)},
+        )
+        servicer = _make_block_servicer(mgr)
+
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                _block_stream_request(), _make_stream_context(2),
+            )
+        ]
+
+        assert [p.status for p in points] == ["ok", "ok", "stopped"]
+        assert [p.seq for p in points] == [1, 2, 3]
+        for p in points[:-1]:
+            _assert_ch1_vector(p.vector_data)
+            # Single-channel: vectors[] stays empty (back-compat §3.5).
+            assert len(p.vectors) == 0
+        # Binary never touched the text path mid-stream either.
+        assert ":WAVeform:DATA?" not in mgr.query_calls
+        assert mgr.raw_calls == [":WAVeform:DATA?"] * 2
+
+    @pytest.mark.asyncio
+    async def test_malformed_block_mid_stream_is_sequenced_error(self):
+        """good → malformed → good: the malformed read yields a
+        sequenced status:"error" point and the stream continues."""
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {
+                "CHANnel1": [
+                    _ieee_block(CH1_SAMPLES),
+                    b"#18" + b"\x01\x02",       # declared 8, received 2
+                    _ieee_block(CH1_SAMPLES),
+                ],
+            },
+        )
+        servicer = _make_block_servicer(mgr)
+
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                _block_stream_request(), _make_stream_context(3),
+            )
+        ]
+
+        assert [p.status for p in points] == ["ok", "error", "ok", "stopped"]
+        # Errors are data: seq is contiguous straight through them (§3.6).
+        assert [p.seq for p in points] == [1, 2, 3, 4]
+        assert "Malformed binary block" in points[1].error
+        assert points[1].vector_data.y_length == 0
+        _assert_ch1_vector(points[2].vector_data)
+
+    @pytest.mark.asyncio
+    async def test_multichannel_frame_vectors_and_backcompat(self):
+        """2-channel command → ONE point per tick with vectors[2]:
+        distinct channel labels, distinct per-channel scaling from
+        distinct preambles, and vector_data == channel 1 (§3.5)."""
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE, "CHANnel2": CH2_PREAMBLE},
+            {
+                "CHANnel1": _ieee_block(CH1_SAMPLES),
+                "CHANnel2": _ieee_block(CH2_SAMPLES),
+            },
+        )
+        servicer = _make_block_servicer(mgr)
+
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                _block_stream_request(
+                    parameters={"channels": "CHANnel1,CHANnel2"},
+                ),
+                _make_stream_context(1),
+            )
+        ]
+
+        assert [p.status for p in points] == ["ok", "stopped"]
+        point = points[0]
+        assert point.seq == 1
+        assert len(point.vectors) == 2
+
+        ch1, ch2 = point.vectors
+        assert ch1.channel == "CHANnel1"
+        assert ch2.channel == "CHANnel2"
+        # Distinct per-channel scaling from distinct preambles — never
+        # one shared preamble (§3.5).
+        assert abs(ch1.y_scale - CH1_Y_SCALE) < 1e-12
+        assert abs(ch1.y_offset - CH1_Y_OFFSET) < 1e-12
+        assert abs(ch2.y_scale - CH2_Y_SCALE) < 1e-12
+        assert abs(ch2.y_offset - CH2_Y_OFFSET) < 1e-12
+        assert struct.unpack("<4h", ch2.y_data) == tuple(CH2_SAMPLES)
+
+        # Back-compat producer rule: field 8 carries the FIRST channel.
+        assert point.vector_data == ch1
+
+        # The daemon actually selected each source before each read.
+        assert ":WAVeform:SOURce CHANnel1" in mgr.writes
+        assert ":WAVeform:SOURce CHANnel2" in mgr.writes
+        # And the preamble was re-read once per channel.
+        assert mgr.query_calls.count(":WAVeform:PREamble?") == 2
+
+    @pytest.mark.asyncio
+    async def test_multichannel_without_source_command_errors(self):
+        """channels with no binary.source_command → a sequenced error
+        (per-channel reads are impossible without a source selector)."""
+        mgr = _BlockInstrumentManager(
+            {"CHANnel1": CH1_PREAMBLE},
+            {"CHANnel1": _ieee_block(CH1_SAMPLES)},
+        )
+        servicer = _make_block_servicer(mgr, with_source_command=False)
+
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                _block_stream_request(
+                    parameters={"channels": "CHANnel1,CHANnel2"},
+                ),
+                _make_stream_context(2),
+            )
+        ]
+
+        assert len(points) == 1
+        assert points[0].status == "error"
+        assert points[0].seq == 1
+        assert "source_command" in points[0].error
+
+
+# ---------------------------------------------------------------------------
+# Waveform-assembly path — §2.4 reference-point composition (live paths)
+# ---------------------------------------------------------------------------
+
+
+class _WaveformAssemblyHandler:
+    """CommandHandler stub for the legacy waveform_assembly pipeline.
+
+    Tracks the selected source so the preamble query returns the
+    per-channel preamble — distinct vertical scaling per channel.
+    """
+
+    def __init__(self, preambles, data_samples):
+        self._preambles = dict(preambles)
+        self._data = dict(data_samples)
+        self._source = next(iter(self._preambles))
+        self.commands = []
+
+    def execute_command(self, scpi_cmd, instrument_id, timeout_ms=5000,
+                        command_id=None, force_query=False):
+        self.commands.append(scpi_cmd)
+        if scpi_cmd.startswith(":WAVeform:SOURce"):
+            self._source = scpi_cmd.split()[-1]
+        if scpi_cmd == ":WAVeform:PREamble?":
+            return {
+                "success": True,
+                "response": self._preambles[self._source],
+                "error": "",
+                "execution_time_ms": 1.0,
+            }
+        return {
+            "success": True, "response": "OK", "error": "",
+            "execution_time_ms": 1.0,
+        }
+
+    def execute_binary_query(self, scpi_cmd, instrument_id, datatype='B',
+                             is_big_endian=False, timeout_ms=5000):
+        return {
+            "success": True,
+            "data": list(self._data[self._source]),
+            "error": "",
+            "execution_time_ms": 1.0,
+        }
+
+
+def _make_wf_assembly_servicer(handler, streamable=True):
+    from galois_edge.capability_manager import CapabilityManager
+    from galois_edge.profile_schema import (
+        CommandConfig, IdentityConfig, InstrumentMetadata,
+        InstrumentProfile, ReturnConfig, SettingsConfig,
+    )
+    from galois_edge.waveform_assembly import WaveformAssemblyConfig
+
+    profile = InstrumentProfile(
+        instrument=InstrumentMetadata(
+            manufacturer="TestCo", model="WfScope",
+            instrument_class="oscilloscope",
+        ),
+        identity=IdentityConfig(pattern="TESTCO.*WFSCOPE"),
+        settings=SettingsConfig(),
+        commands={
+            "get_waveform": CommandConfig(
+                scpi=":WAVeform:DATA?",
+                type="query",
+                streamable=streamable,
+                returns=ReturnConfig(type="float", unit="V"),
+                waveform_assembly=WaveformAssemblyConfig(data_format="byte"),
+            ),
+        },
+    )
+    cap_mgr = CapabilityManager()
+    cap_mgr.register_instrument(
+        instrument_id=SCOPE_ADDR,
+        visa_address=SCOPE_ADDR,
+        idn_response="TESTCO WFSCOPE SN v1",
+        profile=profile,
+    )
+    return _make_servicer(
+        MagicMock(), handler, mock_capability_manager=cap_mgr,
+    )
+
+
+class TestWaveformAssemblyReferenceComposition:
+
+    @pytest.mark.asyncio
+    async def test_one_shot_x_start_includes_reference_term(self):
+        """x_start = xorigin - xreference*xincrement (§2.4): with
+        xreference=100 in the preamble, emitting bare xorigin would be
+        caught here."""
+        raw_counts = [0, 128, 255]
+        handler = _WaveformAssemblyHandler(
+            {"CHANnel1": CH1_PREAMBLE}, {"CHANnel1": raw_counts},
+        )
+        servicer = _make_wf_assembly_servicer(handler)
+
+        request = edge_pb2.ExecuteCommandRequest(
+            command_id="wf-001",
+            instrument_id=SCOPE_ADDR,
+            command_name="get_waveform",
+            is_query=True,
+        )
+        response = await servicer.ExecuteCommand(request, _make_context())
+
+        assert response.success is True, response.error_message
+        vd = response.vector_data
+        assert abs(vd.x_start - CH1_X_START) < 1e-12
+        assert abs(vd.x_increment - 2.0e-06) < 1e-18
+        # Pre-scaled float64 samples with the y side composed too:
+        # volts = (raw - yref)*yinc + yorig = raw*y_scale + y_offset.
+        assert vd.y_scale == 1.0   # explicit, never the proto3 zero
+        assert vd.y_offset == 0.0
+        volts = struct.unpack(f"<{vd.y_length}d", vd.y_data)
+        for raw, got in zip(raw_counts, volts):
+            expected = raw * CH1_Y_SCALE + CH1_Y_OFFSET
+            assert abs(got - expected) < 1e-12
+
+    @pytest.mark.asyncio
+    async def test_stream_x_start_includes_reference_term(self):
+        handler = _WaveformAssemblyHandler(
+            {"CHANnel1": CH1_PREAMBLE}, {"CHANnel1": [0, 1, 2]},
+        )
+        servicer = _make_wf_assembly_servicer(handler)
+
+        request = edge_pb2.StreamMeasurementRequest(
+            stream_id="wf-stream-1",
+            instrument_id=SCOPE_ADDR,
+            command_name="get_waveform",
+            interval_ms=10,
+        )
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                request, _make_stream_context(1),
+            )
+        ]
+
+        assert [p.status for p in points] == ["ok", "stopped"]
+        vd = points[0].vector_data
+        assert abs(vd.x_start - CH1_X_START) < 1e-12
+        assert vd.y_scale == 1.0
+        # Single-channel waveform assembly keeps vectors[] empty.
+        assert len(points[0].vectors) == 0
+
+    @pytest.mark.asyncio
+    async def test_multichannel_waveform_assembly_frame(self):
+        """The waveform_assembly stream path also produces §3.5 frames:
+        one point, vectors[2] with per-channel preambles, field 8 =
+        channel 1."""
+        handler = _WaveformAssemblyHandler(
+            {"CHANnel1": CH1_PREAMBLE, "CHANnel2": CH2_PREAMBLE},
+            {"CHANnel1": [0, 128], "CHANnel2": [10, 20]},
+        )
+        servicer = _make_wf_assembly_servicer(handler)
+
+        request = edge_pb2.StreamMeasurementRequest(
+            stream_id="wf-stream-2",
+            instrument_id=SCOPE_ADDR,
+            command_name="get_waveform",
+            interval_ms=10,
+            parameters={"channels": "CHANnel1,CHANnel2"},
+        )
+        points = [
+            p async for p in servicer.StreamMeasurement(
+                request, _make_stream_context(1),
+            )
+        ]
+
+        assert [p.status for p in points] == ["ok", "stopped"]
+        point = points[0]
+        assert point.seq == 1
+        assert len(point.vectors) == 2
+        ch1, ch2 = point.vectors
+        assert ch1.channel == "CHANnel1"
+        assert ch2.channel == "CHANnel2"
+        # Distinct per-channel preambles → distinct physical values.
+        ch1_volts = struct.unpack(f"<{ch1.y_length}d", ch1.y_data)
+        ch2_volts = struct.unpack(f"<{ch2.y_length}d", ch2.y_data)
+        assert abs(ch1_volts[0] - (0 * CH1_Y_SCALE + CH1_Y_OFFSET)) < 1e-12
+        assert abs(ch2_volts[0] - (10 * CH2_Y_SCALE + CH2_Y_OFFSET)) < 1e-12
+        # Back-compat: field 8 carries the first channel.
+        assert point.vector_data == ch1
+        # Both sources were actually selected.
+        assert ":WAVeform:SOURce CHANnel1" in handler.commands
+        assert ":WAVeform:SOURce CHANnel2" in handler.commands

@@ -48,8 +48,30 @@ from .scalar_chunker import (
     clamp_sample_period,
 )
 from .sdk_executor import SDKExecutor
+from .waveform_assembly import (
+    build_vector_data,
+    compose_block_scaling,
+    parse_preamble,
+    populate_point_vectors,
+    vector_data_from_block,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_channels_param(params: Optional[Dict[str, Any]]) -> list:
+    """Parse the additive multi-channel ``channels`` parameter (doc §3.5).
+
+    Request parameters are a ``map<string,string>``, so multi-channel
+    acquisition is expressed as a comma-separated list, e.g.
+    ``channels: "CHANnel1,CHANnel2"``.  Absent/empty → ``[]`` (the
+    single-channel behavior, byte-identical to a request without the
+    parameter).
+    """
+    if not params:
+        return []
+    raw = str(params.get("channels", "") or "")
+    return [c.strip() for c in raw.split(",") if c.strip()]
 
 # ---------------------------------------------------------------------------
 # ProxySDKCall module allowlist — only these prefixes may be dynamically
@@ -790,125 +812,33 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         This handles the full SCPI oscilloscope waveform acquisition
         pipeline: set source channel, set format, query preamble, query
         binary data, decode, scale, and package as VectorData.
+
+        Delegates to ``_execute_waveform_assembly_for_stream`` so the
+        one-shot and streaming paths share one (reference-composed,
+        doc §2.4) scaling pipeline; failures become ``success:false``
+        responses (doc §2.2 rule 4), never a crash.
         """
-        from .waveform_assembly import (
-            WaveformAssemblyConfig,
-            assemble_waveform_vector_data,
-        )
-        import struct as _struct
+        wf_config = cmd_config.waveform_assembly
+        scpi_label = f"{wf_config.preamble_query} + {wf_config.data_query}"
 
-        wf_config: WaveformAssemblyConfig = cmd_config.waveform_assembly
-        channel = "CHANnel1"
-        if params and "channel" in params:
-            channel = params["channel"]
-
-        # Step 1: Set waveform source channel
-        source_cmd = wf_config.source_command.format(channel=channel)
-        await loop.run_in_executor(
-            self._executor,
-            lambda: self._handler.execute_command(
-                scpi_cmd=source_cmd,
+        try:
+            vector_data = await self._execute_waveform_assembly_for_stream(
+                loop=loop,
                 instrument_id=instrument_id,
                 timeout_ms=timeout_ms,
-            ),
-        )
-
-        # Step 2: Set data format
-        format_cmd = wf_config.format_command
-        await loop.run_in_executor(
-            self._executor,
-            lambda: self._handler.execute_command(
-                scpi_cmd=format_cmd,
-                instrument_id=instrument_id,
-                timeout_ms=timeout_ms,
-            ),
-        )
-
-        # Step 3: Query the preamble
-        preamble_result = await loop.run_in_executor(
-            self._executor,
-            lambda: self._handler.execute_command(
-                scpi_cmd=wf_config.preamble_query,
-                instrument_id=instrument_id,
-                timeout_ms=timeout_ms,
-                force_query=True,
-            ),
-        )
-
-        if not preamble_result["success"]:
+                cmd_config=cmd_config,
+                params=params,
+            )
+        except Exception as exc:
             elapsed_ms = int((time.time() - start) * 1000)
             return edge_pb2.ExecuteCommandResponse(
                 command_id=command_id,
                 success=False,
                 data="",
-                error_message=f"Preamble query failed: {preamble_result.get('error', '')}",
+                error_message=str(exc),
                 execution_time_ms=elapsed_ms,
-                scpi_command=wf_config.preamble_query,
+                scpi_command=scpi_label,
             )
-
-        preamble_str = preamble_result["response"].strip()
-
-        # Step 4: Query binary waveform data
-        # Determine datatype from config
-        if wf_config.data_format == "word":
-            datatype = 'h'
-        elif wf_config.data_format == "float32":
-            datatype = 'f'
-        else:
-            datatype = 'B'  # unsigned byte
-
-        data_result = await loop.run_in_executor(
-            self._executor,
-            lambda: self._handler.execute_binary_query(
-                scpi_cmd=wf_config.data_query,
-                instrument_id=instrument_id,
-                datatype=datatype,
-                is_big_endian=wf_config.big_endian,
-                timeout_ms=timeout_ms,
-            ),
-        )
-
-        if not data_result["success"]:
-            elapsed_ms = int((time.time() - start) * 1000)
-            return edge_pb2.ExecuteCommandResponse(
-                command_id=command_id,
-                success=False,
-                data="",
-                error_message=f"Waveform data query failed: {data_result.get('error', '')}",
-                execution_time_ms=elapsed_ms,
-                scpi_command=wf_config.data_query,
-            )
-
-        # Step 5: Decode and scale using the preamble
-        # The binary query already decoded the IEEE block for us via
-        # query_binary_values, so data_result["data"] is a list of ints/floats.
-        # We use the preamble to apply scaling.
-        from .waveform_assembly import parse_preamble
-        preamble = parse_preamble(preamble_str)
-
-        raw_samples = data_result["data"]
-
-        # Apply scaling: y = (raw - yref) * yinc + yorig
-        voltages = [
-            (sample - preamble.yreference) * preamble.yincrement + preamble.yorigin
-            for sample in raw_samples
-        ]
-
-        # Pack as float64 for the proto
-        y_data = _struct.pack(f'<{len(voltages)}d', *voltages)
-
-        vector_data = edge_pb2.VectorData(
-            y_data=y_data,
-            y_dtype="float64",
-            y_length=len(voltages),
-            x_start=preamble.xorigin,
-            x_increment=preamble.xincrement,
-            x_unit=wf_config.x_unit,
-            y_unit=wf_config.y_unit,
-            x_name="Time",
-            y_scale=1.0,
-            y_offset=0.0,
-        )
 
         elapsed_ms = int((time.time() - start) * 1000)
         return edge_pb2.ExecuteCommandResponse(
@@ -918,7 +848,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             vector_data=vector_data,
             error_message="",
             execution_time_ms=elapsed_ms,
-            scpi_command=f"{wf_config.preamble_query} + {wf_config.data_query}",
+            scpi_command=scpi_label,
         )
 
     async def _execute_waveform_assembly_for_stream(
@@ -928,19 +858,18 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         timeout_ms: int,
         cmd_config: Any,
         params: Optional[Dict[str, Any]],
+        channel_label: str = "",
     ) -> edge_pb2.VectorData:
         """Execute waveform assembly and return just the VectorData.
 
         Used by StreamMeasurement to produce VectorData for each poll
-        iteration.  Raises on failure.
+        iteration (one call per channel for multi-channel frames — the
+        preamble is re-read after every source switch, doc §3.5) and by
+        ``_execute_waveform_assembly`` for one-shots.  Raises on failure.
         """
-        from .waveform_assembly import (
-            WaveformAssemblyConfig,
-            parse_preamble,
-        )
         import struct as _struct
 
-        wf_config: WaveformAssemblyConfig = cmd_config.waveform_assembly
+        wf_config = cmd_config.waveform_assembly
         channel = "CHANnel1"
         if params and "channel" in params:
             channel = params["channel"]
@@ -1007,25 +936,264 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 f"Waveform data query failed: {data_result.get('error', '')}"
             )
 
+        # Reference-point composition (doc §2.4) via the same helper the
+        # byte-safe block path uses — never hand-rolled arithmetic:
+        #   x_start  = xorigin - xreference * xincrement
+        #   y_offset = yorigin - yreference * yincrement
+        scaling = compose_block_scaling({
+            "x_start": preamble.xorigin,
+            "x_increment": preamble.xincrement,
+            "x_reference": preamble.xreference,
+            "y_scale": preamble.yincrement,
+            "y_offset": preamble.yorigin,
+            "y_reference": preamble.yreference,
+        })
+
         raw_samples = data_result["data"]
         voltages = [
-            (sample - preamble.yreference) * preamble.yincrement + preamble.yorigin
+            sample * scaling["y_scale"] + scaling["y_offset"]
             for sample in raw_samples
         ]
 
         y_data = _struct.pack(f'<{len(voltages)}d', *voltages)
 
-        return edge_pb2.VectorData(
+        return build_vector_data(
             y_data=y_data,
             y_dtype="float64",
-            y_length=len(voltages),
-            x_start=preamble.xorigin,
-            x_increment=preamble.xincrement,
+            x_start=scaling["x_start"],
+            x_increment=scaling["x_increment"],
             x_unit=wf_config.x_unit,
             y_unit=wf_config.y_unit,
             x_name="Time",
+            # Samples are pre-scaled physical values: y_scale is
+            # EXPLICITLY 1.0 (never the proto3 zero-default — doc §3.0).
             y_scale=1.0,
             y_offset=0.0,
+            channel=channel_label,
+        )
+
+    # ------------------------------------------------------------------
+    # IEEE 488.2 definite-length block path (returns.type == binary)
+    # ------------------------------------------------------------------
+
+    async def _read_ieee_block_vector(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        dispatch: str,
+        instrument_id: str,
+        timeout_ms: int,
+        returns_cfg: Any,
+        binary_config: Any,
+        preamble_scpi: Optional[str],
+        channel: str,
+        command_id: Optional[str] = None,
+    ) -> tuple:
+        """Run one byte-safe block read and build its ``VectorData``.
+
+        Routes through ``CommandHandler.execute_binary_block_query`` →
+        ``InstrumentManager.query_raw`` — binary never touches the text
+        ``query()``/``execute_command`` path (doc §2.1).
+
+        Returns:
+            ``(vector, None)`` on success, ``(None, error_message)`` on
+            any failure (malformed block, preamble error, transport
+            error) — never raises for a bad read (doc §2.2 rule 4).
+        """
+        result = await loop.run_in_executor(
+            self._executor,
+            lambda: self._handler.execute_binary_block_query(
+                scpi_cmd=dispatch,
+                instrument_id=instrument_id,
+                binary_config=binary_config,
+                preamble_scpi=preamble_scpi,
+                timeout_ms=timeout_ms,
+                command_id=command_id,
+            ),
+        )
+        if not result["success"]:
+            return None, result.get("error") or "Binary block query failed"
+
+        try:
+            vector = vector_data_from_block(
+                result["block"],
+                x_unit=returns_cfg.x_unit or "s",
+                y_unit=returns_cfg.unit or "V",
+                x_name=returns_cfg.x_name or "Time",
+                channel=channel,
+            )
+        except ValueError as exc:
+            # Never emit a partially valid vector (doc §2.2 rule 4).
+            return None, str(exc)
+        return vector, None
+
+    async def _read_ieee_block_frame(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        dispatch: str,
+        instrument_id: str,
+        timeout_ms: int,
+        returns_cfg: Any,
+        binary_config: Any,
+        preamble_scpi: Optional[str],
+        channels: list,
+        source_scpi: Dict[str, str],
+        fallback_channel: str,
+    ) -> tuple:
+        """Read one tick's worth of channels for an ``ieee_block`` command.
+
+        For multi-channel frames (doc §3.5) each channel is selected via
+        its resolved ``binary.source_command`` SCPI, then the preamble +
+        block are read for THAT channel — per-channel preambles, never a
+        shared one. With no ``channels`` parameter this is a single
+        read, byte-identical to the single-channel behavior.
+
+        Returns:
+            ``(vectors, None)`` on success, ``([], error_message)`` on
+            the first failed channel.
+        """
+        vectors = []
+        for ch in (channels or [None]):
+            if ch is not None and source_scpi.get(ch):
+                scpi = source_scpi[ch]
+                src_result = await loop.run_in_executor(
+                    self._executor,
+                    lambda s=scpi: self._handler.execute_command(
+                        scpi_cmd=s,
+                        instrument_id=instrument_id,
+                        timeout_ms=timeout_ms,
+                    ),
+                )
+                if not src_result["success"]:
+                    return [], (
+                        f"Source select '{scpi}' failed: "
+                        f"{src_result.get('error', '')}"
+                    )
+            vector, error = await self._read_ieee_block_vector(
+                loop=loop,
+                dispatch=dispatch,
+                instrument_id=instrument_id,
+                timeout_ms=timeout_ms,
+                returns_cfg=returns_cfg,
+                binary_config=binary_config,
+                preamble_scpi=preamble_scpi,
+                channel=ch if ch is not None else fallback_channel,
+            )
+            if error is not None:
+                return [], error
+            vectors.append(vector)
+        return vectors, None
+
+    async def _execute_ieee_block_command(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        dispatch: str,
+        instrument_id: str,
+        command_id: str,
+        timeout_ms: int,
+        cmd_config: Any,
+        params: Optional[Dict[str, Any]],
+        caps: Any,
+        start: float,
+    ) -> edge_pb2.ExecuteCommandResponse:
+        """One-shot ``returns: {type: binary, format: ieee_block}`` command.
+
+        Malformed blocks produce ``success:false`` + ``error_message``
+        (doc §2.2 rule 4); the response carries ``vector_data`` with the
+        §2.4 reference-point composition applied by the command handler.
+        """
+        returns_cfg = cmd_config.returns
+        binary_config = returns_cfg.effective_binary
+        profile = caps.profile if caps else None
+
+        channels = _parse_channels_param(params)
+        if len(channels) > 1:
+            # ExecuteCommandResponse carries a single vector_data (field
+            # 7); multi-channel frames (vectors[], doc §3.5) exist only
+            # on MeasurementDataPoint. Fail loudly instead of silently
+            # dropping channels.
+            elapsed_ms = int((time.time() - start) * 1000)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=(
+                    "multi-channel acquisition ('channels' parameter) is "
+                    "stream-only: ExecuteCommandResponse carries a single "
+                    "vector_data — use StreamMeasurement for vectors[] "
+                    "frames"
+                ),
+                execution_time_ms=elapsed_ms,
+                scpi_command=dispatch,
+            )
+
+        channel = ""
+        if params:
+            channel = str(params.get("channel") or params.get("source") or "")
+
+        preamble_scpi = None
+        if binary_config.preamble_command and profile is not None:
+            preamble_scpi = profile.resolve_scpi_ref(
+                binary_config.preamble_command, params
+            )
+
+        if channels:
+            channel = channels[0]
+            if binary_config.source_command and profile is not None:
+                source_scpi = profile.resolve_source_ref(
+                    binary_config.source_command, channel
+                )
+                src_result = await loop.run_in_executor(
+                    self._executor,
+                    lambda: self._handler.execute_command(
+                        scpi_cmd=source_scpi,
+                        instrument_id=instrument_id,
+                        timeout_ms=timeout_ms,
+                    ),
+                )
+                if not src_result["success"]:
+                    elapsed_ms = int((time.time() - start) * 1000)
+                    return edge_pb2.ExecuteCommandResponse(
+                        command_id=command_id,
+                        success=False,
+                        data="",
+                        error_message=(
+                            f"Source select '{source_scpi}' failed: "
+                            f"{src_result.get('error', '')}"
+                        ),
+                        execution_time_ms=elapsed_ms,
+                        scpi_command=dispatch,
+                    )
+
+        vector, error = await self._read_ieee_block_vector(
+            loop=loop,
+            dispatch=dispatch,
+            instrument_id=instrument_id,
+            timeout_ms=timeout_ms,
+            returns_cfg=returns_cfg,
+            binary_config=binary_config,
+            preamble_scpi=preamble_scpi,
+            channel=channel,
+            command_id=command_id,
+        )
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        if error is not None:
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=error,
+                execution_time_ms=elapsed_ms,
+                scpi_command=dispatch,
+            )
+        return edge_pb2.ExecuteCommandResponse(
+            command_id=command_id,
+            success=True,
+            data="",
+            vector_data=vector,
+            error_message="",
+            execution_time_ms=elapsed_ms,
+            scpi_command=dispatch,
         )
 
     def _apply_response_processing(
@@ -1209,6 +1377,28 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                         timeout_ms=timeout_ms,
                         cmd_config=cmd_config,
                         params=params,
+                        start=start,
+                    )
+
+                # --- IEEE 488.2 definite-length block path ---
+                # returns.type == binary must go through the raw byte
+                # path: the text query() path corrupts arbitrary bytes
+                # at decode and terminates early on any 0x0A payload
+                # byte (doc §2.1).
+                if (
+                    cmd_config
+                    and cmd_config.returns
+                    and cmd_config.returns.is_ieee_block
+                ):
+                    return await self._execute_ieee_block_command(
+                        loop=loop,
+                        dispatch=dispatch,
+                        instrument_id=instrument_id,
+                        command_id=command_id,
+                        timeout_ms=timeout_ms,
+                        cmd_config=cmd_config,
+                        params=params,
+                        caps=caps,
                         start=start,
                     )
 
@@ -1604,6 +1794,64 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         interval_s = interval_ms / 1000.0
         loop = asyncio.get_running_loop()
 
+        # Multi-channel frames (doc §3.5): the additive `channels`
+        # parameter requests one frame of N per-channel vectors per tick.
+        stream_channels = _parse_channels_param(stream_params)
+
+        # --- IEEE 488.2 block commands (returns.type == binary) take
+        # the byte-safe path: query_raw → decode_ieee_block, never the
+        # text query() path (doc §2.1).
+        is_ieee_block = bool(
+            not is_sdk
+            and not is_waveform_assembly
+            and cmd.returns
+            and cmd.returns.is_ieee_block
+        )
+        block_binary_config = None
+        block_preamble_scpi: Optional[str] = None
+        block_source_scpi: Dict[str, str] = {}
+        block_fallback_channel = ""
+        if is_ieee_block:
+            block_binary_config = cmd.returns.effective_binary
+            profile = caps.profile
+            if block_binary_config.preamble_command and profile is not None:
+                block_preamble_scpi = profile.resolve_scpi_ref(
+                    block_binary_config.preamble_command, stream_params
+                )
+            if stream_params:
+                block_fallback_channel = str(
+                    stream_params.get("channel")
+                    or stream_params.get("source")
+                    or ""
+                )
+            if stream_channels:
+                if (
+                    len(stream_channels) > 1
+                    and not block_binary_config.source_command
+                ):
+                    # Without a per-channel source selector the daemon
+                    # cannot read distinct channels (or their distinct
+                    # preambles) within one tick.
+                    seq += 1
+                    yield edge_pb2.MeasurementDataPoint(
+                        stream_id=stream_id,
+                        error=(
+                            f"Command '{command_name}' has no "
+                            "binary.source_command; multi-channel frames "
+                            "need a per-channel source selector (doc §3.5)"
+                        ),
+                        status="error",
+                        seq=seq,
+                    )
+                    return
+                if block_binary_config.source_command and profile is not None:
+                    block_source_scpi = {
+                        ch: profile.resolve_source_ref(
+                            block_binary_config.source_command, ch
+                        )
+                        for ch in stream_channels
+                    }
+
         # Register the stream
         self._active_streams[stream_id] = asyncio.current_task()
 
@@ -1614,25 +1862,102 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 try:
                     # --- Waveform assembly path (SCPI oscilloscopes) ---
                     if is_waveform_assembly:
-                        vector_data = await self._execute_waveform_assembly_for_stream(
+                        if stream_channels:
+                            # Multi-channel frame (doc §3.5): one source
+                            # switch + preamble + block read PER channel,
+                            # one MeasurementDataPoint per tick.
+                            frame_vectors = []
+                            for ch in stream_channels:
+                                per_params = dict(stream_params or {})
+                                per_params["channel"] = ch
+                                frame_vectors.append(
+                                    await self._execute_waveform_assembly_for_stream(
+                                        loop=loop,
+                                        instrument_id=instrument_id,
+                                        timeout_ms=5000,
+                                        cmd_config=cmd,
+                                        params=per_params,
+                                        channel_label=ch,
+                                    )
+                                )
+                            ts_ms = int(time.time() * 1000)
+                            seq += 1
+                            point = edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=0.0,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error="",
+                                status="ok",
+                                seq=seq,
+                            )
+                            # vectors[] + field-8 first-channel back-compat
+                            populate_point_vectors(point, frame_vectors)
+                            yield point
+                        else:
+                            vector_data = await self._execute_waveform_assembly_for_stream(
+                                loop=loop,
+                                instrument_id=instrument_id,
+                                timeout_ms=5000,
+                                cmd_config=cmd,
+                                params=stream_params,
+                            )
+                            ts_ms = int(time.time() * 1000)
+                            seq += 1
+                            yield edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=0.0,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error="",
+                                status="ok",
+                                vector_data=vector_data,
+                                seq=seq,
+                            )
+
+                    # --- IEEE block path (returns.type == binary) ---
+                    elif is_ieee_block:
+                        frame_vectors, block_error = await self._read_ieee_block_frame(
                             loop=loop,
+                            dispatch=dispatch,
                             instrument_id=instrument_id,
                             timeout_ms=5000,
-                            cmd_config=cmd,
-                            params=stream_params,
+                            returns_cfg=cmd.returns,
+                            binary_config=block_binary_config,
+                            preamble_scpi=block_preamble_scpi,
+                            channels=stream_channels,
+                            source_scpi=block_source_scpi,
+                            fallback_channel=block_fallback_channel,
                         )
                         ts_ms = int(time.time() * 1000)
                         seq += 1
-                        yield edge_pb2.MeasurementDataPoint(
-                            stream_id=stream_id,
-                            value=0.0,
-                            timestamp_ms=ts_ms,
-                            unit=unit,
-                            error="",
-                            status="ok",
-                            vector_data=vector_data,
-                            seq=seq,
-                        )
+                        if block_error is not None:
+                            # Malformed blocks are sequenced error
+                            # points; the stream continues (doc §2.2
+                            # rule 4, §3.6).
+                            yield edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=0.0,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error=block_error,
+                                status="error",
+                                seq=seq,
+                            )
+                        else:
+                            point = edge_pb2.MeasurementDataPoint(
+                                stream_id=stream_id,
+                                value=0.0,
+                                timestamp_ms=ts_ms,
+                                unit=unit,
+                                error="",
+                                status="ok",
+                                seq=seq,
+                            )
+                            # vectors[] only for multi-channel frames;
+                            # field 8 always carries the first channel.
+                            populate_point_vectors(point, frame_vectors)
+                            yield point
 
                     elif is_sdk:
                         if not self._sdk_executor:
@@ -1658,7 +1983,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                             ),
                         )
 
-                    if not is_waveform_assembly:
+                    if not is_waveform_assembly and not is_ieee_block:
                         ts_ms = int(time.time() * 1000)
 
                         if result["success"]:
