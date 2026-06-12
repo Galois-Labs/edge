@@ -162,7 +162,8 @@ The Go binary owns config, lifecycle, the system service, the embedded Tailscale
 - **Single binary.** Go supervisor plus a frozen Python engine. No Python runtime, no Docker, no dependencies on the target host.
 - **Bundled drivers and YAML profiles.** Write your own, drop them in the profile dir, or push them through Galois Cloud to a fleet of daemons. The current supported list is at [galoislabs.ai/instruments](https://www.galoislabs.ai/instruments).
 - **Sweeps.** Safety-aware ramps for magnets and temperature controllers. Sweep state lives on the daemon, so client drops don't strand hardware.
-- **Streaming.** gRPC server-streaming, a multi-stream WebSocket protocol (32 streams/socket), and MCP progress notifications — with NumPy decoding for waveforms.
+- **Streaming.** gRPC server-streaming, a multi-stream WebSocket protocol (32 streams/socket), and MCP progress notifications — with NumPy decoding for waveforms. Hardware-clocked sources stream chunked scalar blocks down to 1 ms sample periods; every stream point carries a monotonic `seq` so clients can account for drops end-to-end.
+- **Instrument-grade waveforms.** IEEE 488.2 definite-length block reads over a byte-safe raw path, preamble-composed scaling (reference-point math, profile-declared), multi-channel simultaneous frames, spectra with declared amplitude/scale semantics, and IQ/mag-phase paired vectors — all typed `VectorData` on the wire.
 - **Vendor SDK proxy.** Typed agent-callable tools wrap Python vendor libraries (MultiPyVu, niscope, dwfpy, …) for non-SCPI hardware (PPMS controllers, NI modular instruments, Digilent boards, …).
 - **Optional cloud.** When `BACKEND_URL` is set, the daemon joins a Tailscale tailnet and a WebSocket relay so the cloud can dispatch even without direct gRPC dial, and pulls driver/profile updates from the dashboard.
 
@@ -172,6 +173,7 @@ Tracking against the post-v0.1 capability-gap wave. Full detail in the [changelo
 
 **Shipped**
 - ✅ Multi-stream WebSocket protocol (32 streams/socket, per-instrument SCPI lock)
+- ✅ SPI / I2C / OPC-UA / CAN driver tracks (typed drivers + transports, ~270 tests)
 - ✅ gRPC bearer-token auth (`INBOUND_AUTH_TOKEN`) with `setup`-driven provisioning
 - ✅ 13-check `galois-edge doctor` (config, Python health, USB/GPIB, tailnet, backend)
 - ✅ Auto-attached PyVISA proxy — profile commands directly on the resource
@@ -179,12 +181,12 @@ Tracking against the post-v0.1 capability-gap wave. Full detail in the [changelo
 - ✅ Env-var reconciliation + unknown-var startup guard
 - ✅ Windows MSI installer with code-signing pipeline (gated on signing secrets)
 - ✅ MCP server at `/mcp` — static + dynamic per-instrument typed tools, real `StreamMeasurement` → progress notifications, typed SDK wrappers replacing opaque `ProxySDKCall`
+- ✅ Charting wire v2 — IEEE 488.2 block path (byte-safe `query_raw`, strict parser, DSOX3000 acceptance profile), `SpectrumInfo`/paired-vector/multi-channel `VectorData`, per-stream `seq`, chunked hardware-clocked streaming (`ScalarChunk`, sub-100 ms negotiation-free), WS curve `t0`/`dt` timebase
 
 **In progress**
 - 🚧 Typed `galois` Python SDK (separate repo) — Edge / Cloud / Instrument / Stream / Sweep / Waveform
 - 🚧 Cloud-routed access through `Cloud.connect(backend_url, token).edge(name)`
 - 🚧 Public-internet MCP via the cloud relay — `https://cloud.galoislabs.ai/mcp/<edge_id>` with per-call JWT-scoped ACLs (daemon side shipped, cloud side in review)
-- 🚧 SPI/I2C/OPC-UA support (check branches)
 - 🚧 CAN-FD support for more adapters/manufacturers/SOMs like the iMX8, etc
 
 **Planned**
