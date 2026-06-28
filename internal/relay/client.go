@@ -5,8 +5,8 @@
 //
 // Protocol:
 //
-//	Edge → Backend: hello, heartbeat, command_response
-//	Backend → Edge: command_request, hello_ack (optional)
+//	Edge → Backend: hello, heartbeat, command_response, capabilities_response
+//	Backend → Edge: command_request, capabilities_request, hello_ack (optional)
 //
 // The client maintains a persistent connection with automatic reconnect and
 // exponential backoff.
@@ -401,6 +401,13 @@ func (c *Client) connectAndServe(parentCtx context.Context) error {
 				"payload_bytes", len(msg.Payload),
 			)
 			go c.handleMCP(ctx, &writeMu, ws, msg)
+
+		case "capabilities_request":
+			c.logger.Info("received capabilities request",
+				"request_id", msg.RequestID,
+				"instrument_id", msg.InstrumentID,
+			)
+			go c.handleCapabilities(ctx, &writeMu, ws, msg)
 
 		case "hello_ack":
 			// hello_ack may arrive during the read loop if the feature flag
