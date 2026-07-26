@@ -162,3 +162,76 @@ def test_normalising_punctuation_reconciles_the_two_forms():
     assert norm("galois-sim_can-gateway") == norm("galois_sim_can_gateway")
     assert norm("GALOIS-SIM_CAN-GATEWAY") == norm("galois_sim_can_gateway")
     assert norm("rigol_dp800") != norm("keysight_dsox3000")
+
+
+# ---------------------------------------------------------------------------
+# Deploy must reject exactly what load rejects
+#
+# ADDED after an agent-authored profile deployed successfully and then
+# failed to load on every startup. deploy parsed it; load parses AND
+# validates. So the daemon accepted a profile, wrote it, reported success,
+# and the instrument never gained a single command — with the reason
+# visible only in a log line nobody was reading.
+#
+# The real error was: "Command 'bitrate': Property commands require at
+# least 'getter' or 'setter'". That sentence is actionable. "Deploy
+# succeeded" is not, and it is worse than a failure because it stops the
+# author looking.
+# ---------------------------------------------------------------------------
+
+INVALID_YAML = textwrap.dedent(
+    """
+    instrument:
+      manufacturer: GALOIS-SIM
+      model: CAN-GATEWAY
+    identity:
+      query: "*IDN?"
+      pattern: "GALOIS-SIM,CAN-GATEWAY"
+    interfaces:
+      - type: ethernet
+        port: 5027
+    settings:
+      timeout_ms: 2000
+      terminator: "\\n"
+    commands:
+      bitrate:
+        type: property
+    """
+).strip()
+
+
+def test_the_invalid_profile_parses_but_does_not_validate():
+    """The premise, and the reason the bug existed: parsing is not
+    validation, and deploy was only parsing."""
+    import yaml
+
+    from galois_edge.profile_schema import profile_from_dict
+
+    profile = profile_from_dict(yaml.safe_load(INVALID_YAML))  # parses fine
+    with pytest.raises(ValueError, match="getter|setter"):
+        profile.validate()
+
+
+def test_the_loader_refuses_it(tmp_path):
+    """Which is what made the mismatch observable: written, reported
+    deployed, and absent from every load afterwards."""
+    d = tmp_path / "instrument-profiles"
+    d.mkdir()
+    (d / "broken.yaml").write_text(INVALID_YAML)
+
+    loader = ProfileLoader(dynamic_dir=str(d))
+    loader.load_all()
+    assert loader.match_instrument(IDN) is None
+
+
+def test_a_valid_profile_still_deploys(dynamic_dir):
+    """The other half. Validating on deploy must not reject good
+    profiles — otherwise the fix trades a silent failure for a loud one
+    that is equally wrong."""
+    import yaml
+
+    from galois_edge.profile_schema import profile_from_dict
+
+    profile = profile_from_dict(yaml.safe_load(GATEWAY_YAML))
+    profile.validate()   # must not raise
+    assert profile.profile_key == "galois-sim_can-gateway"

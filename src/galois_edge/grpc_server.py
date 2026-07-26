@@ -3016,12 +3016,22 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             from galois_edge.profile_schema import profile_from_dict
 
             profile = profile_from_dict(_yaml.safe_load(profile_yaml))
+            # validate(), not just parse. _load_file calls both, so a
+            # profile that parses but fails validation is accepted here
+            # and rejected by every subsequent load -- deploy reports
+            # success and the instrument never gains a single command.
+            #
+            # The error text is returned verbatim because it is the only
+            # thing the author has to work from. "Command 'bitrate':
+            # Property commands require at least 'getter' or 'setter'"
+            # says exactly what to change; "deploy failed" does not.
+            profile.validate()
             loader.add_profile(profile)
         except Exception as exc:
-            logger.error("Deployed profile %s does not parse: %s", profile_name, exc)
+            logger.error("Deployed profile %s is not valid: %s", profile_name, exc)
             return edge_pb2.DeployProfileResponse(
                 success=False,
-                error_message=f"Profile written but does not parse: {exc}",
+                error_message=f"Profile is not valid and was not loaded: {exc}",
             )
 
         logger.info("Deployed instrument profile: %s -> %s", profile_name, file_path)
