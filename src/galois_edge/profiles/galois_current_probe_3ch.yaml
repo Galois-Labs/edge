@@ -1,0 +1,148 @@
+instrument:
+  manufacturer: "GALOIS-SIM"
+  model: "CURRENT-PROBE-3CH"
+  class: current_probe
+  description: >-
+    Three-channel current probe amplifier. One clamp per motor phase lead,
+    each reporting instantaneous current.
+
+    This exists because a motor drive cannot tell you phase current. An
+    EPOS4's object dictionary carries exactly one current object
+    (0x30D1:02), the lumped DC-equivalent its current loop regulates, so
+    anything that needs the per-phase picture — commutation ripple, a
+    dropped phase, a shorted winding — has to be measured off the leads.
+
+    That independence is the point of the instrument, not a side effect of
+    it. The probe is the only thing on this bench that can contradict what
+    the drive says about itself, which is exactly what makes it worth
+    wiring up.
+
+identity:
+  query: "*IDN?"
+  pattern: "GALOIS-SIM,CURRENT-PROBE-3CH"
+
+interfaces:
+  - type: ethernet
+    port: 5028
+
+settings:
+  timeout_ms: 5000
+  terminator: "\n"
+  opc_query: false
+
+commands:
+  # ── IEEE488.2 common ────────────────────────────────────────────────────
+  identify:
+    scpi: "*IDN?"
+    type: query
+    returns:
+      type: string
+    description: "Query instrument identification"
+
+  reset:
+    scpi: "*RST"
+    type: write
+    description: "Degauss and autozero all three clamps, clearing any fault"
+
+  clear_status:
+    scpi: "*CLS"
+    type: write
+    description: "Clear status registers and error queue"
+
+  self_test:
+    scpi: "*TST?"
+    type: query
+    returns:
+      type: int
+    description: "Perform self-test (0 = pass)"
+
+  operation_complete_query:
+    scpi: "*OPC?"
+    type: query
+    returns:
+      type: int
+    description: "Query operation complete status"
+
+  # ── Per-phase measurement ───────────────────────────────────────────────
+  measure_phase_current:
+    scpi: "MEAS:CURR:PHAS? {channel}"
+    type: query
+    params:
+      channel:
+        type: string
+        description: >-
+          Clamp to read. Accepts the lettering printed on the clamps
+          (A, B, C) or the amplifier's channel numbers (1, 2, 3).
+    returns:
+      type: float
+      unit: A
+    description: "Instantaneous current in one motor phase"
+
+  measure_phase_a:
+    scpi: "MEAS:CURR:PHAS:A?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Instantaneous current in phase A"
+
+  measure_phase_b:
+    scpi: "MEAS:CURR:PHAS:B?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Instantaneous current in phase B"
+
+  measure_phase_c:
+    scpi: "MEAS:CURR:PHAS:C?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: "Instantaneous current in phase C"
+
+  measure_all_phases:
+    scpi: "MEAS:CURR:PHAS:ALL?"
+    type: query
+    returns:
+      type: string
+    description: >-
+      All three clamps in one round trip, comma separated, A then B then C.
+      Prefer this over three separate reads when charting: the phases are
+      only meaningful relative to each other, and three sequential queries
+      sample three different instants of a commutating machine.
+
+  measure_sum:
+    scpi: "MEAS:CURR:PHAS:SUM?"
+    type: query
+    returns:
+      type: float
+      unit: A
+    description: >-
+      Sum of all three clamps. Zero on a correctly clamped three-wire
+      machine, because there is no neutral for current to leave by. A
+      non-zero reading means a clamp is reversed or one lead is unclamped,
+      not that the motor is faulty — check this before trusting a phase
+      trace.
+
+  # ── Commutation state, as the probe can infer it ─────────────────────────
+  measure_floating_phase:
+    scpi: "MEAS:COMM:FLOAT?"
+    type: query
+    returns:
+      type: string
+    description: >-
+      Which phase is currently open (A, B or C). Under block commutation
+      two phases conduct and one floats; the floating one is identifiable
+      from the clamps alone, without asking the drive.
+
+  measure_commutation_sector:
+    scpi: "MEAS:COMM:SECT?"
+    type: query
+    returns:
+      type: int
+    description: >-
+      Commutation sector 0-5, each spanning 60 electrical degrees. Six per
+      electrical revolution, seven electrical revolutions per mechanical
+      one for a 7-pole-pair machine: 42 sectors per shaft turn.
