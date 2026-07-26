@@ -38,11 +38,28 @@ class ProfileLoader:
         profile = loader.match_instrument("KEITHLEY INSTRUMENTS INC.,MODEL 2400,...")
     """
 
-    def __init__(self, profiles_dir: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        profiles_dir: Optional[str] = None,
+        dynamic_dir: Optional[str] = None,
+    ) -> None:
         if profiles_dir:
             self._profiles_dir = Path(profiles_dir)
         else:
             self._profiles_dir = Path(__file__).parent / "profiles"
+
+        # A second directory, scanned alongside the bundled one, on a
+        # writable path. DeployProfile writes here.
+        #
+        # Without it a deployed profile lands somewhere nothing reads.
+        # The bundled directory ships inside the image, so a daemon that
+        # could only scan that one would accept a profile over gRPC,
+        # write it, report success, and never match an instrument against
+        # it — the instrument stays "registered with no matching profile"
+        # and every named command a sequence needs is absent. The failure
+        # surfaces much later, as an empty command catalog, with nothing
+        # connecting it back to the deploy that appeared to work.
+        self._dynamic_dir = Path(dynamic_dir) if dynamic_dir else None
 
         self._profiles: Dict[str, InstrumentProfile] = {}
         self._loaded: bool = False
@@ -52,6 +69,11 @@ class ProfileLoader:
     @property
     def profiles_dir(self) -> Path:
         return self._profiles_dir
+
+    @property
+    def dynamic_dir(self) -> Optional[Path]:
+        """Writable directory for deployed profiles, or None if unset."""
+        return self._dynamic_dir
 
     @property
     def profiles(self) -> Dict[str, InstrumentProfile]:
@@ -100,7 +122,21 @@ class ProfileLoader:
             and not any(part.startswith("_") for part in f.relative_to(self._profiles_dir).parts)
         ]
 
-        # Try loading from pickle cache (keyed by file list + mtimes)
+        # Deployed profiles, scanned alongside the bundled ones. No
+        # underscore filter: the bundled tree uses a leading underscore to
+        # mark internal files, but a deployed filename is whatever the
+        # deploying tool chose and is not ours to reinterpret.
+        if self._dynamic_dir and self._dynamic_dir.is_dir():
+            yaml_files.extend(
+                sorted(
+                    list(self._dynamic_dir.rglob("*.yaml"))
+                    + list(self._dynamic_dir.rglob("*.yml"))
+                )
+            )
+
+        # Try loading from pickle cache (keyed by file list + mtimes).
+        # The key covers the dynamic files too, so deploying a profile
+        # invalidates the cache and the next load picks it up.
         cache_path = self._profiles_dir / "_cache.pkl"
         cache_key = self._compute_cache_key(yaml_files)
 

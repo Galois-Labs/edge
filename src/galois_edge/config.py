@@ -265,6 +265,18 @@ class Config:
     profile_dir: str = field(
         default_factory=lambda: _str_env("PROFILE_DIR", _default_profile_dir())
     )
+    # Writable directory scanned alongside profile_dir, holding profiles
+    # deployed at runtime. Separate from driver_profile_dir: that one
+    # holds protocol driver profiles for the driver registry, these are
+    # instrument profiles matched against *IDN? by ProfileLoader. They
+    # are different registries and conflating them is how a deployed
+    # profile ends up written correctly and never read.
+    dynamic_profile_dir: str = field(
+        default_factory=lambda: _str_env(
+            "DYNAMIC_PROFILE_DIR",
+            os.path.join(_default_config_dir(), "instrument-profiles"),
+        )
+    )
 
     # --- GPIB ---
     gpib_enabled: bool = field(

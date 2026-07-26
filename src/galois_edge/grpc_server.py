@@ -383,6 +383,10 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         self._capability_manager = capability_manager
         self._sdk_executor = sdk_executor
         self._driver_registry = driver_registry
+        # Set by main after the loader is constructed. Bound late because
+        # loading the bundled profiles can take minutes on slow storage,
+        # and deploy/bind must work during that window.
+        self._profile_loader: Optional[Any] = None
         # Use shared single-thread executor for instrument I/O if provided
         # (serializes all GPIB/VISA access — linux-gpib is not thread-safe).
         self._executor = io_executor or ThreadPoolExecutor(max_workers=max_workers)
@@ -2882,19 +2886,58 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
     # Driver profile management
     # ------------------------------------------------------------------
 
+    def set_profile_loader(self, loader: Any) -> None:
+        """Attach the instrument ProfileLoader used by deploy and bind."""
+        self._profile_loader = loader
+
+    #: The cloud overloads DeployProfile's ``protocol`` field to carry a
+    #: bind instruction: ``instrument:bind:<visa_address>``. Deploy and
+    #: bind are the same RPC, told apart by this prefix.
+    #:
+    #: Without a branch for it the prefix was treated as a protocol name,
+    #: so a bind tried to create a directory literally called
+    #: ``instrument:bind:TCPIP::host::5027::SOCKET`` and no instrument was
+    #: ever bound. The deploy half shipped and the bind half did not,
+    #: which surfaced far away as an instrument registered "with no
+    #: matching profile" and an empty command catalog.
+    _BIND_PREFIX = "instrument:bind:"
+
+    #: Protocol value the cloud sends for instrument profiles, as opposed
+    #: to the protocol driver profiles the driver registry owns.
+    _INSTRUMENT_PROTOCOL = "instrument"
+
     async def DeployProfile(self, request, context):
-        """Write a YAML driver profile to disk and reload the registry."""
+        """Write a YAML profile to disk, or bind one to an instrument.
+
+        Three shapes, distinguished by ``protocol``:
+
+        * ``instrument:bind:<visa>`` — bind an already-deployed instrument
+          profile to a live instrument, so its named commands become
+          callable by a sequence.
+        * ``instrument`` — an instrument profile, matched against ``*IDN?``
+          by ProfileLoader. Written to the daemon's dynamic profile dir.
+        * anything else — a protocol driver profile for the driver
+          registry, written under ``<driver_profile_dir>/<protocol>/``.
+        """
         import os
 
         profile_name = request.profile_name
         profile_yaml = request.profile_yaml
         protocol = request.protocol or "modbus"
 
+        if protocol.startswith(self._BIND_PREFIX):
+            return await self._bind_instrument_profile(
+                profile_name, protocol[len(self._BIND_PREFIX):]
+            )
+
         if not profile_name or not profile_yaml:
             return edge_pb2.DeployProfileResponse(
                 success=False,
                 error_message="profile_name and profile_yaml are required",
             )
+
+        if protocol == self._INSTRUMENT_PROTOCOL:
+            return self._write_instrument_profile(profile_name, profile_yaml)
 
         # Determine target directory from config or driver_registry
         if self._driver_registry is not None:
@@ -2929,6 +2972,107 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         return edge_pb2.DeployProfileResponse(
             success=True,
             register_count=register_count,
+        )
+
+    def _write_instrument_profile(self, profile_name: str, profile_yaml: str):
+        """Write an instrument profile where ProfileLoader will find it.
+
+        Not under driver_profile_dir: that holds protocol driver profiles
+        for the driver registry, and these are instrument profiles matched
+        against *IDN?. Two registries. Writing to the wrong one produces a
+        file that is correct, present, and never read.
+        """
+        import os
+
+        loader = self._profile_loader
+        dynamic_dir = getattr(loader, "dynamic_dir", None) if loader else None
+        if dynamic_dir is None:
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message=(
+                    "this daemon has no dynamic profile directory configured; "
+                    "set DYNAMIC_PROFILE_DIR"
+                ),
+            )
+
+        try:
+            os.makedirs(dynamic_dir, exist_ok=True)
+            file_path = os.path.join(str(dynamic_dir), f"{profile_name}.yaml")
+            with open(file_path, "w", encoding="utf-8") as fh:
+                fh.write(profile_yaml)
+        except Exception as exc:
+            logger.error("Failed to write instrument profile %s: %s", profile_name, exc)
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message=f"Failed to write profile: {exc}",
+            )
+
+        # Parse and register in memory rather than reloading everything.
+        # A full reload rescans the bundled tree, which takes minutes on a
+        # slow SD card and would drop every profile in the meantime.
+        try:
+            import yaml as _yaml
+
+            from galois_edge.profile_schema import profile_from_dict
+
+            profile = profile_from_dict(_yaml.safe_load(profile_yaml))
+            loader.add_profile(profile)
+        except Exception as exc:
+            logger.error("Deployed profile %s does not parse: %s", profile_name, exc)
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message=f"Profile written but does not parse: {exc}",
+            )
+
+        logger.info("Deployed instrument profile: %s -> %s", profile_name, file_path)
+        return edge_pb2.DeployProfileResponse(success=True, register_count=0)
+
+    async def _bind_instrument_profile(self, profile_name: str, visa_address: str):
+        """Bind a deployed profile to a live instrument.
+
+        Binding is what turns a deployed file into callable commands: the
+        capability manager keys instruments by VISA address and a sequence
+        can only issue a NAMED command resolved through the bound profile.
+        Deploy without bind leaves the catalog empty.
+        """
+        loader = self._profile_loader
+        if loader is None:
+            return edge_pb2.DeployProfileResponse(
+                success=False, error_message="no profile loader on this daemon"
+            )
+        if not self._capability_manager:
+            return edge_pb2.DeployProfileResponse(
+                success=False, error_message="no capability manager on this daemon"
+            )
+
+        profile = None
+        for candidate in loader.profiles.values():
+            if candidate.profile_key.lower() == profile_name.lower():
+                profile = candidate
+                break
+        if profile is None:
+            return edge_pb2.DeployProfileResponse(
+                success=False,
+                error_message=(
+                    f"profile {profile_name!r} is not loaded; deploy it before binding"
+                ),
+            )
+
+        caps = self._capability_manager.get_instrument_caps(visa_address)
+        idn = caps.idn_response if caps else ""
+        self._capability_manager.register_instrument(
+            instrument_id=visa_address,
+            visa_address=visa_address,
+            idn_response=idn,
+            profile=profile,
+        )
+        command_count = len(profile.commands or {})
+        logger.info(
+            "Bound profile %s to %s (%d commands)",
+            profile_name, visa_address, command_count,
+        )
+        return edge_pb2.DeployProfileResponse(
+            success=True, register_count=command_count
         )
 
     async def RemoveProfile(self, request, context):
