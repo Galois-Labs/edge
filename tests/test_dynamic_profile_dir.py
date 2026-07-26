@@ -128,3 +128,37 @@ def test_a_deployed_profile_can_be_added_without_a_full_reload(dynamic_dir):
 
     loader.add_profile(profile_from_dict(yaml.safe_load(GATEWAY_YAML)))
     assert loader.match_instrument(IDN) is not None
+
+
+# ---------------------------------------------------------------------------
+# Bind is given the FILENAME, not the profile key
+#
+# ADDED after bind silently found nothing on prod. The cloud sends the name
+# the profile was deployed under — "galois_sim_can_gateway" — while the
+# loader keys profiles by manufacturer_model, "galois-sim_can-gateway".
+# Hyphens against underscores. Matching only on profile_key reported a
+# profile that was sitting right there as missing.
+# ---------------------------------------------------------------------------
+
+def test_the_deployed_filename_and_the_profile_key_differ(dynamic_dir):
+    """The premise. If these were ever equal the bug would be invisible
+    and this whole test would be vacuous."""
+    import yaml
+
+    from galois_edge.profile_schema import profile_from_dict
+
+    profile = profile_from_dict(yaml.safe_load(GATEWAY_YAML))
+    assert profile.profile_key == "galois-sim_can-gateway"
+    assert (dynamic_dir / "galois_can_gateway.yaml").is_file()
+    assert profile.profile_key != "galois_can_gateway"
+
+
+def test_normalising_punctuation_reconciles_the_two_forms():
+    """A deployer choosing hyphens over underscores has not authored a
+    different profile."""
+    def norm(value):
+        return value.lower().replace("-", "_").replace(" ", "_")
+
+    assert norm("galois-sim_can-gateway") == norm("galois_sim_can_gateway")
+    assert norm("GALOIS-SIM_CAN-GATEWAY") == norm("galois_sim_can_gateway")
+    assert norm("rigol_dp800") != norm("keysight_dsox3000")

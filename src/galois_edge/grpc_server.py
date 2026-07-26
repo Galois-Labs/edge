@@ -3045,11 +3045,50 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 success=False, error_message="no capability manager on this daemon"
             )
 
+        # The cloud sends the FILENAME it deployed under; the loader keys
+        # profiles by profile_key, which is manufacturer_model. Those are
+        # not the same string and usually differ in punctuation:
+        # "galois_sim_can_gateway" against "galois-sim_can-gateway".
+        # Matching only on profile_key meant bind silently found nothing
+        # and reported a profile that was sitting right there as missing.
+        #
+        # Match either form, comparing with punctuation normalised, since
+        # a deployer choosing hyphens over underscores is not a different
+        # profile.
+        def _norm(value: str) -> str:
+            return value.lower().replace("-", "_").replace(" ", "_")
+
+        wanted = _norm(profile_name)
         profile = None
         for candidate in loader.profiles.values():
-            if candidate.profile_key.lower() == profile_name.lower():
+            if _norm(candidate.profile_key) == wanted:
                 profile = candidate
                 break
+        if profile is None:
+            # Fall back to the file the deploy wrote, which is named after
+            # profile_name rather than after the key.
+            dynamic_dir = getattr(loader, "dynamic_dir", None)
+            if dynamic_dir is not None:
+                for suffix in (".yaml", ".yml"):
+                    path = dynamic_dir / f"{profile_name}{suffix}"
+                    if path.is_file():
+                        try:
+                            import yaml as _yaml
+
+                            from galois_edge.profile_schema import (
+                                profile_from_dict,
+                            )
+
+                            profile = profile_from_dict(
+                                _yaml.safe_load(path.read_text(encoding="utf-8"))
+                            )
+                            loader.add_profile(profile)
+                        except Exception as exc:
+                            logger.error(
+                                "Deployed profile %s does not parse: %s",
+                                profile_name, exc,
+                            )
+                        break
         if profile is None:
             return edge_pb2.DeployProfileResponse(
                 success=False,
