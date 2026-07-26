@@ -464,10 +464,26 @@ class EdgeDaemon:
             return
 
         try:
-            loader = ProfileLoader(self._cfg.profile_dir)
-            count = loader.load_all()
-            logger.info("Loaded %d instrument profile(s)", count)
+            loader = ProfileLoader(
+                self._cfg.profile_dir,
+                dynamic_dir=self._cfg.dynamic_profile_dir,
+            )
             self._profile_loader = loader
+            # Attach to the gRPC servicer BEFORE load_all(). Loading the
+            # bundled profiles can take minutes on slow storage, and a
+            # deploy arriving in that window should still land: add_profile
+            # writes into the same dict load_all populates, so the entry
+            # survives. Only a deploy in the sub-second gap between this
+            # line and load_all's clear() would be lost.
+            grpc_server = getattr(self, "_grpc_server", None)
+            servicer = getattr(grpc_server, "servicer", None) if grpc_server else None
+            if servicer is not None and hasattr(servicer, "set_profile_loader"):
+                servicer.set_profile_loader(loader)
+            count = loader.load_all()
+            logger.info(
+                "Loaded %d instrument profile(s) from %s (dynamic: %s)",
+                count, self._cfg.profile_dir, self._cfg.dynamic_profile_dir,
+            )
         except Exception as exc:
             logger.warning("Profile loading failed: %s", exc)
             return
