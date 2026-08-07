@@ -1029,6 +1029,54 @@ commands:
     description: "Modulation type"
     enabled: false
 
+  # Serial-decode lister (CAN). The MSOX3000A family decodes CAN with the
+  # DSOX3AUTO licence; these queries read the decoded frame list the way
+  # the on-screen lister shows it. Frames are numbered 1-based, oldest
+  # first, within the current capture.
+  can_frame_count:
+    scpi: ":SBUS1:CAN:FRAMe:COUNt?"
+    type: query
+    returns:
+      type: int
+    description: "CAN lister: number of decoded frames in the capture"
+
+  can_frame:
+    scpi: ":SBUS1:CAN:FRAMe? {n}"
+    type: query
+    params:
+      n:
+        type: int
+        default: 1
+    returns:
+      type: string
+    description: "CAN lister: nth frame as id,dlc,data-hex"
+
+  can_frame_last:
+    scpi: ":SBUS1:CAN:FRAMe:LAST?"
+    type: query
+    returns:
+      type: string
+    description: "CAN lister: newest frame as id,dlc,data-hex"
+
+  can_decode:
+    scpi: ":SBUS1:CAN:DECode? {n}"
+    type: query
+    params:
+      n:
+        type: int
+        default: 1
+    returns:
+      type: string
+    description: "CAN lister: nth frame, protocol-annotated (CiA 301)"
+
+  can_decode_last:
+    scpi: ":SBUS1:CAN:DECode:LAST?"
+    type: query
+    returns:
+      type: string
+    description: "CAN lister: newest frame, protocol-annotated (CiA 301)"
+
+
 sequences:
   acquire_and_measure:
     description: "Acquire waveform and make basic measurements"
