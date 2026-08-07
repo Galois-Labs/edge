@@ -1029,6 +1029,27 @@ commands:
     description: "Modulation type"
     enabled: false
 
+  # Per-channel measurement units (Programmer's Guide, ":CHANnel<n>
+  # Commands"): VOLT for a voltage probe, AMPere for a current probe.
+  # Measurement results follow the selected units; the query answers
+  # the abbreviated form (VOLT|AMP).
+  channel_units:
+    getter: ":CHANnel{channel}:UNITs?"
+    setter: ":CHANnel{channel}:UNITs {units}"
+    type: property
+    params:
+      channel:
+        type: int
+        min: 1
+        max: 4
+      units:
+        type: enum
+        options: ["VOLT", "AMPere"]
+    returns:
+      type: string
+    description: "Measurement units for the connected probe (volt or current probe)"
+
+
   # Serial-decode lister (CAN). The MSOX3000A family decodes CAN with the
   # DSOX3AUTO licence; these queries read the decoded frame list the way
   # the on-screen lister shows it. Frames are numbered 1-based, oldest
