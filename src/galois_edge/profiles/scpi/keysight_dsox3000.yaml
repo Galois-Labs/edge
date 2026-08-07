@@ -368,10 +368,10 @@ commands:
     params:
       mode:
         type: enum
-        options: ["EDGE", "GLITch", "PATTern", "TV", "DELay", "EBURst", "OR", "RUNT", "SHOLd", "TRANsition", "USB"]
+        options: ["EDGE", "GLITch", "PATTern", "TV", "DELay", "EBURst", "OR", "RUNT", "SHOLd", "TRANsition", "SBUS1", "SBUS2", "USB"]
     returns:
       type: string
-    description: "Trigger mode"
+    description: "Trigger mode (SBUS1/SBUS2 select serial bus triggering)"
 
   trigger_sweep:
     getter: ":TRIGger:SWEep?"
@@ -577,6 +577,23 @@ commands:
       type: float
       unit: V
     description: "Measure RMS voltage"
+    streamable: true
+
+  measure_vtime:
+    scpi: ":MEASure:VTIMe? {time},{source}"
+    type: query
+    params:
+      time:
+        type: float
+        default: 0
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "FUNCtion", "MATH"]
+        default: "CHANnel1"
+    returns:
+      type: float
+      unit: V
+    description: "Voltage at a time offset from the trigger (the guide's recommended programmatic read; markers are overlapped)"
     streamable: true
 
   measure_risetime:
@@ -1054,6 +1071,83 @@ commands:
   # DSOX3AUTO licence; these queries read the decoded frame list the way
   # the on-screen lister shows it. Frames are numbered 1-based, oldest
   # first, within the current capture.
+  sbus_mode:
+    getter: ":SBUS1:MODE?"
+    setter: ":SBUS1:MODE {mode}"
+    type: property
+    params:
+      mode:
+        type: enum
+        options: ["CAN", "LIN", "IIC", "SPI", "UART", "FLEXray", "I2S", "A429", "M1553"]
+        default: "CAN"
+    returns:
+      type: string
+    description: "Serial decode protocol for bus slot 1"
+
+  sbus_display:
+    getter: ":SBUS1:DISPlay?"
+    setter: ":SBUS1:DISPlay {state}"
+    type: property
+    params:
+      state:
+        type: enum
+        options: ["ON", "OFF"]
+        default: "ON"
+    returns:
+      type: string
+    description: "Show serial decode on the display"
+
+  can_source:
+    getter: ":SBUS1:CAN:SOURce?"
+    setter: ":SBUS1:CAN:SOURce {source}"
+    type: property
+    params:
+      source:
+        type: enum
+        options: ["CHANnel1", "CHANnel2", "CHANnel3", "CHANnel4", "EXTernal"]
+        default: "CHANnel1"
+    returns:
+      type: string
+    description: "CAN decode signal source: an analog channel, or EXTernal on DSO models"
+
+  can_signal_definition:
+    getter: ":SBUS1:CAN:SIGNal:DEFinition?"
+    setter: ":SBUS1:CAN:SIGNal:DEFinition {definition}"
+    type: property
+    params:
+      definition:
+        type: enum
+        options: ["CANH", "CANL", "RX", "TX", "DIFFerential", "DIFL", "DIFH"]
+        default: "CANH"
+    returns:
+      type: string
+    description: "Which CAN line the source taps (DIFFerential is a write alias for DIFL)"
+
+  can_baudrate:
+    getter: ":SBUS1:CAN:SIGNal:BAUDrate?"
+    setter: ":SBUS1:CAN:SIGNal:BAUDrate {baudrate}"
+    type: property
+    params:
+      baudrate:
+        type: int
+        default: 125000
+    returns:
+      type: string
+    description: "CAN signal baud rate, 10 kb/s to 4 Mb/s in 100 b/s steps or 5 Mb/s (factory default 125 kb/s)"
+
+  can_trigger:
+    getter: ":SBUS1:CAN:TRIGger?"
+    setter: ":SBUS1:CAN:TRIGger {condition}"
+    type: property
+    params:
+      condition:
+        type: enum
+        options: ["SOF", "DATA", "ERRor", "IDData", "IDEither", "IDRemote", "ALLerrors", "OVERload", "ACKerror"]
+        default: "SOF"
+    returns:
+      type: string
+    description: "CAN trigger condition; takes effect with trigger_mode SBUS1"
+
   can_frame_count:
     scpi: ":SBUS1:CAN:FRAMe:COUNt?"
     type: query
