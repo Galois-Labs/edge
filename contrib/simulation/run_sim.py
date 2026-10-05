@@ -1,8 +1,8 @@
 """Run the edge daemon with DEMO_MODE virtual instruments, reachable from other hosts.
 
 Thin wrapper (contracts/edge-api.md §9, E10): it sets DEMO_MODE=true and binds
-gRPC/WS/MCP on 0.0.0.0 unless the caller already set those variables, then runs
-the stock daemon entry point. Nothing is monkey-patched.
+gRPC/WS/MCP on 0.0.0.0 unless the environment or the repo .env already sets those
+variables, then runs the stock daemon entry point. Nothing is monkey-patched.
 
 Usage:
     python -m contrib.simulation.run_sim
@@ -50,11 +50,13 @@ def main(hold_stdin: bool = True) -> None:
     for path in (os.path.join(here, "..", "..", "src"), os.path.join(here, "..", "..")):
         if path not in sys.path:
             sys.path.insert(0, path)
+    # Import first: galois_edge.config loads the repo .env on import, without
+    # overriding, so its values must already be set when the defaults go in.
+    from galois_edge.main import main as daemon_main
+
     apply_defaults()
     if hold_stdin:
         _hold_stdin_open()
-    from galois_edge.main import main as daemon_main
-
     daemon_main()
 
 
