@@ -197,6 +197,8 @@ async def stuck_io_call(daemon):
 async def test_stop_waits_only_a_bounded_time_for_a_stuck_io_call(daemon, stuck_io_call, caplog):
     await asyncio.wait_for(daemon.stop(), timeout=1.5)
     assert "Instrument I/O thread still busy" in caplog.text
+    # Interpreter exit still joins the I/O thread: the log must not suggest an immediate exit.
+    assert "process exit waits for it" in caplog.text
 
 
 async def test_a_second_stop_waits_for_the_shutdown_in_progress(daemon, stuck_io_call, caplog):

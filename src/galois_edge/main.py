@@ -87,6 +87,9 @@ class EdgeDaemon:
     """
 
     #: Seconds stop() waits for the instrument I/O call in flight to finish.
+    #: This bounds stop() only: interpreter exit still joins the I/O thread,
+    #: so a call that never checks the stop event (profile loading,
+    #: list_resources, identify) delays process exit until it returns.
     _io_drain_timeout_s: float = 3.0
 
     def __init__(self, cfg: Optional[Config] = None) -> None:
@@ -382,7 +385,8 @@ class EdgeDaemon:
             )
         except asyncio.TimeoutError:
             logger.warning(
-                "Instrument I/O thread still busy after %.1fs; continuing shutdown",
+                "Instrument I/O thread still busy after %.1fs; continuing "
+                "shutdown (process exit waits for it to return)",
                 self._io_drain_timeout_s,
             )
 
