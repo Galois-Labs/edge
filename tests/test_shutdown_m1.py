@@ -212,7 +212,13 @@ async def test_a_second_stop_waits_for_the_shutdown_in_progress(daemon, stuck_io
     await asyncio.wait_for(first, timeout=1.0)
 
 
-async def test_a_trickle_scanner_started_during_the_io_drain_is_stopped(daemon, monkeypatch):
+async def _to_thread_done_at_once(func, /, *args, **kwargs):
+    return func(*args, **kwargs)
+
+
+@pytest.mark.parametrize("drain_done_at_once", [False, True])
+async def test_a_trickle_scanner_started_during_the_io_drain_is_stopped(daemon, monkeypatch,
+                                                                        drain_done_at_once):
     # The initial GPIB scan is still on the I/O thread when stop() stops the trickle scanner
     # (step 1) and cancels its task (1c). It finishes while stop() drains the I/O thread and
     # then starts the trickle scanner; that one must not outlive stop() either.
@@ -240,6 +246,10 @@ async def test_a_trickle_scanner_started_during_the_io_drain_is_stopped(daemon, 
     daemon._ws_server = _Server()
     scan = asyncio.ensure_future(daemon._initial_gpib_scan_then_trickle())
     assert await asyncio.to_thread(entered.wait, 1.0)
+    if drain_done_at_once:
+        # The drain's thread can finish before the loop attaches its done-callback. Its
+        # await then returns without yielding, while the scan's wakeup is still queued.
+        monkeypatch.setattr(asyncio, "to_thread", _to_thread_done_at_once)
 
     await asyncio.wait_for(daemon.stop(), timeout=1.5)
     await asyncio.wait_for(scan, timeout=1.0)

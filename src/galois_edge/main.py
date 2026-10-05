@@ -392,6 +392,11 @@ class EdgeDaemon:
 
         # 3c. An initial GPIB scan still running at step 1 starts the trickle
         #     scanner once it finishes, i.e. during 3b: stop that one too.
+        #     The drain can return without yielding while the scan's result
+        #     is still queued; a coroutine resumes two loop iterations after
+        #     its executor call ends (result delivery, then its step).
+        for _ in range(2):
+            await asyncio.sleep(0)
         if self._trickle_scanner is not None:
             await self._trickle_scanner.stop()
         await self._cancel_and_wait(self._trickle_task)
