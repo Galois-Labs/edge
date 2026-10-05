@@ -75,9 +75,10 @@ portmap query to 255.255.255.255 (pyvisa-py's TCPIP listing, without psutil). Th
 rule (spec §10 rule 6). Every bench address belongs to the sim backend, so the daemon never needs PyVISA here."""
 
 NO_RAW_USB = (
-    "raw USB scanning must be off, and no environment variable turns it off: main.py builds InstrumentManager "
-    "with the default usb_raw_enabled=True, and Config lists USB_RAW_ENABLED but never reads it. The daemon "
-    "is hermetic only while pyusb (edge's `usb` extra) is absent, so run tests/e2e in a venv without it")
+    "raw USB scanning must be off: the daemon runs with USB_RAW_ENABLED=false, which Config.usb_raw_enabled "
+    "reads, so InstrumentManager builds no USBTransport and does not warn that pyusb is missing. Either log "
+    "line means the switch did not reach the daemon, and with pyusb installed it would enumerate the host's "
+    "USB devices: the E2E daemon must touch no real hardware")
 
 
 E2E_DIR = Path(__file__).resolve().parent
@@ -285,7 +286,8 @@ class Processes:
             "GRPC_PORT": "0", "WS_PORT": "0", "MCP_PORT": "0", "MCP_ENABLED": "true",
             "GRPC_BIND_HOST": "127.0.0.1", "WS_BIND_HOST": "127.0.0.1", "MCP_BIND_HOST": "127.0.0.1",
             "TRACE_DIR": str(trace_dir),
-            "GPIB_ENABLED": "false", "USB_MONITOR_ENABLED": "false", "LAN_INSTRUMENTS": "",
+            "GPIB_ENABLED": "false", "USB_MONITOR_ENABLED": "false", "USB_RAW_ENABLED": "false",
+            "LAN_INSTRUMENTS": "",
             "VISA_BACKEND": NO_VISA_BACKEND,
             "DEMO_MODE": "false",
             "DYNAMIC_PROFILE_DIR": str(self._tmp / "dynamic-profiles"),
@@ -298,8 +300,8 @@ class Processes:
                            "the edge daemon's MCP server", alive=[proc])
         log = proc.output()
         assert "PyVISA initialisation failed" in log, "VISA scanning must be off (loopback only)"
-        assert "USB transport enabled but pyusb not installed" in log, NO_RAW_USB
         assert "Raw USB transport enabled" not in log, NO_RAW_USB
+        assert "USB transport enabled but pyusb not installed" not in log, NO_RAW_USB
         return EdgeDaemon(proc, found.group(1))
 
 
