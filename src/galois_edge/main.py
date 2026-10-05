@@ -161,6 +161,7 @@ class EdgeDaemon:
         return InstrumentManager(
             gpib_enabled=self._cfg.gpib_enabled,
             gpib_scan_on_init=False,  # defer GPIB scan to background
+            usb_raw_enabled=self._cfg.usb_raw_enabled,   # USB_RAW_ENABLED
             lan_instruments=self._cfg.lan_instruments,
             include_serial_ports=self._cfg.include_serial_ports,
             visa_backend=self._cfg.visa_backend or "@py",   # VISA_BACKEND (edge-api.md §1)

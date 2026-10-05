@@ -334,6 +334,11 @@ class Config:
         default_factory=lambda: _int_env("GPIB_TRICKLE_PROBE_TIMEOUT_MS", 1000)
     )
 
+    # --- Raw USB transport (pyusb, vendor-specific devices) ---
+    usb_raw_enabled: bool = field(
+        default_factory=lambda: _bool_env("USB_RAW_ENABLED", True)
+    )
+
     # --- USB hotplug monitoring ---
     usb_monitor_enabled: bool = field(
         default_factory=lambda: _bool_env("USB_MONITOR_ENABLED", not _is_windows())
