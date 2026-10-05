@@ -390,43 +390,38 @@ class CommandConfig:
         params: Optional[Dict[str, Any]] = None,
         is_query: bool = True,
     ) -> str:
-        """Build the final SCPI string with parameter substitution."""
-        scpi = self.get_scpi_string(is_query)
-        if scpi is None:
+        """Build the final SCPI string with parameter substitution.
+
+        Templates in SCPI-manual notation (containing "[" or "<") are made
+        concrete by galois_profiles.sendable_template (edge-api.md §9); plain
+        templates are formatted exactly as before M1.
+        """
+        from .validation import select_template  # validation never imports this module at load time
+
+        supplied = dict(params or {})
+        template, _form = select_template(self, supplied, is_query)
+        if template is None:
             raise ValueError("No SCPI string available for this command")
-
-        def _substitute(template: str) -> str:
-            if params and self.params:
-                for key, value in params.items():
-                    # Apply map transformation if available (forward-map only:
-                    # label -> wire value on writes)
-                    pc = self.params.get(key)
-                    if pc and pc.map and str(value) in pc.map:
-                        value = pc.map[str(value)]
-                    template = template.replace(f"{{{key}}}", str(value))
-            elif params:
-                for key, value in params.items():
-                    template = template.replace(f"{{{key}}}", str(value))
-            return template
-
-        resolved = _substitute(scpi)
-
-        # Property-command fallback: if the setter still has unresolved
-        # placeholders AND we have a getter, the caller almost certainly
-        # meant to read. Fall back to the getter template.
-        if (
-            self.type == "property"
-            and not is_query
-            and "{" in resolved
-            and self.getter is not None
-        ):
+        if self.type == "property" and not is_query and template is self.getter:
             logger.info(
                 "Property command setter has unresolved placeholders; "
                 "falling back to getter template (likely a read with is_query=False)"
             )
-            return _substitute(self.getter)
-
-        return resolved
+        mapped: Dict[str, Any] = {}
+        for key, value in supplied.items():
+            pc = (self.params or {}).get(key)
+            if pc and pc.map and str(value) in pc.map:
+                value = pc.map[str(value)]  # forward map only: label -> wire value
+            mapped[key] = value
+        if "[" in template or "<" in template:
+            try:
+                return _gp_api("sendable_template")(template, mapped)
+            except KeyError as exc:
+                raise ValueError(f"missing parameter {exc} for template {template!r}") from None
+        out = template
+        for key, value in mapped.items():
+            out = out.replace(f"{{{key}}}", str(value))
+        return out
 
     def validate(self) -> None:
         """Check internal consistency."""
