@@ -4,6 +4,14 @@ Thin wrapper (contracts/edge-api.md §9, E10): it sets DEMO_MODE=true and binds
 gRPC/WS/MCP on 0.0.0.0 unless the environment or the repo .env already sets those
 variables, then runs the stock daemon entry point. Nothing is monkey-patched.
 
+Caution on a host with real instruments: DEMO_MODE adds the virtual instruments
+to the real InstrumentManager instead of replacing it (main.py
+_DemoInstrumentManagerProxy). Outside a container the daemon still discovers the
+host's real VISA/USB/LAN instruments and, with the 0.0.0.0 defaults, serves them
+on every interface: WS and MCP without authentication, gRPC too unless
+INBOUND_AUTH_TOKEN is set. On a lab machine, run Dockerfile.sim's container, or
+set GRPC_BIND_HOST, WS_BIND_HOST and MCP_BIND_HOST to 127.0.0.1.
+
 Usage:
     python -m contrib.simulation.run_sim
 """
