@@ -29,10 +29,15 @@ def _env_keys_read_by_config_py() -> set:
     return read - {"PROGRAMDATA"}  # Windows system variable, not Galois config
 
 
-def test_known_galois_vars_are_cleared_for_every_test():
+def test_known_galois_vars_are_cleared_for_every_test(request):
+    """Holds in a clean environment too: the fixture is autouse, and it clears every key config.py reads."""
     from galois_edge.config import _KNOWN_GALOIS_VARS
+    from tests.conftest import HERMETIC_GALOIS_ENV_KEYS
+
+    assert "_hermetic_galois_env" in request.fixturenames  # autouse: active without being requested
     keys = _KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S"} | _env_keys_read_by_config_py()
-    leaked = sorted(k for k in keys if k in os.environ)
+    assert sorted(keys - HERMETIC_GALOIS_ENV_KEYS) == []
+    leaked = sorted(k for k in HERMETIC_GALOIS_ENV_KEYS if k in os.environ)
     assert leaked == []
 
 
