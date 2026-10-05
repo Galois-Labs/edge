@@ -124,8 +124,30 @@ def test_make_targets_match_edge_api_section_7():
     assert "[ -d tests/sim ]" in mk and "cargo" in mk and "maturin" in mk
 
 
+def _mcp_pin_ok(dependencies) -> bool:
+    """CI-28 as a rule, not a spelling: exactly one mcp requirement; it admits no 2.x (pre-releases
+    included) and nothing below the 1.27 floor, and some 1.x release from 1.27 up still resolves."""
+    from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
+
+    specs = [r.specifier for r in map(Requirement, dependencies) if canonicalize_name(r.name) == "mcp"]
+    if len(specs) != 1:
+        return False
+    spec = specs[0]
+    if any(spec.contains(v, prereleases=True) for v in ("2.0", "2.0.0a1", "2.3.0", "1.26.99")):
+        return False
+    return any(spec.contains(f"1.{minor}") for minor in range(27, 100))
+
+
+@pytest.mark.parametrize("dep, ok", [
+    ("mcp>=1.27,<2", True), ("mcp >= 1.30, < 2", True), ("mcp<2,>=1.27.0", True),
+    ("mcp>=1.27", False), ("mcp>=1.27,<3", False), ("mcp>=1.27,<=2.0", False), ("mcp>=1.20,<2", False),
+])
+def test_mcp_pin_rule_checks_bounds_not_spelling(dep, ok):
+    assert _mcp_pin_ok(["pyyaml>=6.0", dep]) is ok
+
+
 def test_mcp_dependency_is_pinned_below_2():
     """CI-28: a fresh resolve otherwise picks mcp 2.x, where FastMCP is renamed (3 collection errors)."""
     deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
-    mcp = [d.replace(" ", "") for d in deps if re.split(r"[<>=!\[ ;]", d, maxsplit=1)[0].lower() == "mcp"]
-    assert mcp == ["mcp>=1.27,<2"]
+    assert _mcp_pin_ok(deps), [d for d in deps if d.lower().startswith("mcp")]
