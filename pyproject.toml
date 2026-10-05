@@ -135,4 +135,5 @@ markers = [
     "slow: long-running or perf assertions; excluded from make test, run explicitly",
     "hardware: needs real instruments; never run at merge",
     "serial(reason): cannot run under xdist; runs in make test's second, non-parallel pass",
+    "e2e: process-level cross-repo end-to-end (spec §10 Phase 4); always also slow; run with make test-e2e",
 ]

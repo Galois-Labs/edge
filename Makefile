@@ -26,7 +26,7 @@ BIN_DIR    := bin
 PROTO_DIR  := proto
 
 .PHONY: all proto build-go build-python test test-go test-python clean install \
-        freeze lint help build-tray test-critical test-prereqs
+        freeze lint help build-tray test-critical test-prereqs test-e2e
 
 # -----------------------------------------------------------------------
 # Default
@@ -88,6 +88,9 @@ test-critical: test-prereqs ## Merge gate: critical tier, parallel, fixed order
 test-python: test-prereqs ## Python default tier: parallel pass, then the serial pass
 	$(TEST_PYTEST) -m "not serial and not slow and not hardware" -n auto tests/
 	$(TEST_PYTEST) -m serial tests/ || [ $$? -eq 5 ]
+
+test-e2e: test-prereqs ## Cross-repo E2E (spec §10 Phase 4): real edgesim + edge processes; slow, never at merge
+	$(TEST_PYTEST) --durations=0 -m e2e -n auto tests/e2e/
 
 # -----------------------------------------------------------------------
 # Lint
