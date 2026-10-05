@@ -40,10 +40,15 @@ CALLER_JWT_HEADER = "galois-caller-jwt"
 
 # Set in the context the uvicorn serve() task is created in. Tasks copy their
 # creator's context, so every task the server and its app spawn carries it:
-# stop() uses it to find the ones that outlive serve() (Task.get_context, 3.12+).
+# stop() uses it to find the ones that outlive serve().
 _SPAWNED_BY: contextvars.ContextVar[Optional["MCPServer"]] = contextvars.ContextVar(
     "galois_edge_mcp_spawned_by", default=None,
 )
+
+# Task.get_context is new in Python 3.12. Without it a task's context cannot
+# be read, so stop() falls back to finding the one task known to outlive
+# serve(): sse-starlette's _shutdown_watcher.
+_HAS_TASK_CONTEXT = hasattr(asyncio.Task, "get_context")
 
 # Bound on waiting for cancelled leftover tasks at stop().
 _LEFTOVER_CANCEL_TIMEOUT_S = 2.0
@@ -240,7 +245,7 @@ class MCPServer:
         current = asyncio.current_task()
         leftovers = [
             t for t in asyncio.all_tasks()
-            if t is not current and not t.done() and _spawned_by(t) is self
+            if t is not current and not t.done() and _outlives_serve_of(self, t)
         ]
         if not leftovers:
             return
@@ -254,16 +259,33 @@ class MCPServer:
             )
 
 
-def _spawned_by(task: "asyncio.Task") -> Optional["MCPServer"]:
-    """The MCPServer whose serve() context *task* was created in, if any.
+def _outlives_serve_of(server: "MCPServer", task: "asyncio.Task") -> bool:
+    """Whether stop() of *server* should end the pending *task*.
 
-    Needs Task.get_context (Python 3.12+); on older interpreters no task is
-    attributed, and stop() leaves leftovers to the loop as before.
+    With Task.get_context (Python 3.12+): every task created in the server's
+    serve() context. On 3.10 and 3.11 a task's context cannot be read, so the
+    match is sse-starlette's _shutdown_watcher, the one task known to outlive
+    serve(). The watcher serves the whole event loop, not one server: an SSE
+    stream another server on the same loop still has open misses the drain
+    signal until the next SSE response starts a new watcher (its finally
+    clears watcher_started). The daemon runs one MCPServer, and the 3.12+ path
+    does the same when this server's request started the watcher.
     """
-    get_context = getattr(task, "get_context", None)
-    if get_context is None:
-        return None
-    return get_context().get(_SPAWNED_BY)
+    if _HAS_TASK_CONTEXT:
+        return task.get_context().get(_SPAWNED_BY) is server
+    return _runs_sse_shutdown_watcher(task)
+
+
+def _runs_sse_shutdown_watcher(task: "asyncio.Task") -> bool:
+    """Whether *task* is running sse-starlette's _shutdown_watcher coroutine."""
+    try:
+        from sse_starlette import sse
+    except ImportError:
+        return False
+    watcher = getattr(sse, "_shutdown_watcher", None)
+    if watcher is None:
+        return False
+    return getattr(task.get_coro(), "cr_code", None) is watcher.__code__
 
 
 async def _wait_until_started(server: Any, timeout: float) -> None:

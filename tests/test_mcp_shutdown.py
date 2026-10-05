@@ -10,6 +10,9 @@ polls for uvicorn's ``should_exit`` only while ``serve()`` runs (it finds the se
 SIGTERM handler uvicorn installs), so once the server has stopped it sleeps forever and
 ``main()``'s ``loop.close()`` destroys it. These tests run main()'s loop sequence in-process
 (new loop, run_until_complete, close) on loopback with port 0.
+
+``stop()`` finds the leftovers through ``Task.get_context`` on Python 3.12+, and by the watcher's
+coroutine on 3.10 and 3.11 (edge supports >= 3.10); the ``attribution`` fixture runs both paths.
 """
 from __future__ import annotations
 
@@ -21,6 +24,7 @@ from typing import Any, List
 
 import pytest
 
+import galois_edge.mcp.server as mcp_server_module
 from galois_edge.config import Config
 from galois_edge.main import EdgeDaemon
 from galois_edge.mcp.server import MCPServer
@@ -72,22 +76,59 @@ def _run_like_main(main_coro_factory, cleanup_coro_factory=None) -> Any:
     return result
 
 
-def test_mcp_server_stop_ends_the_tasks_it_spawned(caplog, mock_capability_manager, mock_command_handler,
-                                                   mock_instrument_manager):
+@pytest.fixture
+def mcp_server(mock_capability_manager, mock_command_handler, mock_instrument_manager) -> MCPServer:
+    return MCPServer(capability_manager=mock_capability_manager, command_handler=mock_command_handler,
+                     instrument_manager=mock_instrument_manager, host="127.0.0.1", port=0, path="/mcp",
+                     dynamic_tools_max=200, mark_simulated=False, sim_control_tools=False)
+
+
+@pytest.fixture(params=["task-context", "no-task-context"])
+def attribution(request, monkeypatch) -> str:
+    """Both ways stop() finds its leftovers: Task.get_context (3.12+), and the fallback for 3.10/3.11.
+
+    The fallback runs on every interpreter by hiding Task.get_context from the server module; the
+    task-context path exists only where Task.get_context does.
+    """
+    if request.param == "task-context":
+        if not hasattr(asyncio.Task, "get_context"):
+            pytest.skip("Task.get_context is new in Python 3.12")
+    else:
+        monkeypatch.setattr(mcp_server_module, "_HAS_TASK_CONTEXT", False)
+    return request.param
+
+
+def test_mcp_server_stop_ends_the_tasks_it_spawned(caplog, mcp_server, attribution):
     caplog.set_level(logging.WARNING)
-    server = MCPServer(capability_manager=mock_capability_manager, command_handler=mock_command_handler,
-                       instrument_manager=mock_instrument_manager, host="127.0.0.1", port=0, path="/mcp",
-                       dynamic_tools_max=200, mark_simulated=False, sim_control_tools=False)
 
     async def serve_then_stop() -> List[str]:
-        await server.start()
-        await _one_mcp_session(f"http://127.0.0.1:{server.port}/mcp")
-        await server.stop()
+        await mcp_server.start()
+        await _one_mcp_session(f"http://127.0.0.1:{mcp_server.port}/mcp")
+        await mcp_server.stop()
         return _pending_tasks()
 
     left = _run_like_main(serve_then_stop)
 
     assert left == []
+    assert _asyncio_errors(caplog) == []
+
+
+def test_mcp_server_stop_leaves_tasks_it_did_not_spawn(caplog, mcp_server, attribution):
+    caplog.set_level(logging.WARNING)
+
+    async def serve_then_stop() -> List[bool]:
+        bystander = asyncio.ensure_future(asyncio.Event().wait())   # created outside the server's context
+        await mcp_server.start()
+        await _one_mcp_session(f"http://127.0.0.1:{mcp_server.port}/mcp")
+        await mcp_server.stop()
+        alive = [not bystander.done()]
+        bystander.cancel()
+        await asyncio.gather(bystander, return_exceptions=True)
+        return alive + _pending_tasks()
+
+    left = _run_like_main(serve_then_stop)
+
+    assert left == [True]
     assert _asyncio_errors(caplog) == []
 
 
