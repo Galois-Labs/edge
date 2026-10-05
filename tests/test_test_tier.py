@@ -89,3 +89,10 @@ def test_make_targets_match_edge_api_section_7():
     assert re.search(r"-m serial tests/ \|\| \[ \$\$\? -eq 5 \]", mk)
     assert "test: test-go test-python" in mk
     assert "[ -d tests/sim ]" in mk and "cargo" in mk and "maturin" in mk
+
+
+def test_mcp_dependency_is_pinned_below_2():
+    """CI-28: a fresh resolve otherwise picks mcp 2.x, where FastMCP is renamed (3 collection errors)."""
+    deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
+    mcp = [d.replace(" ", "") for d in deps if re.split(r"[<>=!\[ ;]", d, maxsplit=1)[0].lower() == "mcp"]
+    assert mcp == ["mcp>=1.27,<2"]
