@@ -169,11 +169,30 @@ class EdgeDaemon:
 
     # >>> SIM_MODE block — owner: lane sim-integration (edge-api.md §0, §2). backend-slot only creates this stub. >>>
     def _apply_sim_mode(self, extra_backends: list) -> list:
-        """Prepend the edgesim backend when SIM_MODE=true (SIM before DEMO)."""
+        """Prepend the edgesim backend when SIM_MODE=true (SIM before DEMO).
+
+        edgesim reads the SIM_* variables itself (edge-api.md §1); the config check only logs.
+        Its profile_dirs() reach ProfileLoader via _load_profiles (extra_dirs, after the bundled dir).
+        """
         if not self._cfg.sim_mode:
             return extra_backends
-        logger.error("SIM_MODE: edgesim integration is not available in this build")
-        sys.exit(2)
+        for problem in self._cfg.sim_config_errors():
+            logger.error("SIM_MODE config: %s", problem)
+        try:
+            from edgesim.edge import EdgeSimBackend        # contracts/python/edgesim_edge_backend.py
+            sim_backend = EdgeSimBackend.from_env(os.environ)   # SIM_BENCH/SIM_SEED/SIM_CLOCK/SIM_REMOTE_SOCKET
+        except (ImportError, ValueError) as exc:           # BenchError is a ValueError
+            diagnostics = getattr(exc, "diagnostics", ())
+            for d in diagnostics:
+                where = ":".join(str(p) for p in (getattr(d, "file", None), getattr(d, "pointer", None)) if p)
+                logger.error("SIM_MODE: %s %s%s", getattr(d, "code", "?"), getattr(d, "message", d),
+                             f" ({where})" if where else "")
+            if not diagnostics:
+                logger.error("SIM_MODE: %s", exc)
+            sys.exit(2)
+        logger.info("SIM_MODE: edgesim backend serving %d instrument(s); profile dirs %s",
+                    len(sim_backend.list_resources()), list(sim_backend.profile_dirs()))
+        return [sim_backend, *extra_backends]              # SIM before DEMO when both are set
     # <<< SIM_MODE block <<<
 
     # ------------------------------------------------------------------
