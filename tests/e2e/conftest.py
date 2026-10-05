@@ -369,12 +369,26 @@ async def mcp_agent(url: str) -> AsyncIterator[Agent]:
 DAEMON_STOPPED = "Edge daemon stopped.\n"
 
 
+ERROR_RECORD = re.compile(r" - (?:ERROR|CRITICAL) - |^(?:ERROR|CRITICAL):")
+"""An ERROR or CRITICAL record in either format the daemon writes. The root handler's format is
+"%(asctime)s - %(name)s - %(levelname)s - %(message)s" (galois_edge.main._configure_logging). The MCP
+server's uvicorn.Config gives the `uvicorn` loggers their own handler, which does not propagate, and the
+format "%(levelprefix)s %(message)s", so uvicorn's errors read "ERROR:    ..." (for example "ASGI callable
+returned without completing response." on the SSE shutdown path). That prefix form also matches Python's
+default logging format."""
+
+
+def daemon_log_errors(log: str) -> list[str]:
+    """Every ERROR or CRITICAL line in a daemon log, in either format (ERROR_RECORD)."""
+    return [line for line in log.splitlines() if ERROR_RECORD.search(line)]
+
+
 def assert_clean_daemon_log(proc: Proc) -> None:
     """The daemon stopped, and logged no traceback and no ERROR or CRITICAL record at any point, shutdown
     included (an asyncio "Task was destroyed but it is pending!" is an ERROR record, so it fails here)."""
     log = proc.output()
     assert DAEMON_STOPPED in log, f"{proc.name} never logged {DAEMON_STOPPED!r}:\n{proc.output_tail()}"
-    errors = [line for line in log.splitlines() if re.search(r" - (ERROR|CRITICAL) - ", line)]
+    errors = daemon_log_errors(log)
     assert "Traceback" not in log and errors == [], f"{proc.name} logged errors {errors}:\n{log[-4000:]}"
 
 
