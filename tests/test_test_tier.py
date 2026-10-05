@@ -82,6 +82,18 @@ def test_marker_policy():
     assert len(bad) == 3 and all(any(n in v for v in bad) for n in "xyz")
 
 
+def test_marker_policy_serial_is_never_slow_or_hardware():
+    """make test's serial pass is `pytest -m serial tests/` (edge-api §7) with no slow/hardware
+    exclusion, and spec §10 never runs slow/hardware with the default tier."""
+    from tests.conftest import marker_policy_violations
+
+    bad = marker_policy_violations([
+        _item("s1", serial={"reason": "r"}, slow={}), _item("s2", serial={"reason": "r"}, hardware={}),
+    ])
+    assert len(bad) == 2 and all(any(n in v for v in bad) for n in ("s1", "s2"))
+    assert marker_policy_violations([_item("ok1", slow={}, hardware={}), _item("ok2", serial={"reason": "r"})]) == []
+
+
 def test_markers_are_registered(pytestconfig):
     names = {m.split(":")[0].split("(")[0].strip() for m in pytestconfig.getini("markers")}
     assert {"critical", "slow", "hardware", "serial"} <= names

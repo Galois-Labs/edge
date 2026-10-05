@@ -50,7 +50,11 @@ def _isolated_home(tmp_path_factory, monkeypatch):
 
 
 def marker_policy_violations(items) -> list:
-    """edge-api.md §7: critical is never serial (nor slow/hardware); serial needs reason=."""
+    """edge-api.md §7: critical is never serial (nor slow/hardware); serial needs reason=.
+
+    serial is never slow/hardware either: make test's serial pass is `pytest -m serial
+    tests/` with no slow/hardware exclusion, and spec §10 never runs those at merge.
+    """
     problems = []
     for item in items:
         serial = item.get_closest_marker("serial")
@@ -61,6 +65,10 @@ def marker_policy_violations(items) -> list:
                     problems.append(f"{item.nodeid}: critical tests must not be {other}")
         if serial is not None and not (serial.kwargs.get("reason") or serial.args):
             problems.append(f"{item.nodeid}: @pytest.mark.serial needs reason=...")
+        if serial is not None:
+            for other in ("slow", "hardware"):
+                if item.get_closest_marker(other) is not None:
+                    problems.append(f"{item.nodeid}: serial tests must not be {other} (the serial pass runs them all)")
     return problems
 
 
