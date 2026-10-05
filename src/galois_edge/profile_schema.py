@@ -64,6 +64,25 @@ ALLOWED_BYTE_ORDERS = ("little", "big")
 IEEE_BLOCK_FORMATS = ("ieee_block", "ieee_binary")
 
 
+def _gp_api(name: str) -> Any:
+    """Resolve a galois-profiles API name (contracts/python/galois_profiles_model.py).
+
+    The shim is edge's single import point for galois-profiles (CI-27): the
+    package's top level only re-exports part of the loader API.
+    """
+    import importlib
+
+    for module in ("galois_profiles", "galois_profiles.loader", "galois_profiles.model"):
+        try:
+            mod = importlib.import_module(module)
+        except ImportError:
+            continue
+        obj = getattr(mod, name, None)
+        if obj is not None:
+            return obj
+    raise ImportError(f"galois_profiles does not export {name!r}")
+
+
 @dataclass
 class PreambleMap:
     """Maps CSV indices of a preamble response to waveform scaling fields.
