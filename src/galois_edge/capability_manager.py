@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+
+from .tracing import CommandContext, ResolvedSCPI, WriteTarget, json_safe
+from .validation import select_template, validate_params, wire_params
 
 if TYPE_CHECKING:
     from .profile_schema import (
@@ -182,6 +185,41 @@ class InstrumentCapabilities:
         if sequence_name not in self.enabled_sequences:
             return None
         return self.profile.get_sequence(sequence_name)
+
+    # -- Resolution and validation (validation-trace; edge-api.md §4) ---
+
+    def command_path(self, name_or_alias: str) -> str:
+        """Canonical command path for a name or alias (adopt-profiles adds alias lookup)."""
+        return name_or_alias
+
+    def writes_for(self, path: str) -> Tuple[WriteTarget, ...]:
+        """``writes`` targets of a leaf via the profile hook (CI-6); () when unavailable."""
+        hook = getattr(self.profile, "writes_for", None) if self.profile is not None else None
+        if hook is None:
+            return ()
+        try:
+            return tuple(hook(path))
+        except Exception:
+            logger.debug("writes_for(%r) failed for %s", path, self.instrument_id, exc_info=True)
+            return ()
+
+    def resolve_command(
+        self,
+        name_or_alias: str,
+        params: Optional[Dict[str, Any]] = None,
+        *,
+        is_query: bool = True,
+    ) -> Tuple[CommandConfig, Dict[str, Any]]:
+        """Look up an enabled command and validate its params.
+
+        Raises KeyError (unknown or disabled) or ParamValidationError.
+        ``is_query`` is the additive CI-1 keyword: for a property it selects
+        the getter (True) or the setter (False) whose params are validated.
+        """
+        cmd = self.get_command(name_or_alias)
+        if cmd is None:
+            raise KeyError(name_or_alias)
+        return cmd, validate_params(cmd, params, is_query=is_query)
 
     # -- Serialization ---
 
@@ -439,14 +477,17 @@ class CapabilityManager:
         """Resolve a profile command to a SCPI string or SDKCommandRequest.
 
         Returns None when the instrument/command is not found or disabled.
+        Raises ParamValidationError for bad params (edge-api.md §4): gRPC maps
+        it to INVALID_ARGUMENT, MCP to {"error", "field"}. The SCPI string is a
+        ResolvedSCPI carrying the CommandContext used by tracing (CI-5).
         """
         caps = self._instruments.get(instrument_id)
         if caps is None:
             logger.error("Instrument not found: %s", instrument_id)
             return None
-
-        cmd = caps.get_command(command_name)
-        if cmd is None:
+        try:
+            cmd, validated = caps.resolve_command(command_name, params, is_query=is_query)
+        except KeyError:
             logger.error("Command '%s' not found or disabled for %s", command_name, instrument_id)
             return None
 
@@ -458,11 +499,25 @@ class CapabilityManager:
                 is_query=is_query,
             )
 
+        wire = wire_params(cmd, params, validated)
         try:
-            return cmd.format_scpi(params, is_query)
+            text = cmd.format_scpi(wire or None, is_query)
         except Exception as exc:
             logger.error("Failed to format command '%s': %s", command_name, exc)
             return None
+
+        _template, form = select_template(cmd, dict(params or {}), is_query, use_defaults=True)
+        path = caps.command_path(command_name)
+        context = CommandContext(
+            instrument_id=instrument_id,
+            path=path,
+            params=json_safe(validated),
+            command=cmd,
+            is_query=is_query,
+            form=form,
+            writes=caps.writes_for(path),
+        )
+        return ResolvedSCPI(text, context)
 
     # -- Lookup helpers ---
 

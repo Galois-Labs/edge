@@ -40,6 +40,7 @@ from .capability_manager import (
     SDKCommandRequest,
 )
 from .profile_schema import SweepConfig
+from .validation import ParamValidationError
 from .command_handler import CommandHandler
 from .scalar_chunker import (
     CHUNK_TRIGGER_MS,
@@ -1284,12 +1285,26 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
 
         # Resolve the command to SCPI string or SDKCommandRequest
         params = dict(request.parameters) if request.parameters else None
-        dispatch = self._capability_manager.resolve_command(
-            instrument_id=instrument_id,
-            command_name=command_name,
-            params=params,
-            is_query=request.is_query,
-        )
+        try:
+            dispatch = self._capability_manager.resolve_command(
+                instrument_id=instrument_id,
+                command_name=command_name,
+                params=params,
+                is_query=request.is_query,
+            )
+        except ParamValidationError as exc:
+            # edge-api.md §4: same pattern as the FAILED_PRECONDITION interlock below.
+            elapsed_ms = int((time.time() - start) * 1000)
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details(exc.message)
+            return edge_pb2.ExecuteCommandResponse(
+                command_id=command_id,
+                success=False,
+                data="",
+                error_message=exc.message,
+                execution_time_ms=elapsed_ms,
+                scpi_command="",
+            )
 
         if dispatch is None:
             elapsed_ms = int((time.time() - start) * 1000)
@@ -1776,12 +1791,22 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             separator = cmd.returns.separator
 
         # Resolve the SCPI/SDK dispatch once
-        dispatch = self._capability_manager.resolve_command(
-            instrument_id=instrument_id,
-            command_name=command_name,
-            params=params,
-            is_query=True,
-        )
+        try:
+            dispatch = self._capability_manager.resolve_command(
+                instrument_id=instrument_id,
+                command_name=command_name,
+                params=params,
+                is_query=True,
+            )
+        except ParamValidationError as exc:
+            seq += 1
+            yield edge_pb2.MeasurementDataPoint(
+                stream_id=stream_id,
+                error=exc.message,
+                status="error",
+                seq=seq,
+            )
+            return
         if dispatch is None:
             seq += 1
             yield edge_pb2.MeasurementDataPoint(
