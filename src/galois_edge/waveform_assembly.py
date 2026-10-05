@@ -49,14 +49,15 @@ DTYPE_SIZES = {
     "int8": 1,
     "int16": 2,
     "uint8": 1,
+    "uint16": 2,
     "float32": 4,
     "float64": 8,
 }
 
 #: Dtypes allowed on the wire (``VectorData.y_dtype``). The cloud client
 #: decodes only these five; anything else is silently reinterpreted as
-#: float64 garbage (doc §2.4). ``int8`` payloads are widened to int16
-#: before emission; ``uint16`` is rejected outright.
+#: float64 garbage (doc §2.4). ``int8`` payloads are widened to int16 and
+#: ``uint16`` payloads to int32 before emission.
 WIRE_DTYPES = {
     "float64": 8,
     "float32": 4,
@@ -159,21 +160,22 @@ def decode_block_samples(
 
     The wire format (``VectorData.y_data``) is always little-endian —
     big-endian instrument payloads are byte-swapped here so consumers
-    never need to care.  ``int8`` payloads are widened to ``int16``
-    (the cloud decodes only float64|float32|int32|int16|uint8, doc
-    §2.4); the raw counts are preserved so scale/offset still apply.
+    never need to care.  ``int8`` payloads are widened to ``int16`` and
+    ``uint16`` payloads to ``int32`` (the cloud decodes only
+    float64|float32|int32|int16|uint8, doc §2.4); the raw counts are
+    preserved so scale/offset still apply.
 
     Args:
         payload: Raw sample bytes from the IEEE block.
         dtype: Instrument-side sample dtype, one of
-            ``int8|int16|uint8|float32|float64``.
+            ``int8|int16|uint8|uint16|float32|float64``.
         byte_order: ``"little"`` or ``"big"`` — order of the
             *instrument's* samples.
 
     Returns:
         ``(little-endian sample bytes, sample count, wire dtype)``.
         ``wire dtype`` differs from *dtype* only for ``int8`` (widened
-        to ``"int16"``).
+        to ``"int16"``) and ``uint16`` (widened to ``"int32"``).
 
     Raises:
         IEEEBlockError: If the dtype or byte order is unknown, or the
@@ -202,6 +204,14 @@ def decode_block_samples(
         samples = struct.unpack(f"{count}b", payload)
         payload = struct.pack(f"<{count}h", *samples)
         return payload, count, "int16"
+
+    if dtype == "uint16":
+        # Widen to int32 — uint16 is not a wire dtype (cloud decodes
+        # float64|float32|int32|int16|uint8, doc §2.4). struct, not numpy:
+        # numpy is not an edge core dependency.
+        samples = struct.unpack(f"<{count}H", payload)
+        payload = struct.pack(f"<{count}i", *samples)
+        return payload, count, "int32"
 
     return payload, count, dtype
 

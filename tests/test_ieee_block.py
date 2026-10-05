@@ -189,10 +189,17 @@ class TestDecodeBlockSamples:
         with pytest.raises(IEEEBlockError, match="unsupported binary dtype"):
             decode_block_samples(b"\x00\x00", "int64", "little")
 
-    def test_uint16_rejected(self):
-        # uint16 must never be emitted (doc §2.4) — not even accepted.
-        with pytest.raises(IEEEBlockError, match="unsupported binary dtype"):
-            decode_block_samples(b"\x00\x00", "uint16", "little")
+    @pytest.mark.parametrize("byte_order,fmt", [("little", "<3H"), ("big", ">3H")])
+    def test_uint16_widened_to_int32(self, byte_order, fmt):
+        # uint16 is accepted (CI-9) but never emitted (doc §2.4): it is
+        # widened to int32, a wire dtype, with the raw counts preserved.
+        import struct
+
+        data, n, wire = decode_block_samples(
+            struct.pack(fmt, 0, 32768, 65535), "uint16", byte_order
+        )
+        assert (n, wire) == (3, "int32")
+        assert struct.unpack("<3i", data) == (0, 32768, 65535)
 
     def test_unknown_byte_order(self):
         with pytest.raises(IEEEBlockError, match="unsupported byte order"):

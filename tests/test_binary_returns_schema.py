@@ -104,8 +104,12 @@ class TestBinarySubBlock:
         with pytest.raises(ValueError, match="binary.dtype"):
             profile.validate()
 
-    def test_uint16_dtype_rejected(self):
-        cfg = BinaryConfig(dtype="uint16")
+    def test_uint16_dtype_accepted(self):
+        # CI-9: uint16 is a valid profile dtype (widened to int32 on the wire).
+        BinaryConfig(dtype="uint16").validate()
+
+    def test_uint32_dtype_rejected(self):
+        cfg = BinaryConfig(dtype="uint32")
         with pytest.raises(ValueError, match="binary.dtype"):
             cfg.validate()
 

@@ -50,9 +50,10 @@ class ParameterConfig:
 
 
 #: Sample dtypes a profile may declare inside ``returns.binary``.
-#: ``int8`` is accepted but widened to ``int16`` before emission — the
-#: cloud decodes only float64|float32|int32|int16|uint8 (doc §2.4).
-ALLOWED_BINARY_DTYPES = ("int8", "int16", "uint8", "float32", "float64")
+#: ``int8`` is accepted but widened to ``int16``, and ``uint16`` is accepted
+#: but widened to ``int32``, before emission — the cloud decodes only
+#: float64|float32|int32|int16|uint8 (doc §2.4).
+ALLOWED_BINARY_DTYPES = ("int8", "int16", "uint8", "uint16", "float32", "float64")
 
 #: Byte orders a profile may declare inside ``returns.binary``.
 ALLOWED_BYTE_ORDERS = ("little", "big")
