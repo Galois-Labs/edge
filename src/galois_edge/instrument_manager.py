@@ -17,12 +17,15 @@ Key design points:
   - TCPIP SOCKET connections receive read/write termination via PyVISA.
   - ``rescan_all()`` is a method, not a timer — the caller (main.py)
     handles scheduling.
+  - Extra backends (``extra_backends``, edge-api.md §2) are checked
+    before all of the above: the first one whose ``handles(address)``
+    is true owns the address for every address-taking method.
 """
 
 import logging
 import os
 import time
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Sequence, Union
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +41,9 @@ except ImportError:
 from .gpib_manager import GPIBManager, GPIB_AVAILABLE
 from .usb_transport import USBTransport, USB_AVAILABLE
 from .lan_discovery import LANDiscovery, is_tcpip_resource, is_tcpip_socket_resource
+
+if TYPE_CHECKING:
+    from .backends.base import InstrumentBackend
 
 
 class _suppress_native_stderr:
@@ -91,6 +97,11 @@ class InstrumentManager:
         PyVISA backend selector (default ``"@py"`` for pyvisa-py).
     include_serial_ports:
         Include ``ASRL`` serial resources in VISA listings.
+    extra_backends:
+        :class:`~galois_edge.backends.base.InstrumentBackend` instances,
+        checked in order before the built-in GPIB/USB/VISA routing
+        (edge-api.md §2). The first backend whose ``handles(address)``
+        is true owns the address.
     """
 
     def __init__(
@@ -108,7 +119,12 @@ class InstrumentManager:
         lan_probe_timeout: float = 2.0,
         visa_backend: str = "@py",
         include_serial_ports: bool = False,
+        extra_backends: Sequence["InstrumentBackend"] = (),
     ):
+        # ----- Extra backends (edge-api.md §2): checked before GPIB/USB/VISA -----
+        self._extra_backends: tuple = tuple(extra_backends)
+        self._backend_ids: dict[str, str] = {}   # address -> id returned by backend.connect
+
         # ----- PyVISA resource manager -----
         self._rm: Optional[object] = None
         self._visa_backend = visa_backend
@@ -188,6 +204,38 @@ class InstrumentManager:
         return self._rm is not None
 
     # ------------------------------------------------------------------
+    # Extra backends (edge-api.md §2)
+    # ------------------------------------------------------------------
+
+    @property
+    def extra_backends(self) -> tuple:
+        """Registered extra backends, in routing order (read-only)."""
+        return self._extra_backends
+
+    def backend_for(self, address: str):
+        """The first extra backend whose ``handles(address)`` is true, else None."""
+        for backend in self._extra_backends:
+            try:
+                if backend.handles(address):
+                    return backend
+            except Exception:
+                logger.exception("backend %r handles(%r) raised", getattr(backend, "name", backend), address)
+        return None
+
+    @property
+    def gpib(self) -> Optional[GPIBManager]:
+        """The GPIBManager, or None when GPIB is disabled/unavailable."""
+        return self._gpib
+
+    def close_backends(self) -> None:
+        """Call ``close()`` on every extra backend; exceptions are logged."""
+        for backend in self._extra_backends:
+            try:
+                backend.close()
+            except Exception:
+                logger.exception("backend %r close() raised", getattr(backend, "name", backend))
+
+    # ------------------------------------------------------------------
     # Resource listing
     # ------------------------------------------------------------------
 
@@ -242,6 +290,17 @@ class InstrumentManager:
                     resources.append(res)
                     existing.add(res)
             logger.debug("After USB discovery: %d total resource(s)", len(resources))
+
+        # 5. Extra backends (edge-api.md §2), de-duplicated
+        existing = set(resources)
+        for backend in self._extra_backends:
+            try:
+                for res in backend.list_resources():
+                    if res not in existing:
+                        resources.append(res)
+                        existing.add(res)
+            except Exception:
+                logger.exception("backend %r list_resources() raised", getattr(backend, "name", backend))
 
         return tuple(resources)
 
@@ -368,6 +427,14 @@ class InstrumentManager:
         str or None
             The instrument ID (VISA address) on success, None on failure.
         """
+        # --- Extra backends (edge-api.md §2) ---
+        backend = self.backend_for(visa_address)
+        if backend is not None:
+            canonical = backend.connect(visa_address, timeout=timeout)
+            if canonical:
+                self._backend_ids[visa_address] = canonical
+            return canonical
+
         # --- GPIB ---
         if self._is_gpib(visa_address):
             try:
@@ -487,6 +554,11 @@ class InstrumentManager:
 
     def disconnect(self, instrument_id: str) -> None:
         """Disconnect from an instrument."""
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            backend.disconnect(instrument_id)
+            return
+
         # GPIB
         if self._is_gpib(instrument_id):
             self._gpib.disconnect(instrument_id)
@@ -516,6 +588,12 @@ class InstrumentManager:
         For GPIB instruments, uses remove_devices_on_board() which
         skips gpib.close(). For other backends, uses normal disconnect.
         """
+        backend = self.backend_for(visa_address)
+        if backend is not None:
+            backend.disconnect(visa_address)
+            logger.info("Marked instrument absent: %s", visa_address)
+            return
+
         if self._is_gpib(visa_address):
             # GPIB removal is handled via GPIBManager.remove_devices_on_board()
             # at the board level, not per-instrument. This method handles
@@ -541,6 +619,13 @@ class InstrumentManager:
             self._usb.disconnect_all()
         for instrument_id in list(self._instruments):
             self.disconnect(instrument_id)
+        for backend in self._extra_backends:
+            for address in backend.list_resources():
+                try:
+                    if backend.is_connected(address):
+                        backend.disconnect(address)
+                except Exception:
+                    logger.exception("backend disconnect(%r) raised", address)
 
     # ------------------------------------------------------------------
     # Connection state
@@ -548,6 +633,9 @@ class InstrumentManager:
 
     def is_connected(self, instrument_id: str) -> bool:
         """Return True if *instrument_id* has an active connection."""
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.is_connected(instrument_id)
         if self._is_gpib(instrument_id):
             return self._gpib.is_connected(instrument_id)
         if self._is_usb(instrument_id):
@@ -562,7 +650,11 @@ class InstrumentManager:
         For GPIB instruments, returns the GPIBManager instance.
         For USB instruments, returns the USBTransport instance.
         For VISA instruments, returns the ``pyvisa.Resource``.
+        For addresses owned by an extra backend, returns that backend.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend if backend.is_connected(instrument_id) else None
         if self._is_gpib(instrument_id):
             if self._gpib.is_connected(instrument_id):
                 return self._gpib
@@ -577,8 +669,11 @@ class InstrumentManager:
         """Return the canonical resource ID for an instrument.
 
         Raw USB devices may be discovered with a placeholder serial
-        (``"0"``); after connection the real serial is known.
+        (``"0"``); after connection the real serial is known. For an
+        extra backend, this is the id its ``connect()`` returned.
         """
+        if self.backend_for(instrument_id) is not None:
+            return self._backend_ids.get(instrument_id, instrument_id)
         if self._is_usb(instrument_id):
             key = self._usb._resolve(instrument_id)
             return key if key else instrument_id
@@ -598,6 +693,10 @@ class InstrumentManager:
         IOError / pyvisa.Error
             On communication failure.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.query(instrument_id, command)
+
         if self._is_gpib(instrument_id):
             if not self._gpib.is_connected(instrument_id):
                 raise ValueError(f"Instrument not connected: {instrument_id}")
@@ -623,6 +722,11 @@ class InstrumentManager:
         IOError / pyvisa.Error
             On communication failure.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            backend.write(instrument_id, command)
+            return
+
         if self._is_gpib(instrument_id):
             if not self._gpib.is_connected(instrument_id):
                 raise ValueError(f"Instrument not connected: {instrument_id}")
@@ -649,6 +753,10 @@ class InstrumentManager:
             If the instrument is not connected or backend does not
             support standalone reads.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.read(instrument_id)
+
         if self._is_gpib(instrument_id):
             if not self._gpib.is_connected(instrument_id):
                 raise ValueError(f"Instrument not connected: {instrument_id}")
@@ -670,6 +778,9 @@ class InstrumentManager:
         GPIB and USB transports cache the *IDN?/ID response — this
         method returns the cached value when available.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.identify(instrument_id)
         if self._is_gpib(instrument_id):
             return self._gpib.identify(instrument_id)
         if self._is_usb(instrument_id):
@@ -716,6 +827,10 @@ class InstrumentManager:
         IOError / pyvisa.Error
             On communication failure.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.query_raw(instrument_id, command)
+
         if self._is_gpib(instrument_id) or self._is_usb(instrument_id):
             raise ValueError(
                 f"Binary (raw) reads are not supported on this transport: "
@@ -787,6 +902,17 @@ class InstrumentManager:
             If the instrument is not connected or the backend does not
             support binary queries.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.query_binary_values(
+                instrument_id,
+                command,
+                datatype=datatype,
+                is_big_endian=is_big_endian,
+                container=container,
+                timeout_ms=timeout_ms,
+            )
+
         if self._is_gpib(instrument_id):
             raise ValueError(
                 f"Binary queries not supported for GPIB instrument: {instrument_id}"
@@ -827,6 +953,10 @@ class InstrumentManager:
             If the instrument is not connected or does not support
             binary reads.
         """
+        backend = self.backend_for(instrument_id)
+        if backend is not None:
+            return backend.read_binary(instrument_id, num_bytes)
+
         if self._is_usb(instrument_id):
             if not self._usb.is_connected(instrument_id):
                 raise ValueError(f"Instrument not connected: {instrument_id}")
