@@ -30,7 +30,7 @@ try:
 
     if hasattr(DriverRegistry, "register"):
         try:
-            DriverRegistry.register("can", GenericCANDriver, CANBusManager())  # type: ignore[attr-defined]
+            DriverRegistry.register("can", GenericCANDriver, CANBusManager)  # factory (edge-api.md §9), not an instance
             logger.debug("Registered CAN driver via DriverRegistry.register()")
         except Exception as exc:  # pragma: no cover — defensive
             logger.warning("CAN driver self-registration failed: %s", exc)

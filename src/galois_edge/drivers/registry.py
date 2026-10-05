@@ -28,6 +28,9 @@ import yaml
 
 from galois_edge.drivers.base import BaseProtocolDriver
 
+# libyaml when present (≈9× faster), pure-Python SafeLoader otherwise (edge-api.md §9).
+_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
 logger = logging.getLogger(__name__)
 
 
@@ -203,7 +206,7 @@ class DriverRegistry:
             for yaml_file in sorted(protocol_dir.glob("*.yaml")):
                 try:
                     with open(yaml_file) as f:
-                        profile = yaml.safe_load(f)
+                        profile = yaml.load(f, Loader=_YAML_LOADER)  # noqa: S506 — a safe loader
                     if (
                         profile
                         and isinstance(profile, dict)
