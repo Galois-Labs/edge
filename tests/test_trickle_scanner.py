@@ -285,8 +285,9 @@ async def test_trickle_scanner_stop(io_executor):
 
     await scanner.stop()
 
-    # Wait for the task to finish
-    await _until(lambda: not scanner.running)
+    # Wait for run() itself to return. stop() clears `running` synchronously,
+    # so `not scanner.running` would hold even if run() ignored the stop.
+    await _until(task.done)
     assert not scanner.running
 
     task.cancel()
