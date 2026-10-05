@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import socket
 
 import aiohttp
 import grpc
@@ -12,6 +13,29 @@ from galois_edge.grpc_server import GRPCServer
 from galois_edge.ws_server import WebSocketServer
 
 pytestmark = pytest.mark.critical
+
+# A loopback address that is not the 127.0.0.1 default, so a listener that ignores
+# its configured host (a hard-coded "127.0.0.1") cannot pass the listen tests below.
+ALT_LOOPBACK = "127.0.0.2"
+
+
+@pytest.fixture
+def alt_loopback() -> str:
+    probe = socket.socket()
+    try:
+        probe.bind((ALT_LOOPBACK, 0))
+    except OSError:
+        pytest.skip(f"{ALT_LOOPBACK} is not bindable here (macOS routes only 127.0.0.1 by default)")
+    finally:
+        probe.close()
+    return ALT_LOOPBACK
+
+
+def _mcp_server(mock_instrument_manager, mock_command_handler, mock_capability_manager, **kwargs):
+    from galois_edge.mcp.server import MCPServer
+
+    return MCPServer(capability_manager=mock_capability_manager, command_handler=mock_command_handler,
+                     instrument_manager=mock_instrument_manager, port=0, dynamic_tools_enabled=False, **kwargs)
 
 
 def test_grpc_bind_host_defaults_from_env(monkeypatch, mock_instrument_manager, mock_command_handler):
@@ -90,5 +114,63 @@ async def test_mcp_host_from_env_and_port_zero(monkeypatch, mock_instrument_mana
     await srv.start()
     try:
         assert srv.port > 0
+    finally:
+        await srv.stop()
+
+
+def test_ws_bind_host_from_env_and_explicit_kwarg_wins(monkeypatch, mock_instrument_manager, mock_command_handler):
+    monkeypatch.setenv("WS_BIND_HOST", "0.0.0.0")
+    assert WebSocketServer(mock_instrument_manager, mock_command_handler, port=0).bind_host == "0.0.0.0"
+    explicit = WebSocketServer(mock_instrument_manager, mock_command_handler, port=0, bind_host="127.0.0.1")
+    assert explicit.bind_host == "127.0.0.1"
+    monkeypatch.delenv("WS_BIND_HOST")
+    assert WebSocketServer(mock_instrument_manager, mock_command_handler, port=0).bind_host == "127.0.0.1"
+
+
+@pytest.mark.parametrize("source", ["env", "kwarg"])
+async def test_ws_listens_on_its_bind_host(source, monkeypatch, alt_loopback, mock_instrument_manager,
+                                           mock_command_handler):
+    if source == "env":
+        monkeypatch.setenv("WS_BIND_HOST", alt_loopback)
+        srv = WebSocketServer(mock_instrument_manager, mock_command_handler, port=0)
+    else:
+        monkeypatch.setenv("WS_BIND_HOST", "127.0.0.1")  # the explicit kwarg beats it
+        srv = WebSocketServer(mock_instrument_manager, mock_command_handler, port=0, bind_host=alt_loopback)
+    assert srv.bind_host == alt_loopback
+    await srv.start()
+    try:
+        assert [addr[0] for addr in srv._runner.addresses] == [alt_loopback]  # the socket actually bound
+        assert srv.port == srv._runner.addresses[0][1]
+        async with aiohttp.ClientSession() as s, s.get(f"http://{alt_loopback}:{srv.port}/health") as r:
+            assert r.status == 200
+    finally:
+        await srv.stop()
+
+
+def test_mcp_host_from_env_and_explicit_kwarg_wins(monkeypatch, mock_instrument_manager, mock_command_handler,
+                                                   mock_capability_manager):
+    mocks = (mock_instrument_manager, mock_command_handler, mock_capability_manager)
+    monkeypatch.setenv("MCP_BIND_HOST", "0.0.0.0")
+    assert _mcp_server(*mocks).host == "0.0.0.0"
+    assert _mcp_server(*mocks, host="127.0.0.1").host == "127.0.0.1"
+    monkeypatch.delenv("MCP_BIND_HOST")
+    assert _mcp_server(*mocks).host == "127.0.0.1"
+
+
+@pytest.mark.parametrize("source", ["env", "kwarg"])
+async def test_mcp_listens_on_its_host(source, monkeypatch, alt_loopback, mock_instrument_manager,
+                                       mock_command_handler, mock_capability_manager):
+    mocks = (mock_instrument_manager, mock_command_handler, mock_capability_manager)
+    if source == "env":
+        monkeypatch.setenv("MCP_BIND_HOST", alt_loopback)
+        srv = _mcp_server(*mocks)
+    else:
+        monkeypatch.setenv("MCP_BIND_HOST", "127.0.0.1")  # the explicit kwarg beats it
+        srv = _mcp_server(*mocks, host=alt_loopback)
+    assert srv.host == alt_loopback
+    await srv.start()
+    try:
+        bound = [sock.getsockname()[:2] for server in srv._server.servers for sock in server.sockets]
+        assert bound == [(alt_loopback, srv.port)]  # the socket actually bound, and the port read back
     finally:
         await srv.stop()
