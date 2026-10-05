@@ -36,12 +36,15 @@ class _ServerHarness:
         self.ns: int = 0
         self._ready = threading.Event()
         self._stop_event: asyncio.Event | None = None
+        self.error: BaseException | None = None
 
     def start(self) -> None:
         self.thread = threading.Thread(target=self._run, daemon=True, name="opcua-test-srv")
         self.thread.start()
         if not self._ready.wait(timeout=15.0):
             raise RuntimeError("OPC-UA test server failed to start")
+        if self.error is not None:
+            raise RuntimeError("OPC-UA test server failed to start") from self.error
 
     def _run(self) -> None:
         loop = asyncio.new_event_loop()
@@ -49,6 +52,10 @@ class _ServerHarness:
         self.loop = loop
         try:
             loop.run_until_complete(self._async_main())
+        except BaseException as exc:  # bind failure etc.: do not make start() wait 15 s
+            self.error = exc
+            self._ready.set()
+            raise
         finally:
             try:
                 loop.close()
@@ -64,6 +71,7 @@ class _ServerHarness:
         self.ns = await self.server.register_namespace("urn:galois:test")
         self._stop_event = asyncio.Event()
         async with self.server:
+            self.endpoint = f"opc.tcp://127.0.0.1:{self.server.bserver.port}/galois-test/"
             self._ready.set()
             await self._stop_event.wait()
 
@@ -83,7 +91,7 @@ class _ServerHarness:
 def opcua_server() -> Any:
     if not OPCUA_AVAILABLE:
         pytest.skip("asyncua not installed")
-    h = _ServerHarness(endpoint="opc.tcp://127.0.0.1:48400/galois-test/")
+    h = _ServerHarness(endpoint="opc.tcp://127.0.0.1:0/galois-test/")  # port 0: OS-assigned, rewritten after bind
     h.start()
     try:
         yield h

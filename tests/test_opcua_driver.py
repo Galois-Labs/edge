@@ -50,7 +50,7 @@ def _no_args(parent: Any) -> int:
 class _ServerFixture:
     """Drives a populated asyncua.Server on its own thread + loop."""
 
-    ENDPOINT = "opc.tcp://127.0.0.1:48410/galois-driver-test/"
+    ENDPOINT = "opc.tcp://127.0.0.1:0/galois-driver-test/"  # port 0: OS-assigned, rewritten after bind
 
     def __init__(self) -> None:
         self.server: Server | None = None
@@ -59,6 +59,7 @@ class _ServerFixture:
         self.ns: int = 0
         self._ready = threading.Event()
         self._stop_event: asyncio.Event | None = None
+        self.error: BaseException | None = None
         # Map from name → (NodeId, Node) populated during setup.
         self.vars: dict[str, Any] = {}
         self.method_node: Any = None
@@ -75,6 +76,8 @@ class _ServerFixture:
         self.thread.start()
         if not self._ready.wait(timeout=20.0):
             raise RuntimeError("OPC-UA driver-test server failed to start")
+        if self.error is not None:
+            raise RuntimeError("OPC-UA driver-test server failed to start") from self.error
 
     def _run(self) -> None:
         loop = asyncio.new_event_loop()
@@ -82,6 +85,10 @@ class _ServerFixture:
         self.loop = loop
         try:
             loop.run_until_complete(self._async_main())
+        except BaseException as exc:  # bind failure etc.: do not make start() wait 20 s
+            self.error = exc
+            self._ready.set()
+            raise
         finally:
             try:
                 loop.close()
@@ -142,6 +149,7 @@ class _ServerFixture:
 
         self._stop_event = asyncio.Event()
         async with srv:
+            self.ENDPOINT = f"opc.tcp://127.0.0.1:{srv.bserver.port}/galois-driver-test/"
             self._ready.set()
             await self._stop_event.wait()
 

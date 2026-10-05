@@ -40,3 +40,11 @@ def test_no_bare_conftest_imports():
         str(p.relative_to(TESTS)) for p in _pytest_imported_modules() if pattern.search(p.read_text(encoding="utf-8"))
     ]
     assert offenders == []
+
+
+def test_opcua_test_servers_use_port_zero():
+    # Server endpoints the harnesses bind (/galois-test/, /galois-driver-test/). Never-bound
+    # client-side literals such as opc.tcp://127.0.0.1:9/notreal/ are not listeners.
+    for name in ("test_opcua_driver.py", "test_opcua_transport.py"):
+        ports = re.findall(r"opc\.tcp://127\.0\.0\.1:(\d+)/galois-", (TESTS / name).read_text(encoding="utf-8"))
+        assert ports and set(ports) == {"0"}, (name, ports)
