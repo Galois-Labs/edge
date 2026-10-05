@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from mcp.server.fastmcp import FastMCP
 
+from ...validation import ParamValidationError
 from ..context import EdgeContext
 
 if TYPE_CHECKING:
@@ -100,12 +101,20 @@ def register_stream_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
             }
 
         params = dict(parameters) if parameters else None
-        dispatch = cap_mgr.resolve_command(
-            instrument_id=instrument_id,
-            command_name=command_name,
-            params=params,
-            is_query=True,
-        )
+        try:
+            dispatch = cap_mgr.resolve_command(
+                instrument_id=instrument_id,
+                command_name=command_name,
+                params=params,
+                is_query=True,
+            )
+        except ParamValidationError as exc:
+            return {
+                "error": exc.message,
+                "field": exc.field,
+                "stream_id": "",
+                "count": 0,
+            }
         if dispatch is None:
             return {
                 "error": f"Failed to resolve command '{command_name}'",

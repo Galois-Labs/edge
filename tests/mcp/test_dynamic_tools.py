@@ -8,6 +8,7 @@ dynamic tools registered) plus §4.8 unit coverage.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any
 
@@ -304,10 +305,10 @@ async def test_out_of_range_rejected_before_dispatch(
     mgr = edge_context.instrument_manager
     pre_writes = list(getattr(mgr, "writes", []))
 
-    with pytest.raises(Exception):
-        await mcp.call_tool(
-            "keithley_2400__set_voltage", {"value": 999.0},
-        )
+    result = await mcp.call_tool("keithley_2400__set_voltage", {"value": 999.0})
+    data = result[1]["result"] if isinstance(result, tuple) else json.loads(result[0].text)
+    assert data["success"] is False and data["field"] == "value"
+    assert data["error"] == "value: 999.0 is out of range [-200.0, 200.0]"
 
     post_writes = list(getattr(mgr, "writes", []))
     # No write should have been issued — Pydantic / our handler rejected it.

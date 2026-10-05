@@ -36,6 +36,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.shared.message import SessionMessage
 from mcp.types import ToolAnnotations
 
+from ..validation import ParamValidationError
 from .context import EdgeContext
 from .schema import command_to_input_schema, parameter_to_json_schema
 
@@ -418,31 +419,6 @@ class DynamicToolRegistry:
                 scope=tool_name,
                 is_dangerous=bool(command.is_dangerous),
             )
-            # Validate against the JSON schema we built. FastMCP/Pydantic
-            # already validates types at the framework boundary; this
-            # double-check covers numeric range constraints which Pydantic
-            # surfaces only when we declare an explicit BaseModel.
-            for pname, pdef in input_schema.get("properties", {}).items():
-                if pname not in kwargs:
-                    continue
-                value = kwargs[pname]
-                if isinstance(value, (int, float)):
-                    minimum = pdef.get("minimum")
-                    maximum = pdef.get("maximum")
-                    if minimum is not None and value < minimum:
-                        raise ValueError(
-                            f"{pname}={value} below minimum {minimum}"
-                        )
-                    if maximum is not None and value > maximum:
-                        raise ValueError(
-                            f"{pname}={value} above maximum {maximum}"
-                        )
-                if pdef.get("enum") is not None:
-                    if value not in pdef["enum"]:
-                        raise ValueError(
-                            f"{pname}={value!r} not in {pdef['enum']}"
-                        )
-
             if command.requires_sweep:
                 return _error(
                     f"Command '{command_name}' requires sweep — use start_sweep.",
@@ -456,12 +432,16 @@ class DynamicToolRegistry:
 
             is_query = command.type == "query" or command.force_query
 
-            dispatch = cap_mgr.resolve_command(
-                instrument_id=instrument_id,
-                command_name=command_name,
-                params=params or None,
-                is_query=is_query,
-            )
+            try:
+                dispatch = cap_mgr.resolve_command(
+                    instrument_id=instrument_id,
+                    command_name=command_name,
+                    params=params or None,
+                    is_query=is_query,
+                )
+            except ParamValidationError as exc:
+                # Central validation (edge-api.md §4): same message as gRPC.
+                return _error(exc.message, field=exc.field)
             if dispatch is None:
                 return _error(
                     f"Failed to resolve command '{command_name}' for {instrument_id}"
@@ -508,8 +488,12 @@ class DynamicToolRegistry:
         # FastMCP's Tool.from_function inspects the actual function
         # signature (not `**kwargs`) to build the JSON Schema. Build a
         # wrapper with concrete parameters so min/max/enum metadata
-        # surfaces correctly in tools/list.
-        wrapper = _make_signature_wrapper(_impl, input_schema, tool_name)
+        # surfaces correctly in tools/list. Those bounds are advertised
+        # only: central validation enforces them (edge-api.md §3/§4), so
+        # dynamic tools reject with the same message as gRPC.
+        wrapper = _make_signature_wrapper(
+            _impl, input_schema, tool_name, enforce_constraints=False,
+        )
         wrapper.__doc__ = self._command_description(command_name, command)
         return wrapper
 
@@ -687,17 +671,21 @@ def _error(
     message: str,
     scpi: str = "",
     start: Optional[float] = None,
+    field: Optional[str] = None,
 ) -> Dict[str, Any]:
     elapsed = 0
     if start is not None:
         elapsed = int((time.time() - start) * 1000)
-    return {
+    out: Dict[str, Any] = {
         "success": False,
         "data": "",
         "error": message,
         "scpi_command": scpi,
         "execution_time_ms": elapsed,
     }
+    if field is not None:
+        out["field"] = field  # ParamValidationError.field (edge-api.md §3/§4)
+    return out
 
 
 async def _send_or_drop(stream: Any, message: SessionMessage) -> None:
@@ -709,9 +697,10 @@ async def _send_or_drop(stream: Any, message: SessionMessage) -> None:
 
 
 # JSON-Schema "type" -> Python typing annotation used for the synthetic
-# wrapper signature. FastMCP runs Pydantic over the resulting model so
-# numeric bounds in the JSON schema are NOT enforced — we re-validate
-# bounds inside the wrapper itself (see _make_command_handler).
+# wrapper signature. FastMCP runs Pydantic over the resulting model, so the
+# JSON types are always enforced; numeric bounds and enums are enforced only
+# with enforce_constraints=True (profile-command tools leave them to central
+# validation, see _make_command_handler).
 _JSONSCHEMA_TO_PY_TYPE = {
     "number": float,
     "integer": int,
@@ -726,6 +715,8 @@ def _make_signature_wrapper(
     impl: Callable[..., Any],
     input_schema: Dict[str, Any],
     tool_name: str,
+    *,
+    enforce_constraints: bool = True,
 ) -> Callable[..., Any]:
     """Wrap ``impl`` (a ``**kwargs``-only async fn) with a synthetic
     signature derived from ``input_schema`` so FastMCP / Pydantic can
@@ -734,7 +725,9 @@ def _make_signature_wrapper(
     Numeric ``minimum`` / ``maximum`` constraints from the JSON Schema
     are propagated as ``typing.Annotated[T, pydantic.Field(ge=..., le=...)]``
     so Pydantic emits them in the model_json_schema() output that FastMCP
-    forwards to the agent.
+    forwards to the agent. With ``enforce_constraints=False`` the bounds
+    and enums are emitted into the schema (``json_schema_extra``) but not
+    validated by Pydantic; the caller validates them itself.
     """
     properties = input_schema.get("properties", {}) or {}
     required = set(input_schema.get("required", []) or [])
@@ -754,14 +747,22 @@ def _make_signature_wrapper(
         json_type = str(pdef.get("type", "string"))
         py_type = _JSONSCHEMA_TO_PY_TYPE.get(json_type, Any)
         enum_values = pdef.get("enum")
-        if enum_values is not None:
+        if not enforce_constraints:
+            extra = {k: pdef[k] for k in ("minimum", "maximum", "enum") if pdef.get(k) is not None}
+            field_kwargs = {"json_schema_extra": extra} if extra else {}
+            if pdef.get("description"):
+                field_kwargs["description"] = pdef["description"]
+            annotated_type: Any = (
+                Annotated[py_type, Field(**field_kwargs)] if field_kwargs else py_type
+            )
+        elif enum_values is not None:
             # Use a Literal for enums — Pydantic emits the enum schema
             # back out and validates client args against the allowed set.
             try:
                 py_type = Literal[tuple(enum_values)]  # type: ignore[misc]
             except TypeError:
                 py_type = str
-            annotated_type: Any = py_type
+            annotated_type = py_type
         else:
             field_kwargs: Dict[str, Any] = {}
             if pdef.get("minimum") is not None:

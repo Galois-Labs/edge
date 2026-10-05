@@ -16,6 +16,7 @@ from typing import Any, Dict, Optional
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from ...validation import ParamValidationError, coerce_response
 from ..context import EdgeContext
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,15 @@ def register_execute_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
         description=(
             "Run a profile-defined named command on an instrument. "
             "Pass instrument_id (e.g. a VISA address), command_name "
-            "(from get_capabilities), and any required parameters as "
-            "a dict of stringified values. Set is_query=True for "
-            "queries. Returns success, data, scpi_command, and "
-            "execution_time_ms. Refuses commands flagged "
-            "requires_sweep — use start_sweep for those."
+            "as a command path (e.g. 'source.voltage') or alias (from "
+            "get_capabilities or the navigation tools), and any required "
+            "parameters as a dict of stringified values. Set "
+            "is_query=True for queries. Returns success, data, "
+            "scpi_command, and execution_time_ms; queries also return "
+            "value_typed (data coerced per the command's return type). "
+            "Invalid parameters return error plus the offending field. "
+            "Refuses commands flagged requires_sweep — use start_sweep "
+            "for those."
         ),
         annotations=ToolAnnotations(destructiveHint=True),
     )
@@ -68,12 +73,15 @@ def register_execute_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
             )
 
         params = dict(parameters) if parameters else None
-        dispatch = cap_mgr.resolve_command(
-            instrument_id=instrument_id,
-            command_name=command_name,
-            params=params,
-            is_query=is_query,
-        )
+        try:
+            dispatch = cap_mgr.resolve_command(
+                instrument_id=instrument_id,
+                command_name=command_name,
+                params=params,
+                is_query=is_query,
+            )
+        except ParamValidationError as exc:
+            return _error(exc.message, start, field=exc.field)
         if dispatch is None:
             return _error(
                 f"Failed to resolve command '{command_name}' for "
@@ -174,13 +182,21 @@ def register_execute_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
         else:
             response = result.get("response", "")
 
-        return {
+        out = {
             "success": bool(result.get("success", False)),
             "data": response,
             "error": result.get("error", ""),
             "scpi_command": dispatch,
             "execution_time_ms": elapsed_ms,
         }
+        ran_as_query = (
+            is_query or cmd_config.force_query or str(dispatch).rstrip().endswith("?")
+        )
+        if out["success"] and ran_as_query:
+            typed = coerce_response(cmd_config.returns, response)
+            if typed is not None:
+                out["value_typed"] = typed  # optional, MCP-only (edge-api.md §3)
+        return out
 
     @mcp.tool(
         name="execute_sequence",
@@ -358,11 +374,15 @@ def _error(
     message: str,
     start: float,
     scpi_command: str = "",
+    field: Optional[str] = None,
 ) -> Dict[str, Any]:
-    return {
+    out: Dict[str, Any] = {
         "success": False,
         "data": "",
         "error": message,
         "scpi_command": scpi_command,
         "execution_time_ms": int((time.time() - start) * 1000),
     }
+    if field is not None:
+        out["field"] = field  # ParamValidationError.field (edge-api.md §3/§4)
+    return out
