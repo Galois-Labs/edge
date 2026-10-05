@@ -74,6 +74,16 @@ def test_query_command_defaults_and_required():
         validate_params(q2, {})
 
 
+def test_non_property_form_follows_the_header():  # semantics.md §3.1/§3.2
+    freq = CommandConfig(type="query", scpi=":MEASure:FREQuency? {source}", params={"source": P(type="string")})
+    assert select_template(freq, {"source": "CHAN1"}, True) == (freq.scpi, "query")
+    assert select_template(CommandConfig(scpi="MEAS:CURR:PHAS? {channel}"), {}, True)[1] == "query"
+    assert select_template(CommandConfig(scpi=":MEMory:VALid? {type},{location}"), {}, True)[1] == "query"
+    assert select_template(CommandConfig(scpi=":SOUR:VOLT {value}"), {}, False)[1] == "write"
+    assert select_template(CommandConfig(scpi="*RST"), {}, False)[1] == "write"
+    assert select_template(CommandConfig(type="query", scpi=":FETCh"), {}, True)[1] == "query"  # explicit type
+
+
 def test_placeholders_ignore_optional_nodes_and_manual_suffixes():
     assert template_placeholders("[:SOURce[<n>]]:VOLTage {value}") == (("value",), ())
     assert template_placeholders("[:SOUR{ch}]:VOLT {v}") == (("v",), ("ch",))

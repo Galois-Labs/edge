@@ -313,7 +313,17 @@ def select_template(
         return setter, "setter"
     if command.scpi is None:
         return None, "none"
-    return command.scpi, ("query" if command.scpi.rstrip().endswith("?") else "write")
+    return command.scpi, ("query" if _is_query_template(command) else "write")
+
+
+def _is_query_template(command: Any) -> bool:
+    """semantics.md §3.1/§3.2: classify by the header (the part before the first
+    whitespace), so a query with arguments (``:MEAS:FREQ? {source}``) is a query.
+    An explicit ``type: query`` is honoured as declared."""
+    if command.type == "query":
+        return True
+    parts = command.scpi.strip().split(None, 1)
+    return bool(parts) and parts[0].endswith("?")
 
 
 def validate_params(
