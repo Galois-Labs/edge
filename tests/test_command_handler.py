@@ -14,6 +14,8 @@ sys.path.insert(
 
 from galois_edge.command_handler import CommandHandler
 
+pytestmark = pytest.mark.critical
+
 
 class TestQueryWriteDetection:
     """Test that commands ending with '?' are treated as queries."""

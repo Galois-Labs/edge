@@ -58,6 +58,7 @@ def profile_dir(tmp_path):
     return str(tmp_path)
 
 
+@pytest.mark.critical
 class TestProfileLoader:
     """Test YAML loading and profile management."""
 
@@ -86,6 +87,7 @@ class TestProfileLoader:
         assert count == 0
 
 
+@pytest.mark.critical
 class TestProfileMatching:
     """Test *IDN? matching against loaded profiles."""
 
@@ -334,6 +336,7 @@ commands:
 """
 
 
+@pytest.mark.critical
 class TestPhase1ProfileLoading:
     """Test Phase 1 schema extensions: map, init_commands, cleanup_commands,
     force_query, and parser load correctly from YAML."""

@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+
+pytestmark = pytest.mark.critical
+
 
 def _parse_call(result: Any) -> Any:
     """Pull the structured payload out of FastMCP's call_tool return.

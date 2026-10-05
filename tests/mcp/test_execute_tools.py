@@ -5,6 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+
+pytestmark = pytest.mark.critical
+
 
 def _parse_call(result: Any) -> Any:
     if isinstance(result, tuple) and len(result) == 2:

@@ -12,6 +12,7 @@ sys.path.insert(
 )
 
 
+@pytest.mark.critical
 class TestConfigDefaults:
     """Verify that Config loads sensible defaults."""
 
@@ -46,6 +47,7 @@ class TestConfigDefaults:
         assert cfg.zmq_pub_port == 5556
 
 
+@pytest.mark.critical
 class TestConfigEnvOverride:
     """Verify that environment variables override defaults."""
 

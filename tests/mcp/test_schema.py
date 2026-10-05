@@ -13,6 +13,8 @@ from galois_edge.profile_schema import (
     ParameterConfig,
 )
 
+pytestmark = pytest.mark.critical
+
 
 def test_float_parameter_maps_to_number():
     schema = parameter_to_json_schema(ParameterConfig(type="float"))

@@ -28,6 +28,7 @@ GOLDEN_PAYLOAD = bytes(i % 256 for i in range(1000))
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestDecodeIEEEBlock:
     def test_golden_dsox_block_with_0x0a_payload(self):
         raw = (FIXTURES / "dsox3000_wav_data.bin").read_bytes()
@@ -70,6 +71,7 @@ class TestDecodeIEEEBlock:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestDecodeIEEEBlockErrors:
     def test_empty_response(self):
         with pytest.raises(IEEEBlockError, match="empty response"):
@@ -133,6 +135,7 @@ class TestDecodeIEEEBlockErrors:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestDecodeBlockSamples:
     def test_uint8_passthrough(self):
         data, count, dtype = decode_block_samples(GOLDEN_PAYLOAD, "uint8", "little")
@@ -246,6 +249,7 @@ DSOX_BINARY_CONFIG = BinaryConfig(
 )
 
 
+@pytest.mark.critical
 class TestExecuteBinaryBlockQuery:
     def make_handler(self, fake):
         return CommandHandler(instrument_manager=fake)

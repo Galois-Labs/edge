@@ -101,6 +101,7 @@ def _make_registry(edge_context):
     return mcp, registry
 
 
+@pytest.mark.critical
 def test_register_emits_per_command_tool(edge_context: Any) -> None:
     """Registering an instrument creates one tool per profile command."""
     mcp, registry = _make_registry(edge_context)
@@ -120,6 +121,7 @@ def test_register_emits_per_command_tool(edge_context: Any) -> None:
         assert any(n == prefix for n in names), f"missing tool {prefix}"
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_unregister_removes_tools(edge_context: Any) -> None:
     """Unregistering an instrument drops all of its tools."""
@@ -137,6 +139,7 @@ async def test_unregister_removes_tools(edge_context: Any) -> None:
     assert not leftover, f"tools survived unregister: {leftover}"
 
 
+@pytest.mark.critical
 def test_multi_instance_disambiguation(synthetic_command_handler, synthetic_instrument_manager) -> None:
     """Two instruments with the same profile_key get short_id-suffixed tools."""
     from galois_edge.capability_manager import CapabilityManager
@@ -176,6 +179,7 @@ def test_multi_instance_disambiguation(synthetic_command_handler, synthetic_inst
     assert any("5__INSTR" in n for n in b_tools), b_tools
 
 
+@pytest.mark.critical
 def test_schema_propagates_min_max_and_enum(edge_context: Any) -> None:
     """Numeric min/max and enum options propagate into the JSON schema."""
     import asyncio as _aio
@@ -205,6 +209,7 @@ def test_schema_propagates_min_max_and_enum(edge_context: Any) -> None:
     assert mode_props.get("enum") == ["VOLT", "CURR"]
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_dangerous_hint_propagates(edge_context: Any) -> None:
     """is_dangerous=True flips MCP destructiveHint in the tool annotations."""
@@ -223,6 +228,7 @@ async def test_dangerous_hint_propagates(edge_context: Any) -> None:
         assert safe.annotations.destructiveHint in (False, None)
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_sequences_register(edge_context: Any) -> None:
     """Profile sequences emit __sequence__ tools alongside commands."""
@@ -232,6 +238,7 @@ async def test_sequences_register(edge_context: Any) -> None:
     assert "keithley_2400__sequence__iv_sweep" in names
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_listener_cleanup_on_detach(edge_context: Any) -> None:
     """detach() removes the registry's listener and tool surface."""
@@ -248,6 +255,7 @@ async def test_listener_cleanup_on_detach(edge_context: Any) -> None:
     edge_context.capability_manager.unregister_instrument("USB::34461A::INSTR")
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_partial_failure_rolls_back(edge_context: Any) -> None:
     """A registration that raises mid-flight rolls back the partial set."""
@@ -284,6 +292,7 @@ async def test_partial_failure_rolls_back(edge_context: Any) -> None:
     assert not any(t.name.startswith("synth_fail__") for t in tools)
 
 
+@pytest.mark.critical
 @pytest.mark.asyncio
 async def test_out_of_range_rejected_before_dispatch(
     edge_context: Any,

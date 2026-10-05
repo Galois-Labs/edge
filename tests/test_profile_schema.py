@@ -19,6 +19,8 @@ from galois_edge.profile_schema import (
     profile_from_dict,
 )
 
+pytestmark = pytest.mark.critical
+
 
 # ---------------------------------------------------------------------------
 # ReturnConfig.parse_response()

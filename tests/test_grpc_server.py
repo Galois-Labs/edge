@@ -86,6 +86,7 @@ class TestConnectionTypeDetection:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestSendCommand:
 
     @pytest.mark.asyncio
@@ -158,6 +159,7 @@ class TestSendCommand:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestListInstruments:
 
     @pytest.mark.asyncio
@@ -242,6 +244,7 @@ class TestGetInstrument:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestGetCapabilities:
 
     @pytest.mark.asyncio
@@ -387,6 +390,7 @@ class TestStopStream:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestExecuteCommand:
 
     @pytest.mark.asyncio
@@ -551,6 +555,7 @@ class TestExecuteCommand:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestExecuteCommandVectorPath:
     """Tests for the vector/binary query path in ExecuteCommand."""
 
@@ -1733,6 +1738,7 @@ class TestSweepPollLoop:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.critical
 class TestProxySDKCallSecurity:
     """Security tests for the ProxySDKCall fallback dynamic import path."""
 
@@ -2135,6 +2141,7 @@ def _assert_ch1_vector(vd, samples=CH1_SAMPLES):
     assert vd.x_name == "Time"
 
 
+@pytest.mark.critical
 class TestExecuteCommandIEEEBlockPath:
     """One-shot ExecuteCommand on returns.type==binary (doc §2.1/§2.2)."""
 

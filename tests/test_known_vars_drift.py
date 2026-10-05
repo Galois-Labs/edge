@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.critical
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
