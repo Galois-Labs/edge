@@ -13,6 +13,15 @@ Tool naming:
       MCP-illegal characters (anything outside ``A-Za-z0-9_-.``) replaced
       by underscore.
     - Sequences: ``__sequence__`` infix between profile_key and sequence_name.
+    - v2 command paths (``source.voltage``) become ``source_voltage`` in the
+      command segment, so the name stays MCP-safe; v1 names have no dots and
+      are unchanged. When two commands map to the same name, the second is
+      skipped with a warning (plan CI-21).
+
+A profile with more than ``max_commands`` (MCP_DYNAMIC_TOOLS_MAX) enabled
+commands gets no per-command tools; the navigation tools plus
+execute_command cover it (contracts/edge-api.md §3). Sequence tools are
+still registered.
 
 When a second instance of the same profile registers, the first instance's
 already-emitted tools are removed and re-emitted with the disambiguating
@@ -71,7 +80,13 @@ class DynamicToolRegistry:
         mcp: FastMCP,
         ctx: EdgeContext,
         emit_list_changed: bool = True,
+        *,
+        max_commands: Optional[int] = None,
     ) -> None:
+        if max_commands is None:
+            from ..config import Config
+            max_commands = Config().mcp_dynamic_tools_max
+        self._max_commands = max_commands
         self._mcp = mcp
         self._ctx = ctx
         self._caps = ctx.capability_manager
@@ -172,12 +187,26 @@ class DynamicToolRegistry:
     ) -> List[str]:
         added: List[str] = []
         try:
-            for cmd_name, cmd_cfg in profile.commands.items():
-                if not cmd_cfg.enabled:
-                    continue
+            enabled = [(n, c) for n, c in profile.commands.items() if c.enabled]
+            if len(enabled) > self._max_commands:
+                logger.info(
+                    "%s: %d enabled commands > MCP_DYNAMIC_TOOLS_MAX=%d; "
+                    "use navigation tools + execute_command",
+                    instrument_id, len(enabled), self._max_commands,
+                )
+                enabled = []
+            seen: set = set()
+            for cmd_name, cmd_cfg in enabled:
                 tool_name = self._command_tool_name(
                     profile.profile_key, cmd_name, short_id, disambiguate,
                 )
+                if tool_name in seen:
+                    logger.warning(
+                        "dynamic tool name collision %s (%s); skipped",
+                        tool_name, cmd_name,
+                    )
+                    continue
+                seen.add(tool_name)
                 if self._add_command_tool(
                     tool_name=tool_name,
                     instrument_id=instrument_id,
@@ -282,9 +311,10 @@ class DynamicToolRegistry:
         short_id: str,
         disambiguate: bool,
     ) -> str:
+        segment = command_name.replace(".", "_")  # v2 paths -> MCP-safe (CI-21)
         if disambiguate:
-            return f"{profile_key}__{short_id}__{command_name}"
-        return f"{profile_key}__{command_name}"
+            return f"{profile_key}__{short_id}__{segment}"
+        return f"{profile_key}__{segment}"
 
     @staticmethod
     def _sequence_tool_name(

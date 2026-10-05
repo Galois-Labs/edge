@@ -116,7 +116,9 @@ class MCPServer:
 
         self._dynamic_registry: Optional[DynamicToolRegistry] = None
         if dynamic_tools_enabled:
-            self._dynamic_registry = DynamicToolRegistry(self._mcp, self._ctx)
+            self._dynamic_registry = DynamicToolRegistry(
+                self._mcp, self._ctx, max_commands=dynamic_tools_max,
+            )
             if self._sdk_executor is not None:
                 try:
                     self._sdk_executor.register_with_mcp(self._dynamic_registry)
