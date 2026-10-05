@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from tests.e2e.conftest import PSU_BENCH, SHUTDOWN_GRACE_S, mcp_agent, trace_records, trace_validator
+from tests.e2e.conftest import (
+    PSU_BENCH, SHUTDOWN_GRACE_S, assert_clean_daemon_log, mcp_agent, trace_records, trace_validator,
+)
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
@@ -51,6 +53,7 @@ async def test_agent_navigates_configures_and_measures_through_the_daemon(e2e, t
     assert seconds < SHUTDOWN_GRACE_S
     log = edge.proc.output()
     assert "Stdin closed (EOF) -- initiating shutdown" in log and "Edge daemon stopped." in log
+    assert_clean_daemon_log(edge.proc)
     assert world.proc.terminate() == 0, world.proc.output_tail()
 
     validator = trace_validator()

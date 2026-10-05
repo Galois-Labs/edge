@@ -13,7 +13,7 @@ import struct
 
 import pytest
 
-from tests.e2e.conftest import SCOPE_BENCH, mcp_agent
+from tests.e2e.conftest import SCOPE_BENCH, assert_clean_daemon_log, mcp_agent
 
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
@@ -47,4 +47,5 @@ async def test_scope_waveform_through_the_daemon_matches_the_rc_response(e2e, tm
 
     rc, _ = edge.proc.close_stdin()
     assert rc == 0, edge.proc.output_tail()
+    assert_clean_daemon_log(edge.proc)
     assert world.proc.terminate() == 0, world.proc.output_tail()
