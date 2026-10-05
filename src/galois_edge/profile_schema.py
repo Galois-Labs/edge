@@ -1,21 +1,24 @@
 """
-Dataclass models for YAML instrument profiles.
+Compatibility shim over galois-profiles (edge-api.md §6, F18).
 
-These models define the schema for instrument profile YAML files.
-Each profile describes an instrument's identity, commands, sequences,
-settings, and (optionally) SDK call mappings.
+galois-profiles parses, validates, and caches instrument profiles (v1 and
+v2). edge keeps its 20 plain dataclasses below, with unchanged constructors,
+fields, and defaults; galois-profiles objects are converted *into* them
+(``profile_from_galois``), and ``profile_from_dict`` stays the module-level
+parse entry point. Each profile describes an instrument's identity,
+commands, sequences, settings, and (optionally) SDK call mappings.
 
-The design uses plain dataclasses for simplicity and zero external
-dependencies.  Validation helpers raise ``ValueError`` on bad data
-so callers get clear error messages during profile loading.
+Validation helpers raise ``ValueError`` on bad data so callers get clear
+error messages during profile loading.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -652,6 +655,22 @@ class InstrumentProfile:
     sequences: Optional[Dict[str, SequenceConfig]] = None
     sdk: Optional[SDKConfig] = None
 
+    def __post_init__(self) -> None:
+        # Non-field state: invisible to __eq__/__repr__/dataclasses.fields (F18).
+        self._gp = None                      # galois_profiles Profile behind this shim, if any
+        self._aliases: Dict[str, str] = {}   # alias -> command path (v2 profiles)
+
+    def _attach_galois(self, gp: Any) -> None:
+        self._gp = gp
+        self._aliases = {alias: leaf.path for leaf in gp.leaves() for alias in leaf.aliases if alias != leaf.path}
+
+    @property
+    def galois_profile(self) -> Any:
+        """The galois_profiles Profile for navigation (CI-26); synthesized lazily if absent."""
+        if getattr(self, "_gp", None) is None:
+            self._attach_galois(_gp_api("profile_from_mapping")(profile_to_v1_mapping(self)))
+        return self._gp
+
     # ---- derived keys ------------------------------------------------------
 
     @property
@@ -996,8 +1015,8 @@ def _build_sequence(data: Dict[str, Any]) -> SequenceConfig:
     )
 
 
-def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
-    """Build an ``InstrumentProfile`` from a raw dict (e.g. parsed YAML).
+def _legacy_profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
+    """Build an ``InstrumentProfile`` from a raw v1 dict (e.g. parsed YAML).
 
     This factory handles the mapping from loosely-typed dicts to the
     strongly-typed dataclass tree.  It intentionally tolerates missing
@@ -1100,4 +1119,139 @@ def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
         sequences=sequences,
         sdk=sdk,
     )
+    return profile
+
+
+# ---------------------------------------------------------------------------
+# galois-profiles adapter (contracts/edge-api.md §6, F18). galois-profiles
+# parses/validates/caches; edge keeps its plain dataclasses, built by the
+# legacy builders from v1-shaped dicts, so every consumer sees the same types.
+# ---------------------------------------------------------------------------
+
+def _plain(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(v) for v in value]
+    return value
+
+
+def _drop_none(d: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in d.items() if v is not None}
+
+
+def _param_to_v1(spec: Any) -> Dict[str, Any]:
+    return _drop_none({
+        "type": spec.type, "unit": spec.unit, "min": spec.min, "max": spec.max, "default": _plain(spec.default),
+        "description": spec.description,
+        "options": list(spec.options) if spec.options is not None else None,
+        "map": _plain(spec.map) if spec.map is not None else None,
+    })
+
+
+def _returns_to_v1(spec: Any) -> Dict[str, Any]:
+    return _drop_none({
+        "type": spec.type, "unit": spec.unit, "element_type": spec.element_type, "separator": spec.separator,
+        "format": spec.format, "fields": _plain(spec.fields) if spec.fields is not None else None,
+        "parser": _plain(spec.parser) if spec.parser is not None else None,
+        "binary": _plain(spec.binary) if spec.binary is not None else None,
+        "x_name": spec.x_name, "x_unit": spec.x_unit,
+        "x_start_query": spec.x_start_query, "x_increment_query": spec.x_increment_query,
+    })
+
+
+def _leaf_to_v1_command(leaf: Any) -> Dict[str, Any]:
+    d = _drop_none({"scpi": leaf.scpi, "getter": leaf.getter, "setter": leaf.setter,
+                    "type": leaf.type, "description": leaf.description})
+    d.update(enabled=leaf.enabled, streamable=leaf.streamable, is_dangerous=leaf.is_dangerous,
+             force_query=leaf.force_query, requires_sweep=leaf.requires_sweep)
+    params = leaf.effective_params()
+    if params:
+        d["params"] = {name: _param_to_v1(spec) for name, spec in params.items()}
+    if leaf.returns is not None:
+        d["returns"] = _returns_to_v1(leaf.returns)
+    for key in ("sdk_call", "sweep", "waveform_assembly", "can"):
+        value = getattr(leaf, key)
+        if value:
+            d[key] = _plain(value)
+    return d
+
+
+def _sequence_to_v1(seq: Any) -> Dict[str, Any]:
+    steps = [_drop_none({"command": s.command, "scpi": s.scpi,
+                         "args": _plain(s.args) if s.args else None, "capture": s.capture}) for s in seq.steps]
+    return _drop_none({
+        "steps": steps, "description": seq.description, "returns": seq.returns, "enabled": seq.enabled,
+        "parameters": {n: _param_to_v1(p) for n, p in seq.parameters.items()} or None,
+    })
+
+
+def profile_from_galois(gp: Any) -> InstrumentProfile:
+    """Convert a galois_profiles Profile (v1 or v2) into the shim dataclasses; commands keyed by path."""
+    doc: Dict[str, Any] = {
+        "instrument": _drop_none({"manufacturer": gp.instrument.manufacturer, "model": gp.instrument.model,
+                                  "class": gp.instrument.instrument_class, "description": gp.instrument.description}),
+        "identity": _drop_none({"query": gp.identity.query, "patterns": list(gp.identity.patterns) or None}),
+        "interfaces": [_plain(i) for i in gp.interfaces],
+        "settings": _plain(gp.settings),
+    }
+    if gp.sequences:
+        doc["sequences"] = {name: _sequence_to_v1(s) for name, s in gp.sequences.items()}
+    if gp.sdk:
+        doc["sdk"] = _plain(gp.sdk)
+    profile = _legacy_profile_from_dict(doc)
+    profile.commands = {leaf.path: _build_command(_leaf_to_v1_command(leaf)) for leaf in gp.leaves()}
+    profile._attach_galois(gp)
+    return profile
+
+
+def _dc_to_v1(obj: Any) -> Any:
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        return {f.name: _dc_to_v1(getattr(obj, f.name))
+                for f in dataclasses.fields(obj) if getattr(obj, f.name) is not None}
+    if isinstance(obj, Mapping):
+        return {str(k): _dc_to_v1(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_dc_to_v1(v) for v in obj]
+    return obj
+
+
+def profile_to_v1_mapping(profile: InstrumentProfile) -> Dict[str, Any]:
+    """The v1 document the legacy builders turn back into *profile* (inverse; round-trip tested)."""
+    inst = profile.instrument
+    doc: Dict[str, Any] = {
+        "instrument": _drop_none({"manufacturer": inst.manufacturer, "model": inst.model,
+                                  "class": inst.instrument_class or None, "description": inst.description}),
+        "identity": _dc_to_v1(profile.identity),
+        "interfaces": [_dc_to_v1(i) for i in profile.interfaces],
+        "settings": _dc_to_v1(profile.settings),
+        "commands": {name: _dc_to_v1(cmd) for name, cmd in profile.commands.items()},
+    }
+    if profile.sequences:
+        doc["sequences"] = {name: _dc_to_v1(seq) for name, seq in profile.sequences.items()}
+    if profile.sdk is not None:
+        doc["sdk"] = _dc_to_v1(profile.sdk)
+    return doc
+
+
+def profile_from_dict(data: Dict[str, Any]) -> InstrumentProfile:
+    """Build an InstrumentProfile from a parsed v1 or v2 document (edge-api.md §6).
+
+    v2 (``schema_version`` present): galois-profiles, strict — ProfileError
+    becomes ValueError. v1: the legacy builders (identical dataclasses to
+    pre-M1 edge; errors still surface in ``validate()``), plus galois-profiles'
+    parse attached for navigation when it accepts the document (CI-16).
+    """
+    if isinstance(data, Mapping) and data.get("schema_version") is not None:
+        profile_error = _gp_api("ProfileError")
+        try:
+            gp = _gp_api("profile_from_mapping")(data)
+        except profile_error as exc:
+            raise ValueError(str(exc)) from exc
+        return profile_from_galois(gp)
+    profile = _legacy_profile_from_dict(data)
+    try:
+        profile._attach_galois(_gp_api("profile_from_mapping")(data))
+    except Exception as exc:
+        logger.debug("galois-profiles did not accept a v1 document (%s); legacy reader only", exc)
     return profile
