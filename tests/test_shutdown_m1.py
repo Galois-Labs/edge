@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import select
 import socket
 import subprocess
 import sys
@@ -65,10 +66,18 @@ asyncio.run(main())
 
 
 def _run_stub(stdin, close_after_ready: bool = False, timeout_s: float = 3.0):
+    # Unbuffered binary stdout, so readline() takes only the "watching" line off the pipe.
+    # A buffered readline can also pull in the next line, and communicate() (which reads
+    # the raw fd) would then never see it.
     proc = subprocess.Popen([sys.executable, "-c", _STUB, str(SRC), str(timeout_s)], stdin=stdin,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
     try:
-        assert proc.stdout.readline().strip() == "watching"
+        ready, _, _ = select.select([proc.stdout], [], [], timeout_s + 5)
+        first = proc.stdout.readline() if ready else b""
+        if first != b"watching\n":
+            proc.kill()
+            _, err = proc.communicate()
+            pytest.fail(f"the stub never started watching stdin: {first!r}\n{err.decode()}")
         if close_after_ready:
             proc.stdin.close()   # what the Go supervisor does to stop the daemon
         out, err = proc.communicate(timeout=timeout_s + 5)
@@ -76,7 +85,7 @@ def _run_stub(stdin, close_after_ready: bool = False, timeout_s: float = 3.0):
         if proc.poll() is None:
             proc.kill()
             proc.communicate()
-    return out.strip(), err
+    return out.decode().strip(), err.decode()
 
 
 def test_devnull_stdin_is_not_watched_and_does_not_stop_the_daemon():
