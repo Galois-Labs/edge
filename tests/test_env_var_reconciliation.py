@@ -32,10 +32,8 @@ class TestRescanRenameNewKey:
         # Remove deprecated key to ensure it's not involved
         monkeypatch.delenv("SCAN_INTERVAL_S", raising=False)
 
-        # Re-import to pick up fresh env state via the factory function
-        import importlib
+        # Config() reads the environment when it is constructed: no reload needed
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.scan_interval_s == 120
@@ -54,9 +52,7 @@ class TestRescanRenameDeprecatedKey:
         monkeypatch.delenv("RESCAN_INTERVAL_SEC", raising=False)
         monkeypatch.setenv("SCAN_INTERVAL_S", "30")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg = cfg_mod.Config()
@@ -72,9 +68,7 @@ class TestRescanRenameDeprecatedKey:
         monkeypatch.delenv("RESCAN_INTERVAL_SEC", raising=False)
         monkeypatch.delenv("SCAN_INTERVAL_S", raising=False)
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.scan_interval_s == 60
@@ -92,9 +86,7 @@ class TestRescanRenameNewKeyWins:
         monkeypatch.setenv("RESCAN_INTERVAL_SEC", "90")
         monkeypatch.setenv("SCAN_INTERVAL_S", "30")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.scan_interval_s == 90
@@ -112,9 +104,7 @@ class TestGPIBToggle:
         """Row 5: GPIB_ENABLED=true → cfg.gpib_enabled == True."""
         monkeypatch.setenv("GPIB_ENABLED", "true")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.gpib_enabled is True
@@ -123,9 +113,7 @@ class TestGPIBToggle:
         """Row 6: GPIB_ENABLED=false → cfg.gpib_enabled == False."""
         monkeypatch.setenv("GPIB_ENABLED", "false")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.gpib_enabled is False
@@ -142,9 +130,7 @@ class TestLanInstruments:
     def test_lan_instruments_parsed(self, monkeypatch):
         monkeypatch.setenv("LAN_INSTRUMENTS", "TCPIP::192.0.2.1::INSTR")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.lan_instrument_list == ["TCPIP::192.0.2.1::INSTR"]
@@ -163,9 +149,7 @@ class TestUSBMonitor:
         monkeypatch.delenv("USB_MONITOR_ENABLED", raising=False)
         monkeypatch.setattr("sys.platform", "linux")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         # Default is True on Linux (not Windows)
@@ -175,9 +159,7 @@ class TestUSBMonitor:
         """Row 9: USB_MONITOR_ENABLED=false → usb_monitor_enabled == False."""
         monkeypatch.setenv("USB_MONITOR_ENABLED", "false")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.usb_monitor_enabled is False
@@ -195,9 +177,7 @@ class TestZMQ:
         monkeypatch.setenv("ZMQ_ENABLED", "true")
         monkeypatch.setenv("ZMQ_PUB_PORT", "5557")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.Config()
         assert cfg.zmq_enabled is True
@@ -215,9 +195,7 @@ class TestUnknownVarGuardFires:
     def test_unknown_var_triggers_warning(self, monkeypatch, caplog):
         monkeypatch.setenv("TYPO_SCAN_INTERVAL", "60")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg_mod._warn_unknown_galois_vars()
@@ -231,9 +209,7 @@ class TestUnknownVarGuardFires:
         """RSCAN_INTERVAL=60 (missing underscore prefix) should warn."""
         monkeypatch.setenv("RSCAN_INTERVAL", "60")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg_mod._warn_unknown_galois_vars()
@@ -260,9 +236,7 @@ class TestUnknownVarGuardSilentOnSystemVars:
         monkeypatch.setenv("HOME", "/home/user")
         monkeypatch.setenv("LANG", "en_US.UTF-8")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg_mod._warn_unknown_galois_vars()
@@ -284,9 +258,7 @@ class TestUnknownVarGuardSilentOnSystemVars:
         monkeypatch.setenv("TAILSCALE_AUTH_KEY", "tskey-abc123")
         monkeypatch.setenv("REGISTRATION_TOKEN", "tok-xyz")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg_mod._warn_unknown_galois_vars()
@@ -315,9 +287,7 @@ class TestLoadConfigEndToEnd:
         monkeypatch.setenv("RESCAN_INTERVAL_SEC", "120")
         monkeypatch.delenv("SCAN_INTERVAL_S", raising=False)
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         cfg = cfg_mod.load_config()
         assert cfg.scan_interval_s == 120
@@ -327,9 +297,7 @@ class TestLoadConfigEndToEnd:
         monkeypatch.delenv("RESCAN_INTERVAL_SEC", raising=False)
         monkeypatch.setenv("SCAN_INTERVAL_S", "30")
 
-        import importlib
         import galois_edge.config as cfg_mod
-        importlib.reload(cfg_mod)
 
         with caplog.at_level(logging.WARNING, logger="galois_edge.config"):
             cfg = cfg_mod.load_config()

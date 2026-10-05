@@ -22,6 +22,27 @@ sys.path.insert(
 
 
 # ---------------------------------------------------------------------------
+# Hermetic environment (spec §10 parallel-safety rules)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_galois_env(monkeypatch):
+    """No ambient Galois config (shell, CI, a found .env) leaks into any test (spec §10 rule 7)."""
+    from galois_edge.config import _KNOWN_GALOIS_VARS
+
+    for key in sorted(_KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S"}):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_home(tmp_path_factory, monkeypatch):
+    """Per-test HOME so ~/.config/galois-edge (profile cache, dynamic profiles) is never shared (spec §10 rule 2)."""
+    monkeypatch.setenv("HOME", str(tmp_path_factory.mktemp("home")))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+
+# ---------------------------------------------------------------------------
 # Mock InstrumentManager
 # ---------------------------------------------------------------------------
 
@@ -182,8 +203,8 @@ def test_config() -> Any:
     """Fixture providing a Config with test-friendly defaults."""
     from galois_edge.config import Config
     return Config(
-        grpc_port=50099,
-        ws_port=8799,
+        grpc_port=0,
+        ws_port=0,
         log_level="DEBUG",
         scan_interval_s=0,  # disable periodic scan in tests
     )
