@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import os
 import re
-import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 (edge supports >=3.10); pytest itself requires tomli there
+    import tomli as tomllib
 
 pytestmark = pytest.mark.critical
 TESTS = Path(__file__).resolve().parent
