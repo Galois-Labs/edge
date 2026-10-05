@@ -222,6 +222,7 @@ class EdgeDaemon:
             io_executor=self._io_executor,
             driver_registry=self._driver_registry,
             inbound_auth_token=self._cfg.inbound_auth_token,
+            bind_host=self._cfg.grpc_bind_host,
         )
         if not await self._grpc_server.start():
             logger.error("Failed to start gRPC server -- aborting")
@@ -232,6 +233,7 @@ class EdgeDaemon:
             instrument_manager=self._instrument_manager,
             command_handler=self._command_handler,
             port=self._cfg.ws_port,
+            bind_host=self._cfg.ws_bind_host,
         )
         try:
             await self._ws_server.start()
@@ -248,6 +250,7 @@ class EdgeDaemon:
                     command_handler=self._command_handler,
                     instrument_manager=self._instrument_manager,
                     port=self._cfg.mcp_port,
+                    host=self._cfg.mcp_bind_host,
                     path=self._cfg.mcp_path,
                     edge_id=self._edge_id,
                     edge_name=socket.gethostname(),
@@ -365,9 +368,10 @@ class EdgeDaemon:
         if self._sdk_executor is not None:
             self._sdk_executor.disconnect_all()
 
-        # 6. Disconnect all instruments
+        # 6. Disconnect all instruments, then release the extra backends
         if self._instrument_manager is not None:
             self._instrument_manager.disconnect_all()
+            self._instrument_manager.close_backends()
 
         # 7. Shut down the instrument I/O executor
         self._io_executor.shutdown(wait=False)
@@ -387,9 +391,14 @@ class EdgeDaemon:
             return
 
         try:
+            extra_dirs = (
+                [d for b in self._instrument_manager.extra_backends for d in b.profile_dirs()]
+                if self._instrument_manager is not None else []
+            )
             loader = ProfileLoader(
                 self._cfg.profile_dir,
                 dynamic_dir=self._cfg.dynamic_profile_dir,
+                extra_dirs=extra_dirs,   # backend profile dirs (edge-api.md §2, F1)
             )
             self._profile_loader = loader
             # Attach to the gRPC servicer BEFORE load_all(). Loading the
@@ -664,8 +673,19 @@ class EdgeDaemon:
             canon = self._instrument_manager.canonical_id(visa_addr)
             idn = self._instrument_manager.identify(canon)
 
-            # Find matching profile
-            profile = self._profile_loader.match_instrument(idn) if idn else None
+            # Find matching profile: backend profile hint first (edge-api.md §2);
+            # regex matching otherwise.
+            profile = None
+            backend = self._instrument_manager.backend_for(visa_addr)
+            if backend is not None:
+                hint = backend.profile_hint(visa_addr)
+                if hint:
+                    profile = self._profile_loader.get_profile(hint)
+                    if profile is None:
+                        logger.warning("Profile hint %r for %s names no loaded profile; "
+                                       "falling back to *IDN? matching", hint, visa_addr)
+            if profile is None:
+                profile = self._profile_loader.match_instrument(idn) if idn else None
 
             # Re-apply serial settings from the *matched* profile if it
             # differs from the initial guess (e.g. different baud rate).
@@ -942,9 +962,9 @@ class EdgeDaemon:
             )
             return
 
-        if self._instrument_manager._gpib is not None:
+        if self._instrument_manager.gpib is not None:
             self._trickle_scanner = TrickleScanScheduler(
-                gpib_manager=self._instrument_manager._gpib,
+                gpib_manager=self._instrument_manager.gpib,
                 io_executor=self._io_executor,
                 interval_s=trickle_interval,
                 on_instrument_found=self._on_gpib_instrument_found,
@@ -994,7 +1014,7 @@ class EdgeDaemon:
         loop = asyncio.get_running_loop()
 
         def _reinit():
-            gpib_mgr = self._instrument_manager._gpib
+            gpib_mgr = self._instrument_manager.gpib
             if gpib_mgr is None:
                 return
             # Try to re-init all possible boards (the adapter may claim
@@ -1018,7 +1038,7 @@ class EdgeDaemon:
         if self._instrument_manager is None:
             return
 
-        gpib_mgr = self._instrument_manager._gpib
+        gpib_mgr = self._instrument_manager.gpib
         if gpib_mgr is None:
             return
 
