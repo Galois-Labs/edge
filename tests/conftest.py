@@ -43,6 +43,39 @@ def _isolated_home(tmp_path_factory, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Tier marker policy (contracts/edge-api.md §7)
+# ---------------------------------------------------------------------------
+
+
+def marker_policy_violations(items) -> list:
+    """edge-api.md §7: critical is never serial (nor slow/hardware); serial needs reason=."""
+    problems = []
+    for item in items:
+        serial = item.get_closest_marker("serial")
+        critical = item.get_closest_marker("critical")
+        if critical is not None:
+            for other in ("serial", "slow", "hardware"):
+                if item.get_closest_marker(other) is not None:
+                    problems.append(f"{item.nodeid}: critical tests must not be {other}")
+        if serial is not None and not (serial.kwargs.get("reason") or serial.args):
+            problems.append(f"{item.nodeid}: @pytest.mark.serial needs reason=...")
+    return problems
+
+
+def pytest_collection_modifyitems(config, items):
+    problems = marker_policy_violations(items)
+    if problems:
+        message = "marker policy violations:\n  " + "\n  ".join(problems)
+        # Under xdist a worker's UsageError reaches the console only as an opaque
+        # INTERNALERROR, so one worker also prints the reason (make test-critical uses -n auto).
+        if getattr(config, "workerinput", {}).get("workerid") == "gw0":
+            with config.pluginmanager.getplugin("capturemanager").global_and_fixture_disabled():
+                sys.stderr.write(f"ERROR: {message}\n")
+                sys.stderr.flush()
+        raise pytest.UsageError(message)
+
+
+# ---------------------------------------------------------------------------
 # Mock InstrumentManager
 # ---------------------------------------------------------------------------
 

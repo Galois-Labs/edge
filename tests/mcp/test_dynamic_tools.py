@@ -305,6 +305,7 @@ async def test_out_of_range_rejected_before_dispatch(
     assert post_writes == pre_writes
 
 
+@pytest.mark.slow  # wall-clock perf assertion (P9): not in make test / test-critical
 @pytest.mark.asyncio
 async def test_perf_tools_list_under_100ms_at_200_tools(
     synthetic_command_handler, synthetic_instrument_manager,

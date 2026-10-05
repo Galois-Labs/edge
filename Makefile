@@ -19,12 +19,14 @@ PIP        ?= pip3
 BUF        ?= buf
 PYTEST     ?= $(PYTHON) -m pytest
 PYINSTALLER?= pyinstaller
+TEST_PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,$(PYTHON))
+TEST_PYTEST ?= $(TEST_PYTHON) -m pytest
 
 BIN_DIR    := bin
 PROTO_DIR  := proto
 
 .PHONY: all proto build-go build-python test test-go test-python clean install \
-        freeze lint help build-tray
+        freeze lint help build-tray test-critical test-prereqs
 
 # -----------------------------------------------------------------------
 # Default
@@ -66,15 +68,26 @@ freeze: ## Freeze Python engine via PyInstaller (uses .spec for full hidden impo
 	@echo "Frozen binary: dist/galois-edge-daemon"
 
 # -----------------------------------------------------------------------
-# Test
+# Test tiers (contracts/edge-api.md §7; spec §10)
 # -----------------------------------------------------------------------
-test: test-go test-python ## Run all tests
+test: test-go test-python ## Run all tests (Go + Python default tier)
 
 test-go: ## Run Go tests
 	$(GO) test -race ./...
 
-test-python: ## Run Python tests
-	$(PYTEST) tests/ -x -v
+test-prereqs: ## tests/sim needs cargo + maturin + the sim extra (fail loudly, never skip)
+	@if [ -d tests/sim ]; then \
+	  command -v cargo >/dev/null 2>&1 || { echo "ERROR: tests/sim needs cargo on PATH (export PATH=\$$HOME/.cargo/bin:\$$PATH)"; exit 2; }; \
+	  command -v maturin >/dev/null 2>&1 || { echo "ERROR: tests/sim needs maturin on PATH (uv tool install maturin; export PATH=\$$HOME/.local/bin:\$$PATH)"; exit 2; }; \
+	  $(TEST_PYTHON) -c "import edgesim.edge" >/dev/null 2>&1 || { echo "ERROR: tests/sim needs the sim extra: uv pip install --python $(TEST_PYTHON) -e '.[dev,test,sim]'"; exit 2; }; \
+	fi
+
+test-critical: test-prereqs ## Merge gate: critical tier, parallel, fixed order
+	$(TEST_PYTEST) --durations=15 -m "critical and not serial" -n auto -p no:randomly tests/
+
+test-python: test-prereqs ## Python default tier: parallel pass, then the serial pass
+	$(TEST_PYTEST) -m "not serial and not slow and not hardware" -n auto tests/
+	$(TEST_PYTEST) -m serial tests/ || [ $$? -eq 5 ]
 
 # -----------------------------------------------------------------------
 # Lint

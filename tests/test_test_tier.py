@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import os
 import re
+import tomllib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 pytestmark = pytest.mark.critical
 TESTS = Path(__file__).resolve().parent
+ROOT = TESTS.parent
 
 
 def test_known_galois_vars_are_cleared_for_every_test():
@@ -48,3 +51,41 @@ def test_opcua_test_servers_use_port_zero():
     for name in ("test_opcua_driver.py", "test_opcua_transport.py"):
         ports = re.findall(r"opc\.tcp://127\.0\.0\.1:(\d+)/galois-", (TESTS / name).read_text(encoding="utf-8"))
         assert ports and set(ports) == {"0"}, (name, ports)
+
+
+def _item(nodeid, **marks):
+    def closest(name):
+        return SimpleNamespace(args=(), kwargs=marks[name]) if name in marks else None
+    return SimpleNamespace(nodeid=nodeid, get_closest_marker=closest)
+
+
+def test_marker_policy():
+    from tests.conftest import marker_policy_violations
+
+    ok = [_item("a", critical={}), _item("b", serial={"reason": "fixed port in vendor sim"}), _item("c")]
+    assert marker_policy_violations(ok) == []
+    bad = marker_policy_violations([
+        _item("x", critical={}, serial={"reason": "r"}), _item("y", serial={}), _item("z", critical={}, slow={}),
+    ])
+    assert len(bad) == 3 and all(any(n in v for v in bad) for n in "xyz")
+
+
+def test_markers_are_registered(pytestconfig):
+    names = {m.split(":")[0].split("(")[0].strip() for m in pytestconfig.getini("markers")}
+    assert {"critical", "slow", "hardware", "serial"} <= names
+    assert "--strict-markers" in pytestconfig.getini("addopts")
+
+
+def test_test_extra():
+    extra = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["optional-dependencies"]["test"]
+    names = {re.split(r"[<>=!\[ ;]", d, maxsplit=1)[0].lower() for d in extra}
+    assert {"pytest", "pytest-asyncio", "pytest-xdist", "pytest-randomly", "jsonschema", "python-can"} <= names
+
+
+def test_make_targets_match_edge_api_section_7():
+    mk = (ROOT / "Makefile").read_text()
+    assert '-m "critical and not serial" -n auto -p no:randomly tests/' in mk
+    assert '-m "not serial and not slow and not hardware" -n auto tests/' in mk
+    assert re.search(r"-m serial tests/ \|\| \[ \$\$\? -eq 5 \]", mk)
+    assert "test: test-go test-python" in mk
+    assert "[ -d tests/sim ]" in mk and "cargo" in mk and "maturin" in mk
