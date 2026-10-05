@@ -20,7 +20,7 @@ import signal
 import socket
 import sys
 import uuid
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from .config import Config, load_config
 from .command_handler import CommandHandler
@@ -29,6 +29,9 @@ from .instrument_manager import InstrumentManager
 from .capability_manager import CapabilityManager
 from .sdk_executor import SDKExecutor
 from .ws_server import WebSocketServer
+
+if TYPE_CHECKING:
+    from .tracing import TraceWriter
 
 try:
     from .mcp import MCPServer
@@ -114,7 +117,7 @@ class EdgeDaemon:
         self._demo_backend: Optional[object] = None
 
         # TRACE_DIR writer (edge-api.md §5), when tracing is on
-        self._trace_writer: Optional[object] = None
+        self._trace_writer: Optional[TraceWriter] = None
 
         # Discovery subsystems
         self._trickle_scanner: Optional[TrickleScanScheduler] = None
@@ -199,6 +202,7 @@ class EdgeDaemon:
         self._sdk_executor = SDKExecutor(self._instrument_manager)
         self._capability_manager = CapabilityManager()
         self._command_handler = CommandHandler(self._instrument_manager)
+        self._start_tracing()
 
         # 2b. Initialise protocol driver registry (Modbus, etc.)
         if DriverRegistry is not None:
@@ -373,10 +377,39 @@ class EdgeDaemon:
             self._instrument_manager.disconnect_all()
             self._instrument_manager.close_backends()
 
+        # 6b. Finish the TRACE_DIR run (run_end)
+        self._stop_tracing()
+
         # 7. Shut down the instrument I/O executor
         self._io_executor.shutdown(wait=False)
 
         logger.info("Edge daemon stopped.")
+
+    # ------------------------------------------------------------------
+    # Tracing
+    # ------------------------------------------------------------------
+
+    def _start_tracing(self) -> None:
+        """TRACE_DIR set ⇒ one edgesim.trace/1 file for this run (edge-api.md §5)."""
+        self._trace_writer = None
+        if not self._cfg.trace_dir or self._command_handler is None:
+            return
+        try:
+            from .tracing import TraceWriter
+            writer = TraceWriter(self._cfg.trace_dir)
+            writer.start()
+        except Exception as exc:
+            logger.warning("TRACE_DIR=%s unusable, tracing disabled: %s", self._cfg.trace_dir, exc)
+            return
+        self._command_handler.add_observer(writer.observe)
+        self._trace_writer = writer
+        logger.info("Tracing to %s", writer.path)
+
+    def _stop_tracing(self, status: str = "ok") -> None:
+        if self._trace_writer is not None:
+            if self._command_handler is not None:
+                self._command_handler.remove_observer(self._trace_writer.observe)
+            self._trace_writer.close(status)
 
     # ------------------------------------------------------------------
     # Profile loading
