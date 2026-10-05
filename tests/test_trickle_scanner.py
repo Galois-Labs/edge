@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from unittest.mock import MagicMock, patch
@@ -26,6 +27,15 @@ sys.path.insert(
 )
 
 from galois_edge.trickle_scanner import TrickleScanScheduler
+
+
+async def _until(predicate, timeout: float = 5.0, step: float = 0.005) -> None:
+    """Await *predicate()* instead of sleeping a fixed time (spec §10 rule 5)."""
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"condition not met within {timeout}s")
+        await asyncio.sleep(step)
 
 
 # ---------------------------------------------------------------------------
@@ -98,9 +108,9 @@ async def test_trickle_scanner_probes_all_addresses(io_executor):
         on_instrument_found=lambda addr: found.append(addr),
     )
 
-    # Run for enough time to cover 30+ probes
+    # Run until one full cycle (30+ probes) has been covered
     task = asyncio.create_task(scanner.run())
-    await asyncio.sleep(0.5)
+    await _until(lambda: {a for _, a in gpib.probed} >= set(range(1, 31)))
     await scanner.stop()
     task.cancel()
     try:
@@ -134,7 +144,7 @@ async def test_trickle_scanner_finds_instrument(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    await asyncio.sleep(0.3)
+    await _until(lambda: "GPIB0::5::INSTR" in found)
     await scanner.stop()
     task.cancel()
     try:
@@ -163,8 +173,8 @@ async def test_trickle_scanner_multiple_boards(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    # Run long enough to cover both boards
-    await asyncio.sleep(1.0)
+    # Run until both boards have been covered
+    await _until(lambda: "GPIB1::1::INSTR" in found and {b for b, _ in gpib.probed} >= {0, 1})
     await scanner.stop()
     task.cancel()
     try:
@@ -192,12 +202,12 @@ async def test_trickle_scanner_reset(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    await asyncio.sleep(0.1)
+    await _until(lambda: len(gpib.probed) >= 1)
 
     # Reset should work without error
     scanner.reset()
 
-    await asyncio.sleep(0.1)
+    await _until(lambda: sum(1 for _, a in gpib.probed if a == 1) >= 2)
     await scanner.stop()
     task.cancel()
     try:
@@ -223,8 +233,8 @@ async def test_trickle_scanner_no_boards(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    # Give it time to start and discover there are no boards
-    await asyncio.sleep(0.15)
+    # Wait for it to start and discover there are no boards
+    await _until(lambda: task.done() or not scanner.running)
 
     # Should have exited run() since no boards were available at init
     assert task.done() or not scanner.running
@@ -251,14 +261,14 @@ async def test_trickle_scanner_stop(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    # Give the task time to actually start running
-    await asyncio.sleep(0.05)
+    # Wait for the task to actually start running
+    await _until(lambda: scanner.running)
     assert scanner.running
 
     await scanner.stop()
 
-    # Give the task a moment to finish
-    await asyncio.sleep(0.05)
+    # Wait for the task to finish
+    await _until(lambda: not scanner.running)
     assert not scanner.running
 
     task.cancel()
@@ -289,9 +299,9 @@ async def test_trickle_scanner_executor_busy_yields(io_executor):
     # While executor is busy, few or no probes should complete
     probes_while_busy = len(gpib.probed)
 
-    # Wait for blocker to finish
-    blocker.result()
-    await asyncio.sleep(0.2)
+    # Wait for blocker to finish, then for probes to resume
+    await asyncio.wrap_future(blocker)
+    await _until(lambda: len(gpib.probed) > probes_while_busy)
 
     # After blocker finishes, probes should resume
     probes_after = len(gpib.probed)
