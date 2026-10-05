@@ -16,8 +16,10 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import logging
+import os
 import signal
 import socket
+import stat
 import sys
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
@@ -1223,14 +1225,29 @@ class EdgeDaemon:
         When Go supervisor closes the write end of the stdin pipe,
         Python detects EOF and triggers graceful shutdown.
 
-        If stdin is a TTY (interactive mode), this method returns
-        immediately and does nothing.
+        Only a pipe or socket stdin is watched. Any other stdin returns
+        immediately and does nothing: a TTY (interactive mode), /dev/null
+        (service managers, nohup, containers) or a redirected file. None of
+        these is a supervisor pipe, and epoll cannot watch /dev/null or a
+        file, so the asyncio reader would never see EOF. SIGTERM/SIGINT
+        stop the daemon instead.
         """
         if sys.stdin is None:
             return
 
         if sys.stdin.isatty():
             logger.debug("Stdin is a TTY -- stdin watcher not active")
+            return
+
+        try:
+            mode = os.fstat(sys.stdin.fileno()).st_mode
+        except (OSError, ValueError):  # no usable file descriptor
+            mode = 0
+        if not (stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode)):
+            logger.info(
+                "Stdin is not a pipe (e.g. /dev/null) -- stdin watcher not "
+                "active; stop the daemon with SIGTERM/SIGINT"
+            )
             return
 
         logger.info("Stdin is a pipe -- will shut down on EOF")
