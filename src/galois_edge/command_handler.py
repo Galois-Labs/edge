@@ -13,10 +13,12 @@ gRPC server and WebSocket server both delegate to this handler.
 from __future__ import annotations
 
 import logging
+import struct
 import time
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
+from .tracing import CommandEvent
 from .waveform_assembly import (
     IEEEBlockError,
     compose_block_scaling,
@@ -55,6 +57,67 @@ class CommandHandler:
         # Per-instrument locks to serialise SCPI access.
         self._locks: Dict[str, threading.Lock] = {}
         self._locks_guard = threading.Lock()
+        # Observers (edge-api.md §5): called once per executed command, after
+        # the per-instrument lock is released. Exceptions are logged, never raised.
+        self._observers: List[Callable[[CommandEvent], None]] = []
+
+    # ------------------------------------------------------------------
+    # Observers (edge-api.md §5)
+    # ------------------------------------------------------------------
+
+    def add_observer(self, fn: Callable[[CommandEvent], None]) -> None:
+        """Register *fn* to receive one CommandEvent per executed command."""
+        self._observers.append(fn)
+
+    def remove_observer(self, fn: Callable[[CommandEvent], None]) -> None:
+        """Detach a previously-added observer; no-op if absent."""
+        try:
+            self._observers.remove(fn)
+        except ValueError:
+            pass
+
+    def _notify(self, event: CommandEvent) -> None:
+        for fn in list(self._observers):
+            try:
+                fn(event)
+            except Exception:
+                logger.exception("command observer %r raised", fn)
+
+    def _is_simulated(self, instrument_id: str) -> bool:
+        backend_for = getattr(self._instruments, "backend_for", None)
+        if backend_for is None:
+            return False
+        try:
+            return bool(getattr(backend_for(instrument_id), "simulated", False))
+        except Exception:
+            return False
+
+    def _event(
+        self,
+        scpi_cmd: str,
+        instrument_id: str,
+        is_query: bool,
+        result: Dict[str, Any],
+        t_wall_ns: int,
+        t0: int,
+        response: Optional[str],
+        response_bytes: Optional[bytes],
+    ) -> CommandEvent:
+        error = str(result.get("error", "") or "")
+        return CommandEvent(
+            instrument_id=instrument_id,
+            scpi=str(scpi_cmd).rstrip("\r\n"),
+            context=getattr(scpi_cmd, "context", None),
+            is_query=is_query,
+            success=bool(result.get("success")),
+            response=response,
+            response_bytes=response_bytes,
+            error=error,
+            t_wall_ns=t_wall_ns,
+            latency_ns=max(time.perf_counter_ns() - t0, 0),
+            timed_out=error.startswith("Timeout after"),
+            simulated=self._is_simulated(instrument_id),
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -99,10 +162,18 @@ class CommandHandler:
             * ``execution_time_ms`` (float) -- wall-clock time spent.
         """
         lock = self._get_lock(instrument_id)
+        t_wall_ns, t0 = time.time_ns(), time.perf_counter_ns()
         with lock:
-            return self._execute_locked(
+            result = self._execute_locked(
                 scpi_cmd, instrument_id, timeout_ms, command_id, force_query
             )
+        if self._observers:
+            is_query = force_query or scpi_cmd.strip().endswith("?")
+            response = result.get("response") if (is_query and result.get("success")) else None
+            self._notify(self._event(
+                scpi_cmd, instrument_id, is_query, result, t_wall_ns, t0, response, None,
+            ))
+        return result
 
     def execute_binary_query(
         self,
@@ -134,10 +205,17 @@ class CommandHandler:
             * ``execution_time_ms`` (float) -- wall-clock time spent.
         """
         lock = self._get_lock(instrument_id)
+        t_wall_ns, t0 = time.time_ns(), time.perf_counter_ns()
         with lock:
-            return self._execute_binary_locked(
+            result = self._execute_binary_locked(
                 scpi_cmd, instrument_id, datatype, is_big_endian, timeout_ms,
             )
+        if self._observers:
+            packed = _pack_float64(result.get("data")) if result.get("success") else None
+            self._notify(self._event(
+                scpi_cmd, instrument_id, True, result, t_wall_ns, t0, None, packed,
+            ))
+        return result
 
     def execute_binary_block_query(
         self,
@@ -196,11 +274,19 @@ class CommandHandler:
             never raise, never return partial data (doc §2.2 rule 4).
         """
         lock = self._get_lock(instrument_id)
+        capture: Dict[str, bytes] = {}
+        t_wall_ns, t0 = time.time_ns(), time.perf_counter_ns()
         with lock:
-            return self._execute_binary_block_locked(
+            result = self._execute_binary_block_locked(
                 scpi_cmd, instrument_id, binary_config,
-                preamble_scpi, timeout_ms, command_id,
+                preamble_scpi, timeout_ms, command_id, capture,
             )
+        if self._observers:
+            raw = capture.get("raw") if result.get("success") else None
+            self._notify(self._event(
+                scpi_cmd, instrument_id, True, result, t_wall_ns, t0, None, raw,
+            ))
+        return result
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -214,8 +300,13 @@ class CommandHandler:
         preamble_scpi: Optional[str],
         timeout_ms: int,
         command_id: Optional[str],
+        capture: Optional[Dict[str, bytes]] = None,
     ) -> Dict[str, Any]:
-        """Run the IEEE-block query while holding the per-instrument lock."""
+        """Run the IEEE-block query while holding the per-instrument lock.
+
+        When *capture* is given, the raw block bytes are stored under
+        ``capture["raw"]`` for observers (edge-api.md §5 ``data_ref``).
+        """
         tag = f"[{command_id}] " if command_id else ""
         dtype = getattr(binary_config, "dtype", "uint8") or "uint8"
         byte_order = getattr(binary_config, "byte_order", "little") or "little"
@@ -285,6 +376,8 @@ class CommandHandler:
 
             # --- Block read (raw byte path — never the text path) ---
             raw = self._instruments.query_raw(instrument_id, scpi_cmd)
+            if capture is not None:
+                capture["raw"] = raw
             payload = decode_ieee_block(raw)
             y_data, y_length, wire_dtype = decode_block_samples(
                 payload, dtype, byte_order
@@ -509,6 +602,15 @@ class CommandHandler:
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+
+def _pack_float64(data: Any) -> Optional[bytes]:
+    """Little-endian float64 bytes of *data* for observers; None when not numeric."""
+    try:
+        values = list(data or [])
+        return struct.pack(f"<{len(values)}d", *values)
+    except (struct.error, TypeError, ValueError):
+        return None
 
 
 def _truncate(text: str, max_len: int = 120) -> str:
