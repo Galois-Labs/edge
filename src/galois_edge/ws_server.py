@@ -2,8 +2,8 @@
 WebSocket data streaming server for the edge daemon.
 
 Provides real-time instrument data to frontends and local clients over
-WebSocket. Runs on 127.0.0.1:WS_PORT -- the Go supervisor's TCP proxy
-handles external access via Tailscale.
+WebSocket. Runs on WS_BIND_HOST:WS_PORT (default 127.0.0.1) -- the Go
+supervisor's TCP proxy handles external access via Tailscale.
 
 Two streaming modes:
   - **Poll**: periodically query the instrument and push JSON results.
@@ -35,6 +35,8 @@ import json
 import logging
 import time
 from typing import Any, Dict, Optional
+
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,7 @@ class WebSocketServer:
         instrument_manager: Any,
         command_handler: Any,
         port: int = 8766,
+        bind_host: Optional[str] = None,
     ) -> None:
         """Initialise the WebSocket server.
 
@@ -83,11 +86,16 @@ class WebSocketServer:
             instrument_manager: InstrumentManager instance (query/write/
                 is_connected/connect methods).
             command_handler: CommandHandler instance (execute_command).
-            port: Bind port (default 8766).
+            port: Bind port (default 8766); 0 lets the OS pick one, read
+                back through ``port`` after ``start()``.
+            bind_host: Bind address; None reads WS_BIND_HOST via Config
+                (default 127.0.0.1).
         """
         self._instruments = instrument_manager
         self._handler = command_handler
         self._port = port
+        # E10: None ⇒ WS_BIND_HOST via Config, default 127.0.0.1.
+        self._bind_host = bind_host if bind_host is not None else Config().ws_bind_host
 
         self._app: Optional[Any] = None      # web.Application
         self._runner: Optional[Any] = None    # web.AppRunner
@@ -104,6 +112,10 @@ class WebSocketServer:
     @property
     def port(self) -> int:
         return self._port
+
+    @property
+    def bind_host(self) -> str:
+        return self._bind_host
 
     def _get_instrument_lock(self, instrument_id: str) -> asyncio.Lock:
         """Return the per-instrument Lock, creating it if necessary."""
@@ -127,11 +139,11 @@ class WebSocketServer:
 
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
-        site = web.TCPSite(self._runner, "127.0.0.1", self._port)
+        site = web.TCPSite(self._runner, self._bind_host, self._port)
         await site.start()
-        logger.info(
-            "WebSocket server listening on 127.0.0.1:%d", self._port
-        )
+        if self._port == 0 and self._runner.addresses:
+            self._port = self._runner.addresses[0][1]  # OS-assigned port
+        logger.info("WebSocket server listening on %s:%d", self._bind_host, self._port)
 
     async def stop(self) -> None:
         """Stop the server and cancel all active streaming tasks."""

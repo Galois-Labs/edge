@@ -1,7 +1,7 @@
 """FastMCP server bound to a uvicorn ASGI app.
 
 Per docs/mcp-integration.md section 2.6: Phase 1 runs uvicorn directly
-(not through aiohttp) bound to 127.0.0.1:<port>. The static tool surface
+(not through aiohttp) bound to MCP_BIND_HOST:<port> (default 127.0.0.1). The static tool surface
 is registered up front; per-instrument dynamic tools land in Phase 3.
 """
 
@@ -46,7 +46,7 @@ class MCPServer:
         instrument_manager: Any,
         port: int = 8767,
         path: str = "/mcp",
-        host: str = "127.0.0.1",
+        host: Optional[str] = None,
         edge_id: str = "",
         edge_name: str = "",
         jwt_validator: Optional["JWTValidator"] = None,
@@ -55,6 +55,10 @@ class MCPServer:
     ) -> None:
         self._port = port
         self._path = path
+        # E10: None ⇒ MCP_BIND_HOST via Config, default 127.0.0.1.
+        if host is None:
+            from ..config import Config
+            host = Config().mcp_bind_host
         self._host = host
         self._jwt_validator = jwt_validator
         self._sdk_executor = sdk_executor
@@ -76,7 +80,7 @@ class MCPServer:
                 "commands are available, then execute_command (or "
                 "send_scpi for raw SCPI) to drive the instrument."
             ),
-            host=host,
+            host=self._host,
             port=port,
             streamable_http_path=path,
         )
@@ -101,6 +105,15 @@ class MCPServer:
     @property
     def dynamic_registry(self) -> Optional[DynamicToolRegistry]:
         return self._dynamic_registry
+
+    @property
+    def host(self) -> str:
+        return self._host
+
+    @property
+    def port(self) -> int:
+        """The listen port; the OS-assigned one after start() when 0 was requested."""
+        return self._port
 
     @property
     def app(self) -> FastMCP:
@@ -133,6 +146,13 @@ class MCPServer:
         self._task = asyncio.create_task(self._server.serve())
 
         await _wait_until_started(self._server, timeout=5.0)
+        if self._port == 0:
+            for srv in getattr(self._server, "servers", None) or []:
+                for sock in getattr(srv, "sockets", None) or []:
+                    self._port = sock.getsockname()[1]
+                    break
+                if self._port:
+                    break
         logger.info(
             "MCP server listening on http://%s:%d%s",
             self._host,

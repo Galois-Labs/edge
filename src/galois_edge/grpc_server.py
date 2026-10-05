@@ -1,8 +1,8 @@
 """
 Async gRPC server implementing EdgeDaemonService.
 
-Binds to 127.0.0.1:GRPC_PORT (localhost only -- Go proxy handles external
-access via Tailscale). Uses grpc.aio for async handlers and a
+Binds to GRPC_BIND_HOST:GRPC_PORT (default 127.0.0.1, localhost only -- Go
+proxy handles external access via Tailscale). Uses grpc.aio for async handlers and a
 ThreadPoolExecutor for blocking VISA calls.
 
 Implements ALL RPCs defined in edge.proto:
@@ -3483,8 +3483,11 @@ class GRPCServer:
         io_executor: Optional[ThreadPoolExecutor] = None,
         driver_registry: Optional[Any] = None,
         inbound_auth_token: str = "",
+        bind_host: Optional[str] = None,
     ) -> None:
         self._port = port
+        # E10 (edge-api.md §1): None ⇒ GRPC_BIND_HOST via Config, default 127.0.0.1.
+        self._bind_host = bind_host if bind_host is not None else Config().grpc_bind_host
         self._edge_id = edge_id
         self._inbound_auth_token = inbound_auth_token
 
@@ -3506,11 +3509,15 @@ class GRPCServer:
         return self._port
 
     @property
+    def bind_host(self) -> str:
+        return self._bind_host
+
+    @property
     def servicer(self) -> EdgeDaemonServicer:
         return self._servicer
 
     async def start(self) -> bool:
-        """Start the gRPC server on 127.0.0.1.
+        """Start the gRPC server on the configured bind host (GRPC_BIND_HOST, default 127.0.0.1).
 
         Returns True on success, False on failure.
         """
@@ -3540,8 +3547,14 @@ class GRPCServer:
                 self._servicer, self._server,
             )
 
-            listen_addr = f"127.0.0.1:{self._port}"
-            self._server.add_insecure_port(listen_addr)
+            host = self._bind_host
+            if ":" in host and not host.startswith("["):
+                host = f"[{host}]"  # IPv6 literal
+            listen_addr = f"{host}:{self._port}"
+            bound_port = self._server.add_insecure_port(listen_addr)
+            if not bound_port:
+                raise RuntimeError(f"could not bind {listen_addr}")
+            self._port = bound_port  # OS-assigned when port=0 (parallel-safe tests)
 
             await self._server.start()
             logger.info(
