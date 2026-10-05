@@ -8,6 +8,7 @@ is registered up front; per-instrument dynamic tools land in Phase 3.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -36,6 +37,16 @@ logger = logging.getLogger(__name__)
 # mcp_request to the local FastMCP. Phase 1 / tailnet-direct callers don't
 # set this and skip JWT validation entirely.
 CALLER_JWT_HEADER = "galois-caller-jwt"
+
+# Set in the context the uvicorn serve() task is created in. Tasks copy their
+# creator's context, so every task the server and its app spawn carries it:
+# stop() uses it to find the ones that outlive serve() (Task.get_context, 3.12+).
+_SPAWNED_BY: contextvars.ContextVar[Optional["MCPServer"]] = contextvars.ContextVar(
+    "galois_edge_mcp_spawned_by", default=None,
+)
+
+# Bound on waiting for cancelled leftover tasks at stop().
+_LEFTOVER_CANCEL_TIMEOUT_S = 2.0
 
 
 class MCPServer:
@@ -173,7 +184,11 @@ class MCPServer:
             access_log=False,
         )
         self._server = uvicorn.Server(config)
-        self._task = asyncio.create_task(self._server.serve())
+        token = _SPAWNED_BY.set(self)
+        try:
+            self._task = asyncio.create_task(self._server.serve())
+        finally:
+            _SPAWNED_BY.reset(token)
 
         await _wait_until_started(self._server, timeout=5.0)
         if self._port == 0:
@@ -209,8 +224,46 @@ class MCPServer:
                     await self._task
                 except (asyncio.CancelledError, Exception):
                     pass
+        await self._end_leftover_tasks()
         self._server = None
         self._task = None
+
+    async def _end_leftover_tasks(self) -> None:
+        """Cancel and await the tasks this server spawned that outlived serve().
+
+        sse-starlette starts one _shutdown_watcher task per thread on the first
+        SSE response. It looks for uvicorn's should_exit only while serve()
+        runs (through the SIGTERM handler uvicorn installs), so after serve()
+        returns it sleeps forever and the daemon's loop.close() destroys it
+        pending ("Task was destroyed but it is pending!").
+        """
+        current = asyncio.current_task()
+        leftovers = [
+            t for t in asyncio.all_tasks()
+            if t is not current and not t.done() and _spawned_by(t) is self
+        ]
+        if not leftovers:
+            return
+        for task in leftovers:
+            task.cancel()
+        _, pending = await asyncio.wait(leftovers, timeout=_LEFTOVER_CANCEL_TIMEOUT_S)
+        if pending:
+            logger.warning(
+                "MCP server stop: %d task(s) still running %.1fs after cancel: %s",
+                len(pending), _LEFTOVER_CANCEL_TIMEOUT_S, sorted(t.get_name() for t in pending),
+            )
+
+
+def _spawned_by(task: "asyncio.Task") -> Optional["MCPServer"]:
+    """The MCPServer whose serve() context *task* was created in, if any.
+
+    Needs Task.get_context (Python 3.12+); on older interpreters no task is
+    attributed, and stop() leaves leftovers to the loop as before.
+    """
+    get_context = getattr(task, "get_context", None)
+    if get_context is None:
+        return None
+    return get_context().get(_SPAWNED_BY)
 
 
 async def _wait_until_started(server: Any, timeout: float) -> None:
