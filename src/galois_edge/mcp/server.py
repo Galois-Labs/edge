@@ -1,7 +1,7 @@
 """FastMCP server bound to a uvicorn ASGI app.
 
 Per docs/mcp-integration.md section 2.6: Phase 1 runs uvicorn directly
-(not through aiohttp) bound to MCP_BIND_HOST:<port> (default 127.0.0.1). The static tool surface
+(not through aiohttp) bound to 127.0.0.1:<port>. The static tool surface
 is registered up front; per-instrument dynamic tools land in Phase 3.
 """
 

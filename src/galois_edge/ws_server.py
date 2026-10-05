@@ -2,8 +2,8 @@
 WebSocket data streaming server for the edge daemon.
 
 Provides real-time instrument data to frontends and local clients over
-WebSocket. Runs on WS_BIND_HOST:WS_PORT (default 127.0.0.1) -- the Go
-supervisor's TCP proxy handles external access via Tailscale.
+WebSocket. Runs on 127.0.0.1:WS_PORT -- the Go supervisor's TCP proxy
+handles external access via Tailscale.
 
 Two streaming modes:
   - **Poll**: periodically query the instrument and push JSON results.
