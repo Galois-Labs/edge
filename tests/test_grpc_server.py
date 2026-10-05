@@ -1311,6 +1311,7 @@ class TestSweepReservationGate:
             command_id="ecmd-blocked-001",
             instrument_id="GPIB0::25::INSTR",
             command_name="set_current",
+            parameters={"value": "1.0"},
             is_query=False,
         )
         response = await servicer.ExecuteCommand(request, ctx)
