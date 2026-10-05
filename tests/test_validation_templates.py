@@ -89,6 +89,16 @@ def test_validation_does_not_apply_map_but_format_does_once():  # Review Focus 3
     assert DISPLAY.format_scpi(wire, is_query=False) == ":CHANnel1:DISPlay 1"
 
 
+def test_non_string_enum_options_keep_the_caller_spelling_on_the_wire():
+    # YAML 1.1 loads `options: [ON, OFF]` as [True, False]; the wire must not become "True".
+    outp = CommandConfig(type="property", getter=":OUTP?", setter=":OUTP {state}",
+                         params={"state": P(type="enum", options=[True, False])})
+    v = validate_params(outp, {"state": "ON"}, is_query=False)
+    assert v == {"state": True}
+    assert wire_params(outp, {"state": "ON"}, v) == {"state": "ON"}
+    assert outp.format_scpi(wire_params(outp, {"state": "ON"}, v), is_query=False) == ":OUTP ON"
+
+
 def test_wire_params_keep_caller_spelling():
     v = validate_params(VOLT, {"value": "5"}, is_query=False)
     assert wire_params(VOLT, {"value": "5"}, v) == {"value": "5", "channel": 1}

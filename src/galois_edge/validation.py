@@ -9,6 +9,7 @@ reject identical inputs with identical messages.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, Mapping, Optional, Tuple
 
@@ -16,6 +17,8 @@ DATA_TYPE_ERROR = -104
 MISSING_PARAMETER = -109
 DATA_OUT_OF_RANGE = -222
 ILLEGAL_PARAMETER_VALUE = -224
+
+logger = logging.getLogger(__name__)
 
 
 class ParamValidationError(ValueError):
@@ -36,6 +39,8 @@ _MEGA_UNITS = {"MHZ": 1e6, "MOHM": 1e6}  # SCPI: "M" means mega only in these tw
 _NUMBER = re.compile(r"^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*([A-Za-z/%]*)\s*$")
 _KEYWORDS = {"MIN": "MIN", "MINIMUM": "MIN", "MAX": "MAX", "MAXIMUM": "MAX", "DEF": "DEF", "DEFAULT": "DEF"}
 _BOOL = {"ON": True, "OFF": False, "1": True, "0": False, "TRUE": True, "FALSE": False}
+# Spellings PyYAML's safe_load (YAML 1.1) turns into a bool, e.g. `options: [ON, OFF]`.
+_YAML_BOOL = {**_BOOL, "YES": True, "NO": False}
 
 
 def decode_float(text: str, unit: Optional[str]) -> float:
@@ -87,7 +92,10 @@ def _keyword_value(name: str, pc: Any, keyword: str) -> float:
     source = {"MIN": pc.min, "MAX": pc.max, "DEF": pc.default}[keyword]
     if source is None:
         raise ParamValidationError(name, f"{name}: {keyword} is not defined for this parameter")
-    return float(source)
+    try:
+        return float(source)
+    except (TypeError, ValueError, OverflowError):
+        raise ParamValidationError(name, f"{name}: {keyword} value {source!r} is not a number") from None
 
 
 def _num_text(raw: Any) -> str:
@@ -109,7 +117,19 @@ def _same(mapped: Any, text: str) -> bool:
         return str(mapped).upper() == text.upper()
 
 
-def _decode_enum(name: str, pc: Any, raw: Any) -> str:
+def _option_matches(option: Any, text: str) -> bool:
+    """Whole-spelling match; total over the option types the YAML loader produces."""
+    if isinstance(option, bool):  # YAML 1.1 `ON`/`OFF`/`yes`/`no` load as bools
+        return _YAML_BOOL.get(text.upper()) is option
+    if isinstance(option, (int, float)):  # `options: [1, 2, 4]` loads as numbers
+        try:
+            return float(text) == float(option)
+        except (ValueError, OverflowError):
+            return False
+    return str(option).upper() == text.upper()
+
+
+def _decode_enum(name: str, pc: Any, raw: Any) -> Any:
     options = list(pc.options or [])
     if isinstance(raw, bool):
         text = "1" if raw else "0"
@@ -121,10 +141,10 @@ def _decode_enum(name: str, pc: Any, raw: Any) -> str:
         raise _type_error(name, "enum", raw)
     up = text.upper()
     for option in options:
-        if option.upper() == up:
+        if _option_matches(option, text):
             return option
     for option in options:
-        if _short_form(option).upper() == up:
+        if isinstance(option, str) and _short_form(option).upper() == up:
             return option
     for option in options:
         if pc.map and option in pc.map and _same(pc.map[option], text):
@@ -133,7 +153,24 @@ def _decode_enum(name: str, pc: Any, raw: Any) -> str:
 
 
 def decode_value(name: str, pc: Any, raw: Any) -> Any:
-    """Decode and check one declared parameter value (semantics.md §3.3)."""
+    """Decode and check one declared parameter value (semantics.md §3.3).
+
+    Raises only ParamValidationError, even for malformed profile data that the
+    loader accepts (e.g. a non-list ``options``), so resolve_command keeps its
+    exception surface (KeyError, ParamValidationError or None).
+    """
+    try:
+        return _decode_value(name, pc, raw)
+    except ParamValidationError:
+        raise
+    except Exception as exc:
+        logger.warning("cannot validate param %r = %r against %r", name, raw, pc, exc_info=True)
+        raise ParamValidationError(
+            name, f"{name}: cannot validate {raw!r} against the declared parameter", ILLEGAL_PARAMETER_VALUE,
+        ) from exc
+
+
+def _decode_value(name: str, pc: Any, raw: Any) -> Any:
     ptype = (pc.type or "string").lower()
     if ptype == "float":
         if isinstance(raw, bool):
@@ -323,14 +360,20 @@ def validate_params(
 
 
 def wire_params(command: Any, supplied: Optional[Mapping[str, Any]], validated: Mapping[str, Any]) -> Dict[str, Any]:
-    """Values handed to ``format_scpi`` (CI-3 wire-compat rule)."""
+    """Values handed to ``format_scpi`` (CI-3 wire-compat rule).
+
+    An enum is sent as its declared option only when that option is a string;
+    a YAML-loaded bool or number option (``[ON, OFF]`` -> ``[True, False]``)
+    keeps the caller's spelling, so ``True`` never reaches the wire.
+    """
     supplied = dict(supplied or {})
     declared = dict(getattr(command, "params", None) or {})
     wire: Dict[str, Any] = {}
     for key, value in validated.items():
         pc = declared.get(key)
-        is_enum = pc is not None and (pc.type or "").lower() == "enum"
-        wire[key] = supplied[key] if key in supplied and not is_enum else value
+        is_enum = pc is not None and str(pc.type or "").lower() == "enum"
+        declared_option = is_enum and isinstance(value, str)
+        wire[key] = supplied[key] if key in supplied and not declared_option else value
     return wire
 
 

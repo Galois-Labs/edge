@@ -18,6 +18,9 @@ B = P(type="bool")
 E = P(type="enum", options=["POSitive", "NEGative", "EITHer"])
 EM = P(type="enum", options=["ON", "OFF"], map={"ON": 1, "OFF": 0})
 S = P(type="string")
+EN = P(type="enum", options=[1, 2, 4])          # YAML `options: [1, 2, 4]` loads as ints
+EB = P(type="enum", options=[True, False])      # YAML 1.1 `options: [ON, OFF]` loads as bools
+FD = P(type="float", default="abc")              # non-numeric default the loader accepts
 
 OK = [
     (FV, "5", 5.0), (FV, 5, 5.0), (FV, 2.5, 2.5), (FV, "1.2E-3", 1.2e-3), (FV, ".5", 0.5),
@@ -30,6 +33,8 @@ OK = [
     (E, "POSitive", "POSitive"), (E, "positive", "POSitive"), (E, "POS", "POSitive"), (E, "neg", "NEGative"), (E, "EITH", "EITHer"),
     (EM, "on", "ON"), (EM, "1", "ON"), (EM, 0, "OFF"), (EM, 1.0, "ON"),
     (S, "hello", "hello"), (S, '"quoted"', "quoted"), (S, "'single'", "single"), (S, 5, "5"),
+    (EN, "2", 2), (EN, 4, 4), (EN, 2.0, 2), (EN, "4.0", 4),
+    (EB, "ON", True), (EB, "off", False), (EB, True, True), (EB, "1", True), (EB, 0, False),
 ]
 
 
@@ -56,6 +61,11 @@ ERR = [
     (E, "SIDEways", -224, "p: 'SIDEways' is not one of ['POSitive', 'NEGative', 'EITHer']"),
     (EM, "2", -224, "p: '2' is not one of ['ON', 'OFF']"),
     (S, {"a": 1}, -104, "p: expected string, got {'a': 1}"),
+    (EN, "3", -224, "p: '3' is not one of [1, 2, 4]"),
+    (EB, "maybe", -224, "p: 'maybe' is not one of [True, False]"),
+    (FD, "DEF", -224, "p: DEF value 'abc' is not a number"),
+    # Malformed profile data the loader accepts (options must be a list) is still a ParamValidationError.
+    (P(type="enum", options=5), "5", -224, "p: cannot validate '5' against the declared parameter"),
 ]
 
 

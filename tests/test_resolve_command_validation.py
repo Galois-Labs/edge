@@ -80,6 +80,41 @@ def test_property_read_with_a_stale_setter_value_is_still_sent():  # CI-1: only 
         _manager().resolve_command(ADDR, "source_voltage", {"value": "999"}, is_query=False)
 
 
+YAML_PROFILE = """
+instrument: {manufacturer: Acme, model: PSU1, instrument_class: psu}
+identity: {patterns: [ACME]}
+commands:
+  output_state:
+    type: property
+    getter: ":OUTP?"
+    setter: ":OUTP {state}"
+    params:
+      state: {type: enum, options: [ON, OFF]}
+  averages:
+    type: write
+    scpi: ":ACQ:AVER {count}"
+    params:
+      count: {type: enum, options: [1, 2, 4]}
+"""
+
+
+def test_yaml_enum_options_that_are_not_strings_resolve():
+    """The loader (yaml.safe_load, YAML 1.1) turns [ON, OFF] into bools and [1, 2, 4] into ints."""
+    import yaml
+
+    from galois_edge.profile_schema import profile_from_dict
+
+    cm = CapabilityManager()
+    cm.register_instrument("ACME", "ACME", "ACME", profile_from_dict(yaml.safe_load(YAML_PROFILE)))
+    assert cm.resolve_command("ACME", "output_state", {"state": "ON"}, is_query=False) == ":OUTP ON"
+    assert cm.resolve_command("ACME", "averages", {"count": "4"}, is_query=False) == ":ACQ:AVER 4"
+    with pytest.raises(ParamValidationError) as ei:
+        cm.resolve_command("ACME", "output_state", {"state": "maybe"}, is_query=False)
+    assert (ei.value.field, ei.value.code) == ("state", -224)
+    with pytest.raises(ParamValidationError):
+        cm.resolve_command("ACME", "averages", {"count": "3"}, is_query=False)
+
+
 def test_unknown_instrument_or_command_still_returns_none():
     cm = _manager()
     assert cm.resolve_command("NOPE", "set_voltage", {}) is None
