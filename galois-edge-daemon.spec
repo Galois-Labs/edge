@@ -41,6 +41,8 @@ mcp_datas, mcp_binaries, mcp_hiddenimports = collect_all(
 starlette_datas, starlette_binaries, starlette_hiddenimports = collect_all("starlette")
 sse_datas, sse_binaries, sse_hiddenimports = collect_all("sse_starlette")
 pyd_datas, pyd_binaries, pyd_hiddenimports = collect_all("pydantic")
+# galois-profiles ships its vocabulary YAML and JSON Schemas as package data (edge-api.md §6, §8)
+gp_datas, gp_binaries, gp_hiddenimports = collect_all("galois_profiles")
 
 # Collect YAML instrument profiles as data files (recurse into subdirs)
 profile_datas = []
@@ -61,9 +63,10 @@ a = Analysis(
     # against the empty local subpackage).
     pathex=[str(SRC), str(ROOT)],
     binaries=pyvisa_binaries + pyvisapy_binaries + aiohttp_binaries
-        + mcp_binaries + starlette_binaries + sse_binaries + pyd_binaries,
+        + mcp_binaries + starlette_binaries + sse_binaries + pyd_binaries
+        + gp_binaries,
     datas=profile_datas + pyvisa_datas + pyvisapy_datas + aiohttp_datas
-        + mcp_datas + starlette_datas + sse_datas + pyd_datas
+        + mcp_datas + starlette_datas + sse_datas + pyd_datas + gp_datas
         + copy_metadata("mcp") + copy_metadata("pydantic"),
     hiddenimports=[
         # gRPC / protobuf stubs
@@ -150,6 +153,12 @@ a = Analysis(
         "galois_edge.mcp.tools.execute",
         "galois_edge.mcp.tools.sweep",
         "galois_edge.mcp.tools.stream",
+        # M1: central validation, tracing, instrument backends (edge-api.md §2, §4, §5)
+        "galois_edge.validation",
+        "galois_edge.tracing",
+        "galois_edge.backends",
+        "galois_edge.backends.base",
+        "galois_edge.backends.demo",
         # Phase 2: caller-JWT validation
         "jwt",
         "jwt.algorithms",
@@ -177,7 +186,8 @@ a = Analysis(
         "websockets.legacy.server",
         "wsproto",
     ] + pyvisa_hiddenimports + pyvisapy_hiddenimports + aiohttp_hiddenimports
-      + mcp_hiddenimports + starlette_hiddenimports + sse_hiddenimports + pyd_hiddenimports,
+      + mcp_hiddenimports + starlette_hiddenimports + sse_hiddenimports + pyd_hiddenimports
+      + gp_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

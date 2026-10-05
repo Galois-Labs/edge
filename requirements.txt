@@ -1,3 +1,7 @@
+# galois-profiles (pure Python) from the edgesim submodule. Must come first so a later
+# `pip install -e ".[dev]"` finds it installed (contracts/edge-api.md §8).
+./third_party/edgesim/packages/galois-profiles
+
 # Core dependencies (pinned)
 grpcio>=1.68.1
 grpcio-tools>=1.68.1

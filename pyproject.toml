@@ -27,6 +27,7 @@ dependencies = [
     "sse-starlette>=2.2.1",
     "pyjwt[crypto]>=2.8",
     "httpx>=0.27",
+    "galois-profiles",            # from the edgesim submodule ([tool.uv.sources]; edge-api.md §8)
 ]
 
 [project.optional-dependencies]
@@ -86,6 +87,11 @@ opcua = [
 hotplug = [
     "pyudev>=0.24.0; sys_platform == 'linux'",
 ]
+# edgesim simulator (Rust extension, built by maturin; needs cargo). Never part of `all`
+# and never in release builds (edge-api.md §8).
+sim = [
+    "edgesim",
+]
 all = [
     "galois-edge[gpib,usb,discovery,streaming,hotplug,ocean-optics,ni-daq,qd-ppms,digitizers,ni-scope,ni-fgen,ni-dcpower,ni-dmm,dps150,digilent]",
 ]
@@ -110,6 +116,12 @@ build = [
 
 [project.scripts]
 galois-edge-daemon = "galois_edge.__main__:main"
+
+[tool.uv.sources]
+# edgesim submodule (contracts/edge-api.md §8). Paths are relative to edge's root,
+# so each worktree resolves its own submodule checkout.
+galois-profiles = { path = "third_party/edgesim/packages/galois-profiles", editable = true }
+edgesim = { path = "third_party/edgesim/packages/edgesim", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/galois_edge"]
