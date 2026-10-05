@@ -4,6 +4,10 @@ Record encoding follows contracts/semantics.md §11 and
 contracts/schemas/trace-v1.schema.json. The data types here are shared by
 capability_manager (which builds CommandContext and returns ResolvedSCPI) and
 command_handler (which emits CommandEvent to observers).
+
+M1 scope (plan CI-24): only commands that pass through CommandHandler are
+traced. SDK (sdk_executor) and protocol-driver (Modbus, CAN, ...) commands
+never reach CommandHandler, so they produce no transition.
 """
 
 from __future__ import annotations

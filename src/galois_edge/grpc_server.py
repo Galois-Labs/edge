@@ -1294,6 +1294,8 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             )
         except ParamValidationError as exc:
             # edge-api.md §4: same pattern as the FAILED_PRECONDITION interlock below.
+            # Validation runs here, before the requires_sweep and sweep-reservation
+            # interlocks, so bad params win over FAILED_PRECONDITION (plan CI-25).
             elapsed_ms = int((time.time() - start) * 1000)
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
             context.set_details(exc.message)
