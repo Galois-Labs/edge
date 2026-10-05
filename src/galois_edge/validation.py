@@ -234,6 +234,12 @@ def argument_placeholders(template: str) -> Tuple[str, ...]:
     return _unique(_PLACEHOLDER.findall(parts[1])) if len(parts) == 2 else ()
 
 
+def _is_property(command: Any) -> bool:
+    if getattr(command, "sdk_call", None) is not None or getattr(command, "can", None) is not None:
+        return False
+    return command.type == "property"
+
+
 def select_template(
     command: Any,
     supplied: Mapping[str, Any],
@@ -283,14 +289,26 @@ def validate_params(
 
     Does not apply ``map``. Undeclared keys pass through untouched. Raises
     ParamValidationError. ``is_query`` selects getter vs setter form (CI-1).
+
+    For a ``property`` command only the declared params that the sent template
+    uses are decoded (CI-1 ruling): a read validates the getter's params, a
+    write also validates the setter's value param. Other supplied keys pass
+    through untouched, as undeclared keys do, and ``format_scpi`` ignores them.
+    Every other command decodes every supplied declared param.
     """
     supplied = dict(params or {})
     declared = dict(getattr(command, "params", None) or {})
+    template, _form = select_template(command, supplied, is_query, use_defaults=True)
+    checked: Optional[set] = None
+    if _is_property(command):
+        checked = set(_PLACEHOLDER.findall(template)) if template is not None else set()
     result: Dict[str, Any] = {}
     for key, raw in supplied.items():
         pc = declared.get(key)
-        result[key] = raw if pc is None else decode_value(key, pc, raw)
-    template, _form = select_template(command, supplied, is_query, use_defaults=True)
+        if pc is None or (checked is not None and key not in checked):
+            result[key] = raw
+        else:
+            result[key] = decode_value(key, pc, raw)
     if template is not None:
         required, _optional = template_placeholders(template)
         for name in required:

@@ -47,6 +47,20 @@ def test_missing_header_without_default_is_rejected():
     assert (ei.value.field, ei.value.code, ei.value.message) == ("channel", -109, "channel: missing required parameter")
 
 
+def test_property_read_validates_only_the_getter_params():  # CI-1 ruling, edge-api §4
+    # A setter-only value on a read is never sent, so it passes through untouched.
+    assert validate_params(VOLT, {"value": "999"}, is_query=True) == {"value": "999", "channel": 1}
+    assert validate_params(VOLT, {"value": ""}, is_query=True) == {"value": "", "channel": 1}
+    # The getter's own params are still checked on a read ...
+    with pytest.raises(ParamValidationError) as ei:
+        validate_params(VOLT, {"channel": "3", "value": "1"}, is_query=True)
+    assert (ei.value.field, ei.value.code) == ("channel", -222)
+    # ... and the setter's value param is checked when the setter is sent.
+    with pytest.raises(ParamValidationError) as ei:
+        validate_params(VOLT, {"value": "999"}, is_query=False)
+    assert (ei.value.field, ei.value.code) == ("value", -222)
+
+
 def test_unknown_keys_pass_through():  # Review Focus 2
     out = validate_params(VOLT, {"value": "5", "channels": "CHAN1,CHAN2"}, is_query=False)
     assert out["channels"] == "CHAN1,CHAN2"

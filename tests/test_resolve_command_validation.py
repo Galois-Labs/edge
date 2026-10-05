@@ -73,6 +73,13 @@ def test_property_read_with_is_query_false_and_no_value():  # Review Focus 1, en
     assert out == ":SOUR1:VOLT?" and out.context.form == "getter"
 
 
+def test_property_read_with_a_stale_setter_value_is_still_sent():  # CI-1: only getter params on a read
+    out = _manager().resolve_command(ADDR, "source_voltage", {"value": "999"}, is_query=True)
+    assert out == ":SOUR1:VOLT?" and out.context.form == "getter"
+    with pytest.raises(ParamValidationError):
+        _manager().resolve_command(ADDR, "source_voltage", {"value": "999"}, is_query=False)
+
+
 def test_unknown_instrument_or_command_still_returns_none():
     cm = _manager()
     assert cm.resolve_command("NOPE", "set_voltage", {}) is None
