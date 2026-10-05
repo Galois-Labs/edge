@@ -10,7 +10,7 @@ reject identical inputs with identical messages.
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 DATA_TYPE_ERROR = -104
 MISSING_PARAMETER = -109
@@ -195,3 +195,164 @@ def decode_value(name: str, pc: Any, raw: Any) -> Any:
     if isinstance(raw, (int, float)) and not isinstance(raw, bool):
         return str(raw)
     raise _type_error(name, "string", raw)
+
+
+# ---------------------------------------------------------------------------
+# Template selection, validate_params, wire_params (CI-1, CI-2, CI-3)
+# ---------------------------------------------------------------------------
+
+_PLACEHOLDER = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _unique(names) -> Tuple[str, ...]:
+    return tuple(dict.fromkeys(names))
+
+
+def _strip_optional_nodes(template: str) -> str:
+    out = []
+    depth = 0
+    for ch in template:
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth = max(depth - 1, 0)
+        elif depth == 0:
+            out.append(ch)
+    return "".join(out)
+
+
+def template_placeholders(template: str) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+    """(required, optional) ``{name}`` placeholders; optional = only inside ``[...]``."""
+    required = _unique(_PLACEHOLDER.findall(_strip_optional_nodes(template)))
+    everything = _unique(_PLACEHOLDER.findall(template))
+    return required, tuple(n for n in everything if n not in required)
+
+
+def argument_placeholders(template: str) -> Tuple[str, ...]:
+    """Placeholders after the template's first whitespace (semantics.md §3.2)."""
+    parts = template.strip().split(None, 1)
+    return _unique(_PLACEHOLDER.findall(parts[1])) if len(parts) == 2 else ()
+
+
+def select_template(
+    command: Any,
+    supplied: Mapping[str, Any],
+    is_query: bool,
+    *,
+    use_defaults: bool = False,
+) -> Tuple[Optional[str], str]:
+    """The template ``format_scpi`` will send, and its form.
+
+    form ∈ {"getter", "setter", "query", "write", "none"}.
+    """
+    if getattr(command, "sdk_call", None) is not None or getattr(command, "can", None) is not None:
+        return None, "none"
+    if command.type == "property":
+        if is_query:
+            return (command.getter, "getter") if command.getter is not None else (None, "none")
+        setter = command.setter
+        if setter is None:
+            return None, "none"
+        if command.getter is not None:
+            args = set(argument_placeholders(setter))
+            declared = command.params or {}
+
+            def available(name: str) -> bool:
+                if name in supplied:
+                    return True
+                if use_defaults and name not in args:
+                    pc = declared.get(name)
+                    return pc is not None and pc.default is not None
+                return False
+
+            if not all(available(n) for n in _PLACEHOLDER.findall(setter)):
+                return command.getter, "getter"
+        return setter, "setter"
+    if command.scpi is None:
+        return None, "none"
+    return command.scpi, ("query" if command.scpi.rstrip().endswith("?") else "write")
+
+
+def validate_params(
+    command: Any,
+    params: Optional[Mapping[str, Any]] = None,
+    *,
+    is_query: bool = True,
+) -> Dict[str, Any]:
+    """Coerce, range-check and default-fill *params* for *command* (edge-api.md §4).
+
+    Does not apply ``map``. Undeclared keys pass through untouched. Raises
+    ParamValidationError. ``is_query`` selects getter vs setter form (CI-1).
+    """
+    supplied = dict(params or {})
+    declared = dict(getattr(command, "params", None) or {})
+    result: Dict[str, Any] = {}
+    for key, raw in supplied.items():
+        pc = declared.get(key)
+        result[key] = raw if pc is None else decode_value(key, pc, raw)
+    template, _form = select_template(command, supplied, is_query, use_defaults=True)
+    if template is not None:
+        required, _optional = template_placeholders(template)
+        for name in required:
+            if name in result:
+                continue
+            pc = declared.get(name)
+            if pc is not None and pc.default is not None:
+                result[name] = pc.default
+            else:
+                raise ParamValidationError(name, f"{name}: missing required parameter", MISSING_PARAMETER)
+    return result
+
+
+def wire_params(command: Any, supplied: Optional[Mapping[str, Any]], validated: Mapping[str, Any]) -> Dict[str, Any]:
+    """Values handed to ``format_scpi`` (CI-3 wire-compat rule)."""
+    supplied = dict(supplied or {})
+    declared = dict(getattr(command, "params", None) or {})
+    wire: Dict[str, Any] = {}
+    for key, value in validated.items():
+        pc = declared.get(key)
+        is_enum = pc is not None and (pc.type or "").lower() == "enum"
+        wire[key] = supplied[key] if key in supplied and not is_enum else value
+    return wire
+
+
+# ---------------------------------------------------------------------------
+# Typed responses (MCP value_typed, trace observation.typed)
+# ---------------------------------------------------------------------------
+
+_TRUE = {"1", "ON", "TRUE"}
+_FALSE = {"0", "OFF", "FALSE"}
+
+
+def coerce_response(returns: Any, response: Optional[str]) -> Any:
+    """Typed view of a text response per ``returns.type``; None when it does not coerce.
+
+    Used for MCP ``value_typed`` (mcp-nav) and trace ``observation.typed``.
+    """
+    if response is None:
+        return None
+    text = response.strip()
+    rtype = (getattr(returns, "type", None) or "string").lower()
+    try:
+        if rtype == "float":
+            return float(text)
+        if rtype == "int":
+            f = float(text)
+            return int(f) if f.is_integer() else None
+        if rtype == "bool":
+            up = text.upper()
+            return True if up in _TRUE else False if up in _FALSE else None
+        if rtype == "array":
+            sep = getattr(returns, "separator", None) or ","
+            element = (getattr(returns, "element_type", None) or "float").lower()
+            items = [s.strip() for s in text.split(sep) if s.strip()]
+            if element == "string":
+                return items
+            if element == "int":
+                return [int(float(s)) for s in items]
+            return [float(s) for s in items]
+        if rtype in ("binary", "vector"):
+            return None
+        return text
+    except (ValueError, OverflowError):  # OverflowError: int(float("inf"))
+        return None
