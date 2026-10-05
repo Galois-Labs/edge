@@ -208,7 +208,7 @@ class TestSignalHoundClient:
         mock_sa = MagicMock()
         mock_sa.sa_open_device.return_value = 42
 
-        monkeypatch.setattr(_vendor_pkg, "sa_api", mock_sa)
+        monkeypatch.setattr(_vendor_pkg, "sa_api", mock_sa, raising=False)
         monkeypatch.setitem(
             __import__("sys").modules, "galois_edge.vendor.sa_api", mock_sa
         )
@@ -227,7 +227,7 @@ class TestSignalHoundClient:
         mock_sa = MagicMock()
         mock_sa.sa_open_device.return_value = 42
 
-        monkeypatch.setattr(_vendor_pkg, "sa_api", mock_sa)
+        monkeypatch.setattr(_vendor_pkg, "sa_api", mock_sa, raising=False)
         monkeypatch.setitem(
             __import__("sys").modules, "galois_edge.vendor.sa_api", mock_sa
         )
