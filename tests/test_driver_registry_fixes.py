@@ -57,13 +57,25 @@ def test_protocol_registers_its_bus_manager_class_as_the_factory(protocol, tmp_p
     assert DriverRegistry(str(tmp_path))._bus_manager_for(protocol) is not mgr  # never shared across registries
 
 
-def test_discover_uses_the_c_safe_loader_when_available(tmp_path):
+def test_discover_uses_the_c_safe_loader_when_available(tmp_path, monkeypatch):
     from galois_edge.drivers import registry
 
-    assert registry._YAML_LOADER is getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+    real_loader = registry._YAML_LOADER
+    assert real_loader is getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+    parsed_with = []
+
+    class _SpyLoader(real_loader):
+        def __init__(self, stream):
+            parsed_with.append(real_loader)
+            super().__init__(stream)
+
+    # Proves discover() parses through _YAML_LOADER rather than yaml.safe_load,
+    # which would never instantiate the spy.
+    monkeypatch.setattr(registry, "_YAML_LOADER", _SpyLoader)
     (tmp_path / "modbus").mkdir()
     doc = "protocol: modbus\nname: x\nscale: 1.5e3\nflag: yes\n"
     (tmp_path / "modbus" / "x.yaml").write_text(doc)
     reg = registry.DriverRegistry(str(tmp_path))
     assert reg.discover() == 1
+    assert parsed_with == [real_loader]
     assert reg._profiles["x"] == yaml.safe_load(doc)  # identical YAML 1.1 semantics, faster parser
