@@ -367,20 +367,13 @@ async def mcp_agent(url: str) -> AsyncIterator[Agent]:
 
 
 DAEMON_STOPPED = "Edge daemon stopped.\n"
-SHUTDOWN_NOISE = re.compile(
-    r"[^\n]* - asyncio - ERROR - Task was destroyed but it is pending!\n"
-    r"task: <Task pending [^\n]*coro=<_shutdown_watcher\(\) running at [^\n]*sse_starlette[/\\]sse\.py:\d+>[^\n]*\n?")
-"""The one ERROR record the daemon may log, and only after it stopped. sse_starlette starts a
-`_shutdown_watcher` task per MCP streamable-HTTP stream. When the daemon's event loop closes, that task is
-still pending, so asyncio logs it after "Edge daemon stopped." on every shutdown. This is a third-party
-shutdown wart, not an edge failure, and it is reported."""
 
 
 def assert_clean_daemon_log(proc: Proc) -> None:
-    """The stopped daemon logged no traceback and no ERROR or CRITICAL record, apart from SHUTDOWN_NOISE."""
-    before, stopped, after = proc.output().partition(DAEMON_STOPPED)
-    assert stopped, f"{proc.name} never logged {DAEMON_STOPPED!r}:\n{proc.output_tail()}"
-    log = before + stopped + SHUTDOWN_NOISE.sub("", after)
+    """The daemon stopped, and logged no traceback and no ERROR or CRITICAL record at any point, shutdown
+    included (an asyncio "Task was destroyed but it is pending!" is an ERROR record, so it fails here)."""
+    log = proc.output()
+    assert DAEMON_STOPPED in log, f"{proc.name} never logged {DAEMON_STOPPED!r}:\n{proc.output_tail()}"
     errors = [line for line in log.splitlines() if re.search(r" - (ERROR|CRITICAL) - ", line)]
     assert "Traceback" not in log and errors == [], f"{proc.name} logged errors {errors}:\n{log[-4000:]}"
 
