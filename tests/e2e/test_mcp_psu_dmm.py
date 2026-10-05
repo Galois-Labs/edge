@@ -70,7 +70,8 @@ async def test_agent_navigates_configures_and_measures_through_the_daemon(e2e, t
     assert setter["instrument_id"] == psu and setter["delta"] == {"output.voltage_setpoint[1]": [None, 5.0]}
     enable = next(r for r in transitions if r["action"].get("path") == "output.state" and r.get("delta"))
     assert enable["delta"] == {"output.enabled[1]": [None, True]}            # the alias, traced by its path
-    reading = next(r for r in transitions if r["instrument_id"] == dmm)
+    reading = next(r for r in transitions                                     # the alias, traced by its path
+                   if r["instrument_id"] == dmm and r["action"].get("path") == "measure.voltage.dc")
     assert reading["observation"]["typed"] == pytest.approx(5.0, rel=0.01)
 
     # The World's own trace of the same session.
