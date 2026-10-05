@@ -64,6 +64,10 @@ ERR = [
     (EN, "3", -224, "p: '3' is not one of [1, 2, 4]"),
     (EB, "maybe", -224, "p: 'maybe' is not one of [True, False]"),
     (FD, "DEF", -224, "p: DEF value 'abc' is not a number"),
+    # NaN compares False against min/max, so it must be rejected before the range check.
+    (FV, float("nan"), -104, "p: expected float, got nan"),
+    (FN, float("nan"), -104, "p: expected float, got nan"),
+    (FV, float("inf"), -222, "p: inf is out of range [-10.0, 10.0]"),
     # Malformed profile data the loader accepts (options must be a list) is still a ParamValidationError.
     (P(type="enum", options=5), "5", -224, "p: cannot validate '5' against the declared parameter"),
 ]

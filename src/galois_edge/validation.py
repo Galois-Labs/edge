@@ -10,6 +10,7 @@ reject identical inputs with identical messages.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any, Dict, Mapping, Optional, Tuple
 
@@ -187,6 +188,8 @@ def _decode_value(name: str, pc: Any, raw: Any) -> Any:
                 except ValueError:
                     raise _type_error(name, "float", raw) from None
         else:
+            raise _type_error(name, "float", raw)
+        if math.isnan(value):  # NaN slips past min/max (every comparison is False)
             raise _type_error(name, "float", raw)
         _check_range(name, pc, value)
         return value
