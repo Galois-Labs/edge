@@ -271,7 +271,8 @@ class Processes:
         """`python -m galois_edge` in SIM_MODE against a remote World, every server on port 0, scanning off.
 
         stdin is a pipe, as under the Go supervisor, so closing it stops the daemon. Ready when the MCP
-        server logs the URL it listens on (the daemon's only port-0 read-back)."""
+        server logs the URL it listens on (the daemon's only port-0 read-back). The match needs the line's
+        newline, so a read that catches the line half-written never yields a truncated URL."""
         env = base_env(self.home) | {
             "SIM_MODE": "true",
             "SIM_REMOTE_SOCKET": str(remote_socket),
@@ -287,7 +288,7 @@ class Processes:
             "LOG_LEVEL": "INFO",
         }
         proc = self.spawn("edge", [sys.executable, "-m", "galois_edge"], env=env, stdin_pipe=True)
-        found = wait_until(lambda: re.search(r"MCP server listening on (http://127\.0\.0\.1:[1-9]\d*/\S*)",
+        found = wait_until(lambda: re.search(r"MCP server listening on (http://127\.0\.0\.1:[1-9]\d*/\S*)\n",
                                              proc.output()),
                            "the edge daemon's MCP server", alive=[proc])
         assert "PyVISA initialisation failed" in proc.output(), "VISA scanning must be off (loopback only)"
