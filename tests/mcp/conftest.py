@@ -187,8 +187,7 @@ def synthetic_capability_manager() -> Any:
 
 @pytest.fixture
 def synthetic_instrument_manager() -> Any:
-    sys.path.insert(0, os.path.abspath(os.path.join(_HERE, "..")))
-    from conftest import MockInstrumentManager
+    from tests.conftest import MockInstrumentManager
 
     mgr = MockInstrumentManager(
         resources=["GPIB0::24::INSTR", "USB::34461A::INSTR"],
