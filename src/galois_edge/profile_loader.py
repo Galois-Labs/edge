@@ -8,21 +8,23 @@ for a given ``*IDN?`` response string.
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import os
-import pickle
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
-try:
-    import yaml
-except ImportError:  # pragma: no cover — optional at import time
-    yaml = None  # type: ignore[assignment]
-
-from .profile_schema import InstrumentProfile, profile_from_dict
+from .config import _default_config_dir
+from .profile_schema import InstrumentProfile, _gp_api, _legacy_profile_from_dict, profile_from_galois
 
 logger = logging.getLogger(__name__)
+
+#: Protocol-driver profile subtrees of the bundled dir (driver registry, not
+#: instrument profiles); never scanned as instrument profiles (edge-api.md §6).
+_PROTOCOL_SUBTREES = frozenset({"can", "spi", "i2c", "opcua", "modbus"})
+
+#: Error diagnostics that do not mean galois-profiles rejected the file: a
+#: within-dir duplicate key loaded fine and lost to the first by sorted path
+#: (semantics §7.1), so the legacy safety net must not resurrect it.
+_NOT_A_REJECTION = frozenset({"E-PROFILE-DUPKEY"})
 
 
 class ProfileLoader:
@@ -99,150 +101,151 @@ class ProfileLoader:
     def is_loaded(self) -> bool:
         return self._loaded
 
-    # -- loading -------------------------------------------------------------
+    # -- loading (galois-profiles; contracts/edge-api.md §6) -----------------
+
+    def _bundled_sources(self) -> Tuple[List[Path], List[Path]]:
+        """(dirs, root files) to scan in the bundled dir, minus protocol-driver subtrees (CI-15)."""
+        root = self._profiles_dir
+        if not root.is_dir():
+            return [], []
+        children = sorted(root.iterdir())
+        if not any(c.is_dir() and c.name in _PROTOCOL_SUBTREES for c in children):
+            return [root], []
+        dirs = [c for c in children if c.is_dir() and not c.name.startswith("_") and c.name not in _PROTOCOL_SUBTREES]
+        files = [c for c in children if c.is_file() and c.suffix in (".yaml", ".yml") and not c.name.startswith("_")]
+        return dirs, files
+
+    @staticmethod
+    def _cache_dir() -> Optional[Path]:
+        path = Path(_default_config_dir()) / "profile-cache"
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+        except OSError as exc:
+            logger.debug("profile cache disabled (%s): %s", path, exc)
+            return None
+
+    @staticmethod
+    def _log_diagnostics(diagnostics, default_file: Optional[Path] = None) -> List[Path]:
+        """Log per file (as before M1); return the files galois-profiles rejected."""
+        failed: List[Path] = []
+        for d in diagnostics:
+            where = d.file or (str(default_file) if default_file else "?")
+            level = logging.ERROR if d.severity == "error" else logging.WARNING
+            logger.log(level, "%s: %s %s", where, d.code, d.message)
+            if d.severity == "error" and d.file and d.code not in _NOT_A_REJECTION:
+                failed.append(Path(d.file))
+        return list(dict.fromkeys(failed))
+
+    def _legacy_fallback(self, path: Path) -> Optional[InstrumentProfile]:
+        """CI-16 safety net: a v1 file galois-profiles rejects still loads as it did before M1."""
+        try:
+            data = _gp_api("load_yaml")(path.read_text(encoding="utf-8"))
+            if not data or not isinstance(data, dict):
+                logger.warning("Empty or non-dict profile file: %s", path)
+                return None
+            if data.get("schema_version") is not None:
+                return None
+            profile = _legacy_profile_from_dict(data)
+            profile.validate()
+        except Exception:
+            logger.exception("Failed to load profile %s", path)
+            return None
+        logger.warning("galois-profiles rejected %s; loaded with the legacy v1 reader", path)
+        return profile
+
+    def _convert(self, gp_profile, source) -> Optional[InstrumentProfile]:
+        try:
+            profile = profile_from_galois(gp_profile)
+            profile.validate()
+            return profile
+        except Exception:
+            logger.exception("Failed to load profile %s", source)
+            return None
 
     def load_all(self) -> int:
-        """Load every YAML profile from the bundled, backend, and dynamic dirs.
+        """Load bundled → extra_dirs → dynamic profiles through galois-profiles.
 
-        Scan order and precedence (edge-api.md §2):
+        Scan order and precedence (edge-api.md §2, §6):
 
         - ``profiles_dir`` (bundled), then ``extra_dirs`` in order, then
-          ``dynamic_dir``.
+          ``dynamic_dir``. The bundled scan skips the protocol-driver
+          subtrees ``can/``, ``spi/``, ``i2c/``, ``opcua/``, ``modbus/``.
         - A key already loaded from an earlier non-dynamic dir is kept;
           the later copy is logged at WARNING, so a backend's profile dirs
           can never shadow a bundled profile.
         - A dynamic-dir (deployed) profile replaces a same-key profile.
-        - Within one dir, the last file by sorted path wins.
+        - Within one dir, the first file by sorted path wins
+          (``E-PROFILE-DUPKEY``).
         - The ``_``-prefix filter applies to the bundled dir and
           ``extra_dirs``, not to the dynamic dir.
 
-        Uses a pickle cache to avoid re-parsing 130+ YAML files on
-        every startup (saves ~60s on Raspberry Pi SD cards).  The cache
-        is invalidated when any scanned YAML file is added, removed, or
-        modified.
+        Parsed profiles are cached as JSON under
+        ``<config dir>/profile-cache`` (galois-profiles; no pickle).
 
         Returns:
             Number of profiles loaded.
         """
-        if yaml is None:
-            logger.error("PyYAML is not installed; cannot load profiles")
+        try:
+            load_profiles, load_profile = _gp_api("load_profiles"), _gp_api("load_profile")
+            profile_error = _gp_api("ProfileError")
+        except ImportError:
+            logger.error("galois-profiles is not installed; cannot load profiles")
             self._loaded = True
             return 0
 
         self._profiles.clear()
-
-        def _scan(directory: Path, underscore_filter: bool) -> List[Path]:
-            files = sorted(list(directory.rglob("*.yaml")) + list(directory.rglob("*.yml")))
-            if underscore_filter:
-                # The bundled tree uses a leading underscore to mark internal
-                # files. A deployed filename is whatever the deploying tool
-                # chose and is not ours to reinterpret, so the dynamic dir
-                # is scanned unfiltered.
-                files = [f for f in files
-                         if not any(part.startswith("_") for part in f.relative_to(directory).parts)]
-            return files
-
-        # (dir_index, path, is_dynamic) in precedence order (edge-api.md §2)
-        sources: List[tuple] = []
-        if self._profiles_dir.is_dir():
-            sources += [(0, f, False) for f in _scan(self._profiles_dir, True)]
-        else:
+        if not self._profiles_dir.is_dir():
             logger.warning("Profiles directory not found: %s", self._profiles_dir)
-        for i, extra in enumerate(self._extra_dirs, start=1):
-            if extra.is_dir():
-                sources += [(i, f, False) for f in _scan(extra, True)]
-            else:
+        for extra in self._extra_dirs:
+            if not extra.is_dir():
                 logger.debug("Backend profile dir not found: %s", extra)
-        if self._dynamic_dir and self._dynamic_dir.is_dir():
-            sources += [(len(self._extra_dirs) + 1, f, True) for f in _scan(self._dynamic_dir, False)]
+        cache_dir = self._cache_dir()
+        cache_arg = str(cache_dir) if cache_dir is not None else None
+        loaded: Dict[str, InstrumentProfile] = {}
+        origin: Dict[str, str] = {}
 
-        # Try loading from pickle cache (keyed by every scanned file).
-        # The key covers the backend and dynamic files too, so deploying a
-        # profile invalidates the cache and the next load picks it up.
-        cache_path = self._profiles_dir / "_cache.pkl" if self._profiles_dir.is_dir() else None
-        cache_key = self._compute_cache_key([f for _i, f, _d in sources])
-
-        if cache_path is not None and cache_path.exists():
-            try:
-                with open(cache_path, "rb") as fh:
-                    cached = pickle.load(fh)
-                if cached.get("key") == cache_key:
-                    self._profiles = cached["profiles"]
-                    self._loaded = True
-                    logger.info(
-                        "Loaded %d profile(s) from cache", len(self._profiles)
-                    )
-                    return len(self._profiles)
-            except Exception:
-                logger.debug("Profile cache invalid, rebuilding")
-
-        # Cache miss — parse all YAML files
-        origin: Dict[str, tuple] = {}   # key -> (dir_index, path)
-        for dir_index, path, is_dynamic in sources:
-            try:
-                profile = self._load_file(path)
-            except Exception:
-                logger.exception("Failed to load profile %s", path)
-                continue
+        def accept(profile: Optional[InstrumentProfile], source, replace: bool) -> None:
             if profile is None:
-                continue
+                return
             key = profile.profile_key
-            prev = origin.get(key)
-            if prev is not None and not is_dynamic and prev[0] < dir_index:
-                logger.warning("profile %s from %s shadowed by %s", key, path, prev[1])
-                continue
-            self._profiles[key] = profile
-            origin[key] = (dir_index, path)
-            logger.info(
-                "Loaded profile: %s (%d commands)",
-                key,
-                len(profile.commands),
-            )
-        loaded = len(self._profiles)
+            if key in loaded and not replace:
+                logger.warning("profile %s from %s shadowed by %s", key, source, origin[key])
+                return
+            loaded[key] = profile
+            origin[key] = str(source)
 
-        # Write cache for next startup. Atomic (CI-29): parallel readers
-        # never see a torn pickle.
-        if cache_path is not None:
-            tmp = cache_path.with_name(f"._cache.{os.getpid()}.tmp")
+        bundled_dirs, root_files = self._bundled_sources()
+        for path in root_files:                                   # uncached (CI-15)
             try:
-                with open(tmp, "wb") as fh:
-                    pickle.dump({"key": cache_key, "profiles": self._profiles}, fh)
-                os.replace(tmp, cache_path)
-                logger.info("Profile cache written (%d profiles)", loaded)
-            except Exception as exc:
-                logger.debug("Could not write profile cache: %s", exc)
-                try:
-                    tmp.unlink(missing_ok=True)
-                except OSError:
-                    pass
+                accept(self._convert(load_profile(path), path), path, replace=False)
+            except profile_error as exc:
+                self._log_diagnostics(exc.diagnostics, path)
+                accept(self._legacy_fallback(path), path, replace=False)
 
+        static_dirs = [*bundled_dirs, *[d for d in self._extra_dirs if d.is_dir()]]
+        if static_dirs:
+            pset = load_profiles([str(d) for d in static_dirs], cache_dir=cache_arg)
+            failed = self._log_diagnostics(pset.diagnostics)
+            for key in pset:
+                accept(self._convert(pset[key], pset[key].source_path), pset[key].source_path, replace=False)
+            for path in failed:
+                accept(self._legacy_fallback(path), path, replace=False)
+
+        if self._dynamic_dir is not None and self._dynamic_dir.is_dir():
+            dset = load_profiles([str(self._dynamic_dir)], cache_dir=cache_arg, exclude_underscore=False)
+            failed = self._log_diagnostics(dset.diagnostics)
+            for key in dset:
+                accept(self._convert(dset[key], dset[key].source_path), dset[key].source_path, replace=True)
+            for path in failed:
+                accept(self._legacy_fallback(path), path, replace=True)
+
+        self._profiles = loaded
         self._loaded = True
-        logger.info(
-            "Loaded %d profile(s) from %s", loaded, self._profiles_dir
-        )
-        return loaded
-
-    @staticmethod
-    def _compute_cache_key(yaml_files: list[Path]) -> str:
-        """Hash every scanned file's full path, mtime, and size, in scan order."""
-        h = hashlib.md5()
-        for f in yaml_files:
-            st = f.stat()
-            h.update(f"{f}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
-        return h.hexdigest()
-
-    def _load_file(self, path: Path) -> Optional[InstrumentProfile]:
-        """Parse and validate a single YAML profile file."""
-        with open(path, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
-
-        if not data or not isinstance(data, dict):
-            logger.warning("Empty or non-dict profile file: %s", path)
-            return None
-
-        profile = profile_from_dict(data)
-        profile.validate()
-        return profile
+        for key, profile in loaded.items():
+            logger.info("Loaded profile: %s (%d commands)", key, len(profile.commands))
+        logger.info("Loaded %d profile(s) from %s", len(loaded), self._profiles_dir)
+        return len(loaded)
 
     # -- matching ------------------------------------------------------------
 

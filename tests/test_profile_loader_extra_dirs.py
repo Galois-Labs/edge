@@ -88,7 +88,7 @@ def test_cache_key_covers_extra_dir_files(dirs):
     bundled, backend, _ = dirs
     _profile(bundled, "a.yaml", "A")
     _profile(backend, "s.yaml", "S", scpi=":ONE?")
-    ProfileLoader(str(bundled), extra_dirs=[str(backend)]).load_all()   # writes bundled/_cache.pkl
+    ProfileLoader(str(bundled), extra_dirs=[str(backend)]).load_all()   # warms the JSON cache
     _profile(backend, "s.yaml", "S", scpi=":TWO?")
     st = os.stat(backend / "s.yaml")
     os.utime(backend / "s.yaml", ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))
