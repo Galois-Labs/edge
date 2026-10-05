@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Set, Tuple, TYPE_CHECKING
 
 from .tracing import CommandContext, ResolvedSCPI, WriteTarget, json_safe
 from .validation import select_template, validate_params, wire_params
@@ -44,6 +44,8 @@ class InstrumentCapabilities:
     profile: Optional[InstrumentProfile] = None
     _disabled_commands: Set[str] = field(default_factory=set)
     _disabled_sequences: Set[str] = field(default_factory=set)
+    _enabled_cache: Optional[tuple] = field(default=None, init=False, repr=False, compare=False)
+    _toggle_version: int = field(default=0, init=False, repr=False, compare=False)
 
     @property
     def has_profile(self) -> bool:
@@ -88,16 +90,27 @@ class InstrumentCapabilities:
 
     # -- Enabled / disabled tracking ---
 
+    def _path_of(self, name_or_alias: str) -> str:
+        """Command path for a path or alias; exact keys for profiles without ``path_of``. KeyError."""
+        path_of = getattr(self.profile, "path_of", None)
+        if path_of is not None:
+            return path_of(name_or_alias)
+        if name_or_alias in self.profile.commands:
+            return name_or_alias
+        raise KeyError(name_or_alias)
+
     @property
-    def enabled_commands(self) -> Set[str]:
-        """Names of commands that are profile-enabled and not runtime-disabled."""
+    def enabled_commands(self) -> FrozenSet[str]:
+        """Paths of commands that are profile-enabled and not runtime-disabled (cached, edge-api.md §6)."""
         if self.profile is None:
-            return set()
-        return {
-            name
-            for name, cmd in self.profile.commands.items()
-            if cmd.enabled and name not in self._disabled_commands
-        }
+            return frozenset()
+        commands = self.profile.commands
+        key = (id(self.profile), id(commands), len(commands), self._toggle_version, len(self._disabled_commands))
+        if self._enabled_cache is not None and self._enabled_cache[0] == key:
+            return self._enabled_cache[1]
+        names = frozenset(n for n, c in commands.items() if c.enabled and n not in self._disabled_commands)
+        self._enabled_cache = (key, names)
+        return names
 
     @property
     def disabled_commands(self) -> Set[str]:
@@ -135,18 +148,30 @@ class InstrumentCapabilities:
     # -- Runtime toggles ---
 
     def disable_command(self, command_name: str) -> bool:
-        """Disable a command at runtime. Returns True if it existed."""
-        if self.profile is None or command_name not in self.profile.commands:
+        """Disable a command (path or alias) at runtime. Returns True if it existed."""
+        if self.profile is None:
             return False
-        self._disabled_commands.add(command_name)
-        logger.info("Disabled command '%s' for %s", command_name, self.instrument_id)
+        try:
+            path = self._path_of(command_name)
+        except KeyError:
+            return False
+        self._disabled_commands.add(path)
+        self._toggle_version += 1
+        logger.info("Disabled command '%s' for %s", path, self.instrument_id)
         return True
 
     def enable_command(self, command_name: str) -> bool:
-        """Re-enable a runtime-disabled command. Returns True if it was disabled."""
-        if command_name in self._disabled_commands:
-            self._disabled_commands.discard(command_name)
-            logger.info("Re-enabled command '%s' for %s", command_name, self.instrument_id)
+        """Re-enable a runtime-disabled command (path or alias). Returns True if it was disabled."""
+        path = command_name
+        if self.profile is not None:
+            try:
+                path = self._path_of(command_name)
+            except KeyError:
+                path = command_name
+        if path in self._disabled_commands:
+            self._disabled_commands.discard(path)
+            self._toggle_version += 1
+            logger.info("Re-enabled command '%s' for %s", path, self.instrument_id)
             return True
         return False
 
@@ -171,12 +196,16 @@ class InstrumentCapabilities:
     # -- Lookup ---
 
     def get_command(self, command_name: str) -> Optional[CommandConfig]:
-        """Return CommandConfig if the command exists and is enabled, else None."""
+        """Return CommandConfig (by path or alias) if it exists and is enabled, else None."""
         if self.profile is None:
             return None
-        if command_name not in self.enabled_commands:
+        try:
+            path = self._path_of(command_name)
+        except KeyError:
             return None
-        return self.profile.get_command(command_name)
+        if path not in self.enabled_commands:
+            return None
+        return self.profile.commands[path]
 
     def get_sequence(self, sequence_name: str) -> Optional[SequenceConfig]:
         """Return SequenceConfig if the sequence exists and is enabled."""
@@ -189,8 +218,11 @@ class InstrumentCapabilities:
     # -- Resolution and validation (validation-trace; edge-api.md §4) ---
 
     def command_path(self, name_or_alias: str) -> str:
-        """Canonical command path for a name or alias (adopt-profiles adds alias lookup)."""
-        return name_or_alias
+        """Canonical command path for a name or alias (semantics.md §7.3); the input if unknown."""
+        try:
+            return self._path_of(name_or_alias)
+        except (KeyError, AttributeError):
+            return name_or_alias
 
     def writes_for(self, path: str) -> Tuple[WriteTarget, ...]:
         """``writes`` targets of a leaf via the profile hook (CI-6); () when unavailable."""
@@ -527,8 +559,8 @@ class CapabilityManager:
         return [c for c in self._instruments.values() if c.instrument_class == target]
 
     def find_with_command(self, command_name: str) -> List[InstrumentCapabilities]:
-        """Find all instruments that have a specific command enabled."""
-        return [c for c in self._instruments.values() if command_name in c.enabled_commands]
+        """Find all instruments that have a specific command (path or alias) enabled."""
+        return [c for c in self._instruments.values() if c.get_command(command_name) is not None]
 
     def find_with_sequence(self, sequence_name: str) -> List[InstrumentCapabilities]:
         """Find all instruments that have a specific sequence enabled."""
