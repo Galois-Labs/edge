@@ -3038,12 +3038,12 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
         # A full reload rescans the bundled tree, which takes minutes on a
         # slow SD card and would drop every profile in the meantime.
         try:
-            import yaml as _yaml
+            from galois_edge.profile_schema import _gp_api, profile_from_dict
 
-            from galois_edge.profile_schema import profile_from_dict
-
-            profile = profile_from_dict(_yaml.safe_load(profile_yaml))
-            # validate(), not just parse. _load_file calls both, so a
+            # galois-profiles' YAML (CSafeLoader + YAML 1.2 floats), as the
+            # loader reads the same file on the next start (CI-17).
+            profile = profile_from_dict(_gp_api("load_yaml")(profile_yaml))
+            # validate(), not just parse. The loader runs both, so a
             # profile that parses but fails validation is accepted here
             # and rejected by every subsequent load -- deploy reports
             # success and the instrument never gains a single command.
@@ -3110,14 +3110,13 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                     path = dynamic_dir / f"{profile_name}{suffix}"
                     if path.is_file():
                         try:
-                            import yaml as _yaml
-
                             from galois_edge.profile_schema import (
+                                _gp_api,
                                 profile_from_dict,
                             )
 
                             profile = profile_from_dict(
-                                _yaml.safe_load(path.read_text(encoding="utf-8"))
+                                _gp_api("load_yaml")(path.read_text(encoding="utf-8"))
                             )
                             loader.add_profile(profile)
                         except Exception as exc:
