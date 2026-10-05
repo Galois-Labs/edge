@@ -149,11 +149,12 @@ def test_readers_survive_register_and_unregister_churn_from_another_thread():
         mgr = CapabilityManager()
         for i in range(8):
             mgr.register_instrument(f"S{i}", f"S{i}", f"ACME,M{i},0,1")
-        done = threading.Event()
+        reading, done = threading.Event(), threading.Event()
         errors: list = []
 
         def churn() -> None:
             try:
+                reading.wait(timeout=_JOIN_S)   # churn while this thread reads, not before it starts
                 for n in range(400):
                     mgr.register_instrument(f"C{n}", f"C{n}")
                     if n:
@@ -165,8 +166,9 @@ def test_readers_survive_register_and_unregister_churn_from_another_thread():
 
         worker = threading.Thread(target=churn, name="instrument-io-test")
         worker.start()
+        reading.set()
         reads = 0
-        while not done.is_set():
+        while not done.is_set() or reads == 0:   # at least one full pass, however the threads are scheduled
             for _, caps in mgr.all_instruments.items():
                 caps.manufacturer
             mgr.profiled_count
@@ -181,4 +183,3 @@ def test_readers_survive_register_and_unregister_churn_from_another_thread():
 
     assert not worker.is_alive()
     assert errors == []
-    assert reads > 0
