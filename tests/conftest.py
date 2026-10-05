@@ -8,8 +8,11 @@ SDKExecutor, and gRPC test infrastructure.
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock
 
@@ -42,6 +45,55 @@ def _isolated_home(tmp_path_factory, monkeypatch):
     """Per-test HOME so ~/.config/galois-edge (profile cache, dynamic profiles) is never shared (spec §10 rule 2)."""
     monkeypatch.setenv("HOME", str(tmp_path_factory.mktemp("home")))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+
+# ---------------------------------------------------------------------------
+# Loopback HTTP (spec §10 rules 1 and 6: port 0, loopback only)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def serve_json(monkeypatch):
+    """Serve JSON documents from a per-test HTTP server on 127.0.0.1 and an OS-assigned port.
+
+    ``serve_json("/jwks.json", doc)`` returns ``http://127.0.0.1:<port>/jwks.json``. Clients
+    such as PyJWKClient (>= 2.13 rejects file:// URIs) fetch it with urllib, which honours
+    *_proxy variables, so loopback is exempted from any ambient proxy for this test.
+    """
+    for var in ("no_proxy", "NO_PROXY"):
+        monkeypatch.setenv(var, "127.0.0.1")
+    documents: Dict[str, bytes] = {}
+
+    class _Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = documents.get(self.path)
+            if body is None:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format, *args):  # keep request lines out of test output
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), _Handler)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    host, port = server.server_address[:2]
+
+    def serve(path: str, document: Any) -> str:
+        documents[path] = json.dumps(document).encode("utf-8")
+        return f"http://{host}:{port}{path}"
+
+    try:
+        yield serve
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 # ---------------------------------------------------------------------------

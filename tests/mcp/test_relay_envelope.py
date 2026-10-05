@@ -8,7 +8,6 @@ JSON-RPC error, and (c) leaves Phase 1 (no header) requests untouched.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import time
@@ -34,7 +33,8 @@ def rsa_key():
 
 
 @pytest.fixture
-def jwks_url(tmp_path, rsa_key):
+def jwks_url(serve_json, rsa_key):
+    """Serve the JWKS over loopback HTTP (PyJWT >= 2.13 rejects file:// JWKS URIs)."""
     pub = rsa_key.public_key().public_numbers()
     n = pub.n.to_bytes((pub.n.bit_length() + 7) // 8, "big")
     e = pub.e.to_bytes((pub.e.bit_length() + 7) // 8, "big")
@@ -55,9 +55,7 @@ def jwks_url(tmp_path, rsa_key):
             }
         ]
     }
-    p = tmp_path / "jwks.json"
-    p.write_text(json.dumps(jwks))
-    return f"file://{p}"
+    return serve_json("/jwks.json", jwks)
 
 
 def _mint(rsa_key, **overrides):

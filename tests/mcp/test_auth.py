@@ -1,8 +1,8 @@
 """Tests for the daemon-side caller-JWT validator + authorize() helper.
 
 Mirrors docs/mcp-integration.md §3.7. The validator is exercised against an
-in-memory RSA key pair + an httpx ASGI mock that serves a JWKS document, so
-no network is involved.
+in-memory RSA key pair and a JWKS document served over loopback HTTP on an
+OS-assigned port (the ``serve_json`` fixture in tests/conftest.py).
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from galois_edge.mcp.auth import (  # noqa: E402
 
 
 # --------------------------------------------------------------------------
-# Test fixtures: RSA key pair + minimal JWKS file on disk
+# Test fixtures: RSA key pair + minimal JWKS served over loopback HTTP
 # --------------------------------------------------------------------------
 
 
@@ -63,18 +63,13 @@ def _jwks_for(key, kid: str = "test-kid") -> dict:
 
 
 @pytest.fixture
-def jwks_url(tmp_path, rsa_key):
-    """Write a JWKS document to disk and return a file:// URL.
+def jwks_url(serve_json, rsa_key):
+    """Serve the JWKS document over loopback HTTP and return its http:// URL.
 
-    PyJWKClient accepts file:// URLs via urllib, so this avoids the need to
-    spin up a real HTTP server in unit tests.
+    PyJWT >= 2.13 rejects file:// JWKS URIs, and the daemon only ever fetches
+    the JWKS over HTTP(S).
     """
-    jwks = _jwks_for(rsa_key)
-    import json
-
-    p = tmp_path / "jwks.json"
-    p.write_text(json.dumps(jwks))
-    return f"file://{p}"
+    return serve_json("/jwks.json", _jwks_for(rsa_key))
 
 
 def _mint(
@@ -161,7 +156,7 @@ async def test_validate_rejects_empty_token(jwks_url):
 @pytest.mark.asyncio
 async def test_validate_caches_jwks_across_calls(jwks_url, rsa_key):
     """First validate() warms the cache; a second call reuses it without
-    re-reading the JWKS file."""
+    re-fetching the JWKS."""
     v = JWTValidator(jwks_url=jwks_url, expected_aud="edge:abc")
     t1 = _mint(rsa_key)
     t2 = _mint(rsa_key)
