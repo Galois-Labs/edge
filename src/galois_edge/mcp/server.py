@@ -53,6 +53,9 @@ class MCPServer:
         jwt_validator: Optional["JWTValidator"] = None,
         sdk_executor: Optional["SDKExecutor"] = None,
         dynamic_tools_enabled: bool = True,
+        dynamic_tools_max: Optional[int] = None,
+        mark_simulated: Optional[bool] = None,
+        sim_control_tools: Optional[bool] = None,
     ) -> None:
         self._port = port
         self._path = path
@@ -65,6 +68,18 @@ class MCPServer:
         self._host = host
         self._jwt_validator = jwt_validator
         self._sdk_executor = sdk_executor
+
+        # CI-11: None ⇒ MCP_DYNAMIC_TOOLS_MAX / SIM_MARK_INSTRUMENTS /
+        # SIM_CONTROL_TOOLS via Config (main.py may pass them explicitly).
+        if dynamic_tools_max is None or mark_simulated is None or sim_control_tools is None:
+            from ..config import Config
+            _cfg = Config()
+            dynamic_tools_max = _cfg.mcp_dynamic_tools_max if dynamic_tools_max is None else dynamic_tools_max
+            mark_simulated = _cfg.sim_mark_instruments if mark_simulated is None else mark_simulated
+            sim_control_tools = _cfg.sim_control_tools if sim_control_tools is None else sim_control_tools
+        self._dynamic_tools_max = dynamic_tools_max
+        self._mark_simulated = mark_simulated
+        self._sim_control_tools = sim_control_tools
 
         self._ctx = EdgeContext(
             capability_manager=capability_manager,
@@ -90,7 +105,10 @@ class MCPServer:
             streamable_http_path=path,
         )
 
-        register_discovery_tools(self._mcp, self._ctx)
+        register_discovery_tools(
+            self._mcp, self._ctx,
+            dynamic_tools_max=dynamic_tools_max, mark_simulated=mark_simulated,
+        )
         register_navigate_tools(self._mcp, self._ctx)
         register_execute_tools(self._mcp, self._ctx)
         register_sweep_tools(self._mcp, self._ctx)

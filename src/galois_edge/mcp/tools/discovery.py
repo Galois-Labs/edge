@@ -8,21 +8,39 @@ them mutate hardware state.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import math
 import platform
 import socket
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal, Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ..context import EdgeContext
 
 logger = logging.getLogger(__name__)
 
 
-def register_discovery_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
-    """Register the five Phase-1 discovery tools onto a FastMCP server."""
+def register_discovery_tools(
+    mcp: FastMCP,
+    ctx: EdgeContext,
+    *,
+    dynamic_tools_max: Optional[int] = None,
+    mark_simulated: Optional[bool] = None,
+) -> None:
+    """Register the five Phase-1 discovery tools onto a FastMCP server.
+
+    ``dynamic_tools_max`` (MCP_DYNAMIC_TOOLS_MAX) and ``mark_simulated``
+    (SIM_MARK_INSTRUMENTS) fall back to ``Config()`` when None (CI-11).
+    """
+    from ...config import Config
+
+    cfg = Config() if dynamic_tools_max is None or mark_simulated is None else None
+    max_n = dynamic_tools_max if dynamic_tools_max is not None else cfg.mcp_dynamic_tools_max
+    mark = mark_simulated if mark_simulated is not None else cfg.sim_mark_instruments
 
     start_time = time.time()
 
@@ -66,23 +84,29 @@ def register_discovery_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
             "Use this to learn what commands are available before "
             "calling execute_command. Pass instrument_id to scope to "
             "one device, instrument_class to scope to a class (e.g. "
-            "smu, dmm), or neither to fetch every connected instrument."
+            "smu, dmm), or neither to fetch every connected instrument. "
+            "detail='full' returns every command (paged by 'page', "
+            "0-based; the response has page and pages), 'summary' the "
+            "top-level command groups with counts, and 'group' one level "
+            "under 'path'. The default is 'full' for small instruments "
+            "and 'summary' for large ones."
         ),
     )
     async def get_capabilities(
         instrument_id: str = "",
         instrument_class: str = "",
+        detail: Optional[Literal["summary", "group", "full"]] = None,
+        path: str = "",
+        page: int = 0,
     ) -> List[Dict[str, Any]]:
         cap_mgr = ctx.capability_manager
         if instrument_id:
-            caps = cap_mgr.get_instrument_caps(instrument_id)
-            return [caps.to_capability_dict()] if caps else []
-        if instrument_class:
-            return [
-                c.to_capability_dict()
-                for c in cap_mgr.find_by_class(instrument_class)
-            ]
-        return cap_mgr.get_all_capabilities_list()
+            caps_list = [c for c in [cap_mgr.get_instrument_caps(instrument_id)] if c is not None]
+        elif instrument_class:
+            caps_list = cap_mgr.find_by_class(instrument_class)
+        else:
+            caps_list = list(cap_mgr.all_instruments.values())
+        return [_capabilities_for(c, detail, path, page, max_n) for c in caps_list]
 
     @mcp.tool(
         name="scan_instruments",
@@ -165,6 +189,66 @@ def register_discovery_tools(mcp: FastMCP, ctx: EdgeContext) -> None:
             "uptime_seconds": int(time.time() - start_time),
             "os_info": f"{platform.system()} {platform.release()}",
         }
+
+
+_IDENTITY_KEYS = ("has_profile", "profile_key", "manufacturer", "model", "instrument_class",
+                  "instrument_id", "visa_address", "sequences", "settings")
+
+
+def _enrich_params(commands: List[Dict[str, Any]], caps: Any) -> None:
+    """CI-20: min/max/map/unit on every param (MCP only; gRPC unchanged)."""
+    for entry in commands:
+        cfg = caps.profile.commands.get(entry["name"]) if caps.profile is not None else None
+        declared = (cfg.params or {}) if cfg is not None else {}
+        for p in entry.get("parameters", []):
+            pc = declared.get(p["name"])
+            if pc is None:
+                continue
+            p["min"], p["max"], p["map"] = pc.min, pc.max, pc.map
+            p["unit"] = pc.unit or ""
+
+
+def _listing(caps: Any, path: str) -> Dict[str, Any]:
+    """galois_profiles.nav.list_groups at ``path``; ToolError JSON (CI-19) when it cannot list."""
+    from galois_profiles import nav
+
+    try:
+        profile = caps.profile.galois_profile
+    except Exception as exc:
+        raise ToolError(json.dumps({
+            "error": f"Profile for {caps.instrument_id} is not navigable: {exc}", "suggestions": []}))
+    try:
+        return dict(nav.list_groups(profile, path=path, depth=1))
+    except (KeyError, ValueError):
+        try:
+            hits = [h["path"] for h in nav.search(profile, path, limit=5)["results"]]
+        except Exception:
+            hits = []
+        raise ToolError(json.dumps({"error": f"Unknown path '{path}' for {caps.instrument_id}",
+                                    "suggestions": hits}))
+
+
+def _capabilities_for(caps: Any, detail: Optional[str], path: str, page: int, max_n: int) -> Dict[str, Any]:
+    """One instrument's get_capabilities entry (edge-api.md §3, F17)."""
+    base = caps.to_capability_dict()
+    if caps.profile is None:
+        return base                                   # protocol drivers / unprofiled: old payload
+    n_enabled = len(caps.enabled_commands)
+    mode = detail or ("full" if n_enabled <= max_n else "summary")
+    if mode == "full":
+        commands = base["commands"]
+        _enrich_params(commands, caps)
+        size = max(max_n, 1)
+        pages = max(1, math.ceil(len(commands) / size))
+        if not 0 <= page < pages:
+            raise ToolError(json.dumps({"error": f"page {page} out of range (pages={pages})"}))
+        base.update(commands=commands[page * size:(page + 1) * size], detail="full", page=page, pages=pages)
+        return base
+    listing = _listing(caps, "" if mode == "summary" else path)
+    out = {k: base[k] for k in _IDENTITY_KEYS if k in base}
+    out.update(detail=mode, path=listing["path"], groups=listing["children"],
+               truncated=listing["truncated"], command_count=n_enabled)
+    return out
 
 
 def _safe_is_connected(inst_mgr: Any, instrument_id: str) -> bool:
