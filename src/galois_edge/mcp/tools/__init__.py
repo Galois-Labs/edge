@@ -8,6 +8,7 @@ a `register_*_tools(mcp, ctx)` entry point.
 from .discovery import register_discovery_tools
 from .execute import register_execute_tools
 from .navigate import register_navigate_tools
+from .sim_control import register_sim_control_tools
 from .stream import register_stream_tools
 from .sweep import register_sweep_tools
 
@@ -15,6 +16,7 @@ __all__ = [
     "register_discovery_tools",
     "register_execute_tools",
     "register_navigate_tools",
+    "register_sim_control_tools",
     "register_stream_tools",
     "register_sweep_tools",
 ]

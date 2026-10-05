@@ -19,6 +19,7 @@ from .tools import (
     register_discovery_tools,
     register_execute_tools,
     register_navigate_tools,
+    register_sim_control_tools,
     register_stream_tools,
     register_sweep_tools,
 )
@@ -113,6 +114,9 @@ class MCPServer:
         register_execute_tools(self._mcp, self._ctx)
         register_sweep_tools(self._mcp, self._ctx)
         register_stream_tools(self._mcp, self._ctx)
+        if sim_control_tools:
+            if not register_sim_control_tools(self._mcp, self._ctx):
+                logger.info("SIM_CONTROL_TOOLS=true but no backend exposes a control surface")
 
         self._dynamic_registry: Optional[DynamicToolRegistry] = None
         if dynamic_tools_enabled:
