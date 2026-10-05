@@ -71,6 +71,24 @@ def test_every_record_validates_against_the_contract_schema(writer):
     assert end["seq"] == 5 and end["status"] == "ok"
 
 
+def test_simulated_backend_transitions_carry_sim_provenance(writer):  # CI-8, trace-v1 transition.provenance
+    ctx = CommandContext(ADDR, "source.voltage", {"channel": 2, "voltage": 5.0}, SETV, False, "setter",
+                         (WriteTarget("output.voltage_setpoint", "channel", 1, 2, "float"),))
+    writer.observe(_ev(":SOUR2:VOLT 5", ctx, simulated=True))
+    writer.observe(_ev(":SOUR2:VOLT 5", ctx))
+    writer.observe(_ev(":WAV:DATA?", is_query=True, response_bytes=b"#14abcd\n", simulated=True))
+    writer.close()
+    recs = _lines(writer)
+    for rec in recs:
+        VALIDATOR.validate(rec)
+    start, sim, real, simbin, end = recs
+    assert start["provenance"] == "real"
+    assert sim["provenance"] == "sim" and simbin["provenance"] == "sim"
+    assert "provenance" not in real
+    assert sim["delta"] == real["delta"] == {"output.voltage_setpoint[2]": [None, 5.0]}
+    assert "provenance" not in end
+
+
 def test_blob_is_content_addressed(writer, tmp_path):
     writer.observe(_ev(":WAV?", is_query=True, response_bytes=b"payload"))
     writer.observe(_ev(":WAV?", is_query=True, response_bytes=b"payload"))

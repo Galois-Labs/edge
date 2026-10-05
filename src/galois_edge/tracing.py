@@ -286,6 +286,10 @@ class TraceWriter:
                           "t_virtual_ns": max(event.t_wall_ns - self._t0_ns, 0), "t_wall_ns": event.t_wall_ns,
                           "instrument_id": event.instrument_id, "action": action, "delta": delta,
                           "observation": observation, "fidelity": "exact", "status": status}
+                if event.simulated:
+                    # CI-8: a simulated backend's instrument overrides run_start's "real";
+                    # absent means inherit (trace-v1 transition.provenance).
+                    record["provenance"] = "sim"
                 self._seq += 1
                 self._write(record)
         except Exception:
