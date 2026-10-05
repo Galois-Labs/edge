@@ -76,9 +76,22 @@ rule (spec §10 rule 6). Every bench address belongs to the sim backend, so the 
 
 NO_RAW_USB = (
     "raw USB scanning must be off: the daemon runs with USB_RAW_ENABLED=false, which Config.usb_raw_enabled "
-    "reads, so InstrumentManager builds no USBTransport and does not warn that pyusb is missing. Either log "
-    "line means the switch did not reach the daemon, and with pyusb installed it would enumerate the host's "
-    "USB devices: the E2E daemon must touch no real hardware")
+    "reads, so InstrumentManager neither builds a USBTransport nor logs anything about one. Any "
+    "InstrumentManager \"USB transport\" line (enabled, initialisation failed, or pyusb not installed) means "
+    "the switch did not reach the daemon, and with pyusb installed it would enumerate the host's USB devices: "
+    "the E2E daemon must touch no real hardware")
+
+RAW_USB_RECORD = re.compile(r" - galois_edge\.instrument_manager - \w+ - .*USB transport")
+"""An InstrumentManager record about its raw USB transport. With USB_RAW_ENABLED=false it logs none: the
+"Raw USB transport enabled", "USB transport initialisation failed: ..." and "USB transport enabled but pyusb
+not installed" lines all sit behind usb_raw_enabled. Scoped to that logger, so galois_edge.usb_transport's
+import-time "pyusb not available — raw USB transport disabled" and main's "USB hotplug monitor" line, which
+say nothing about the switch, never count."""
+
+
+def raw_usb_lines(log: str) -> list[str]:
+    """The lines of a daemon log in which InstrumentManager speaks of its raw USB transport (RAW_USB_RECORD)."""
+    return [line for line in log.splitlines() if RAW_USB_RECORD.search(line)]
 
 
 E2E_DIR = Path(__file__).resolve().parent
@@ -300,8 +313,7 @@ class Processes:
                            "the edge daemon's MCP server", alive=[proc])
         log = proc.output()
         assert "PyVISA initialisation failed" in log, "VISA scanning must be off (loopback only)"
-        assert "Raw USB transport enabled" not in log, NO_RAW_USB
-        assert "USB transport enabled but pyusb not installed" not in log, NO_RAW_USB
+        assert raw_usb_lines(log) == [], f"{NO_RAW_USB}: {raw_usb_lines(log)}"
         return EdgeDaemon(proc, found.group(1))
 
 
