@@ -12,7 +12,8 @@ Parallel safety (spec §10):
 - seeds derive from the test node id;
 - every wait is a deadline loop, and every process is stopped in the fixture's finally.
 
-Tests here are `e2e` + `slow`, so neither the critical tier nor the default tier runs them. Run them
+Tests here are `e2e` + `slow` (the collection hook below enforces both), so neither the critical tier nor
+the default tier runs them. Run them
 with `make test-e2e`. They need the sim extra (cargo + maturin build edgesim's Rust extension) and fail
 loudly without it, as tests/sim does (edge-api.md §7).
 """
@@ -72,6 +73,21 @@ NO_VISA_BACKEND = "@none"
 initialisation failed" and runs without PyVISA. With the default `@py`, discovery broadcasts a VXI-11
 portmap query to 255.255.255.255 (pyvisa-py's TCPIP listing, without psutil). That breaks the loopback-only
 rule (spec §10 rule 6). Every bench address belongs to the sim backend, so the daemon never needs PyVISA here."""
+
+
+E2E_DIR = Path(__file__).resolve().parent
+
+
+@pytest.hookimpl(tryfirst=True)   # before `-m` deselects anything
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Mark every test under this directory `e2e` and `slow`, even if its module forgot to. `make test-python`
+    deselects only `slow`, so an unmarked module would otherwise spawn real daemons in the default tier.
+    The hook sees the whole session's items, so it filters by path."""
+    for item in items:
+        if item.path.resolve().is_relative_to(E2E_DIR):
+            for mark in (pytest.mark.e2e, pytest.mark.slow):
+                if item.get_closest_marker(mark.name) is None:
+                    item.add_marker(mark)
 
 
 def node_seed(nodeid: str) -> int:
