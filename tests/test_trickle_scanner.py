@@ -233,8 +233,9 @@ async def test_trickle_scanner_no_boards(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    # Wait for it to start and discover there are no boards
-    await _until(lambda: task.done() or not scanner.running)
+    # Wait for run() itself to return. `not scanner.running` is already true
+    # before the task first runs, so it cannot be the wait condition.
+    await _until(task.done)
 
     # Should have exited run() since no boards were available at init
     assert task.done() or not scanner.running
