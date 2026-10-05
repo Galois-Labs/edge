@@ -18,6 +18,7 @@ from .dynamic_tools import DynamicToolRegistry
 from .tools import (
     register_discovery_tools,
     register_execute_tools,
+    register_navigate_tools,
     register_stream_tools,
     register_sweep_tools,
 )
@@ -80,7 +81,9 @@ class MCPServer:
                 "Galois edge daemon MCP surface. Use list_instruments + "
                 "get_capabilities to learn what is connected and what "
                 "commands are available, then execute_command (or "
-                "send_scpi for raw SCPI) to drive the instrument."
+                "send_scpi for raw SCPI) to drive the instrument. For large "
+                "instruments use list_command_groups / search_commands / "
+                "describe_command instead of get_capabilities."
             ),
             host=self._host,
             port=port,
@@ -88,6 +91,7 @@ class MCPServer:
         )
 
         register_discovery_tools(self._mcp, self._ctx)
+        register_navigate_tools(self._mcp, self._ctx)
         register_execute_tools(self._mcp, self._ctx)
         register_sweep_tools(self._mcp, self._ctx)
         register_stream_tools(self._mcp, self._ctx)
