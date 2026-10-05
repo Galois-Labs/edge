@@ -88,14 +88,15 @@ class WebSocketServer:
             command_handler: CommandHandler instance (execute_command).
             port: Bind port (default 8766); 0 lets the OS pick one, read
                 back through ``port`` after ``start()``.
-            bind_host: Bind address; None reads WS_BIND_HOST via Config
-                (default 127.0.0.1).
+            bind_host: Bind address; None or blank reads WS_BIND_HOST via
+                Config (default 127.0.0.1).
         """
         self._instruments = instrument_manager
         self._handler = command_handler
         self._port = port
-        # E10: None ⇒ WS_BIND_HOST via Config, default 127.0.0.1.
-        self._bind_host = bind_host if bind_host is not None else Config().ws_bind_host
+        # E10: None or blank ⇒ WS_BIND_HOST via Config, default 127.0.0.1.
+        # Blank never reaches the listener: asyncio binds "" on every interface.
+        self._bind_host = (bind_host or "").strip() or Config().ws_bind_host
 
         self._app: Optional[Any] = None      # web.Application
         self._runner: Optional[Any] = None    # web.AppRunner

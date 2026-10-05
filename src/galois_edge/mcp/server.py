@@ -55,8 +55,10 @@ class MCPServer:
     ) -> None:
         self._port = port
         self._path = path
-        # E10: None ⇒ MCP_BIND_HOST via Config, default 127.0.0.1.
-        if host is None:
+        # E10: None or blank ⇒ MCP_BIND_HOST via Config, default 127.0.0.1.
+        # Blank never reaches uvicorn, which would bind "" on every interface.
+        host = (host or "").strip()
+        if not host:
             from ..config import Config
             host = Config().mcp_bind_host
         self._host = host

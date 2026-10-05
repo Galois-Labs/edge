@@ -174,3 +174,27 @@ async def test_mcp_listens_on_its_host(source, monkeypatch, alt_loopback, mock_i
         assert bound == [(alt_loopback, srv.port)]  # the socket actually bound, and the port read back
     finally:
         await srv.stop()
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_explicit_bind_host_means_the_loopback_default_not_all_interfaces(
+        blank, monkeypatch, mock_instrument_manager, mock_command_handler, mock_capability_manager):
+    # "" would reach asyncio/uvicorn as "every interface" and gRPC as ":<port>"; treat it like None.
+    for key in ("GRPC_BIND_HOST", "WS_BIND_HOST", "MCP_BIND_HOST"):
+        monkeypatch.delenv(key, raising=False)
+    mocks = (mock_instrument_manager, mock_command_handler, mock_capability_manager)
+    assert GRPCServer(mock_instrument_manager, mock_command_handler, edge_id="t", port=0,
+                      bind_host=blank).bind_host == "127.0.0.1"
+    assert WebSocketServer(mock_instrument_manager, mock_command_handler, port=0,
+                           bind_host=blank).bind_host == "127.0.0.1"
+    assert _mcp_server(*mocks, host=blank).host == "127.0.0.1"
+
+
+def test_explicit_bind_host_is_stripped_like_the_env_keys(monkeypatch, mock_instrument_manager,
+                                                          mock_command_handler, mock_capability_manager):
+    mocks = (mock_instrument_manager, mock_command_handler, mock_capability_manager)
+    assert GRPCServer(mock_instrument_manager, mock_command_handler, edge_id="t", port=0,
+                      bind_host=" 0.0.0.0 ").bind_host == "0.0.0.0"
+    assert WebSocketServer(mock_instrument_manager, mock_command_handler, port=0,
+                           bind_host=" 0.0.0.0 ").bind_host == "0.0.0.0"
+    assert _mcp_server(*mocks, host=" 0.0.0.0 ").host == "0.0.0.0"

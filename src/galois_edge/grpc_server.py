@@ -3486,8 +3486,9 @@ class GRPCServer:
         bind_host: Optional[str] = None,
     ) -> None:
         self._port = port
-        # E10 (edge-api.md §1): None ⇒ GRPC_BIND_HOST via Config, default 127.0.0.1.
-        self._bind_host = bind_host if bind_host is not None else Config().grpc_bind_host
+        # E10 (edge-api.md §1): None or blank ⇒ GRPC_BIND_HOST via Config, default
+        # 127.0.0.1. Blank never reaches the listener: ":<port>" is every interface.
+        self._bind_host = (bind_host or "").strip() or Config().grpc_bind_host
         self._edge_id = edge_id
         self._inbound_auth_token = inbound_auth_token
 
