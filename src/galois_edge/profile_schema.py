@@ -702,8 +702,52 @@ class InstrumentProfile:
         """Check whether an ``*IDN?`` response matches this profile."""
         return self.identity.matches(idn_response)
 
+    def path_of(self, name_or_alias: str) -> str:
+        """Command path for a path or alias (semantics.md §7.3). Raises KeyError."""
+        if name_or_alias in self.commands:
+            return name_or_alias
+        path = getattr(self, "_aliases", {}).get(name_or_alias)
+        if path is not None and path in self.commands:
+            return path
+        raise KeyError(name_or_alias)
+
+    def resolve(self, name_or_alias: str) -> CommandConfig:
+        """CommandConfig by path, then alias (edge-api.md §6). Raises KeyError."""
+        return self.commands[self.path_of(name_or_alias)]
+
     def get_command(self, name: str) -> Optional[CommandConfig]:
-        return self.commands.get(name)
+        try:
+            return self.resolve(name)
+        except KeyError:
+            return None
+
+    def writes_for(self, path_or_alias: str) -> tuple:
+        """WriteTargets of a leaf's ``writes:`` (CI-6); () for v1 profiles or unknown commands."""
+        from .tracing import WriteTarget
+
+        gp = getattr(self, "_gp", None)
+        if gp is None:
+            return ()
+        try:
+            leaf = gp.resolve(self.path_of(path_or_alias))
+        except KeyError:
+            return ()
+        targets = []
+        for entry in leaf.writes:
+            base, _, rest = entry.partition("[")
+            try:
+                var = gp.state_var(base)
+            except KeyError:
+                continue
+            options = tuple(var.options) if var.options else None
+            if rest.endswith("]") and rest[:-1].isdigit():
+                targets.append(WriteTarget(path=f"{base}[{rest[:-1]}]", state_type=var.type, options=options))
+            else:
+                idx = var.index
+                targets.append(WriteTarget(path=base, index_name=idx.name if idx else None,
+                                           index_min=idx.min if idx else None, index_max=idx.max if idx else None,
+                                           state_type=var.type, options=options))
+        return tuple(targets)
 
     def get_sequence(self, name: str) -> Optional[SequenceConfig]:
         if self.sequences:
@@ -724,7 +768,7 @@ class InstrumentProfile:
         (same channel parameters as the block read); otherwise *ref* is
         returned as-is.
         """
-        cmd = self.commands.get(ref)
+        cmd = self.get_command(ref)
         if cmd is not None:
             try:
                 return cmd.format_scpi(params, is_query=True)
@@ -745,7 +789,7 @@ class InstrumentProfile:
         / ``{channel}`` placeholder, whichever the template uses.
         """
         params = {"source": channel, "channel": channel}
-        cmd = self.commands.get(ref)
+        cmd = self.get_command(ref)
         if cmd is not None:
             try:
                 return cmd.format_scpi(params, is_query=False)
