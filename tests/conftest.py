@@ -31,7 +31,9 @@ def _hermetic_galois_env(monkeypatch):
     """No ambient Galois config (shell, CI, a found .env) leaks into any test (spec §10 rule 7)."""
     from galois_edge.config import _KNOWN_GALOIS_VARS
 
-    for key in sorted(_KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S"}):
+    # Config also reads the deprecated SCAN_INTERVAL_S alias and DYNAMIC_PROFILE_DIR,
+    # which is not in _KNOWN_GALOIS_VARS until fixes-config (CI-23); harmless after.
+    for key in sorted(_KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S", "DYNAMIC_PROFILE_DIR"}):
         monkeypatch.delenv(key, raising=False)
 
 

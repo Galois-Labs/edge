@@ -14,9 +14,21 @@ TESTS = Path(__file__).resolve().parent
 ROOT = TESTS.parent
 
 
+def _env_keys_read_by_config_py() -> set:
+    """Every env key config.py reads, found independently of the fixture's list."""
+    import galois_edge.config as cfgmod
+
+    src = Path(cfgmod.__file__).read_text(encoding="utf-8")
+    read = set(re.findall(r'_(?:str|int|bool|float)_env\(\s*"([A-Z][A-Z0-9_]+)"', src))
+    read |= set(re.findall(r'os\.environ\.get\(\s*"([A-Z][A-Z0-9_]+)"', src))
+    assert {"GRPC_PORT", "SCAN_INTERVAL_S", "DYNAMIC_PROFILE_DIR"} <= read  # the scan still works
+    return read - {"PROGRAMDATA"}  # Windows system variable, not Galois config
+
+
 def test_known_galois_vars_are_cleared_for_every_test():
     from galois_edge.config import _KNOWN_GALOIS_VARS
-    leaked = sorted(k for k in _KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S"} if k in os.environ)
+    keys = _KNOWN_GALOIS_VARS | {"SCAN_INTERVAL_S"} | _env_keys_read_by_config_py()
+    leaked = sorted(k for k in keys if k in os.environ)
     assert leaked == []
 
 
