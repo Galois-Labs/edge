@@ -24,6 +24,7 @@ Key design points:
 
 import logging
 import os
+import threading
 import time
 from typing import TYPE_CHECKING, Optional, Sequence, Union
 
@@ -402,6 +403,7 @@ class InstrumentManager:
         max_attempts: int = 1,
         retry_delay: float = 2.0,
         serial_config: Optional[object] = None,
+        cancel: Optional[threading.Event] = None,
     ) -> Optional[str]:
         """Connect to an instrument by VISA address.
 
@@ -421,6 +423,10 @@ class InstrumentManager:
             Optional ``InterfaceConfig`` with serial settings (baud_rate,
             parity, data_bits, stop_bits) to apply after opening an
             ``ASRL`` resource.
+        cancel:
+            Optional event (e.g. the daemon's stop event). Once it is set,
+            no further attempt is made and the wait between attempts ends
+            at once, so connect retries never hold up a shutdown.
 
         Returns
         -------
@@ -466,6 +472,9 @@ class InstrumentManager:
             return visa_address
 
         for attempt in range(1, max_attempts + 1):
+            if cancel is not None and cancel.is_set():
+                logger.info("Connect to %s cancelled", visa_address)
+                return None
             try:
                 instrument = self._rm.open_resource(visa_address)
                 instrument.timeout = timeout
@@ -490,7 +499,10 @@ class InstrumentManager:
                         exc,
                         retry_delay,
                     )
-                    time.sleep(retry_delay)
+                    if cancel is not None:
+                        cancel.wait(retry_delay)
+                    else:
+                        time.sleep(retry_delay)
                 else:
                     logger.error("Failed to connect to %s: %s", visa_address, exc)
 

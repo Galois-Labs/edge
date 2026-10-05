@@ -21,6 +21,7 @@ import signal
 import socket
 import stat
 import sys
+import threading
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -85,6 +86,9 @@ class EdgeDaemon:
       - Stdin watcher (EOF triggers graceful shutdown)
     """
 
+    #: Seconds stop() waits for the instrument I/O call in flight to finish.
+    _io_drain_timeout_s: float = 3.0
+
     def __init__(self, cfg: Optional[Config] = None) -> None:
         self._cfg = cfg or load_config()
         self._running = False
@@ -98,6 +102,10 @@ class EdgeDaemon:
         self._io_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="instrument-io"
         )
+        # Set by stop(): discovery on the I/O thread checks it between
+        # resources and connect attempts, so shutdown never waits on it.
+        self._stop_event = threading.Event()
+        self._shutdown_task: Optional[asyncio.Task] = None
 
         # Subsystem references (populated during start)
         self._instrument_manager: Optional[InstrumentManager] = None
@@ -315,11 +323,22 @@ class EdgeDaemon:
     # ------------------------------------------------------------------
 
     async def stop(self) -> None:
-        """Graceful shutdown in reverse startup order."""
-        if not self._running:
-            return
+        """Graceful shutdown in reverse startup order.
 
-        self._running = False
+        The first call starts one shutdown task; every call (signal handler,
+        stdin watcher, main()'s finally) waits for it to finish, so the loop
+        is never closed mid-shutdown.
+        """
+        if self._shutdown_task is None:
+            if not self._running:
+                return
+            self._running = False
+            self._stop_event.set()   # cut in-flight discovery short
+            self._shutdown_task = asyncio.ensure_future(self._shutdown())
+        await asyncio.shield(self._shutdown_task)
+
+    async def _shutdown(self) -> None:
+        """The shutdown sequence, run once by stop()."""
         logger.info("Edge daemon shutting down...")
 
         # 1. Stop trickle scanner
@@ -357,6 +376,21 @@ class EdgeDaemon:
         if self._grpc_server is not None:
             await self._grpc_server.stop()
 
+        # 3b. Shut down the instrument I/O executor: drop queued work, then
+        #     wait (bounded) for the call in flight before this thread
+        #     touches instruments. Discovery returns at its next stop check.
+        self._io_executor.shutdown(wait=False, cancel_futures=True)
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(self._io_executor.shutdown, wait=True),
+                timeout=self._io_drain_timeout_s,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Instrument I/O thread still busy after %.1fs; continuing shutdown",
+                self._io_drain_timeout_s,
+            )
+
         # 4. Send cleanup commands for all registered instruments
         if self._capability_manager and self._command_handler:
             for inst_id, caps in self._capability_manager.all_instruments.items():
@@ -381,9 +415,6 @@ class EdgeDaemon:
 
         # 6b. Finish the TRACE_DIR run (run_end)
         self._stop_tracing()
-
-        # 7. Shut down the instrument I/O executor
-        self._io_executor.shutdown(wait=False)
 
         logger.info("Edge daemon stopped.")
 
@@ -690,6 +721,8 @@ class EdgeDaemon:
             return
         if self._profile_loader is None:
             return
+        if self._stop_event.is_set():
+            return  # shutting down: start no new connect/identify
 
         # Skip resources already registered (e.g. by serial SDK discovery)
         if self._capability_manager.get_instrument_caps(visa_addr):
@@ -700,7 +733,7 @@ class EdgeDaemon:
             serial_config = self._find_serial_config(visa_addr)
             connected = self._instrument_manager.connect(
                 visa_addr, max_attempts=3, retry_delay=2.0,
-                serial_config=serial_config,
+                serial_config=serial_config, cancel=self._stop_event,
             )
             if not connected:
                 return
@@ -796,9 +829,11 @@ class EdgeDaemon:
             # Discover instruments (LAN/USB/serial scan — can be slow)
             resources = self._instrument_manager.list_resources()
             logger.info("Resource discovery: %d instrument(s)", len(resources))
+            if self._stop_event.is_set():
+                return
             # Load YAML profiles (slow on SD card — 129 files)
             self._load_profiles()
-            if self._profile_loader is not None:
+            if self._profile_loader is not None and not self._stop_event.is_set():
                 # Discover serial SDK instruments FIRST by USB VID/PID.
                 # These use custom protocols (not SCPI) and must be claimed
                 # before the VISA loop tries to send *IDN? to them.
@@ -811,6 +846,9 @@ class EdgeDaemon:
                 # Match remaining instruments via VISA / *IDN?
                 logger.info("Matching %d resource(s) to profiles...", len(resources))
                 for visa_addr in resources:
+                    if self._stop_event.is_set():
+                        logger.info("Shutting down -- profile matching abandoned")
+                        return
                     # Skip ASRL resources whose underlying port was claimed
                     # by serial SDK discovery (e.g. ASRL/dev/ttyACM0::INSTR
                     # when /dev/ttyACM0 is a DPS-150)
@@ -829,6 +867,8 @@ class EdgeDaemon:
             logger.info("Background discovery and profile matching complete")
         except Exception as exc:
             logger.warning("Background discovery/matching failed: %s", exc)
+        if self._stop_event.is_set():
+            return   # shutting down: connect nothing more
 
         # Register virtual demo instruments (if demo mode enabled)
         if self._cfg.demo:

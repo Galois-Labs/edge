@@ -2,14 +2,20 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import socket
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import pytest
 
+from galois_edge.capability_manager import CapabilityManager
+from galois_edge.config import Config
+from galois_edge.instrument_manager import InstrumentManager
 from galois_edge.main import EdgeDaemon
 
 pytestmark = pytest.mark.critical
@@ -108,3 +114,129 @@ async def test_closing_a_socket_stdin_stops_the_daemon(monkeypatch):
         ours.close()
         await asyncio.wait_for(watcher, timeout=1.0)
     assert recorder.stops == 1
+
+
+# ---------------------------------------------------------------------------
+# EQ2: stop() ends in-flight discovery; nothing on the I/O thread outlives it.
+# ---------------------------------------------------------------------------
+
+PORTS = tuple(f"PRLGX-ASRL::/dev/ttyS{n}::INTFC" for n in (31, 30, 29))
+
+
+class _DeniedVisa:
+    """A PyVISA ResourceManager listing permission-denied /dev/ttyS* Prologix ports."""
+
+    def __init__(self, on_open=lambda: None) -> None:
+        self.opens = 0
+        self.on_open = on_open
+
+    def list_resources(self, query="?*"):
+        return PORTS
+
+    def open_resource(self, address):
+        self.opens += 1
+        self.on_open()
+        raise PermissionError(13, "Permission denied", address)
+
+
+@pytest.fixture
+def no_host_io(monkeypatch):
+    # Hermetic (spec §10): never enumerate host VISA/USB devices or real serial ports.
+    monkeypatch.setattr("galois_edge.instrument_manager.PYVISA_AVAILABLE", False)
+    monkeypatch.setattr("galois_edge.instrument_manager.USB_AVAILABLE", False)
+
+
+@pytest.fixture
+def daemon(tmp_path, no_host_io):
+    d = EdgeDaemon(Config(
+        gpib_enabled=False, usb_monitor_enabled=False, lan_instruments="", include_serial_ports=False,
+        profile_dir=str(tmp_path / "bundled"), dynamic_profile_dir=str(tmp_path / "dynamic"),
+        driver_profile_dir=str(tmp_path / "drivers"), mcp_enabled=False, demo=False, sim_mode=False,
+        visa_backend="", trace_dir=""))
+    d._running = True   # as if start() had run; stop() is a no-op otherwise
+    yield d
+    d._io_executor.shutdown(wait=False, cancel_futures=True)
+
+
+@pytest.mark.parametrize("cancel_during_first_attempt", [True, False])
+def test_connect_makes_no_further_attempt_once_cancelled(no_host_io, cancel_during_first_attempt):
+    cancel = threading.Event()
+    if not cancel_during_first_attempt:
+        cancel.set()                    # stop requested before connect() began: open nothing
+    mgr = InstrumentManager(gpib_enabled=False, usb_raw_enabled=False)
+    mgr._rm = _DeniedVisa(on_open=cancel.set)
+    started = time.monotonic()
+    assert mgr.connect(PORTS[0], max_attempts=3, retry_delay=30.0, cancel=cancel) is None
+    assert mgr._rm.opens == (1 if cancel_during_first_attempt else 0)
+    assert time.monotonic() - started < 1.0   # the 30 s retry wait ended as soon as cancel was set
+
+
+async def test_stop_during_a_connect_retry_ends_discovery_and_the_io_thread(daemon):
+    entered = threading.Event()
+    seen = {}
+
+    def on_open():
+        seen["io_thread"] = threading.current_thread()
+        entered.set()
+
+    daemon._instrument_manager = daemon._build_instrument_manager()
+    daemon._instrument_manager._rm = _DeniedVisa(on_open)
+    daemon._capability_manager = CapabilityManager()
+    discovery = asyncio.ensure_future(daemon._background_profile_match())
+    assert await asyncio.to_thread(entered.wait, 1.0)   # attempt 1 of 3 (2 s apart) is in flight
+
+    await asyncio.wait_for(daemon.stop(), timeout=1.5)
+
+    assert not seen["io_thread"].is_alive()   # nothing left to keep the interpreter alive at exit
+    assert daemon._instrument_manager._rm.opens == 1   # no retry, no further port
+    await asyncio.wait_for(discovery, timeout=1.0)
+
+
+def test_no_profile_matching_starts_once_stopping(daemon):
+    # Every discovery path (initial GPIB scan, trickle, reconcile, hotplug) goes through
+    # _try_match_profile; once stop() has begun it connects nothing, even on a backend
+    # whose connect() takes no cancel event.
+    from tests.test_instrument_manager_backends import FakeBackend
+
+    backend = FakeBackend(["SIM::1"])
+    daemon._instrument_manager = InstrumentManager(gpib_enabled=False, usb_raw_enabled=False,
+                                                   extra_backends=[backend])
+    daemon._capability_manager = CapabilityManager()
+    daemon._load_profiles()
+    daemon._stop_event.set()
+    daemon._try_match_profile("SIM::1")
+    assert backend.calls == []
+    assert daemon._capability_manager.get_instrument_caps("SIM::1") is None
+
+
+@pytest.fixture
+async def stuck_io_call(daemon):
+    """The I/O thread is inside a call that never checks the stop event (e.g. a hung vendor driver)."""
+    daemon._io_drain_timeout_s = 0.2
+    entered, release = threading.Event(), threading.Event()
+
+    def call():
+        entered.set()
+        release.wait(5.0)
+
+    work = asyncio.get_running_loop().run_in_executor(daemon._io_executor, call)
+    assert await asyncio.to_thread(entered.wait, 1.0)
+    yield
+    release.set()
+    await work
+
+
+async def test_stop_waits_only_a_bounded_time_for_a_stuck_io_call(daemon, stuck_io_call, caplog):
+    await asyncio.wait_for(daemon.stop(), timeout=1.5)
+    assert "Instrument I/O thread still busy" in caplog.text
+
+
+async def test_a_second_stop_waits_for_the_shutdown_in_progress(daemon, stuck_io_call, caplog):
+    # main() calls stop() again in its finally as soon as the gRPC server has
+    # terminated; that call must not return (and the loop close) mid-shutdown.
+    caplog.set_level(logging.INFO, logger="galois_edge.main")
+    first = asyncio.ensure_future(daemon.stop())        # e.g. the SIGTERM handler
+    await asyncio.sleep(0)                              # yield: the first call starts shutting down
+    await asyncio.wait_for(daemon.stop(), timeout=1.5)  # e.g. main()'s finally
+    assert "Edge daemon stopped." in caplog.text
+    await asyncio.wait_for(first, timeout=1.0)
