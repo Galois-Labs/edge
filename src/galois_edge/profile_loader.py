@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import pickle
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 try:
     import yaml
@@ -42,6 +43,7 @@ class ProfileLoader:
         self,
         profiles_dir: Optional[str] = None,
         dynamic_dir: Optional[str] = None,
+        extra_dirs: Sequence[str] = (),
     ) -> None:
         if profiles_dir:
             self._profiles_dir = Path(profiles_dir)
@@ -61,6 +63,10 @@ class ProfileLoader:
         # connecting it back to the deploy that appeared to work.
         self._dynamic_dir = Path(dynamic_dir) if dynamic_dir else None
 
+        # Profile dirs of the registered instrument backends (edge-api.md §2,
+        # F1), scanned after the bundled dir and before the dynamic dir.
+        self._extra_dirs: tuple[Path, ...] = tuple(Path(d) for d in extra_dirs)
+
         self._profiles: Dict[str, InstrumentProfile] = {}
         self._loaded: bool = False
 
@@ -74,6 +80,11 @@ class ProfileLoader:
     def dynamic_dir(self) -> Optional[Path]:
         """Writable directory for deployed profiles, or None if unset."""
         return self._dynamic_dir
+
+    @property
+    def extra_dirs(self) -> tuple[Path, ...]:
+        """Backend profile dirs, scanned after profiles_dir and before dynamic_dir (edge-api.md §2)."""
+        return self._extra_dirs
 
     @property
     def profiles(self) -> Dict[str, InstrumentProfile]:
@@ -91,14 +102,27 @@ class ProfileLoader:
     # -- loading -------------------------------------------------------------
 
     def load_all(self) -> int:
-        """Load every YAML profile from ``profiles_dir``.
+        """Load every YAML profile from the bundled, backend, and dynamic dirs.
+
+        Scan order and precedence (edge-api.md §2):
+
+        - ``profiles_dir`` (bundled), then ``extra_dirs`` in order, then
+          ``dynamic_dir``.
+        - A key already loaded from an earlier non-dynamic dir is kept;
+          the later copy is logged at WARNING, so a backend's profile dirs
+          can never shadow a bundled profile.
+        - A dynamic-dir (deployed) profile replaces a same-key profile.
+        - Within one dir, the last file by sorted path wins.
+        - The ``_``-prefix filter applies to the bundled dir and
+          ``extra_dirs``, not to the dynamic dir.
 
         Uses a pickle cache to avoid re-parsing 130+ YAML files on
         every startup (saves ~60s on Raspberry Pi SD cards).  The cache
-        is invalidated when any YAML file is added, removed, or modified.
+        is invalidated when any scanned YAML file is added, removed, or
+        modified.
 
         Returns:
-            Number of profiles successfully loaded.
+            Number of profiles loaded.
         """
         if yaml is None:
             logger.error("PyYAML is not installed; cannot load profiles")
@@ -107,40 +131,38 @@ class ProfileLoader:
 
         self._profiles.clear()
 
-        if not self._profiles_dir.exists() or not self._profiles_dir.is_dir():
+        def _scan(directory: Path, underscore_filter: bool) -> List[Path]:
+            files = sorted(list(directory.rglob("*.yaml")) + list(directory.rglob("*.yml")))
+            if underscore_filter:
+                # The bundled tree uses a leading underscore to mark internal
+                # files. A deployed filename is whatever the deploying tool
+                # chose and is not ours to reinterpret, so the dynamic dir
+                # is scanned unfiltered.
+                files = [f for f in files
+                         if not any(part.startswith("_") for part in f.relative_to(directory).parts)]
+            return files
+
+        # (dir_index, path, is_dynamic) in precedence order (edge-api.md §2)
+        sources: List[tuple] = []
+        if self._profiles_dir.is_dir():
+            sources += [(0, f, False) for f in _scan(self._profiles_dir, True)]
+        else:
             logger.warning("Profiles directory not found: %s", self._profiles_dir)
-            self._loaded = True
-            return 0
-
-        yaml_files = sorted(
-            list(self._profiles_dir.rglob("*.yaml"))
-            + list(self._profiles_dir.rglob("*.yml"))
-        )
-        yaml_files = [
-            f for f in yaml_files
-            if not f.name.startswith("_")
-            and not any(part.startswith("_") for part in f.relative_to(self._profiles_dir).parts)
-        ]
-
-        # Deployed profiles, scanned alongside the bundled ones. No
-        # underscore filter: the bundled tree uses a leading underscore to
-        # mark internal files, but a deployed filename is whatever the
-        # deploying tool chose and is not ours to reinterpret.
+        for i, extra in enumerate(self._extra_dirs, start=1):
+            if extra.is_dir():
+                sources += [(i, f, False) for f in _scan(extra, True)]
+            else:
+                logger.debug("Backend profile dir not found: %s", extra)
         if self._dynamic_dir and self._dynamic_dir.is_dir():
-            yaml_files.extend(
-                sorted(
-                    list(self._dynamic_dir.rglob("*.yaml"))
-                    + list(self._dynamic_dir.rglob("*.yml"))
-                )
-            )
+            sources += [(len(self._extra_dirs) + 1, f, True) for f in _scan(self._dynamic_dir, False)]
 
-        # Try loading from pickle cache (keyed by file list + mtimes).
-        # The key covers the dynamic files too, so deploying a profile
-        # invalidates the cache and the next load picks it up.
-        cache_path = self._profiles_dir / "_cache.pkl"
-        cache_key = self._compute_cache_key(yaml_files)
+        # Try loading from pickle cache (keyed by every scanned file).
+        # The key covers the backend and dynamic files too, so deploying a
+        # profile invalidates the cache and the next load picks it up.
+        cache_path = self._profiles_dir / "_cache.pkl" if self._profiles_dir.is_dir() else None
+        cache_key = self._compute_cache_key([f for _i, f, _d in sources])
 
-        if cache_path.exists():
+        if cache_path is not None and cache_path.exists():
             try:
                 with open(cache_path, "rb") as fh:
                     cached = pickle.load(fh)
@@ -155,28 +177,44 @@ class ProfileLoader:
                 logger.debug("Profile cache invalid, rebuilding")
 
         # Cache miss — parse all YAML files
-        loaded = 0
-        for path in yaml_files:
+        origin: Dict[str, tuple] = {}   # key -> (dir_index, path)
+        for dir_index, path, is_dynamic in sources:
             try:
                 profile = self._load_file(path)
-                if profile is not None:
-                    self._profiles[profile.profile_key] = profile
-                    loaded += 1
-                    logger.info(
-                        "Loaded profile: %s (%d commands)",
-                        profile.profile_key,
-                        len(profile.commands),
-                    )
             except Exception:
                 logger.exception("Failed to load profile %s", path)
+                continue
+            if profile is None:
+                continue
+            key = profile.profile_key
+            prev = origin.get(key)
+            if prev is not None and not is_dynamic and prev[0] < dir_index:
+                logger.warning("profile %s from %s shadowed by %s", key, path, prev[1])
+                continue
+            self._profiles[key] = profile
+            origin[key] = (dir_index, path)
+            logger.info(
+                "Loaded profile: %s (%d commands)",
+                key,
+                len(profile.commands),
+            )
+        loaded = len(self._profiles)
 
-        # Write cache for next startup
-        try:
-            with open(cache_path, "wb") as fh:
-                pickle.dump({"key": cache_key, "profiles": self._profiles}, fh)
-            logger.info("Profile cache written (%d profiles)", loaded)
-        except Exception as exc:
-            logger.debug("Could not write profile cache: %s", exc)
+        # Write cache for next startup. Atomic (CI-29): parallel readers
+        # never see a torn pickle.
+        if cache_path is not None:
+            tmp = cache_path.with_name(f"._cache.{os.getpid()}.tmp")
+            try:
+                with open(tmp, "wb") as fh:
+                    pickle.dump({"key": cache_key, "profiles": self._profiles}, fh)
+                os.replace(tmp, cache_path)
+                logger.info("Profile cache written (%d profiles)", loaded)
+            except Exception as exc:
+                logger.debug("Could not write profile cache: %s", exc)
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
         self._loaded = True
         logger.info(
@@ -186,11 +224,11 @@ class ProfileLoader:
 
     @staticmethod
     def _compute_cache_key(yaml_files: list[Path]) -> str:
-        """Hash file names + mtimes to detect changes."""
+        """Hash every scanned file's full path, mtime, and size, in scan order."""
         h = hashlib.md5()
         for f in yaml_files:
-            h.update(f.name.encode())
-            h.update(str(f.stat().st_mtime_ns).encode())
+            st = f.stat()
+            h.update(f"{f}\0{st.st_mtime_ns}\0{st.st_size}\0".encode())
         return h.hexdigest()
 
     def _load_file(self, path: Path) -> Optional[InstrumentProfile]:
