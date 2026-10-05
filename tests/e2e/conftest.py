@@ -74,6 +74,11 @@ initialisation failed" and runs without PyVISA. With the default `@py`, discover
 portmap query to 255.255.255.255 (pyvisa-py's TCPIP listing, without psutil). That breaks the loopback-only
 rule (spec §10 rule 6). Every bench address belongs to the sim backend, so the daemon never needs PyVISA here."""
 
+NO_RAW_USB = (
+    "raw USB scanning must be off, and no environment variable turns it off: main.py builds InstrumentManager "
+    "with the default usb_raw_enabled=True, and Config lists USB_RAW_ENABLED but never reads it. The daemon "
+    "is hermetic only while pyusb (edge's `usb` extra) is absent, so run tests/e2e in a venv without it")
+
 
 E2E_DIR = Path(__file__).resolve().parent
 
@@ -291,7 +296,10 @@ class Processes:
         found = wait_until(lambda: re.search(r"MCP server listening on (http://127\.0\.0\.1:[1-9]\d*/\S*)\n",
                                              proc.output()),
                            "the edge daemon's MCP server", alive=[proc])
-        assert "PyVISA initialisation failed" in proc.output(), "VISA scanning must be off (loopback only)"
+        log = proc.output()
+        assert "PyVISA initialisation failed" in log, "VISA scanning must be off (loopback only)"
+        assert "USB transport enabled but pyusb not installed" in log, NO_RAW_USB
+        assert "Raw USB transport enabled" not in log, NO_RAW_USB
         return EdgeDaemon(proc, found.group(1))
 
 
