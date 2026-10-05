@@ -4,13 +4,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import select
 import socket
-import subprocess
 import sys
 import threading
 import time
-from pathlib import Path
 
 import pytest
 
@@ -20,7 +17,6 @@ from galois_edge.instrument_manager import InstrumentManager
 from galois_edge.main import EdgeDaemon
 
 pytestmark = pytest.mark.critical
-SRC = Path(__file__).resolve().parents[1] / "src"
 
 
 class _StopRecorder:
@@ -34,73 +30,35 @@ class _StopRecorder:
 
 
 # ---------------------------------------------------------------------------
-# EQ1: _watch_stdin. A subprocess stub runs the real watcher with a real stdin.
+# EQ1: _watch_stdin. A real stdin fd stands in for the daemon's fd 0; the
+# subprocess stubs in test_shutdown_m1_stdin_stub.py run the same paths end to end.
 # ---------------------------------------------------------------------------
 
-# Blocking galois_edge.mcp keeps the stub's import well under a second; the watcher never uses MCP.
-_STUB = r"""
-import asyncio, logging, sys
-sys.path.insert(0, sys.argv[1])
-sys.modules["galois_edge.mcp"] = None
-from galois_edge.main import EdgeDaemon
 
-logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-
-class Recorder:
-    stops = 0
-    async def stop(self):
-        Recorder.stops += 1
-
-async def main():
-    watcher = asyncio.ensure_future(EdgeDaemon._watch_stdin(Recorder()))
-    print("watching", flush=True)
-    try:
-        await asyncio.wait_for(watcher, timeout=float(sys.argv[2]))
-    except asyncio.TimeoutError:
-        print("hung", flush=True)
-        return
-    print("returned stops=%d" % Recorder.stops, flush=True)
-
-asyncio.run(main())
-"""
-
-
-def _run_stub(stdin, close_after_ready: bool = False, timeout_s: float = 3.0):
-    # Unbuffered binary stdout, so readline() takes only the "watching" line off the pipe.
-    # A buffered readline can also pull in the next line, and communicate() (which reads
-    # the raw fd) would then never see it.
-    proc = subprocess.Popen([sys.executable, "-c", _STUB, str(SRC), str(timeout_s)], stdin=stdin,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
-    try:
-        ready, _, _ = select.select([proc.stdout], [], [], timeout_s + 5)
-        first = proc.stdout.readline() if ready else b""
-        if first != b"watching\n":
-            proc.kill()
-            _, err = proc.communicate()
-            pytest.fail(f"the stub never started watching stdin: {first!r}\n{err.decode()}")
-        if close_after_ready:
-            proc.stdin.close()   # what the Go supervisor does to stop the daemon
-        out, err = proc.communicate(timeout=timeout_s + 5)
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-            proc.communicate()
-    return out.decode().strip(), err.decode()
-
-
-def test_devnull_stdin_is_not_watched_and_does_not_stop_the_daemon():
+async def test_devnull_stdin_is_not_watched(monkeypatch, caplog):
     # epoll cannot register /dev/null: the asyncio pipe reader would wait for EOF forever.
     # No supervisor pipe means the watcher steps aside; SIGTERM/SIGINT stop the daemon.
-    out, err = _run_stub(subprocess.DEVNULL)
-    assert out == "returned stops=0", err
-    assert "stdin watcher not active" in err
+    caplog.set_level(logging.INFO, logger="galois_edge.main")
+    recorder = _StopRecorder()
+    with open(os.devnull) as stdin:
+        monkeypatch.setattr(sys, "stdin", stdin)
+        await asyncio.wait_for(EdgeDaemon._watch_stdin(recorder), timeout=1.0)
+    assert recorder.stops == 0
+    assert "stdin watcher not active" in caplog.text
 
 
-def test_closing_a_stdin_pipe_still_stops_the_daemon():
+async def test_closing_a_stdin_pipe_stops_the_daemon(monkeypatch, caplog):
     # Go supervisor contract: it holds the write end of a pipe and closes it to shut down.
-    out, err = _run_stub(subprocess.PIPE, close_after_ready=True)
-    assert out == "returned stops=1", err
-    assert "Stdin closed (EOF)" in err
+    caplog.set_level(logging.INFO, logger="galois_edge.main")
+    read_fd, write_fd = os.pipe()
+    recorder = _StopRecorder()
+    with os.fdopen(read_fd) as stdin:
+        monkeypatch.setattr(sys, "stdin", stdin)
+        watcher = asyncio.ensure_future(EdgeDaemon._watch_stdin(recorder))
+        os.close(write_fd)
+        await asyncio.wait_for(watcher, timeout=1.0)
+    assert recorder.stops == 1
+    assert "Stdin closed (EOF)" in caplog.text
 
 
 async def test_regular_file_stdin_is_not_watched(tmp_path, monkeypatch):
