@@ -9,8 +9,10 @@ enable/disable of individual commands and sequences.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, FrozenSet, List, Optional, Set, Tuple, TYPE_CHECKING
+from types import MappingProxyType
+from typing import Any, Callable, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple, TYPE_CHECKING
 
 from .tracing import CommandContext, ResolvedSCPI, WriteTarget, json_safe
 from .validation import select_template, validate_params, wire_params
@@ -311,14 +313,30 @@ class CapabilityManager:
     available on each connected instrument. Consulted by gRPC
     GetCapabilities, the command dispatch pipeline, and the
     registration manager.
+
+    Thread safety: discovery registers instruments on the instrument I/O
+    thread while MCP and gRPC read on the event loop. ``_lock`` guards the
+    registries; readers iterate a snapshot taken under it, never the live
+    dict, and no caps/profile code or listener runs while it is held.
     """
 
     def __init__(self) -> None:
+        self._lock = threading.RLock()
         self._instruments: Dict[str, InstrumentCapabilities] = {}
         # Phase 3: observers notified on register/unregister so the MCP
         # DynamicToolRegistry (and any future listener) can update its
         # tool surface in lock-step with hot-plug events.
         self._listeners: List[Callable[[str, str], None]] = []
+
+    def _records(self) -> List[InstrumentCapabilities]:
+        """Snapshot of the registered records, taken under the lock."""
+        with self._lock:
+            return list(self._instruments.values())
+
+    def _items(self) -> List[Tuple[str, InstrumentCapabilities]]:
+        """Snapshot of (instrument_id, record) pairs, taken under the lock."""
+        with self._lock:
+            return list(self._instruments.items())
 
     # -- Listener pattern (Phase 3) ---
 
@@ -328,19 +346,24 @@ class CapabilityManager:
         Events fired: "registered" on register_instrument /
         register_protocol_driver, "unregistered" on unregister_instrument.
         Listener exceptions are logged and swallowed so a misbehaving
-        observer cannot break instrument registration.
+        observer cannot break instrument registration. Listeners run on the
+        registering thread, outside the registry lock.
         """
-        self._listeners.append(fn)
+        with self._lock:
+            self._listeners.append(fn)
 
     def remove_listener(self, fn: Callable[[str, str], None]) -> None:
         """Detach a previously-added listener; no-op if absent."""
-        try:
-            self._listeners.remove(fn)
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self._listeners.remove(fn)
+            except ValueError:
+                pass
 
     def _emit(self, event: str, instrument_id: str) -> None:
-        for fn in list(self._listeners):
+        with self._lock:
+            listeners = list(self._listeners)
+        for fn in listeners:
             try:
                 fn(event, instrument_id)
             except Exception:
@@ -370,7 +393,8 @@ class CapabilityManager:
         )
         # Attach the driver to the caps object for dispatch
         caps._protocol_driver = driver  # type: ignore[attr-defined]
-        self._instruments[instrument_id] = caps
+        with self._lock:
+            self._instruments[instrument_id] = caps
         driver_caps = driver.get_capabilities()
         logger.info(
             "Registered protocol driver %s (%s, %d commands)",
@@ -383,7 +407,7 @@ class CapabilityManager:
 
     def get_protocol_driver(self, instrument_id: str) -> Optional[Any]:
         """Return the protocol driver for an instrument, or None."""
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         if caps is not None:
             return getattr(caps, "_protocol_driver", None)
         return None
@@ -411,7 +435,8 @@ class CapabilityManager:
             idn_response=idn_response,
             profile=profile,
         )
-        self._instruments[instrument_id] = caps
+        with self._lock:
+            self._instruments[instrument_id] = caps
 
         if profile is not None:
             logger.info(
@@ -429,8 +454,9 @@ class CapabilityManager:
 
     def unregister_instrument(self, instrument_id: str) -> bool:
         """Unregister an instrument. Returns True if it was found."""
-        if instrument_id in self._instruments:
-            del self._instruments[instrument_id]
+        with self._lock:
+            removed = self._instruments.pop(instrument_id, None)
+        if removed is not None:
             logger.info("Unregistered instrument: %s", instrument_id)
             self._emit("unregistered", instrument_id)
             return True
@@ -441,14 +467,15 @@ class CapabilityManager:
 
     def get_capabilities(self, instrument_id: str) -> Optional[Dict[str, Any]]:
         """Get capability dict for one instrument, or None if not found."""
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         if caps is None:
             return None
         return caps.to_capability_dict()
 
     def get_instrument_caps(self, instrument_id: str) -> Optional[InstrumentCapabilities]:
         """Get the raw InstrumentCapabilities record."""
-        return self._instruments.get(instrument_id)
+        with self._lock:
+            return self._instruments.get(instrument_id)
 
     # -- All-instruments queries ---
 
@@ -456,45 +483,51 @@ class CapabilityManager:
         """Get capabilities for every registered instrument (dict keyed by id)."""
         return {
             inst_id: caps.to_capability_dict()
-            for inst_id, caps in self._instruments.items()
+            for inst_id, caps in self._items()
         }
 
     def get_all_capabilities_list(self) -> List[Dict[str, Any]]:
         """Get capabilities for every registered instrument (flat list)."""
-        return [caps.to_capability_dict() for caps in self._instruments.values()]
+        return [caps.to_capability_dict() for caps in self._records()]
 
     @property
-    def all_instruments(self) -> Dict[str, InstrumentCapabilities]:
-        """Return the full map of instrument_id -> InstrumentCapabilities."""
-        return self._instruments
+    def all_instruments(self) -> Mapping[str, InstrumentCapabilities]:
+        """Read-only snapshot of instrument_id -> InstrumentCapabilities.
+
+        Taken under the lock, so a caller may iterate it while discovery
+        registers on the I/O thread; later registrations are not reflected.
+        """
+        with self._lock:
+            return MappingProxyType(dict(self._instruments))
 
     @property
     def instrument_count(self) -> int:
-        return len(self._instruments)
+        with self._lock:
+            return len(self._instruments)
 
     @property
     def profiled_count(self) -> int:
-        return sum(1 for c in self._instruments.values() if c.has_profile)
+        return sum(1 for c in self._records() if c.has_profile)
 
     # -- Enable / disable (delegated) ---
 
     def disable_command(self, instrument_id: str, command_name: str) -> bool:
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         if caps is None:
             logger.warning("Cannot disable command: instrument not found: %s", instrument_id)
             return False
         return caps.disable_command(command_name)
 
     def enable_command(self, instrument_id: str, command_name: str) -> bool:
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         return caps.enable_command(command_name) if caps else False
 
     def disable_sequence(self, instrument_id: str, sequence_name: str) -> bool:
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         return caps.disable_sequence(sequence_name) if caps else False
 
     def enable_sequence(self, instrument_id: str, sequence_name: str) -> bool:
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         return caps.enable_sequence(sequence_name) if caps else False
 
     # -- Command resolution ---
@@ -513,7 +546,7 @@ class CapabilityManager:
         it to INVALID_ARGUMENT, MCP to {"error", "field"}. The SCPI string is a
         ResolvedSCPI carrying the CommandContext used by tracing (CI-5).
         """
-        caps = self._instruments.get(instrument_id)
+        caps = self.get_instrument_caps(instrument_id)
         if caps is None:
             logger.error("Instrument not found: %s", instrument_id)
             return None
@@ -556,20 +589,20 @@ class CapabilityManager:
     def find_by_class(self, instrument_class: str) -> List[InstrumentCapabilities]:
         """Find all instruments of a given class (e.g. 'smu', 'dmm')."""
         target = instrument_class.lower()
-        return [c for c in self._instruments.values() if c.instrument_class == target]
+        return [c for c in self._records() if c.instrument_class == target]
 
     def find_with_command(self, command_name: str) -> List[InstrumentCapabilities]:
         """Find all instruments that have a specific command (path or alias) enabled."""
-        return [c for c in self._instruments.values() if c.get_command(command_name) is not None]
+        return [c for c in self._records() if c.get_command(command_name) is not None]
 
     def find_with_sequence(self, sequence_name: str) -> List[InstrumentCapabilities]:
         """Find all instruments that have a specific sequence enabled."""
-        return [c for c in self._instruments.values() if sequence_name in c.enabled_sequences]
+        return [c for c in self._records() if sequence_name in c.enabled_sequences]
 
     def get_available_classes(self) -> List[str]:
         """Sorted list of instrument classes present."""
         classes: Set[str] = set()
-        for caps in self._instruments.values():
+        for caps in self._records():
             if caps.instrument_class:
                 classes.add(caps.instrument_class)
         return sorted(classes)
@@ -577,19 +610,21 @@ class CapabilityManager:
     def get_available_commands(self) -> Dict[str, List[str]]:
         """Map of instrument_id -> list of enabled command names."""
         return {
-            iid: sorted(c.enabled_commands) for iid, c in self._instruments.items()
+            iid: sorted(c.enabled_commands) for iid, c in self._items()
         }
 
     # -- Summary ---
 
     def get_summary(self) -> Dict[str, Any]:
         """High-level summary suitable for registration payloads."""
-        total_commands = sum(len(c.enabled_commands) for c in self._instruments.values())
-        total_sequences = sum(len(c.enabled_sequences) for c in self._instruments.values())
+        records = self._records()
+        total_commands = sum(len(c.enabled_commands) for c in records)
+        total_sequences = sum(len(c.enabled_sequences) for c in records)
+        classes = sorted({c.instrument_class for c in records if c.instrument_class})
         return {
-            "total_instruments": self.instrument_count,
-            "profiled_instruments": self.profiled_count,
-            "instrument_classes": self.get_available_classes(),
+            "total_instruments": len(records),
+            "profiled_instruments": sum(1 for c in records if c.has_profile),
+            "instrument_classes": classes,
             "total_commands": total_commands,
             "total_sequences": total_sequences,
         }
