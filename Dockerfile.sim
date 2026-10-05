@@ -1,8 +1,24 @@
-FROM python:3.12-slim
+# galois-edge with DEMO_MODE virtual instruments, reachable from other containers.
+#   docker build -f Dockerfile.sim -t galois-edge-sim .
+#   docker run --rm -p 50052:50052 -p 8766:8766 -p 8767:8767 galois-edge-sim
+# Build from a checkout whose submodule is initialised (git submodule update --init).
+FROM python:3.13-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-ENV PYTHONPATH=/app/src:/app
-EXPOSE 50052 8766
+COPY pyproject.toml requirements.txt LICENSE /app/
+COPY src /app/src
+COPY contrib /app/contrib
+COPY third_party /app/third_party
+# requirements.txt first: from M1 W3 it lists ./third_party/edgesim/packages/galois-profiles,
+# which `pip install /app` then finds already installed (contracts/edge-api.md §8).
+RUN pip install --no-cache-dir -r requirements.txt \
+ && pip install --no-cache-dir /app
+ENV PYTHONPATH=/app \
+    DEMO_MODE=true \
+    GRPC_BIND_HOST=0.0.0.0 \
+    WS_BIND_HOST=0.0.0.0 \
+    MCP_BIND_HOST=0.0.0.0 \
+    GPIB_ENABLED=false \
+    USB_MONITOR_ENABLED=false
+# gRPC, WebSocket, MCP (streamable HTTP)
+EXPOSE 50052 8766 8767
 CMD ["python", "-m", "contrib.simulation.run_sim"]
