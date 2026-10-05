@@ -23,7 +23,7 @@ def _self_register() -> None:
     if hasattr(DriverRegistry, "register"):
         try:
             DriverRegistry.register(  # type: ignore[attr-defined]
-                "i2c", GenericI2cDriver, I2CBusManager()
+                "i2c", GenericI2cDriver, I2CBusManager  # factory, not an instance (CI-10)
             )
         except Exception:  # pragma: no cover - registration is best-effort
             pass

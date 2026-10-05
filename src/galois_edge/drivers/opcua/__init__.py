@@ -25,7 +25,7 @@ __all__ = ["GenericOpcuaDriver", "OPCUABusManager", "OPCUA_AVAILABLE"]
 if hasattr(DriverRegistry, "register"):
     try:
         DriverRegistry.register(  # type: ignore[attr-defined]
-            "opcua", GenericOpcuaDriver, OPCUABusManager(),
+            "opcua", GenericOpcuaDriver, OPCUABusManager,  # factory, not an instance (CI-10)
         )
     except Exception as exc:  # pragma: no cover — defensive
         logger.warning("OPC-UA driver self-registration skipped: %s", exc)

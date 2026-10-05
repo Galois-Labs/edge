@@ -36,4 +36,4 @@ __all__ = [
 # instance-based, so this is intentionally a no-op until the foundation
 # refactor lands. See spec section 7.5.
 if hasattr(DriverRegistry, "register"):
-    DriverRegistry.register("spi", GenericSpiDriver, SPIBusManager())  # type: ignore[attr-defined]
+    DriverRegistry.register("spi", GenericSpiDriver, SPIBusManager)  # factory, not an instance (CI-10)
