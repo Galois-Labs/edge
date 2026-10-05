@@ -113,6 +113,17 @@ def test_delta_binding_and_coercion(writer, target, params, expected):
     assert _lines(writer)[1]["delta"] == expected
 
 
+def test_unbindable_index_keeps_the_transition(writer):  # edge-api §5: one transition per executed command
+    target = WriteTarget("output.enabled", "ch", 1, 2, "bool")
+    ctx = CommandContext(ADDR, "output.state", {"ch": "CH1", "state": "ON"}, STATE, False, "setter", (target,))
+    writer.observe(_ev(":OUTPCH1 1", ctx))
+    writer.close()
+    recs = _lines(writer)
+    assert [r["kind"] for r in recs] == ["run_start", "transition", "run_end"]
+    assert recs[1]["delta"] == {} and recs[1]["action"]["params"] == {"ch": "CH1", "state": "ON"}
+    VALIDATOR.validate(recs[1])
+
+
 def test_non_finite_values_are_strings(writer):
     ctx = CommandContext(ADDR, "q", {}, CommandConfig(scpi=":Q?", returns=ReturnConfig(type="float")), True, "query")
     writer.observe(_ev(":Q?", ctx, is_query=True, response="nan"))

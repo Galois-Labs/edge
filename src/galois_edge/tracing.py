@@ -183,7 +183,13 @@ def _delta(ctx: CommandContext) -> Dict[str, List[Any]]:
     if target.index_name is None:
         keys = [target.path]
     elif target.index_name in ctx.params:
-        keys = [f"{target.path}[{int(ctx.params[target.index_name])}]"]
+        try:
+            index = int(ctx.params[target.index_name])
+        except (TypeError, ValueError, OverflowError):
+            # An index that does not bind (e.g. 'CH1') drops only the delta,
+            # never the transition (one transition per executed command).
+            return {}
+        keys = [f"{target.path}[{index}]"]
     elif target.index_min is not None and target.index_max is not None:
         keys = [f"{target.path}[{i}]" for i in range(target.index_min, target.index_max + 1)]
     else:
