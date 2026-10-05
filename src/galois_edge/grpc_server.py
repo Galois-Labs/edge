@@ -3558,8 +3558,8 @@ class GRPCServer:
 
             await self._server.start()
             logger.info(
-                "gRPC server started on %s (edge_id=%s)",
-                listen_addr, self._edge_id,
+                "gRPC server started on %s:%d (edge_id=%s)",
+                host, self._port, self._edge_id,
             )
             return True
 

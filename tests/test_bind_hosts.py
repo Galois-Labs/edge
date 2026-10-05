@@ -1,6 +1,8 @@
 """E10 bind hosts (edge-api.md §1); port 0 is read back so tests stay parallel-safe."""
 from __future__ import annotations
 
+import logging
+
 import aiohttp
 import grpc
 import pytest
@@ -50,11 +52,13 @@ async def test_grpc_listen_address_uses_bind_host(monkeypatch, mock_instrument_m
     assert seen[-1] == "[::1]:0"
 
 
-async def test_grpc_port_zero_reads_back_and_serves(mock_instrument_manager, mock_command_handler):
+async def test_grpc_port_zero_reads_back_and_serves(caplog, mock_instrument_manager, mock_command_handler):
     srv = GRPCServer(mock_instrument_manager, mock_command_handler, edge_id="t", port=0, bind_host="127.0.0.1")
-    assert await srv.start() is True
+    with caplog.at_level(logging.INFO, logger="galois_edge.grpc_server"):
+        assert await srv.start() is True
     try:
         assert srv.port > 0
+        assert any(f"127.0.0.1:{srv.port} " in r.getMessage() for r in caplog.records)  # the bound port, not :0
         async with grpc.aio.insecure_channel(f"127.0.0.1:{srv.port}") as ch:
             reply = await edge_pb2_grpc.EdgeDaemonServiceStub(ch).Ping(edge_pb2.PingRequest(), timeout=2)
         assert reply is not None
