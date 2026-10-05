@@ -206,8 +206,12 @@ def _param_dict_to_proto(p: dict) -> edge_pb2.CommandParameter:
 
 def _build_capabilities_proto(
     caps: InstrumentCapabilities,
+    simulated: bool = False,
 ) -> edge_pb2.InstrumentCapabilities:
-    """Convert an InstrumentCapabilities record into protobuf."""
+    """Convert an InstrumentCapabilities record into protobuf.
+
+    ``simulated`` adds ``settings["simulated"] = "true"`` (E6, edge-api.md §3).
+    """
     cap_dict = caps.to_capability_dict()
 
     commands = []
@@ -236,6 +240,8 @@ def _build_capabilities_proto(
 
     settings = cap_dict.get("settings", {})
     settings_map = {k: str(v) for k, v in settings.items()}
+    if simulated:
+        settings_map["simulated"] = "true"
 
     return edge_pb2.InstrumentCapabilities(
         instrument_id=cap_dict.get("instrument_id", ""),
@@ -616,6 +622,14 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
     # Profile-based commands
     # ------------------------------------------------------------------
 
+    def _is_simulated(self, caps: InstrumentCapabilities) -> bool:
+        """E6 (edge-api.md §3): only when SIM_MARK_INSTRUMENTS=true, and only for simulated backends."""
+        if not Config().sim_mark_instruments:
+            return False
+        backend_for = getattr(self._instruments, "backend_for", None)
+        backend = backend_for(caps.visa_address) if backend_for is not None else None
+        return bool(getattr(backend, "simulated", False))
+
     async def GetCapabilities(
         self,
         request: edge_pb2.GetCapabilitiesRequest,
@@ -641,12 +655,12 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
                 request.instrument_id
             )
             if caps:
-                capabilities.append(_build_capabilities_proto(caps))
+                capabilities.append(_build_capabilities_proto(caps, simulated=self._is_simulated(caps)))
         elif request.instrument_class:
             for caps in self._capability_manager.find_by_class(
                 request.instrument_class
             ):
-                capabilities.append(_build_capabilities_proto(caps))
+                capabilities.append(_build_capabilities_proto(caps, simulated=self._is_simulated(caps)))
         else:
             all_caps = self._capability_manager.get_all_capabilities_list()
             for cap_dict in all_caps:
@@ -661,7 +675,7 @@ class EdgeDaemonServicer(edge_pb2_grpc.EdgeDaemonServiceServicer):
             ):
                 caps = self._capability_manager.get_instrument_caps(inst_id)
                 if caps:
-                    capabilities.append(_build_capabilities_proto(caps))
+                    capabilities.append(_build_capabilities_proto(caps, simulated=self._is_simulated(caps)))
 
         return edge_pb2.GetCapabilitiesResponse(
             capabilities=capabilities,

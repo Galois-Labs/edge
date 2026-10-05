@@ -74,6 +74,8 @@ def register_discovery_tools(
                 )
                 if filter.lower() not in haystack:
                     continue
+            if mark:  # E6: only with SIM_MARK_INSTRUMENTS, never in the filter haystack
+                entry["is_simulated"] = _simulated(inst_mgr, caps.visa_address)
             results.append(entry)
         return results
 
@@ -179,7 +181,7 @@ def register_discovery_tools(
     )
     async def get_status() -> Dict[str, Any]:
         cap_mgr = ctx.capability_manager
-        return {
+        status: Dict[str, Any] = {
             "edge_id": ctx.edge_id,
             "edge_name": ctx.edge_name,
             "version": ctx.version,
@@ -189,6 +191,12 @@ def register_discovery_tools(
             "uptime_seconds": int(time.time() - start_time),
             "os_info": f"{platform.system()} {platform.release()}",
         }
+        if mark:  # E6 / CI-18: any registered instrument owned by a simulated backend
+            status["is_simulated"] = any(
+                _simulated(ctx.instrument_manager, c.visa_address)
+                for c in cap_mgr.all_instruments.values()
+            )
+        return status
 
 
 _IDENTITY_KEYS = ("has_profile", "profile_key", "manufacturer", "model", "instrument_class",
@@ -249,6 +257,17 @@ def _capabilities_for(caps: Any, detail: Optional[str], path: str, page: int, ma
     out.update(detail=mode, path=listing["path"], groups=listing["children"],
                truncated=listing["truncated"], command_count=n_enabled)
     return out
+
+
+def _simulated(inst_mgr: Any, address: str) -> bool:
+    """True when ``address`` is owned by a backend whose ``simulated`` is True (edge-api.md §3, E6)."""
+    backend_for = getattr(inst_mgr, "backend_for", None)
+    if backend_for is None:
+        return False
+    try:
+        return bool(getattr(backend_for(address), "simulated", False))
+    except Exception:
+        return False
 
 
 def _safe_is_connected(inst_mgr: Any, instrument_id: str) -> bool:
