@@ -354,12 +354,7 @@ class EdgeDaemon:
 
         # 1c. Cancel background tasks
         for task in (self._rescan_task, self._stdin_task, self._trickle_task):
-            if task is not None and not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+            await self._cancel_and_wait(task)
 
         # 2. Stop WebSocket server
         if self._ws_server is not None:
@@ -391,6 +386,12 @@ class EdgeDaemon:
                 self._io_drain_timeout_s,
             )
 
+        # 3c. An initial GPIB scan still running at step 1 starts the trickle
+        #     scanner once it finishes, i.e. during 3b: stop that one too.
+        if self._trickle_scanner is not None:
+            await self._trickle_scanner.stop()
+        await self._cancel_and_wait(self._trickle_task)
+
         # 4. Send cleanup commands for all registered instruments
         if self._capability_manager and self._command_handler:
             for inst_id, caps in self._capability_manager.all_instruments.items():
@@ -417,6 +418,16 @@ class EdgeDaemon:
         self._stop_tracing()
 
         logger.info("Edge daemon stopped.")
+
+    @staticmethod
+    async def _cancel_and_wait(task: Optional[asyncio.Task]) -> None:
+        """Cancel *task* if it is still running and wait for it to end."""
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     # ------------------------------------------------------------------
     # Tracing

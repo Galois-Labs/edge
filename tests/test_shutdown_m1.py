@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 import os
 import socket
@@ -207,3 +208,40 @@ async def test_a_second_stop_waits_for_the_shutdown_in_progress(daemon, stuck_io
     await asyncio.wait_for(daemon.stop(), timeout=1.5)  # e.g. main()'s finally
     assert "Edge daemon stopped." in caplog.text
     await asyncio.wait_for(first, timeout=1.0)
+
+
+async def test_a_trickle_scanner_started_during_the_io_drain_is_stopped(daemon, monkeypatch):
+    # The initial GPIB scan is still on the I/O thread when stop() stops the trickle scanner
+    # (step 1) and cancels its task (1c). It finishes while stop() drains the I/O thread and
+    # then starts the trickle scanner; that one must not outlive stop() either.
+    entered, release = threading.Event(), threading.Event()
+
+    class _Gpib:   # a GPIBManager with one board, mid full-bus scan
+        is_available = True
+        boards = {0: None}
+
+        def scan_all_boards(self):
+            entered.set()
+            release.wait(5.0)
+            return []
+
+        def disconnect_all(self):
+            pass
+
+    class _Server:   # stop() reaches step 2 (WebSocket server) after steps 1 and 1c
+        async def stop(self):
+            release.set()
+
+    monkeypatch.setattr(daemon, "_cfg", dataclasses.replace(daemon._cfg, gpib_trickle_interval_s=60.0))
+    daemon._instrument_manager = daemon._build_instrument_manager()
+    monkeypatch.setattr(daemon._instrument_manager, "_gpib", _Gpib())
+    daemon._ws_server = _Server()
+    scan = asyncio.ensure_future(daemon._initial_gpib_scan_then_trickle())
+    assert await asyncio.to_thread(entered.wait, 1.0)
+
+    await asyncio.wait_for(daemon.stop(), timeout=1.5)
+    await asyncio.wait_for(scan, timeout=1.0)
+
+    assert daemon._trickle_task is not None   # the scan did start one, mid-shutdown
+    assert daemon._trickle_task.done()
+    assert not daemon._trickle_scanner.running
