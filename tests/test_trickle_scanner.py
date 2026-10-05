@@ -12,6 +12,7 @@ Tests use a mock GPIBManager to verify:
 from __future__ import annotations
 
 import asyncio
+import inspect
 import sys
 import os
 import time
@@ -36,6 +37,17 @@ async def _until(predicate, timeout: float = 5.0, step: float = 0.005) -> None:
         if time.monotonic() > deadline:
             raise AssertionError(f"condition not met within {timeout}s")
         await asyncio.sleep(step)
+
+
+def _sleeping_between_probes(task: asyncio.Task) -> bool:
+    """True while TrickleScanScheduler.run() awaits its inter-probe sleep.
+
+    run() reads the next address only after that sleep, so a reset() made now
+    applies to the next probe. While run() awaits the executor instead, a probe
+    is in flight and its _advance() overwrites the reset.
+    """
+    awaiting = task.get_coro().cr_await
+    return inspect.iscoroutine(awaiting) and awaiting.__name__ == "sleep"
 
 
 # ---------------------------------------------------------------------------
@@ -202,12 +214,17 @@ async def test_trickle_scanner_reset(io_executor):
     )
 
     task = asyncio.create_task(scanner.run())
-    await _until(lambda: len(gpib.probed) >= 1)
+    # Reset after at least one probe, while run() sleeps between probes (a
+    # reset during an in-flight probe is undone by that probe's _advance()).
+    await _until(lambda: len(gpib.probed) >= 1 and _sleeping_between_probes(task))
 
     # Reset should work without error
     scanner.reset()
 
-    await _until(lambda: sum(1 for _, a in gpib.probed if a == 1) >= 2)
+    # Bound the wait by probe count, not time: without a working reset the
+    # next probes continue at address 2 and up, so address 1 is not re-probed.
+    probes_at_reset = len(gpib.probed)
+    await _until(lambda: len(gpib.probed) >= probes_at_reset + 3)
     await scanner.stop()
     task.cancel()
     try:
