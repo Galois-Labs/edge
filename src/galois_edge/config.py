@@ -81,6 +81,20 @@ _KNOWN_GALOIS_VARS: frozenset[str] = frozenset({
     "MCP_ENABLED",
     "MCP_PORT",
     "MCP_PATH",
+    # --- M1 / edgesim (contracts/edge-api.md §1, §9) ---
+    "DYNAMIC_PROFILE_DIR",       # read by Config.dynamic_profile_dir but was missing (edge-api.md §9)
+    "SIM_MODE",
+    "SIM_BENCH",
+    "SIM_SEED",
+    "SIM_CLOCK",
+    "SIM_REMOTE_SOCKET",
+    "SIM_MARK_INSTRUMENTS",
+    "SIM_CONTROL_TOOLS",
+    "GRPC_BIND_HOST",
+    "WS_BIND_HOST",
+    "MCP_BIND_HOST",
+    "MCP_DYNAMIC_TOOLS_MAX",
+    "TRACE_DIR",
 })
 
 # ---------------------------------------------------------------------------
@@ -205,6 +219,18 @@ def _float_env(key: str, default: float) -> float:
 def _str_env(key: str, default: str) -> str:
     """Read a string from an environment variable."""
     return os.environ.get(key, default)
+
+
+def _host_env(key: str) -> str:
+    """Bind host from the environment; empty/whitespace means the loopback default."""
+    raw = os.environ.get(key, "").strip()
+    return raw or "127.0.0.1"
+
+
+def _nonneg_int_env(key: str, default: int) -> int:
+    """Integer >= 0; anything else (missing, invalid, negative) gives *default*."""
+    value = _int_env(key, default)
+    return value if value >= 0 else default
 
 
 # ---------------------------------------------------------------------------
@@ -360,6 +386,35 @@ class Config:
         default_factory=lambda: _str_env("MCP_PATH", "/mcp")
     )
 
+    # --- M1 (contracts/edge-api.md §1) ---
+    # VISA backend for InstrumentManager; "" keeps InstrumentManager's own "@py".
+    # Plumbed into InstrumentManager(visa_backend=...) by backend-slot (main.py).
+    visa_backend: str = field(default_factory=lambda: _str_env("VISA_BACKEND", ""))
+
+    # Simulation (edgesim). edgesim reads SIM_* itself (EdgeSimBackend.from_env);
+    # edge keeps the raw text only to validate and log it (sim_config_errors).
+    sim_mode: bool = field(default_factory=lambda: _bool_env("SIM_MODE", False))
+    sim_bench: str = field(default_factory=lambda: _str_env("SIM_BENCH", ""))
+    sim_seed: str = field(default_factory=lambda: _str_env("SIM_SEED", ""))
+    sim_clock: str = field(default_factory=lambda: _str_env("SIM_CLOCK", ""))
+    sim_remote_socket: str = field(default_factory=lambda: _str_env("SIM_REMOTE_SOCKET", ""))
+    sim_mark_instruments: bool = field(default_factory=lambda: _bool_env("SIM_MARK_INSTRUMENTS", False))
+    sim_control_tools: bool = field(default_factory=lambda: _bool_env("SIM_CONTROL_TOOLS", False))
+
+    # Bind addresses (E10). Replace the hard-coded 127.0.0.1 binds.
+    grpc_bind_host: str = field(default_factory=lambda: _host_env("GRPC_BIND_HOST"))
+    ws_bind_host: str = field(default_factory=lambda: _host_env("WS_BIND_HOST"))
+    mcp_bind_host: str = field(default_factory=lambda: _host_env("MCP_BIND_HOST"))
+
+    # Per-command dynamic MCP tools only for profiles with <= N enabled commands;
+    # also the get_capabilities(detail="full") page size (edge-api.md §3).
+    mcp_dynamic_tools_max: int = field(
+        default_factory=lambda: _nonneg_int_env("MCP_DYNAMIC_TOOLS_MAX", 200)
+    )
+
+    # When set, write edgesim.trace/1 JSONL per daemon run (edge-api.md §5).
+    trace_dir: str = field(default_factory=lambda: _str_env("TRACE_DIR", ""))
+
     # --- Config directory (platform-aware) ---
     config_dir: str = field(default_factory=_default_config_dir)
 
@@ -402,6 +457,31 @@ class Config:
         if not self.lan_instruments:
             return []
         return [addr.strip() for addr in self.lan_instruments.split(",") if addr.strip()]
+
+    def sim_config_errors(self) -> list[str]:
+        """Problems with the SIM_* settings, for logging (edge-api.md §1).
+
+        Types are checked whether or not SIM_MODE is on; presence only when it is.
+        edgesim's EdgeSimBackend.from_env re-validates and raises ValueError itself.
+        """
+        errors: list[str] = []
+        seed = self.sim_seed.strip()
+        if seed:
+            try:
+                ok = 0 <= int(seed) < 2**64
+            except ValueError:
+                ok = False
+            if not ok:
+                errors.append(f"SIM_SEED must be an integer in [0, 2**64), got {self.sim_seed!r}")
+        clock = self.sim_clock.strip()
+        if clock and clock not in ("stepped", "scaled", "wall"):
+            errors.append(f"SIM_CLOCK must be one of stepped|scaled|wall, got {self.sim_clock!r}")
+        if self.sim_mode and not self.sim_remote_socket:
+            if not self.sim_bench:
+                errors.append("SIM_MODE=true requires SIM_BENCH or SIM_REMOTE_SOCKET")
+            elif not os.path.isfile(self.sim_bench):
+                errors.append(f"SIM_BENCH: no such file: {self.sim_bench}")
+        return errors
 
 
 # ---------------------------------------------------------------------------
